@@ -1,0 +1,433 @@
+from __future__ import annotations
+
+import re
+import time
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover - fallback for minimal local runtimes
+    try:
+        from . import simple_yaml as yaml
+    except ImportError:
+        import simple_yaml as yaml
+
+from .expectation import evaluate, validate_expectation
+from .models import CheckDef, CheckResult, DatasetConfig, RunSummary, VALID_SEVERITIES
+from ..store.sqlite_store import ResultStore
+
+
+def load_dataset_config(path: Path, *, allow_empty: bool = False) -> DatasetConfig:
+    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("Checks-Datei muss ein YAML-Objekt enthalten.")
+
+    dataset = str(raw.get("dataset") or "").strip()
+    schema = str(raw.get("schema") or "").strip()
+    checks_raw = raw.get("checks")
+    if not dataset:
+        raise ValueError('"dataset" ist erforderlich.')
+    if not schema:
+        raise ValueError('"schema" ist erforderlich.')
+    if checks_raw is None:
+        checks_raw = []
+    if not isinstance(checks_raw, list):
+        raise ValueError('"checks" muss eine Liste sein.')
+    if not checks_raw and not allow_empty:
+        raise ValueError("Mindestens ein Check ist erforderlich.")
+
+    seen: set[str] = set()
+    checks: list[CheckDef] = []
+    for index, item in enumerate(checks_raw, 1):
+        if not isinstance(item, dict):
+            raise ValueError(f"Check #{index}: Objekt erwartet.")
+        name = str(item.get("name") or "").strip()
+        if not name:
+            raise ValueError(f'Check #{index}: "name" fehlt.')
+        if name in seen:
+            raise ValueError(f'Doppelter Check-Name: "{name}"')
+        seen.add(name)
+
+        sql = str(item.get("sql") or "").strip()
+        expect = str(item.get("expect") or "").strip()
+        severity = str(item.get("severity") or "fail").strip().lower()
+        if not sql:
+            raise ValueError(f'Check "{name}": "sql" fehlt.')
+        if not expect:
+            raise ValueError(f'Check "{name}": "expect" fehlt.')
+        if severity not in VALID_SEVERITIES:
+            raise ValueError(f'Check "{name}": severity muss critical/fail/warn sein.')
+        try:
+            validate_expectation(expect)
+        except ValueError as exc:
+            raise ValueError(f'Check "{name}": Ungueltiger Ausdruck "{expect}"') from exc
+
+        checks.append(
+            CheckDef(
+                name=name,
+                sql=sql,
+                expect=expect,
+                severity=severity,
+                description=str(item.get("description") or ""),
+                timeout_s=_positive_int(item.get("timeout_s"), default=60),
+                enabled=bool(item.get("enabled", True)),
+                type=str(item.get("type") or "").strip(),
+                unit=str(item.get("unit") or "").strip(),
+            )
+        )
+
+    return DatasetConfig(
+        dataset=dataset,
+        schema=schema,
+        contract_version=str(raw.get("contract_version") or ""),
+        checks=checks,
+    )
+
+
+def dataset_config_to_yaml(config: DatasetConfig) -> str:
+    payload: dict[str, Any] = {
+        "dataset": config.dataset,
+        "schema": config.schema,
+    }
+    if config.contract_version:
+        payload["contract_version"] = config.contract_version
+    payload["checks"] = [
+        {
+            "name": check.name,
+            "sql": check.sql,
+            "expect": check.expect,
+            "severity": check.severity,
+            **({"description": check.description} if check.description else {}),
+            "timeout_s": check.timeout_s,
+            "enabled": check.enabled,
+            **({"type": check.type} if check.type else {}),
+            **({"unit": check.unit} if check.unit else {}),
+        }
+        for check in config.checks
+    ]
+    return yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
+
+
+def run_checks(
+    config: DatasetConfig,
+    conn: Any,
+    results_db: Path | None,
+    on_progress: Callable[[str], None] | None = None,
+    *,
+    triggered_by: str = "ui",
+    execution_mode: str = "auto",
+) -> RunSummary:
+    run_id = str(uuid.uuid4())
+    started_at = _utc_now()
+    enabled_checks = [check for check in config.checks if check.enabled]
+    mode = str(execution_mode or "auto").strip().lower()
+    if mode not in {"auto", "batch", "isolated"}:
+        raise ValueError("execution_mode muss auto, batch oder isolated sein.")
+
+    previous: dict[str, str] = {}
+    if results_db is not None and Path(results_db).exists():
+        try:
+            previous = ResultStore(Path(results_db)).get_previous_actuals(config.dataset)
+        except Exception:  # noqa: BLE001
+            pass
+
+    if not enabled_checks:
+        results: list[CheckResult] = []
+    elif mode == "isolated":
+        results = _run_checks_isolated(conn, enabled_checks, on_progress, previous)
+    else:
+        try:
+            results = _run_checks_batch(conn, enabled_checks, on_progress, previous)
+        except Exception as exc:  # noqa: BLE001
+            if mode == "auto":
+                if on_progress:
+                    on_progress(f"[DQ] Batch-Ausfuehrung fehlgeschlagen, wechsle auf Einzelchecks: {exc}")
+                results = _run_checks_isolated(conn, enabled_checks, on_progress, previous)
+            else:
+                message = str(exc)
+                results = [_error_result(check, message, 0) for check in enabled_checks]
+                for result in results:
+                    if on_progress:
+                        _emit_result_progress(result, on_progress)
+
+    overall = _overall_status(results)
+    summary = RunSummary(
+        run_id=run_id,
+        dataset=config.dataset,
+        schema=config.schema,
+        started_at=started_at,
+        finished_at=_utc_now(),
+        overall_status=overall,
+        total=len(results),
+        passed=sum(1 for result in results if result.passed),
+        failed=sum(1 for result in results if not result.passed and result.severity in {"critical", "fail"}),
+        warnings=sum(1 for result in results if not result.passed and result.severity == "warn"),
+        results=results,
+        triggered_by=triggered_by,
+    )
+
+    if results_db is not None:
+        ResultStore(Path(results_db)).save_run(summary)
+
+    return summary
+
+
+def _run_checks_isolated(
+    conn: Any,
+    checks: list[CheckDef],
+    on_progress: Callable[[str], None] | None,
+    previous: dict[str, str] | None = None,
+) -> list[CheckResult]:
+    results: list[CheckResult] = []
+    for index, check in enumerate(checks, 1):
+        if on_progress:
+            on_progress(f"[DQ] ({index}/{len(checks)}) Pruefe {check.name}...")
+        result = _run_one_check(conn, check, previous_value=(previous or {}).get(check.name))
+        results.append(result)
+        if on_progress:
+            _emit_result_progress(result, on_progress)
+    return results
+
+
+def _run_checks_batch(
+    conn: Any,
+    checks: list[CheckDef],
+    on_progress: Callable[[str], None] | None,
+    previous: dict[str, str] | None = None,
+) -> list[CheckResult]:
+    if on_progress:
+        on_progress(f"[DQ] Fuehre {len(checks)} Checks als HANA-Batch aus...")
+
+    t0 = time.monotonic()
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        cursor.execute(_build_batch_sql(checks))
+        rows = _fetch_all(cursor)
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    elapsed = _elapsed_ms(t0)
+    values_by_name = _batch_rows_to_values(rows)
+    results: list[CheckResult] = []
+    for check in checks:
+        if check.name not in values_by_name:
+            result = _error_result(check, "Batch-Ergebnis enthaelt keinen Wert fuer diesen Check.", elapsed)
+        else:
+            result = _result_from_actual(
+                check,
+                values_by_name[check.name],
+                elapsed,
+                previous_value=(previous or {}).get(check.name),
+            )
+        results.append(result)
+        if on_progress:
+            _emit_result_progress(result, on_progress)
+    return results
+
+
+def test_check(conn: Any, check: CheckDef) -> CheckResult:
+    """Public entry point for single-check testing (used by the test-check API endpoint)."""
+    return _run_one_check(conn, check)
+
+
+def _run_one_check(conn: Any, check: CheckDef, previous_value: Any = None) -> CheckResult:
+    t0 = time.monotonic()
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        cursor.execute(f"SET 'statementTimeout' = '{int(check.timeout_s) * 1000}'")
+        cursor.execute(check.sql)
+        description = getattr(cursor, "description", None) or []
+        if len(description) > 1:
+            raise ValueError("Check-SQL muss genau eine Spalte zurueckgeben.")
+        row = cursor.fetchone()
+        second = cursor.fetchone()
+        if second is not None:
+            raise ValueError("Check-SQL muss genau eine Zeile zurueckgeben.")
+        actual = row[0] if row else None
+        result = _result_from_actual(check, actual, _elapsed_ms(t0), previous_value=previous_value)
+        if not result.passed and not result.error:
+            result.diagnostic_rows = _fetch_diagnostic_rows(conn, check.sql)
+        return result
+    except Exception as exc:  # noqa: BLE001
+        return _error_result(check, str(exc), _elapsed_ms(t0))
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+
+def _fetch_diagnostic_rows(conn: Any, sql: str) -> list[dict]:
+    diag_sql = _diagnostic_sql(sql)
+    if not diag_sql:
+        return []
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        cursor.execute(diag_sql)
+        cols = [col[0] for col in (getattr(cursor, "description", None) or [])]
+        if not cols:
+            return []
+        rows = cursor.fetchmany(100)
+        return [dict(zip(cols, row)) for row in rows]
+    except Exception:  # noqa: BLE001
+        return []
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+
+def _diagnostic_sql(sql: str) -> str | None:
+    """Rewrite 'SELECT COUNT(*) FROM t WHERE ...' → 'SELECT * FROM t WHERE ... LIMIT 100'."""
+    m = re.match(
+        r"(?i)^\s*SELECT\s+COUNT\(\*\)\s+(FROM\s+.+?)(?:\s*(WHERE\s+.+))?$",
+        sql.strip(),
+        re.DOTALL,
+    )
+    if not m:
+        return None
+    from_clause = m.group(1).strip()
+    where_clause = m.group(2) or ""
+    parts = ["SELECT *", from_clause]
+    if where_clause:
+        parts.append(where_clause.strip())
+    parts.append("LIMIT 100")
+    return " ".join(parts)
+
+
+def _result_from_actual(check: CheckDef, actual: Any, duration_ms: int, *, previous_value: Any = None) -> CheckResult:
+    try:
+        passed = evaluate(actual, check.expect, previous_value)
+        return CheckResult(
+            name=check.name,
+            sql=check.sql,
+            expect=check.expect,
+            severity=check.severity,
+            passed=passed,
+            actual_value=actual,
+            duration_ms=duration_ms,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _error_result(check, str(exc), duration_ms, actual_value=actual)
+
+
+def _error_result(
+    check: CheckDef,
+    message: str,
+    duration_ms: int,
+    *,
+    actual_value: Any = None,
+) -> CheckResult:
+    return CheckResult(
+        name=check.name,
+        sql=check.sql,
+        expect=check.expect,
+        severity=check.severity,
+        passed=False,
+        actual_value=actual_value,
+        error=message,
+        duration_ms=duration_ms,
+    )
+
+
+def _build_batch_sql(checks: list[CheckDef]) -> str:
+    parts = []
+    for check in checks:
+        sql = _strip_sql_terminator(check.sql)
+        parts.append(
+            "SELECT "
+            f"'{_sql_string_literal(check.name)}' AS check_name, "
+            f"({sql}) AS actual_value "
+            "FROM DUMMY"
+        )
+    return "\nUNION ALL\n".join(parts)
+
+
+def _strip_sql_terminator(sql: str) -> str:
+    return str(sql or "").strip().rstrip(";").strip()
+
+
+def _sql_string_literal(value: str) -> str:
+    return str(value).replace("'", "''")
+
+
+def _fetch_all(cursor: Any) -> list[Any]:
+    if hasattr(cursor, "fetchall"):
+        return list(cursor.fetchall())
+    rows = []
+    while True:
+        row = cursor.fetchone()
+        if row is None:
+            break
+        rows.append(row)
+    return rows
+
+
+def _batch_rows_to_values(rows: list[Any]) -> dict[str, Any]:
+    values: dict[str, Any] = {}
+    for row in rows:
+        if len(row) != 2:
+            raise ValueError("Batch-Ergebnis muss genau zwei Spalten enthalten.")
+        check_name = str(row[0])
+        if check_name in values:
+            raise ValueError(f'Batch-Ergebnis enthaelt doppelte Zeile fuer Check "{check_name}".')
+        values[check_name] = row[1]
+    return values
+
+
+def _emit_result_progress(result: CheckResult, on_progress: Callable[[str], None]) -> None:
+    status = _line_status(result)
+    detail = f"Fehler: {result.error}" if result.error else f"Ist={result.actual_value}, Soll={result.expect}"
+    on_progress(f"[DQ]   {status}: {result.name} ({detail})")
+
+
+def _overall_status(results: list[CheckResult]) -> str:
+    if any(result.error for result in results):
+        return "error"
+    failed = [result.severity for result in results if not result.passed]
+    if "critical" in failed:
+        return "critical"
+    if "fail" in failed:
+        return "fail"
+    if "warn" in failed:
+        return "warn"
+    return "pass"
+
+
+def _line_status(result: CheckResult) -> str:
+    if result.passed:
+        return "PASS"
+    if result.error:
+        return "ERROR"
+    return result.severity.upper()
+
+
+def _elapsed_ms(t0: float) -> int:
+    return int((time.monotonic() - t0) * 1000)
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _positive_int(value: Any, *, default: int) -> int:
+    if value in (None, ""):
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
