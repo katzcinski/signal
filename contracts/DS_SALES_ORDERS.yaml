@@ -1,0 +1,28 @@
+product: DS_SALES_ORDERS
+dataset: DS_SALES_ORDERS
+schema: CORE_DWH
+owned_by: product
+lifecycle: active
+version: "1.0.0"
+description: "Sales order fact table — harmonised from RAW_SALES and RAW_ORDERS"
+
+guarantees:
+  keys:
+    - columns: [ORDER_ID]
+      unique: true
+  not_null:
+    - columns: [ORDER_ID, CUSTOMER_ID, ORDER_DATE, NET_AMOUNT]
+  row_count:
+    min: 1000
+  freshness:
+    column: ORDER_DATE
+    max_age_hours: 26
+  schema_columns:
+    expected:
+      - ORDER_ID
+      - CUSTOMER_ID
+      - PRODUCT_ID
+      - ORDER_DATE
+      - NET_AMOUNT
+      - CURRENCY
+      - STATUS

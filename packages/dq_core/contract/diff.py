@@ -1,150 +1,127 @@
-from dataclasses import dataclass, field
-from typing import List, TYPE_CHECKING
+# Contract diff engine (WS2-4) — homegrown ~150 LOC, no ODCS dependency yet
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    from dq_core.contract.model import Contract
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
-class DiffResult:
-    is_breaking: bool
-    breaking_changes: List[str] = field(default_factory=list)
-    non_breaking_changes: List[str] = field(default_factory=list)
-    requires_major_bump: bool = False
-
-    @property
-    def has_changes(self) -> bool:
-        return bool(self.breaking_changes or self.non_breaking_changes)
+class DiffEntry:
+    kind: str       # removed_column | type_narrowing | key_change | constraint_tightened
+    path: str
+    old_value: Any
+    new_value: Any
+    breaking: bool
 
 
-class ContractDiff:
-    """Stage 1 homegrown diff (~150 LOC). ODCS/datacontract-cli is Stage 2 (deferred)."""
+def diff_contracts(old: dict[str, Any], new: dict[str, Any]) -> list[DiffEntry]:
+    """Compare two contract dicts; return breaking/non-breaking changes."""
+    entries: list[DiffEntry] = []
+    _diff_guarantees(
+        old.get("guarantees") or {},
+        new.get("guarantees") or {},
+        entries,
+    )
+    # Version bump required if any breaking change
+    return entries
 
-    def diff(self, old: "Contract", new: "Contract") -> DiffResult:
-        breaking: List[str] = []
-        non_breaking: List[str] = []
 
-        self._diff_schema(old.guarantees.schema, new.guarantees.schema, old, non_breaking, breaking)
-        self._diff_keys(old.guarantees.keys, new.guarantees.keys, non_breaking, breaking)
-        self._diff_freshness(old.guarantees.freshness, new.guarantees.freshness, non_breaking, breaking)
-        self._diff_completeness(old.guarantees.completeness, new.guarantees.completeness, non_breaking, breaking)
-        self._diff_referential(old.guarantees.referential, new.guarantees.referential, non_breaking, breaking)
-        self._diff_volume(old.guarantees.volume, new.guarantees.volume, non_breaking, breaking)
-        self._diff_metadata(old, new, non_breaking)
+def is_breaking(entries: list[DiffEntry]) -> bool:
+    return any(e.breaking for e in entries)
 
-        return DiffResult(
-            is_breaking=bool(breaking),
-            breaking_changes=breaking,
-            non_breaking_changes=non_breaking,
-            requires_major_bump=bool(breaking),
+
+def _diff_guarantees(
+    old_g: dict[str, Any],
+    new_g: dict[str, Any],
+    out: list[DiffEntry],
+) -> None:
+    # schema: removed columns = breaking
+    old_schema = old_g.get("schema") or {}
+    new_schema = new_g.get("schema") or {}
+    old_cols = set(old_schema.get("columns") or [])
+    new_cols = set(new_schema.get("columns") or [])
+    for col in old_cols - new_cols:
+        out.append(DiffEntry("removed_column", f"guarantees.schema.columns", col, None, True))
+
+    # keys: any change = breaking
+    old_keys = _normalise_keys(old_g.get("keys") or [])
+    new_keys = _normalise_keys(new_g.get("keys") or [])
+    if old_keys != new_keys:
+        out.append(DiffEntry("key_change", "guarantees.keys", old_keys, new_keys, True))
+
+    # freshness: tightening = breaking
+    _diff_freshness(
+        old_g.get("freshness") or {},
+        new_g.get("freshness") or {},
+        out,
+    )
+
+    # completeness: raising min_pct = breaking
+    for item in new_g.get("completeness") or []:
+        col = item.get("column", "")
+        old_items = {
+            i["column"]: i
+            for i in (old_g.get("completeness") or [])
+            if i.get("column")
+        }
+        old_item = old_items.get(col)
+        if old_item is None:
+            continue
+        old_pct = float(old_item.get("min_pct", 0))
+        new_pct = float(item.get("min_pct", 0))
+        if new_pct > old_pct:
+            out.append(
+                DiffEntry(
+                    "constraint_tightened",
+                    f"guarantees.completeness[{col}].min_pct",
+                    old_pct, new_pct, True,
+                )
+            )
+
+    # referential: new FK = breaking for consumers
+    old_refs = {_ref_key(r): r for r in (old_g.get("referential") or [])}
+    new_refs = {_ref_key(r): r for r in (new_g.get("referential") or [])}
+    for key in old_refs:
+        if key not in new_refs:
+            out.append(DiffEntry("removed_referential", f"guarantees.referential", old_refs[key], None, True))
+
+
+def _normalise_keys(keys: list[dict]) -> list[tuple]:
+    return sorted(tuple(sorted(k.get("columns") or [])) for k in keys)
+
+
+def _ref_key(r: dict) -> str:
+    fk = ",".join(sorted(r.get("fk") or []))
+    return f"{fk}→{r.get('parent', '')}:{','.join(sorted(r.get('parent_key') or []))}"
+
+
+def _diff_freshness(
+    old_f: dict[str, Any],
+    new_f: dict[str, Any],
+    out: list[DiffEntry],
+) -> None:
+    old_age = _parse_duration(old_f.get("max_age", ""))
+    new_age = _parse_duration(new_f.get("max_age", ""))
+    if old_age and new_age and new_age < old_age:
+        out.append(
+            DiffEntry(
+                "constraint_tightened",
+                "guarantees.freshness.max_age",
+                old_f.get("max_age"), new_f.get("max_age"), True,
+            )
         )
 
-    def _diff_schema(self, old_g, new_g, contract, non_breaking, breaking):
-        if old_g is None and new_g is None:
-            return
-        if old_g is None:
-            non_breaking.append("schema guarantee added")
-            return
-        if new_g is None:
-            breaking.append("schema guarantee removed")
-            return
-        old_cols = set(old_g.columns)
-        new_cols = set(new_g.columns)
-        for col in old_cols - new_cols:
-            breaking.append(f"column removed: {col}")
-        for col in new_cols - old_cols:
-            if new_g.mode == "closed":
-                breaking.append(f"column added in closed schema: {col}")
-            else:
-                non_breaking.append(f"column added: {col}")
-        if old_g.mode == "open" and new_g.mode == "closed":
-            breaking.append("schema mode changed from open to closed")
-        elif old_g.mode == "closed" and new_g.mode == "open":
-            non_breaking.append("schema mode changed from closed to open")
 
-    def _diff_keys(self, old_keys, new_keys, non_breaking, breaking):
-        old_map = {tuple(sorted(k.columns)): k for k in old_keys}
-        new_map = {tuple(sorted(k.columns)): k for k in new_keys}
-        for key in old_map:
-            if key not in new_map:
-                breaking.append(f"key guarantee removed: {list(key)}")
-        for key, new_k in new_map.items():
-            if key not in old_map:
-                non_breaking.append(f"key guarantee added: {list(key)}")
-            else:
-                old_k = old_map[key]
-                if old_k.severity != new_k.severity:
-                    sev_order = {"warn": 0, "fail": 1, "critical": 2}
-                    if sev_order.get(new_k.severity, 0) > sev_order.get(old_k.severity, 0):
-                        breaking.append(f"key severity escalated from {old_k.severity} to {new_k.severity}")
-                    else:
-                        non_breaking.append(f"key severity relaxed from {old_k.severity} to {new_k.severity}")
-
-    def _diff_freshness(self, old_f, new_f, non_breaking, breaking):
-        if old_f is None and new_f is None:
-            return
-        if old_f is None:
-            non_breaking.append("freshness guarantee added")
-            return
-        if new_f is None:
-            breaking.append("freshness guarantee removed")
-            return
-        if old_f.column != new_f.column:
-            breaking.append(f"freshness column changed from {old_f.column!r} to {new_f.column!r}")
-        if old_f.max_age != new_f.max_age:
-            non_breaking.append(f"freshness max_age changed from {old_f.max_age} to {new_f.max_age}")
-
-    def _diff_completeness(self, old_list, new_list, non_breaking, breaking):
-        old_map = {c.column: c for c in old_list}
-        new_map = {c.column: c for c in new_list}
-        for col in old_map:
-            if col not in new_map:
-                breaking.append(f"completeness guarantee removed for column: {col}")
-        for col, new_c in new_map.items():
-            if col not in old_map:
-                non_breaking.append(f"completeness guarantee added for column: {col}")
-            else:
-                old_c = old_map[col]
-                if new_c.min_pct > old_c.min_pct:
-                    breaking.append(f"completeness min_pct tightened for {col}: {old_c.min_pct} -> {new_c.min_pct}")
-                elif new_c.min_pct < old_c.min_pct:
-                    non_breaking.append(f"completeness min_pct relaxed for {col}: {old_c.min_pct} -> {new_c.min_pct}")
-
-    def _diff_referential(self, old_list, new_list, non_breaking, breaking):
-        old_map = {(tuple(sorted(r.fk)), r.parent): r for r in old_list}
-        new_map = {(tuple(sorted(r.fk)), r.parent): r for r in new_list}
-        for key in old_map:
-            if key not in new_map:
-                breaking.append(f"referential guarantee removed: {list(key[0])} -> {key[1]}")
-        for key in new_map:
-            if key not in old_map:
-                non_breaking.append(f"referential guarantee added: {list(key[0])} -> {key[1]}")
-
-    def _diff_volume(self, old_v, new_v, non_breaking, breaking):
-        if old_v is None and new_v is None:
-            return
-        if old_v is None:
-            non_breaking.append("volume guarantee added")
-            return
-        if new_v is None:
-            breaking.append("volume guarantee removed")
-            return
-
-    def _diff_metadata(self, old: "Contract", new: "Contract", non_breaking):
-        if old.owned_by != new.owned_by:
-            non_breaking.append(f"owned_by changed: {old.owned_by!r} -> {new.owned_by!r}")
-        if set(old.owners) != set(new.owners):
-            non_breaking.append("owners list changed")
-        if old.lifecycle != new.lifecycle:
-            non_breaking.append(f"lifecycle changed: {old.lifecycle!r} -> {new.lifecycle!r}")
-
-    @staticmethod
-    def requires_major_version_bump(diff_result: DiffResult, old_version: str, new_version: str) -> bool:
-        if not diff_result.is_breaking:
-            return False
-        try:
-            old_major = int(old_version.split(".")[0])
-            new_major = int(new_version.split(".")[0])
-            return new_major <= old_major
-        except (ValueError, IndexError):
-            return True
+def _parse_duration(s: str) -> int | None:
+    """Parse ISO 8601 duration string like PT1H, PT24H, P1D → seconds."""
+    import re
+    if not s:
+        return None
+    m = re.match(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?", s)
+    if not m:
+        return None
+    days = int(m.group(1) or 0)
+    hours = int(m.group(2) or 0)
+    minutes = int(m.group(3) or 0)
+    seconds = int(m.group(4) or 0)
+    return days * 86400 + hours * 3600 + minutes * 60 + seconds

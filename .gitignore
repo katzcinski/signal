@@ -1,22 +1,52 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
+.Python
 *.egg-info/
-.pytest_cache/
+dist/
+build/
 .venv/
 venv/
+env/
+*.egg
 
-# Result store / local artifacts
+# Databases & secrets
 *.db
-dq_results.db
-checks/
-contracts/
-
-# Node / frontend
-node_modules/
-apps/cockpit/dist/
-*.local
-
-# Editor / OS
-.DS_Store
+*.sqlite
+*.sqlite3
 .env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# Node / Frontend
+node_modules/
+dist/
+.vite/
+apps/cockpit/dist/
+apps/cockpit/.vite/
+
+# Test & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artefacts
+*.whl
+*.tar.gz

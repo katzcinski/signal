@@ -1,180 +1,123 @@
-# ENGINE-FROZEN - Do not add framework imports (fastapi/flask/starlette)
-"""
-Expectation grammar evaluator.
-
-Supported expressions:
-  IS NULL
-  IS NOT NULL
-  = n  |  != n  |  >= n  |  <= n  |  > n  |  < n
-  BETWEEN a AND b
-  = n ±t          (tolerance, e.g. "= 100 ±5")
-  IN(v1, v2, ...)
-  NOT IN(v1, v2, ...)
-  DELTA <op> p%   (uses previous_value, e.g. "DELTA < 10%")
-  MATCHES /regex/
-"""
+# [ENGINE-FROZEN] — regex-based parser, no eval()
+from __future__ import annotations
 
 import re
-from typing import Optional, Any
+from typing import Any
 
-# Pre-compiled patterns
-_BETWEEN_RE = re.compile(
-    r"^\s*BETWEEN\s+(-?[\d.]+(?:[eE][+-]?\d+)?)\s+AND\s+(-?[\d.]+(?:[eE][+-]?\d+)?)\s*$",
-    re.IGNORECASE,
+# ---------------------------------------------------------------------------
+# Canonical grammar patterns
+# ---------------------------------------------------------------------------
+_NUM = r"-?\d+(?:\.\d+)?"
+_OP = r"[><!]?=|[><]"
+
+_PAT_CMP = re.compile(rf"^({_OP})\s*({_NUM})$", re.IGNORECASE)
+_PAT_BETWEEN = re.compile(
+    rf"^BETWEEN\s+({_NUM})\s+AND\s+({_NUM})$", re.IGNORECASE
 )
-_COMPARE_RE = re.compile(
-    r"^\s*(!=|>=|<=|=|>|<)\s*(-?[\d.]+(?:[eE][+-]?\d+)?)\s*$"
+_PAT_DELTA = re.compile(
+    rf"^DELTA\s+({_OP})\s*({_NUM})\s*%$", re.IGNORECASE
 )
-_TOLERANCE_RE = re.compile(
-    r"^\s*=\s*(-?[\d.]+(?:[eE][+-]?\d+)?)\s*[±]\s*([\d.]+(?:[eE][+-]?\d+)?)\s*$"
+_PAT_IS_NULL = re.compile(r"^IS\s+NULL$", re.IGNORECASE)
+_PAT_IS_NOT_NULL = re.compile(r"^IS\s+NOT\s+NULL$", re.IGNORECASE)
+_PAT_IN = re.compile(r"^(?:NOT\s+)?IN\s*\(.+\)$", re.IGNORECASE)
+_PAT_MATCHES = re.compile(r"^MATCHES\s+/.+/$", re.IGNORECASE)
+_PAT_APPROX = re.compile(
+    rf"^=\s*({_NUM})\s*[+-]\s*({_NUM})$", re.IGNORECASE
 )
-_IN_RE = re.compile(r"^\s*(NOT\s+)?IN\s*\(([^)]*)\)\s*$", re.IGNORECASE)
-_DELTA_RE = re.compile(
-    r"^\s*DELTA\s*(!=|>=|<=|=|>|<)\s*([\d.]+(?:[eE][+-]?\d+)?)%\s*$",
-    re.IGNORECASE,
-)
-_MATCHES_RE = re.compile(r"^\s*MATCHES\s+/(.+)/([imsx]*)\s*$", re.IGNORECASE)
-_IS_NULL_RE = re.compile(r"^\s*IS\s+NULL\s*$", re.IGNORECASE)
-_IS_NOT_NULL_RE = re.compile(r"^\s*IS\s+NOT\s+NULL\s*$", re.IGNORECASE)
+
+_ALL_PATTERNS = [
+    _PAT_CMP,
+    _PAT_BETWEEN,
+    _PAT_DELTA,
+    _PAT_IS_NULL,
+    _PAT_IS_NOT_NULL,
+    _PAT_IN,
+    _PAT_MATCHES,
+    _PAT_APPROX,
+]
+
+_OPS_MAP = {
+    "=": lambda a, b: a == b,
+    "!=": lambda a, b: a != b,
+    ">": lambda a, b: a > b,
+    ">=": lambda a, b: a >= b,
+    "<": lambda a, b: a < b,
+    "<=": lambda a, b: a <= b,
+}
 
 
-def _to_number(value: Any) -> float:
-    """Coerce value to float, raise ValueError if not possible."""
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        return float(value.strip())
-    raise ValueError(f"Cannot convert {value!r} to number")
+def validate_expectation(expr: str) -> None:
+    """Raise ValueError if *expr* does not match any supported grammar form."""
+    expr = (expr or "").strip()
+    if not expr:
+        raise ValueError("Expectation expression must not be empty.")
+    for pat in _ALL_PATTERNS:
+        if pat.match(expr):
+            return
+    raise ValueError(
+        f"Unsupported expectation expression: {expr!r}. "
+        "Supported: '= N', '!= N', '> N', '>= N', '< N', '<= N', "
+        "'BETWEEN X AND Y', 'DELTA <op> N%', 'IS NULL', 'IS NOT NULL', "
+        "'IN(...)', 'NOT IN(...)', 'MATCHES /regex/', '= N ±T'."
+    )
 
 
-def _compare(op: str, actual: float, threshold: float) -> bool:
-    if op == "=":
-        return actual == threshold
-    if op == "!=":
-        return actual != threshold
-    if op == ">=":
-        return actual >= threshold
-    if op == "<=":
-        return actual <= threshold
-    if op == ">":
-        return actual > threshold
-    if op == "<":
-        return actual < threshold
-    raise ValueError(f"Unknown operator: {op!r}")
+def evaluate(actual: Any, expr: str, previous_value: Any = None) -> bool:
+    """Evaluate *actual* against *expr*; return True if the check passes."""
+    expr = (expr or "").strip()
 
+    # IS NULL / IS NOT NULL
+    if _PAT_IS_NULL.match(expr):
+        return actual is None
+    if _PAT_IS_NOT_NULL.match(expr):
+        return actual is not None
 
-def evaluate_expectation(
-    expect_expr: str,
-    actual_value: Any,
-    previous_value: Any = None,
-) -> bool:
-    """
-    Evaluate *expect_expr* against *actual_value*.
-
-    Returns True if the check passes, False otherwise.
-    Raises ValueError for malformed expressions.
-    """
-    expr = expect_expr.strip()
-
-    # IS NULL
-    if _IS_NULL_RE.match(expr):
-        return actual_value is None
-
-    # IS NOT NULL
-    if _IS_NOT_NULL_RE.match(expr):
-        return actual_value is not None
-
-    # MATCHES /regex/flags
-    m = _MATCHES_RE.match(expr)
+    # MATCHES /regex/
+    m = _PAT_MATCHES.match(expr)
     if m:
-        pattern, flags_str = m.group(1), m.group(2)
-        flag_map = {"i": re.IGNORECASE, "m": re.MULTILINE, "s": re.DOTALL, "x": re.VERBOSE}
-        re_flags = 0
-        for ch in flags_str:
-            re_flags |= flag_map.get(ch, 0)
-        return bool(re.search(pattern, str(actual_value), re_flags))
+        pattern = re.search(r"/(.+)/$", expr)
+        if pattern:
+            return bool(re.search(pattern.group(1), str(actual)))
+        return False
 
-    # DELTA <op> p%
-    m = _DELTA_RE.match(expr)
+    # DELTA <op> N%
+    m = _PAT_DELTA.match(expr)
     if m:
-        op, pct_str = m.group(1), m.group(2)
-        if previous_value is None:
-            # No baseline yet; treat as passing (warm-up)
-            return True
-        prev = _to_number(previous_value)
-        actual = _to_number(actual_value)
-        if prev == 0:
-            # Avoid division by zero; only passes if actual is also 0
-            delta_pct = 0.0 if actual == 0 else float("inf")
-        else:
-            delta_pct = abs(actual - prev) / abs(prev) * 100.0
-        threshold = float(pct_str)
-        return _compare(op, delta_pct, threshold)
+        op, pct = m.group(1), float(m.group(2))
+        if previous_value is None or float(previous_value) == 0:
+            return True  # no baseline → pass (warm-up)
+        delta = abs(float(actual) - float(previous_value)) / abs(float(previous_value)) * 100
+        fn = _OPS_MAP.get(op)
+        return fn(delta, pct) if fn else False
 
-    # BETWEEN a AND b
-    m = _BETWEEN_RE.match(expr)
+    # BETWEEN X AND Y
+    m = _PAT_BETWEEN.match(expr)
     if m:
         lo, hi = float(m.group(1)), float(m.group(2))
-        actual = _to_number(actual_value)
-        return lo <= actual <= hi
+        return lo <= float(actual) <= hi
 
-    # = n ±t  (tolerance)
-    m = _TOLERANCE_RE.match(expr)
+    # = N ±T  (approximate equality)
+    m = _PAT_APPROX.match(expr)
     if m:
         center, tol = float(m.group(1)), float(m.group(2))
-        actual = _to_number(actual_value)
-        return abs(actual - center) <= tol
+        return abs(float(actual) - center) <= tol
 
-    # [NOT] IN(...)
-    m = _IN_RE.match(expr)
-    if m:
-        negated = bool(m.group(1))
-        raw_items = m.group(2)
-        items = [item.strip().strip("'\"") for item in raw_items.split(",") if item.strip()]
-        # Try numeric comparison first, fall back to string
-        actual_str = str(actual_value).strip()
-        in_set = actual_str in items
-        # Also check numeric equality
-        try:
-            actual_num = _to_number(actual_value)
-            numeric_items = []
-            for it in items:
-                try:
-                    numeric_items.append(float(it))
-                except ValueError:
-                    pass
-            if numeric_items:
-                in_set = in_set or any(actual_num == n for n in numeric_items)
-        except (ValueError, TypeError):
-            pass
-        return not in_set if negated else in_set
-
-    # Simple comparisons: =, !=, >=, <=, >, <
-    m = _COMPARE_RE.match(expr)
-    if m:
-        op, threshold_str = m.group(1), m.group(2)
-        actual = _to_number(actual_value)
-        threshold = float(threshold_str)
-        return _compare(op, actual, threshold)
-
-    raise ValueError(f"Unrecognised expectation expression: {expect_expr!r}")
-
-
-def validate_expectation(expect_expr: str) -> bool:
-    """
-    Return True if *expect_expr* is syntactically valid, False otherwise.
-    Does not raise.
-    """
-    try:
-        # Use a sentinel that exercises most code paths
-        evaluate_expectation(expect_expr, 0, previous_value=1)
-        return True
-    except ValueError:
-        # Distinguish parse errors from evaluation errors
-        pass
-    # Try with None to cover IS NULL / IS NOT NULL paths
-    try:
-        evaluate_expectation(expect_expr, None, previous_value=None)
-        return True
-    except ValueError:
+    # IN(...) / NOT IN(...)
+    if _PAT_IN.match(expr):
+        negated = expr.upper().startswith("NOT")
+        inner = re.search(r"\((.+)\)", expr, re.DOTALL)
+        if inner:
+            values = [v.strip().strip("'\"") for v in inner.group(1).split(",")]
+            contained = str(actual) in values
+            return not contained if negated else contained
         return False
+
+    # Simple comparison: <op> N
+    m = _PAT_CMP.match(expr)
+    if m:
+        op, val = m.group(1), float(m.group(2))
+        fn = _OPS_MAP.get(op)
+        if fn:
+            return fn(float(actual), val)
+
+    raise ValueError(f"Could not evaluate expression: {expr!r}")

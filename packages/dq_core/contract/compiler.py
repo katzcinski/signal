@@ -1,200 +1,234 @@
-import hashlib
-import json
+"""ODCS → check_library → CheckDef Compiler.
+
+Der EINZIGE Ort, an dem aus einer semantischen Garantie ausführbares SQL wird.
+Liest einen ODCS-v3-Contract (als dict) und erzeugt das bestehende DatasetConfig/
+CheckDef — der Runner (check_engine) bleibt dadurch unverändert.
+
+Leitlinie: eine Quelle (ODCS in Git), ein Executor (HANA via hdbcli), zwei Einweg-Seams.
+Gates:  G1  kein roher SQL im Contract außer type:sql mit owned_by:product
+        G2  {schema} kommt aus servers[].schema / --db-schema, nie hartkodiert
+        G3  jede library-rule / templateId muss in check_library auflösen
+"""
+from __future__ import annotations
+
 import re
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import Any
 
-from dq_core.engine.models import CheckDef
-from dq_core.library.check_library import CheckLibrary
-from dq_core.contract.model import Contract
-
-IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+from ..library.check_library import check_by_id
+from ..engine.models import CheckDef, DatasetConfig, VALID_OWNERS
 
 
-def _validate_identifier(name: str, context: str) -> None:
-    if not IDENTIFIER_RE.match(name):
-        raise ValueError(f"Invalid identifier {name!r} in {context}")
+# ODCS-library-rule → check_library-id. Gegen die genutzte ODCS-Version pinnen;
+# datacontract lint erzwingt das Vokabular auf der Contract-Seite, G3 hier im Compiler.
+_LIBRARY_TO_TEMPLATE = {
+    "rowCount": "row_count",
+    "duplicateCount": "duplicate",
+    "nullCount": "missing",  # bei unit=percent → completeness_pct (s. _check_from_rule)
+    "invalidCount": "invalid",
+}
+
+_OPS = {
+    "mustBe": "= {0}",
+    "mustNotBe": "!= {0}",
+    "mustBeGreaterThan": "> {0}",
+    "mustBeGreaterThanOrEqualTo": ">= {0}",
+    "mustBeLessThan": "< {0}",
+    "mustBeLessThanOrEqualTo": "<= {0}",
+}
+
+# Erkennt ungebundene Template-Tokens (<SPALTE>, :<YEAR>) — NICHT den Operator " < ".
+_UNBOUND_TOKEN = re.compile(r":?<[A-Za-z0-9_]+>")
 
 
-def _iso_duration_to_seconds(duration: str) -> int:
-    """Convert ISO 8601 duration (e.g. PT24H, P1D) to seconds."""
-    import re
-    m = re.match(r'P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?', duration)
-    if not m:
-        return 86400
-    days = int(m.group(1) or 0)
-    hours = int(m.group(2) or 0)
-    minutes = int(m.group(3) or 0)
-    seconds = int(m.group(4) or 0)
-    return days * 86400 + hours * 3600 + minutes * 60 + seconds
+# --------------------------------------------------------------------------- #
+# Helpers
+# --------------------------------------------------------------------------- #
+def _custom_prop(node: dict[str, Any], key: str, default: Any = None) -> Any:
+    for cp in (node.get("customProperties") or []):
+        if cp.get("property") == key:
+            return cp.get("value")
+    return default
 
 
-class ContractCompiler:
-    def __init__(self, library: Optional[CheckLibrary] = None):
-        self.library = library or CheckLibrary()
+def _resolve_owner(node: dict[str, Any], default: str) -> str:
+    owner = node.get("owned_by") or _custom_prop(node, "owned_by") or default
+    if owner not in VALID_OWNERS:
+        raise ValueError(f"owned_by muss {sorted(VALID_OWNERS)} sein, nicht '{owner}'")
+    return owner
 
-    def compile(self, contract: Contract, existing_checks: Optional[List[CheckDef]] = None) -> dict:
-        """
-        Returns {
-            'checks': List[CheckDef],   # {schema} placeholder preserved [SCHEMA-MAP]
-            'header_hash': str,         # deterministic hash [DETERMINISM]
-            'conflicts': List[str],
-        }
-        """
-        compiled: List[CheckDef] = []
-        dataset = contract.dataset
-        _validate_identifier(dataset, "contract.dataset")
 
-        g = contract.guarantees
-        if g.schema:
-            compiled.extend(self._compile_schema(g.schema, dataset))
-        for key_g in g.keys:
-            compiled.extend(self._compile_key(key_g, dataset))
-        for ref_g in g.referential:
-            compiled.extend(self._compile_referential(ref_g, dataset))
-        if g.freshness:
-            compiled.extend(self._compile_freshness(g.freshness, dataset))
-        for comp_g in g.completeness:
-            compiled.extend(self._compile_completeness(comp_g, dataset))
-        if g.volume:
-            compiled.extend(self._compile_volume(g.volume, dataset))
+def _operator_to_expect(rule: dict[str, Any]) -> str:
+    for key, tmpl in _OPS.items():
+        if key in rule:
+            return tmpl.format(rule[key])
+    if "mustBeBetween" in rule:
+        lo, hi = rule["mustBeBetween"]
+        return f"BETWEEN {lo} AND {hi}"
+    if "mustChangeByLessThanPercent" in rule:  # Toolbox-Erweiterung (Drift vs. letzter Lauf)
+        return f"DELTA < {rule['mustChangeByLessThanPercent']}%"
+    # Toolbox-Erweiterungen, die als customProperty mitgeführt werden (Toleranz/IN/MATCHES)
+    raw = _custom_prop(rule, "expect")
+    if raw:
+        return str(raw)
+    raise ValueError(f"Kein unterstützter Operator in Regel: {rule!r}")
 
-        merged, conflicts = self._merge_with_existing(compiled, existing_checks or [])
 
-        contract_hash = self.compute_contract_hash(contract)
-        lib_version = self.library.get_version()
-        header_hash = hashlib.sha256(
-            f"{contract_hash}:{lib_version}".encode()
-        ).hexdigest()
+def _bind(template_id: str, schema: str, dataset: str, params: dict[str, Any]) -> str:
+    entry = check_by_id(template_id)
+    if entry is None or not entry.get("sql_template"):
+        raise ValueError(f"Unbekannte/leere templateId '{template_id}' (Gate G3)")
+    sql = entry["sql_template"].replace("{schema}", schema).replace("{dataset}", dataset)
+    # längste Tokens zuerst ersetzen, damit z. B. <MAX> nicht in <MAX_X> kollidiert
+    for token in sorted((params or {}).keys(), key=len, reverse=True):
+        sql = sql.replace(token, str(params[token]))
+    leftover = _UNBOUND_TOKEN.search(sql)
+    if leftover:
+        raise ValueError(f"Regel '{template_id}': ungebundener Parameter {leftover.group(0)!r}")
+    return sql
 
-        return {"checks": merged, "header_hash": header_hash, "conflicts": conflicts}
 
-    def _compile_schema(self, g, dataset: str) -> List[CheckDef]:
-        checks = []
-        tmpl = self.library.get_template("schema_column_count")
-        if tmpl:
-            checks.append(CheckDef(
-                name=f"{dataset}__schema_column_count",
-                sql=tmpl["sql_template"].replace("{dataset}", dataset),
-                expect=f">= {len(g.columns)}",
-                severity="fail",
-                type="schema",
-                description="Minimum column count from contract",
-            ))
-        for col in g.columns:
-            _validate_identifier(col, f"schema.columns[{col}]")
-            tmpl = self.library.get_template("schema_column_exists")
-            if tmpl:
-                sql = tmpl["sql_template"].replace("{dataset}", dataset).replace("{column}", col)
-                checks.append(CheckDef(
-                    name=f"{dataset}__col_exists_{col}",
-                    sql=sql,
-                    expect="= 1",
-                    severity="fail",
-                    type="schema",
-                    description=f"Column {col} must exist",
-                ))
-        return checks
+def _mk(
+    template_id: str,
+    schema: str,
+    dataset: str,
+    params: dict[str, Any],
+    expect: str,
+    severity: str,
+    owner: str,
+    *,
+    name: str | None = None,
+    unit: str = "",
+) -> CheckDef:
+    return CheckDef(
+        name=name or template_id,
+        sql=_bind(template_id, schema, dataset, params),
+        expect=expect,
+        severity=severity,
+        type=template_id,
+        unit=unit,
+        owned_by=owner,
+    )
 
-    def _compile_key(self, g, dataset: str) -> List[CheckDef]:
-        for col in g.columns:
-            _validate_identifier(col, f"key.columns[{col}]")
-        cols_expr = ", ".join(g.columns)
-        if len(g.columns) == 1:
-            tmpl = self.library.get_template("unique_count")
-            sql = tmpl["sql_template"].replace("{dataset}", dataset).replace("{column}", g.columns[0])
-        else:
-            tmpl = self.library.get_template("composite_unique")
-            sql = tmpl["sql_template"].replace("{dataset}", dataset).replace("{columns}", cols_expr)
-        key_name = "_".join(g.columns)
-        return [CheckDef(
-            name=f"{dataset}__key_{key_name}_unique",
-            sql=sql,
-            expect="= 0",
-            severity=g.severity,
-            type="uniqueness",
-            description=f"Key {g.columns} must be unique",
-        )]
 
-    def _compile_referential(self, g, dataset: str) -> List[CheckDef]:
-        _validate_identifier(g.parent, "referential.parent")
-        for col in g.fk:
-            _validate_identifier(col, f"referential.fk[{col}]")
-        for col in g.parent_key:
-            _validate_identifier(col, f"referential.parent_key[{col}]")
-        fk_col = g.fk[0] if g.fk else "id"
-        pk_col = g.parent_key[0] if g.parent_key else "id"
-        tmpl = self.library.get_template("referential_orphans")
-        sql = (tmpl["sql_template"]
-               .replace("{dataset}", dataset)
-               .replace("{parent_dataset}", g.parent)
-               .replace("{parent_key}", pk_col)
-               .replace("{fk_column}", fk_col))
-        return [CheckDef(
-            name=f"{dataset}__ref_{fk_col}_to_{g.parent}",
-            sql=sql,
-            expect="= 0",
-            severity=g.severity,
-            type="referential",
-            description=f"FK {g.fk} must reference {g.parent}",
-        )]
+def _to_seconds(value: Any, unit: str) -> int:
+    factor = {"s": 1, "sec": 1, "m": 60, "min": 60, "h": 3600, "hour": 3600, "d": 86400, "day": 86400}
+    return int(float(value) * factor.get(str(unit).lower(), 1))
 
-    def _compile_freshness(self, g, dataset: str) -> List[CheckDef]:
-        _validate_identifier(g.column, "freshness.column")
-        max_seconds = _iso_duration_to_seconds(g.max_age)
-        tmpl = self.library.get_template("freshness_seconds")
-        sql = tmpl["sql_template"].replace("{dataset}", dataset).replace("{column}", g.column)
-        return [CheckDef(
-            name=f"{dataset}__freshness_{g.column}",
-            sql=sql,
-            expect=f"<= {max_seconds}",
-            severity=g.severity,
-            type="freshness",
-            description=f"Data must be fresher than {g.max_age}",
-        )]
 
-    def _compile_completeness(self, g, dataset: str) -> List[CheckDef]:
-        _validate_identifier(g.column, "completeness.column")
-        tmpl = self.library.get_template("completeness_pct")
-        sql = tmpl["sql_template"].replace("{dataset}", dataset).replace("{column}", g.column)
-        return [CheckDef(
-            name=f"{dataset}__completeness_{g.column}",
-            sql=sql,
-            expect=f">= {g.min_pct}",
-            severity=g.severity,
-            type="completeness",
-            description=f"Column {g.column} must be {g.min_pct}% complete",
-        )]
+# --------------------------------------------------------------------------- #
+# Regel-/Property-/SLA-Übersetzung
+# --------------------------------------------------------------------------- #
+def _checks_from_property(schema: str, dataset: str, prop: dict[str, Any], default_owner: str) -> list[CheckDef]:
+    col = prop.get("name")
+    owner = _resolve_owner(prop, default_owner)
+    sev = prop.get("severity", "fail")
+    out: list[CheckDef] = []
 
-    def _compile_volume(self, g, dataset: str) -> List[CheckDef]:
-        tmpl = self.library.get_template("row_count")
-        sql = tmpl["sql_template"].replace("{dataset}", dataset)
-        return [CheckDef(
-            name=f"{dataset}__row_count",
-            sql=sql,
-            expect=">= 1",
-            severity=g.severity,
-            type="volume",
-            description="Dataset must have at least 1 row",
-        )]
+    if prop.get("required"):
+        out.append(_mk("missing", schema, dataset, {"<SPALTE>": col}, "= 0", sev, owner, name=f"{col}_not_null"))
+    if prop.get("unique") or prop.get("primaryKey"):
+        out.append(_mk("duplicate", schema, dataset, {"<SPALTE>": col}, "= 0", "critical", owner, name=f"{col}_unique"))
 
-    def _merge_with_existing(self, compiled: List[CheckDef], existing: List[CheckDef]) -> Tuple[List[CheckDef], List[str]]:
-        existing_map = {c.name: c for c in existing}
-        conflicts = []
-        result = []
-        compiled_names = {c.name for c in compiled}
-        for c in compiled:
-            if c.name in existing_map:
-                result.append(existing_map[c.name])  # existing-wins
-                conflicts.append(c.name)
-            else:
-                result.append(c)
-        for c in existing:
-            if c.name not in compiled_names:
-                result.append(c)  # keep hand-crafted checks not in compiled set
-        return result, conflicts
+    vv = prop.get("validValues")
+    if vv:
+        lit = ", ".join("'%s'" % str(v).replace("'", "''") for v in vv)
+        out.append(
+            _mk("allowed_values", schema, dataset,
+                {"<SPALTE>": col, "'<WERT1>', '<WERT2>'": lit}, "= 0", sev, owner, name=f"{col}_allowed")
+        )
 
-    def compute_contract_hash(self, contract: Contract) -> str:
-        from dq_core.contract.model import contract_to_dict
-        data = contract_to_dict(contract)
-        canonical = json.dumps(data, sort_keys=True, ensure_ascii=True)
-        return hashlib.sha256(canonical.encode()).hexdigest()
+    lto = prop.get("logicalTypeOptions") or {}
+    if "pattern" in lto:
+        out.append(_mk("pattern_match", schema, dataset,
+                       {"<SPALTE>": col, "<REGEX>": lto["pattern"]}, "= 0", sev, owner, name=f"{col}_pattern"))
+    if "minLength" in lto or "maxLength" in lto:
+        out.append(_mk("string_length", schema, dataset,
+                       {"<SPALTE>": col, "<MIN>": lto.get("minLength", 0), "<MAX>": lto.get("maxLength", 2147483647)},
+                       "= 0", "warn", owner, name=f"{col}_length"))
+    if "minimum" in lto or "maximum" in lto:
+        out.append(_mk("value_range", schema, dataset,
+                       {"<SPALTE>": col, "<MIN>": lto.get("minimum"), "<MAX>": lto.get("maximum")},
+                       "= 0", "fail", owner, name=f"{col}_range"))
+
+    for rule in (prop.get("quality") or []):
+        out.append(_check_from_rule(schema, dataset, rule, default_owner, column=col))
+    return out
+
+
+def _check_from_rule(
+    schema: str, dataset: str, rule: dict[str, Any], default_owner: str, *, column: str | None = None
+) -> CheckDef:
+    rtype = rule.get("type", "library")
+    name = rule.get("name") or rule.get("rule") or "rule"
+    sev = rule.get("severity", "fail")
+    owner = _resolve_owner(rule, default_owner)
+
+    if rtype == "library":
+        if rule.get("rule") not in _LIBRARY_TO_TEMPLATE:
+            raise ValueError(f"Unbekannte library-rule '{rule.get('rule')}' (Gate G3)")
+        tid = _LIBRARY_TO_TEMPLATE[rule["rule"]]
+        if rule["rule"] == "nullCount" and rule.get("unit") == "percent":
+            tid = "completeness_pct"
+        params = dict(rule.get("params", {}))
+        if column and "<SPALTE>" not in params:
+            params["<SPALTE>"] = column
+        return CheckDef(name=name, sql=_bind(tid, schema, dataset, params),
+                        expect=_operator_to_expect(rule), severity=sev,
+                        type=tid, unit=rule.get("unit", ""), owned_by=owner)
+
+    if rtype == "custom" and rule.get("engine") == "hana-toolbox":
+        impl = rule.get("implementation") or {}
+        return CheckDef(name=name, sql=_bind(impl["templateId"], schema, dataset, impl.get("params", {})),
+                        expect=impl.get("expect", "= 0"), severity=sev,
+                        type=impl["templateId"], owned_by=owner)
+
+    if rtype == "sql":  # EINZIGE SQL-Ausnahme — Gate G1
+        if owner != "product":
+            raise ValueError(f"Regel '{name}': roher SQL (type: sql) erfordert owned_by: product (Gate G1)")
+        return CheckDef(name=name, sql=rule["query"], expect=_operator_to_expect(rule),
+                        severity=sev, type="custom_sql", owned_by="product")
+
+    raise ValueError(f"Regeltyp '{rtype}' ist nicht ausführbar (text-Regeln sind rein deskriptiv)")
+
+
+def _check_from_sla(schema: str, dataset: str, sla: dict[str, Any], default_owner: str) -> CheckDef | None:
+    if str(sla.get("property", "")).lower() not in ("latency", "frequency", "freshness"):
+        return None
+    element = sla.get("element") or ""  # Konvention: "dataset.column"
+    col = element.split(".")[-1] if element else None
+    if not col:
+        return None
+    seconds = _to_seconds(sla.get("value"), sla.get("unit", "s"))
+    replication = str(sla.get("driver", "")).lower() == "replication"
+    tid = "sap_replication_lag" if replication else "freshness"
+    token = "<TIMESTAMP_COL>" if replication else "<SPALTE>"
+    return CheckDef(name=f"freshness_{col}", sql=_bind(tid, schema, dataset, {token: col}),
+                    expect=f"< {seconds}", severity=sla.get("severity", "warn"),
+                    type=tid, unit="s", owned_by=_resolve_owner(sla, default_owner))
+
+
+# --------------------------------------------------------------------------- #
+# Einstiegspunkt
+# --------------------------------------------------------------------------- #
+def compile_contract(odcs: dict[str, Any], *, schema_override: str = "") -> DatasetConfig:
+    server = (odcs.get("servers") or [{}])[0]
+    schema = schema_override or server.get("schema") or ""  # Gate G2
+    obj = (odcs.get("schema") or [{}])[0]
+    dataset = obj.get("physicalName") or obj.get("name") or ""
+    default_owner = _custom_prop(odcs, "owned_by", "platform")
+    if default_owner not in VALID_OWNERS:
+        raise ValueError(f"Contract owned_by muss {sorted(VALID_OWNERS)} sein, nicht '{default_owner}'")
+
+    checks: list[CheckDef] = []
+    for prop in (obj.get("properties") or []):
+        checks += _checks_from_property(schema, dataset, prop, default_owner)
+    for rule in [*(obj.get("quality") or []), *(odcs.get("quality") or [])]:
+        checks.append(_check_from_rule(schema, dataset, rule, default_owner))
+    for sla in (odcs.get("slaProperties") or []):
+        c = _check_from_sla(schema, dataset, sla, default_owner)
+        if c:
+            checks.append(c)
+
+    return DatasetConfig(dataset=dataset, schema=schema,
+                         contract_version=str(odcs.get("version") or ""),
+                         owned_by=default_owner, checks=checks)

@@ -1,34 +1,50 @@
-import os
-import yaml
-from functools import lru_cache
-from typing import Optional, Annotated
+"""Dependency providers for FastAPI routes."""
+from __future__ import annotations
 
-from fastapi import Depends, Header, HTTPException
-from services.api.settings import settings
+import sys
+from pathlib import Path
+from typing import Annotated, Any
 
+from fastapi import Depends
 
-@lru_cache(maxsize=1)
-def get_store():
-    import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages"))
-    from dq_core.store.sqlite_store import SQLiteStore
-    return SQLiteStore(
-        db_path=settings.DB_PATH,
-        allow_diagnostics=settings.ALLOW_LOCAL_DIAGNOSTICS,
-    )
+# Make dq_core importable from service context
+_root = Path(__file__).resolve().parents[2]
+if str(_root) not in sys.path:
+    sys.path.insert(0, str(_root / "packages"))
 
+from dq_core.store.sqlite_store import ResultStore
+from .settings import get_settings
 
-def get_principal(authorization: Optional[str] = Header(default=None)):
-    from services.api.auth.noauth import get_noauth_principal
-    from services.api.auth.oidc import get_oidc_principal
-    if settings.AUTH_MODE == "oidc":
-        return get_oidc_principal(authorization)
-    return get_noauth_principal()
+_store_instance: ResultStore | None = None
 
 
-def get_environment(name: str) -> Optional[dict]:
-    if not settings.ENVIRONMENTS_FILE or not os.path.exists(settings.ENVIRONMENTS_FILE):
-        return None
-    with open(settings.ENVIRONMENTS_FILE) as f:
-        envs = yaml.safe_load(f) or {}
-    return envs.get(name)
+def get_store() -> ResultStore:
+    global _store_instance
+    if _store_instance is None:
+        settings = get_settings()
+        _store_instance = ResultStore(settings.sqlite_db)
+    return _store_instance
+
+
+StoreDep = Annotated[ResultStore, Depends(get_store)]
+
+
+def get_inventory() -> list[dict[str, Any]]:
+    """Load inventory.json from data_dir."""
+    import json
+    settings = get_settings()
+    path = Path(settings.inventory_file)
+    if not path.exists():
+        return []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data.get("objects") or []
+
+
+def get_lineage() -> dict[str, Any]:
+    """Load lineage.json from data_dir."""
+    import json
+    settings = get_settings()
+    path = Path(settings.lineage_file)
+    if not path.exists():
+        return {"nodes": [], "edges": []}
+    return json.loads(path.read_text(encoding="utf-8"))

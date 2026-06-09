@@ -1,274 +1,245 @@
-import os
-import sys
+# [CONTRACT-SQL-FREE] — all contract writes go through validator (G1)
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
 import yaml
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Optional
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
-from services.api.deps import get_store, get_principal
-from services.api.schemas.contracts import (
-    ContractIndexSchema, ContractWriteRequest, SeedRequest,
-    DiffRequest, CompileResponse, ProposalSchema
-)
-from services.api.git_repo import GitRepo
-from services.api.settings import settings
-from services.api.auth.oidc import can_write_contract
+from ..auth.provider import PrincipalDep
+from ..deps import StoreDep, get_inventory
+from ..schemas.contract_schemas import CompileOut, ContractIn, ContractOut
+from ..settings import get_settings
 
-router = APIRouter(tags=["contracts"])
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "packages"))
+router = APIRouter(prefix="/api/contracts", tags=["contracts"])
 
 
-def _get_git_repo() -> GitRepo:
-    return GitRepo(contracts_dir=settings.CONTRACTS_DIR, remote=settings.GIT_REMOTE)
+def _contracts_dir() -> Path:
+    return Path(get_settings().contracts_dir)
 
 
-def _load_contract_from_store_or_git(product: str, store, repo: GitRepo):
-    content = repo.read_contract(product)
-    if not content:
+def _load_contract(product: str) -> dict[str, Any] | None:
+    path = _contracts_dir() / f"{product}.yml"
+    if not path.exists():
         return None
-    from dq_core.contract.model import load_contract
-    import tempfile, pathlib
-    with tempfile.NamedTemporaryFile(suffix=".yml", mode="w", delete=False) as f:
-        f.write(content)
-        tmp = f.name
-    try:
-        return load_contract(tmp)
-    finally:
-        os.unlink(tmp)
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-@router.get("/contracts", response_model=List[ContractIndexSchema])
-def list_contracts(store=Depends(get_store)):
-    rows = store.list_contracts()
+def _save_contract(product: str, data: dict[str, Any], principal_name: str) -> None:
+    _contracts_dir().mkdir(parents=True, exist_ok=True)
+    path = _contracts_dir() / f"{product}.yml"
+    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+
+@router.get("", response_model=list[ContractOut])
+def list_contracts(
+    lifecycle: str | None = Query(default=None),
+    store: StoreDep = ...,
+):
+    contracts_dir = _contracts_dir()
+    if not contracts_dir.exists():
+        return []
     result = []
-    for r in rows:
-        compliance = store.get_compliance(r["product"])
-        r["compliance"] = compliance["compliance"] if compliance else "unknown"
-        result.append(r)
+    for path in sorted(contracts_dir.glob("*.yml")):
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if not data:
+            continue
+        if lifecycle and data.get("lifecycle") != lifecycle:
+            continue
+        compliance_row = store.get_compliance(data.get("product") or path.stem)
+        result.append(
+            ContractOut(
+                product=data.get("product") or path.stem,
+                dataset=data.get("dataset", ""),
+                owned_by=data.get("owned_by", "platform"),
+                owners=data.get("owners") or [],
+                version=str(data.get("version", "0.1.0")),
+                lifecycle=data.get("lifecycle", "draft"),
+                guarantees=data.get("guarantees") or {},
+                compliance=compliance_row["compliance"] if compliance_row else None,
+            )
+        )
     return result
 
 
-@router.get("/contracts/{product}")
-def get_contract(product: str, store=Depends(get_store)):
-    repo = _get_git_repo()
-    content = repo.read_contract(product)
-    if not content:
-        raise HTTPException(status_code=404, detail=f"Contract '{product}' not found")
-    return yaml.safe_load(content)
+@router.get("/{product}", response_model=ContractOut)
+def get_contract(product: str, store: StoreDep = ...):
+    data = _load_contract(product)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+    compliance_row = store.get_compliance(product)
+    return ContractOut(
+        product=data.get("product") or product,
+        dataset=data.get("dataset", ""),
+        owned_by=data.get("owned_by", "platform"),
+        owners=data.get("owners") or [],
+        version=str(data.get("version", "0.1.0")),
+        lifecycle=data.get("lifecycle", "draft"),
+        guarantees=data.get("guarantees") or {},
+        compliance=compliance_row["compliance"] if compliance_row else None,
+    )
 
 
-@router.put("/contracts/{product}", status_code=200)
+@router.put("/{product}", response_model=ContractOut)
 def update_contract(
     product: str,
-    req: ContractWriteRequest,
-    store=Depends(get_store),
-    principal=Depends(get_principal),
+    principal: PrincipalDep,
+    body: ContractIn = Body(...),
+    store: StoreDep = ...,
 ):
-    from dq_core.contract.model import Contract, Guarantees, contract_to_dict
-    from dq_core.contract.validator import ContractValidator
+    """[CONTRACT-SQL-FREE] [AUTHZ] Update a contract — Gate G1 enforced here."""
+    from dq_core.contract.validator import validate_contract
 
-    repo = _get_git_repo()
-    existing_content = repo.read_contract(product)
+    data = body.model_dump()
 
-    # AUTHZ check
-    if not can_write_contract(principal, req.model_dump()):
-        raise HTTPException(status_code=403, detail="Not authorized to write this contract")
+    # [AUTHZ] — can the principal write this contract?
+    if not principal.can_write_contract(data.get("owned_by", "platform"), data.get("owners") or []):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to write this contract.")
 
-    # Only allow edits when lifecycle=draft (or admin)
-    if existing_content:
-        existing = yaml.safe_load(existing_content)
-        if existing.get("lifecycle") not in ("draft",) and "admin" not in principal.roles:
-            raise HTTPException(status_code=409, detail="Contract is not in draft state")
-
-    from dq_core.contract.model import _parse_guarantees
-    contract = Contract(
-        product=req.product, dataset=req.dataset, owned_by=req.owned_by,
-        owners=req.owners, version=req.version, lifecycle=req.lifecycle,
-        guarantees=_parse_guarantees({"guarantees": req.guarantees}),
-    )
-    errors = ContractValidator().validate(contract)
+    # [CONTRACT-SQL-FREE] Gate G1
+    errors = validate_contract(data)
     if errors:
-        raise HTTPException(status_code=422, detail={"validation_errors": errors})
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Contract validation failed (Gate G1)", "errors": errors},
+        )
 
-    from dq_core.contract.model import contract_to_dict
-    content = yaml.dump(contract_to_dict(contract), default_flow_style=False, sort_keys=False)
-    commit_hash = repo.write_contract(
-        product=product, content=content,
-        author_name=principal.name, author_email=f"{principal.sub}@local",
-        message=f"Update contract {product} (lifecycle={req.lifecycle})",
+    _save_contract(product, data, principal.name)
+
+    # Update contract_index (A3)
+    _update_index(store, product, data)
+
+    compliance_row = store.get_compliance(product)
+    return ContractOut(**data, compliance=compliance_row["compliance"] if compliance_row else None)
+
+
+@router.post("/{product}/seed", response_model=ContractOut)
+def seed_contract(
+    product: str,
+    principal: PrincipalDep,
+    inventory: list[dict] = Depends(get_inventory),
+    store: StoreDep = ...,
+):
+    """Seed a draft contract from the inventory object (WS2-2)."""
+    from dq_core.contract.seed import seed_from_inventory
+
+    obj = next(
+        (o for o in inventory if (o.get("id") or o.get("technicalName") or o.get("name")) == product),
+        None,
     )
-    store.upsert_contract_index(
-        product=product, lifecycle=req.lifecycle, owned_by=req.owned_by,
-        version=req.version, head_hash=commit_hash,
-    )
-    return {"product": product, "commit": commit_hash}
+    if not obj:
+        raise HTTPException(status_code=404, detail=f"Object {product!r} not found in inventory")
+
+    data = seed_from_inventory(obj)
+    _save_contract(product, data, principal.name)
+    _update_index(store, product, data)
+
+    return ContractOut(**data)
 
 
-@router.post("/contracts/{product}/seed")
-def seed_contract(product: str, req: SeedRequest, store=Depends(get_store)):
-    from dq_core.contract.seed import seed_contract as do_seed
-    from dq_core.contract.model import contract_to_dict
+@router.post("/{product}/diff")
+def diff_contract(
+    product: str,
+    body: ContractIn = Body(...),
+):
+    """Compare submitted contract against current active version (WS2-4)."""
+    from dq_core.contract.diff import diff_contracts, is_breaking
 
-    inventory = {}
-    if os.path.exists(settings.INVENTORY_FILE):
-        with open(settings.INVENTORY_FILE) as f:
-            import json
-            all_inventory = json.load(f)
-            if isinstance(all_inventory, list):
-                for item in all_inventory:
-                    if item.get("dataset") == req.dataset or item.get("name") == req.dataset:
-                        inventory = item
-                        break
-            else:
-                inventory = all_inventory.get(req.dataset, {})
+    current = _load_contract(product)
+    if not current:
+        return {"breaking": False, "entries": [], "message": "No existing contract"}
 
-    inventory["dataset"] = req.dataset
-    contract = do_seed(inventory, req.dataset, product_name=req.product or product)
-    return contract_to_dict(contract)
-
-
-@router.post("/contracts/{product}/diff")
-def diff_contract(product: str, req: DiffRequest, store=Depends(get_store)):
-    from dq_core.contract.diff import ContractDiff
-    from dq_core.contract.model import _parse_guarantees, Contract
-
-    repo = _get_git_repo()
-    old_contract = _load_contract_from_store_or_git(product, store, repo)
-    if not old_contract:
-        raise HTTPException(status_code=404, detail=f"Current contract '{product}' not found")
-
-    nd = req.new_contract
-    new_contract = Contract(
-        product=nd.get("product", product), dataset=nd.get("dataset", product),
-        owned_by=nd.get("owned_by", ""), owners=nd.get("owners", []),
-        version=nd.get("version", "1.0.0"), lifecycle=nd.get("lifecycle", "draft"),
-        guarantees=_parse_guarantees(nd),
-    )
-    result = ContractDiff().diff(old_contract, new_contract)
+    entries = diff_contracts(current, body.model_dump())
     return {
-        "is_breaking": result.is_breaking,
-        "requires_major_bump": result.requires_major_bump,
-        "breaking_changes": result.breaking_changes,
-        "non_breaking_changes": result.non_breaking_changes,
+        "breaking": is_breaking(entries),
+        "entries": [
+            {"kind": e.kind, "path": e.path, "old": e.old_value, "new": e.new_value}
+            for e in entries
+        ],
     }
 
 
-@router.post("/contracts/{product}/approve")
-def approve_contract(product: str, store=Depends(get_store), principal=Depends(get_principal)):
-    from dq_core.contract.model import load_contract, contract_to_dict
-    from dq_core.contract.compiler import ContractCompiler
-    from dq_core.library.check_library import CheckLibrary
+@router.post("/{product}/compile", response_model=CompileOut)
+def compile_contract(
+    product: str,
+    principal: PrincipalDep,
+    dry_run: bool = Query(default=False),
+    store: StoreDep = ...,
+):
+    """[DETERMINISM] Compile contract → CheckDefs. [CONTRACT-SQL-FREE]"""
+    import hashlib as _hashlib
 
-    repo = _get_git_repo()
-    content = repo.read_contract(product)
-    if not content:
-        raise HTTPException(status_code=404, detail=f"Contract '{product}' not found")
+    from dq_core.contract.compiler import compile_contract as _compile
+    from dq_core.engine.check_engine import dataset_config_to_yaml
+    from dq_core.library.check_library import load_library
+    from ..settings import get_settings
 
-    contract_data = yaml.safe_load(content)
-    if not can_write_contract(principal, contract_data):
-        raise HTTPException(status_code=403, detail="Not authorized to approve this contract")
+    data = _load_contract(product)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
 
-    if contract_data.get("lifecycle") != "draft":
-        raise HTTPException(status_code=409, detail="Only draft contracts can be approved")
+    settings_obj = get_settings()
+    schema_override = ""  # [SCHEMA-MAP] bound at run-time via environment
 
-    # Check breaking diff: compare with currently active version
-    # (simplified: just promote to active here)
-    contract_data["lifecycle"] = "active"
-    new_content = yaml.dump(contract_data, default_flow_style=False, sort_keys=False)
-    commit_hash = repo.write_contract(
-        product=product, content=new_content,
-        author_name=principal.name, author_email=f"{principal.sub}@local",
-        message=f"Approve contract {product} v{contract_data.get('version', '?')}",
-    )
-    store.upsert_contract_index(
-        product=product, lifecycle="active", owned_by=contract_data.get("owned_by", ""),
-        version=contract_data.get("version", "1.0.0"), head_hash=commit_hash,
-    )
-    return {"product": product, "lifecycle": "active", "commit": commit_hash}
+    config = _compile(data, schema_override=schema_override)
+    yaml_out = dataset_config_to_yaml(config)
 
+    # [DETERMINISM] hash = f(contract_hash, library_version) — A4
+    contract_hash = _hashlib.sha256(
+        yaml.safe_dump(data, sort_keys=True).encode()
+    ).hexdigest()[:16]
+    library_version = str(load_library().get("version", "1"))
+    det_hash = _hashlib.sha256(f"{contract_hash}:{library_version}".encode()).hexdigest()[:16]
 
-@router.post("/contracts/{product}/deprecate")
-def deprecate_contract(product: str, store=Depends(get_store), principal=Depends(get_principal)):
-    repo = _get_git_repo()
-    content = repo.read_contract(product)
-    if not content:
-        raise HTTPException(status_code=404, detail=f"Contract '{product}' not found")
+    if not dry_run:
+        checks_dir = Path(settings_obj.checks_dir) / product
+        checks_dir.mkdir(parents=True, exist_ok=True)
+        (checks_dir / "checks.yml").write_text(yaml_out, encoding="utf-8")
 
-    contract_data = yaml.safe_load(content)
-    if not can_write_contract(principal, contract_data):
-        raise HTTPException(status_code=403, detail="Not authorized to deprecate this contract")
-
-    contract_data["lifecycle"] = "deprecated"
-    new_content = yaml.dump(contract_data, default_flow_style=False, sort_keys=False)
-    commit_hash = repo.write_contract(
-        product=product, content=new_content,
-        author_name=principal.name, author_email=f"{principal.sub}@local",
-        message=f"Deprecate contract {product}",
-    )
-    store.upsert_contract_index(
-        product=product, lifecycle="deprecated", owned_by=contract_data.get("owned_by", ""),
-        version=contract_data.get("version", "1.0.0"), head_hash=commit_hash,
-    )
-    return {"product": product, "lifecycle": "deprecated", "commit": commit_hash}
-
-
-@router.post("/contracts/{product}/compile")
-def compile_contract(product: str, dry_run: bool = False, store=Depends(get_store)):
-    from dq_core.contract.compiler import ContractCompiler
-    from dq_core.library.check_library import CheckLibrary
-    from dq_core.contract.model import _parse_guarantees, Contract
-
-    repo = _get_git_repo()
-    content = repo.read_contract(product)
-    if not content:
-        raise HTTPException(status_code=404, detail=f"Contract '{product}' not found")
-
-    contract_data = yaml.safe_load(content)
-    contract = Contract(
-        product=contract_data["product"], dataset=contract_data["dataset"],
-        owned_by=contract_data.get("owned_by", ""), owners=contract_data.get("owners", []),
-        version=contract_data.get("version", "1.0.0"),
-        lifecycle=contract_data.get("lifecycle", "draft"),
-        guarantees=_parse_guarantees(contract_data),
-    )
-
-    compiler = ContractCompiler(CheckLibrary())
-    result = compiler.compile(contract)
-
-    checks_data = {"version": result["header_hash"], "checks": [
-        {
-            "name": c.name, "sql": c.sql, "expect": c.expect,
-            "severity": c.severity, "type": c.type, "enabled": c.enabled,
-            "description": c.description,
-        }
-        for c in result["checks"]
-    ]}
-    checks_yaml = yaml.dump(checks_data, default_flow_style=False, sort_keys=False)
-
-    if not dry_run and contract_data.get("lifecycle") == "active":
-        os.makedirs("checks", exist_ok=True)
-        with open(f"checks/{contract_data['dataset']}.yml", "w") as f:
-            f.write(checks_yaml)
-
-    return CompileResponse(
-        checks_yaml=checks_yaml,
-        header_hash=result["header_hash"],
-        conflicts=result["conflicts"],
+    return CompileOut(
+        product=product,
+        dataset=config.dataset,
+        checks=[
+            {
+                "name": c.name,
+                "sql": c.sql,
+                "expect": c.expect,
+                "severity": c.severity,
+                "type": c.type,
+                "unit": c.unit,
+                "owned_by": c.owned_by,
+            }
+            for c in config.checks
+        ],
+        yaml_preview=yaml_out,
+        conflicts=[],
+        determinism_hash=det_hash,
     )
 
 
-@router.get("/proposals")
-def list_proposals(status: str = "open", store=Depends(get_store)):
-    return store.list_proposals(status=status)
-
-
-@router.post("/proposals/{proposal_id}/accept")
-def accept_proposal(proposal_id: str, store=Depends(get_store), principal=Depends(get_principal)):
-    store.update_proposal_status(proposal_id, "accepted")
-    return {"status": "accepted"}
-
-
-@router.post("/proposals/{proposal_id}/reject")
-def reject_proposal(proposal_id: str, store=Depends(get_store), principal=Depends(get_principal)):
-    store.update_proposal_status(proposal_id, "rejected")
-    return {"status": "rejected"}
+def _update_index(store, product: str, data: dict) -> None:
+    import sqlite3
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        conn = sqlite3.connect(store.db_path, check_same_thread=False)
+        conn.execute(
+            """INSERT OR REPLACE INTO contract_index
+               (product, lifecycle, owned_by, version, head_hash, updated_at)
+               VALUES (?,?,?,?,?,?)""",
+            (
+                product,
+                data.get("lifecycle", "draft"),
+                data.get("owned_by", "platform"),
+                str(data.get("version", "0.1.0")),
+                hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:16],
+                now,
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass

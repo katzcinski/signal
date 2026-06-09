@@ -1,14 +1,9 @@
-import sys
-import os
 from fastapi import APIRouter
+from dq_core.library import checks, categories
 
-router = APIRouter(tags=["library"])
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "packages"))
+router = APIRouter(prefix="/api/library", tags=["library"])
 
 
-@router.get("/library")
+@router.get("")
 def get_library():
-    from dq_core.library.check_library import CheckLibrary
-    lib = CheckLibrary()
-    return {"version": lib.get_version(), "checks": lib.list_checks()}
+    return {"categories": categories(), "checks": checks()}

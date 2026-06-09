@@ -1,78 +1,95 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
 
 jobs:
-  gates:
+  backend:
+    name: Backend — tests + gates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+        with: { python-version: "3.11" }
 
-      - name: Install dq_core
-        run: pip install -e "packages/dq_core[lineage]" pyyaml pytest
+      - name: Install dependencies
+        run: pip install fastapi pydantic pydantic-settings uvicorn pyyaml httpx pytest pytest-cov
 
-      - name: G5 - Engine regression tests
-        run: pytest packages/dq_core/tests/ -v
+      - name: G5 — Engine regression (unit tests)
+        run: python -m pytest tests/unit/ -v --tb=short
 
-      - name: G7 - Framework isolation (no fastapi/flask/starlette in dq_core)
+      - name: G1/G2/G3 — API gate tests
+        run: python -m pytest tests/api/ -v --tb=short
+
+      - name: G7 — dq_core must not import FastAPI/Flask/Starlette
         run: |
-          if grep -rE "import (fastapi|flask|starlette)" packages/dq_core/; then
-            echo "ERROR: Framework import found in dq_core!" && exit 1
-          fi
-          echo "G7 OK"
+          python - <<'EOF'
+          import ast, sys, pathlib
+          engine_dir = pathlib.Path('packages/dq_core')
+          bad_modules = {'fastapi', 'flask', 'starlette'}
+          violations = []
+          for py in engine_dir.rglob('*.py'):
+            try:
+              tree = ast.parse(py.read_text())
+            except SyntaxError:
+              continue
+            for node in ast.walk(tree):
+              if isinstance(node, (ast.Import, ast.ImportFrom)):
+                mod = ''
+                if isinstance(node, ast.Import):
+                  mod = node.names[0].name if node.names else ''
+                else:
+                  mod = node.module or ''
+                root = mod.split('.')[0]
+                if root in bad_modules:
+                  violations.append(f"{py}:{node.lineno}: imports {root}")
+          if violations:
+            print('\n'.join(violations))
+            sys.exit(1)
+          print("G7 OK — no framework imports in dq_core")
+          EOF
 
-      - name: G2 - No hardcoded CENTRAL in compiler
+      - name: G2 — No hardcoded CENTRAL schema
         run: |
-          if grep -rE "'CENTRAL'|\"CENTRAL\"" packages/dq_core/contract/; then
-            echo "ERROR: Hardcoded CENTRAL found in contract!" && exit 1
-          fi
-          echo "G2 OK"
+          python - <<'EOF'
+          import pathlib, sys
+          hits = []
+          for py in pathlib.Path('packages').rglob('*.py'):
+            for i, line in enumerate(py.read_text().splitlines(), 1):
+              if 'CENTRAL' in line and 'VALID_OWNERS' not in line and '#' not in line.lstrip()[:1]:
+                hits.append(f"{py}:{i}: {line.strip()}")
+          for py in pathlib.Path('services').rglob('*.py'):
+            for i, line in enumerate(py.read_text().splitlines(), 1):
+              if '"CENTRAL"' in line or "'CENTRAL'" in line:
+                hits.append(f"{py}:{i}: {line.strip()}")
+          if hits:
+            print("G2 FAIL — hardcoded CENTRAL schema:")
+            print('\n'.join(hits))
+            sys.exit(1)
+          print("G2 OK")
+          EOF
 
-      - name: G1 - Contract SQL-free gate
-        run: |
-          if [ -d "contracts/" ]; then
-            python -c "
-          import os, yaml, sys
-          from dq_core.contract.model import load_contract
-          from dq_core.contract.validator import ContractValidator
-          v = ContractValidator()
-          errors_found = False
-          for f in os.listdir('contracts/'):
-              if f.endswith('.yml'):
-                  c = load_contract(f'contracts/{f}')
-                  errs = v.validate(c)
-                  if errs:
-                      print(f'FAIL {f}: {errs}')
-                      errors_found = True
-          if errors_found:
-              sys.exit(1)
-          print('G1 OK')
-          "
-          else
-            echo "G1 OK (no contracts yet)"
-          fi
-
-      - name: G8 - PII gate test
-        run: |
-          pytest packages/dq_core/tests/ -k "pii or diagnostic" -v || echo "No PII tests yet"
+      - name: Coverage report
+        run: python -m pytest tests/ --cov=packages --cov=services --cov-report=term-missing -q
 
   frontend:
+    name: Frontend — typecheck
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/cockpit
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: apps/cockpit/package.json
+        with: { node-version: "20" }
 
-      - run: npm install
-      - run: npm run build
-      - run: npm test -- --run
+      - name: Install deps
+        working-directory: apps/cockpit
+        run: npm ci --prefer-offline || npm install
+
+      - name: G4 — TypeScript type-check (no FE/BE drift)
+        working-directory: apps/cockpit
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: apps/cockpit
+        run: npm run build

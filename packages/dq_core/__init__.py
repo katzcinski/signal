@@ -1,8 +1,21 @@
-"""
-dq_core - Data Quality & Observability Cockpit core library.
+"""dq_core — framework-free Data Quality engine package.
 
-A framework-free, pip-installable Python package for running data quality
-checks, managing contracts, and observing data pipelines.
+[ENGINE-FROZEN] — engine/ subpackage must not import any web framework.
 """
+from .engine.models import (
+    CheckDef,
+    CheckResult,
+    DatasetConfig,
+    RunSummary,
+    VALID_OWNERS,
+    VALID_SEVERITIES,
+)
 
-__version__ = "0.1.0"
+__all__ = [
+    "CheckDef",
+    "CheckResult",
+    "DatasetConfig",
+    "RunSummary",
+    "VALID_OWNERS",
+    "VALID_SEVERITIES",
+]

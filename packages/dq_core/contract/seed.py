@@ -1,67 +1,59 @@
-from typing import Optional
-from dq_core.contract.model import (
-    Contract, Guarantees, SchemaGuarantee, KeyGuarantee,
-    CompletenessGuarantee, FreshnessGuarantee
-)
+# Contract auto-seeder: inventory snapshot → draft contract guarantees (WS2-2)
+from __future__ import annotations
+
+from typing import Any
 
 
-def seed_contract(inventory_snapshot: dict, dataset_name: str, product_name: Optional[str] = None) -> Contract:
-    """
-    Create a draft Contract from an inventory snapshot.
+def seed_from_inventory(obj: dict[str, Any]) -> dict[str, Any]:
+    """Generate a draft contract dict from an inventory object."""
+    name = obj.get("technicalName") or obj.get("id") or obj.get("name") or ""
+    schema = obj.get("schema") or obj.get("schemaName") or ""
+    owned_by = obj.get("owned_by", "platform")
 
-    inventory_snapshot shape:
-    {
-      "dataset": "Sales_Orders_View",
-      "columns": [
-        {"name": "OrderID", "type": "INTEGER", "nullable": false},
-        {"name": "ItemNo", "type": "INTEGER", "nullable": false},
-        ...
-      ],
-      "declared_keys": [["OrderID", "ItemNo"]],  # optional
-      "load_ts_column": "LOAD_TS",  # optional
-    }
-    """
-    product = product_name or dataset_name.lower().replace(" ", "_")
-    columns = inventory_snapshot.get("columns", [])
-    col_names = [c["name"] for c in columns]
+    guarantees: dict[str, Any] = {}
 
-    schema_g = SchemaGuarantee(columns=col_names, mode="open") if col_names else None
+    # Schema — capture declared columns
+    columns = [
+        c.get("name") or c.get("technicalName")
+        for c in (obj.get("columns") or obj.get("properties") or [])
+        if c.get("name") or c.get("technicalName")
+    ]
+    if columns:
+        guarantees["schema"] = {"columns": columns, "mode": "closed"}
 
-    declared_keys = inventory_snapshot.get("declared_keys", [])
-    keys = []
-    if declared_keys:
-        for key_cols in declared_keys:
-            keys.append(KeyGuarantee(columns=key_cols, unique=True, severity="critical"))
+    # Keys — declared key columns from CSN projection
+    key_cols = (
+        obj.get("csnProjection", {}).get("keyColumns")
+        or obj.get("keyColumns")
+        or []
+    )
+    if key_cols:
+        guarantees["keys"] = [{"columns": key_cols, "unique": True, "severity": "critical"}]
     else:
-        # No declared key: propose composite from first two non-nullable columns
-        non_null_cols = [c["name"] for c in columns if not c.get("nullable", True)]
-        if len(non_null_cols) >= 2:
-            keys.append(KeyGuarantee(columns=non_null_cols[:2], unique=True, severity="critical"))
-        elif len(col_names) >= 2:
-            keys.append(KeyGuarantee(columns=col_names[:2], unique=True, severity="critical"))
+        # Warn: no declared key — flag as coverage gap
+        guarantees["_key_gap"] = {
+            "_note": "No declared key found. Add 'keys' guarantee manually.",
+            "severity": "critical",
+        }
 
-    freshness = None
-    if load_ts := inventory_snapshot.get("load_ts_column"):
-        freshness = FreshnessGuarantee(column=load_ts, max_age="PT24H", severity="warn")
+    # Freshness — if object has a timestamp column
+    ts_cols = [
+        c.get("name") for c in (obj.get("columns") or [])
+        if any(kw in (c.get("name") or "").upper() for kw in ("TS", "TIME", "DATE", "LOAD", "CHANGE"))
+    ]
+    if ts_cols:
+        guarantees["freshness"] = {"column": ts_cols[0], "max_age": "PT24H", "severity": "warn"}
 
-    completeness = []
-    for col in columns:
-        if not col.get("nullable", True):
-            completeness.append(CompletenessGuarantee(column=col["name"], min_pct=100.0, severity="warn"))
+    # Volume
+    guarantees["volume"] = {"baseline": "rolling", "bounds": "auto", "severity": "warn"}
 
-    guarantees = Guarantees(
-        schema=schema_g,
-        keys=keys,
-        freshness=freshness,
-        completeness=completeness,
-    )
-
-    return Contract(
-        product=product,
-        dataset=dataset_name,
-        owned_by="platform",
-        owners=["grp:data-platform"],
-        version="1.0.0",
-        lifecycle="draft",
-        guarantees=guarantees,
-    )
+    return {
+        "product": name,
+        "dataset": name,
+        "schema": schema,
+        "owned_by": owned_by,
+        "owners": [],
+        "version": "0.1.0",
+        "lifecycle": "draft",
+        "guarantees": guarantees,
+    }

@@ -1,0 +1,33 @@
+{
+  "nodes": [
+    {"id": "RAW_SALES",          "label": "RAW_SALES",          "layer": 0, "family": "observability", "space": "STAGING"},
+    {"id": "RAW_CUSTOMERS",      "label": "RAW_CUSTOMERS",      "layer": 0, "family": "observability", "space": "STAGING"},
+    {"id": "RAW_PRODUCTS",       "label": "RAW_PRODUCTS",       "layer": 0, "family": "observability", "space": "STAGING"},
+    {"id": "RAW_ORDERS",         "label": "RAW_ORDERS",         "layer": 0, "family": "observability", "space": "STAGING"},
+    {"id": "DS_SALES_ORDERS",    "label": "DS_SALES_ORDERS",    "layer": 1, "family": "quality",       "space": "CORE_DWH"},
+    {"id": "DS_CUSTOMERS",       "label": "DS_CUSTOMERS",       "layer": 1, "family": "quality",       "space": "CORE_DWH"},
+    {"id": "DS_PRODUCTS",        "label": "DS_PRODUCTS",        "layer": 1, "family": "quality",       "space": "CORE_DWH"},
+    {"id": "DWH_FINANCIALS",     "label": "DWH_FINANCIALS",     "layer": 1, "family": "contract",      "space": "CORE_DWH"},
+    {"id": "DS_SALES_REPORT",    "label": "DS_SALES_REPORT",    "layer": 2, "family": "contract",      "space": "ANALYTICS"},
+    {"id": "DS_CUSTOMER_SEGMENTS","label": "DS_CUSTOMER_SEGMENTS","layer": 2, "family": "contract",   "space": "ANALYTICS"},
+    {"id": "DS_REVENUE_SUMMARY", "label": "DS_REVENUE_SUMMARY", "layer": 2, "family": "contract",      "space": "ANALYTICS"},
+    {"id": "DS_KPI_DASHBOARD",   "label": "DS_KPI_DASHBOARD",   "layer": 2, "family": "contract",      "space": "ANALYTICS"}
+  ],
+  "edges": [
+    {"id": "e01", "source": "RAW_SALES",       "target": "DS_SALES_ORDERS",     "type": "transform"},
+    {"id": "e02", "source": "RAW_ORDERS",      "target": "DS_SALES_ORDERS",     "type": "transform"},
+    {"id": "e03", "source": "RAW_CUSTOMERS",   "target": "DS_CUSTOMERS",        "type": "transform"},
+    {"id": "e04", "source": "RAW_PRODUCTS",    "target": "DS_PRODUCTS",         "type": "transform"},
+    {"id": "e05", "source": "RAW_SALES",       "target": "DWH_FINANCIALS",      "type": "aggregate"},
+    {"id": "e06", "source": "RAW_ORDERS",      "target": "DWH_FINANCIALS",      "type": "aggregate"},
+    {"id": "e07", "source": "DS_SALES_ORDERS", "target": "DS_SALES_REPORT",     "type": "join"},
+    {"id": "e08", "source": "DS_CUSTOMERS",    "target": "DS_SALES_REPORT",     "type": "join"},
+    {"id": "e09", "source": "DS_SALES_ORDERS", "target": "DS_REVENUE_SUMMARY",  "type": "aggregate"},
+    {"id": "e10", "source": "DS_PRODUCTS",     "target": "DS_REVENUE_SUMMARY",  "type": "join"},
+    {"id": "e11", "source": "DWH_FINANCIALS",  "target": "DS_REVENUE_SUMMARY",  "type": "join"},
+    {"id": "e12", "source": "DS_CUSTOMERS",    "target": "DS_CUSTOMER_SEGMENTS","type": "compute"},
+    {"id": "e13", "source": "DS_SALES_ORDERS", "target": "DS_CUSTOMER_SEGMENTS","type": "compute"},
+    {"id": "e14", "source": "DWH_FINANCIALS",  "target": "DS_KPI_DASHBOARD",    "type": "aggregate"},
+    {"id": "e15", "source": "DS_REVENUE_SUMMARY","target": "DS_KPI_DASHBOARD",  "type": "join"}
+  ]
+}
