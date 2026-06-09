@@ -1,0 +1,85 @@
+{
+  "version": "1.0.0",
+  "checks": [
+    {
+      "id": "row_count",
+      "name": "Row Count",
+      "type": "volume",
+      "sql_template": "SELECT COUNT(*) FROM {schema}.{dataset}",
+      "params": [],
+      "description": "Total row count"
+    },
+    {
+      "id": "null_count",
+      "name": "Null Count",
+      "type": "completeness",
+      "sql_template": "SELECT COUNT(*) FROM {schema}.{dataset} WHERE {column} IS NULL",
+      "params": ["column"],
+      "description": "Count of null values in column"
+    },
+    {
+      "id": "completeness_pct",
+      "name": "Completeness Percentage",
+      "type": "completeness",
+      "sql_template": "SELECT ROUND(100.0 * COUNT({column}) / NULLIF(COUNT(*),0), 2) FROM {schema}.{dataset}",
+      "params": ["column"],
+      "description": "Percentage of non-null values"
+    },
+    {
+      "id": "unique_count",
+      "name": "Uniqueness Check",
+      "type": "uniqueness",
+      "sql_template": "SELECT COUNT(*) - COUNT(DISTINCT {column}) FROM {schema}.{dataset}",
+      "params": ["column"],
+      "description": "Count of duplicate values (0 = all unique)"
+    },
+    {
+      "id": "composite_unique",
+      "name": "Composite Key Uniqueness",
+      "type": "uniqueness",
+      "sql_template": "SELECT COUNT(*) - COUNT(DISTINCT ({columns})) FROM {schema}.{dataset}",
+      "params": ["columns"],
+      "description": "Count of duplicate composite key values"
+    },
+    {
+      "id": "freshness_seconds",
+      "name": "Freshness (seconds since latest)",
+      "type": "freshness",
+      "sql_template": "SELECT SECONDS_BETWEEN(MAX({column}), CURRENT_TIMESTAMP) FROM {schema}.{dataset}",
+      "params": ["column"],
+      "description": "Seconds elapsed since the most recent record timestamp"
+    },
+    {
+      "id": "referential_orphans",
+      "name": "Referential Integrity Orphans",
+      "type": "referential",
+      "sql_template": "SELECT COUNT(*) FROM {schema}.{dataset} t WHERE NOT EXISTS (SELECT 1 FROM {schema}.{parent_dataset} p WHERE p.{parent_key} = t.{fk_column})",
+      "params": ["parent_dataset", "parent_key", "fk_column"],
+      "description": "Count of orphaned foreign key records"
+    },
+    {
+      "id": "schema_column_exists",
+      "name": "Column Exists in Schema",
+      "type": "schema",
+      "sql_template": "SELECT COUNT(*) FROM SYS.TABLE_COLUMNS WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}' AND COLUMN_NAME = '{column}'",
+      "params": ["column"],
+      "description": "Verifies column exists (1 = exists)"
+    },
+    {
+      "id": "schema_column_count",
+      "name": "Column Count",
+      "type": "schema",
+      "sql_template": "SELECT COUNT(*) FROM SYS.TABLE_COLUMNS WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}'",
+      "params": [],
+      "description": "Total number of columns in the table"
+    },
+    {
+      "id": "value_in_set",
+      "name": "Value in Allowed Set",
+      "type": "validity",
+      "sql_template": "SELECT COUNT(*) FROM {schema}.{dataset} WHERE {column} NOT IN ({allowed_values})",
+      "params": ["column", "allowed_values"],
+      "description": "Count of rows with values outside the allowed set"
+    }
+  ]
+}

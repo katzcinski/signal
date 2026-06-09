@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Result store / local artifacts
+*.db
+dq_results.db
+checks/
+contracts/
+
+# Node / frontend
+node_modules/
+apps/cockpit/dist/
+*.local
+
+# Editor / OS
+.DS_Store
+.env
