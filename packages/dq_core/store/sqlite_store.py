@@ -54,11 +54,29 @@ class ResultStore:
             for path in sorted(migrations_dir.glob("*.sql")):
                 version = path.stem
                 if version not in applied:
-                    conn.executescript(path.read_text(encoding="utf-8"))
+                    self._run_migration(conn, path.read_text(encoding="utf-8"))
                     conn.execute(
                         "INSERT INTO schema_migrations(version, applied_at) VALUES (?, ?)",
                         (version, datetime.now(timezone.utc).isoformat()),
                     )
+
+    @staticmethod
+    def _run_migration(conn: sqlite3.Connection, sql: str) -> None:
+        """Run a migration statement-by-statement, skipping ADD COLUMN
+        statements that fail because the column already exists."""
+        for stmt in sql.split(";"):
+            # Strip comment-only lines at the top of a statement, then check
+            # if anything executable remains.
+            lines = [ln for ln in stmt.splitlines() if not ln.strip().startswith("--")]
+            executable = "\n".join(lines).strip()
+            if not executable:
+                continue
+            try:
+                conn.execute(executable)
+            except sqlite3.OperationalError as e:
+                if "duplicate column" in str(e).lower():
+                    continue
+                raise
 
     # ------------------------------------------------------------------
     # Write
