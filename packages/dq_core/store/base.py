@@ -1,0 +1,26 @@
+from __future__ import annotations
+
+from typing import Any, Protocol, runtime_checkable
+
+from ..engine.models import RunSummary
+
+
+@runtime_checkable
+class ResultStoreProtocol(Protocol):
+    """Abstract interface for all result-store backends (SQLite, HANA, …)."""
+
+    def save_run(self, summary: RunSummary) -> None: ...
+
+    def get_run(self, run_id: str) -> dict[str, Any] | None: ...
+
+    def get_runs(self, dataset: str, limit: int = 100) -> list[dict[str, Any]]: ...
+
+    def get_previous_actuals(self, dataset: str) -> dict[str, str]: ...
+
+    def get_check_history(self, dataset: str, check_name: str, limit: int = 50) -> list[dict[str, Any]]: ...
+
+    def set_run_state(self, run_id: str, state: str, finished_at: str | None = None) -> None: ...
+
+    def get_compliance(self, product: str) -> dict[str, Any] | None: ...
+
+    def set_compliance(self, product: str, version: str, compliance: str, run_id: str) -> None: ...
