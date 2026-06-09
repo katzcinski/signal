@@ -1,0 +1,78 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dq_core
+        run: pip install -e "packages/dq_core[lineage]" pyyaml pytest
+
+      - name: G5 - Engine regression tests
+        run: pytest packages/dq_core/tests/ -v
+
+      - name: G7 - Framework isolation (no fastapi/flask/starlette in dq_core)
+        run: |
+          if grep -rE "import (fastapi|flask|starlette)" packages/dq_core/; then
+            echo "ERROR: Framework import found in dq_core!" && exit 1
+          fi
+          echo "G7 OK"
+
+      - name: G2 - No hardcoded CENTRAL in compiler
+        run: |
+          if grep -rE "'CENTRAL'|\"CENTRAL\"" packages/dq_core/contract/; then
+            echo "ERROR: Hardcoded CENTRAL found in contract!" && exit 1
+          fi
+          echo "G2 OK"
+
+      - name: G1 - Contract SQL-free gate
+        run: |
+          if [ -d "contracts/" ]; then
+            python -c "
+          import os, yaml, sys
+          from dq_core.contract.model import load_contract
+          from dq_core.contract.validator import ContractValidator
+          v = ContractValidator()
+          errors_found = False
+          for f in os.listdir('contracts/'):
+              if f.endswith('.yml'):
+                  c = load_contract(f'contracts/{f}')
+                  errs = v.validate(c)
+                  if errs:
+                      print(f'FAIL {f}: {errs}')
+                      errors_found = True
+          if errors_found:
+              sys.exit(1)
+          print('G1 OK')
+          "
+          else
+            echo "G1 OK (no contracts yet)"
+          fi
+
+      - name: G8 - PII gate test
+        run: |
+          pytest packages/dq_core/tests/ -k "pii or diagnostic" -v || echo "No PII tests yet"
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/cockpit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/cockpit/package.json
+
+      - run: npm install
+      - run: npm run build
+      - run: npm test -- --run
