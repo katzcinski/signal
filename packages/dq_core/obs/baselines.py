@@ -1,18 +1,20 @@
+"""Observability baselines — rolling statistics for volume/freshness checks. (WS5-1)"""
+from __future__ import annotations
+
 import statistics
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Any, Optional
 
 
 class BaselineManager:
     WARMUP_N = 5
 
-    def __init__(self, store):
-        self.store = store
+    def __init__(self, store: Any) -> None:
+        self._store = store
 
-    def update_baseline(self, dataset: str, metric: str, values: List[float]) -> dict:
+    def update_baseline(self, dataset: str, metric: str, values: list[float]) -> dict:
         if len(values) < self.WARMUP_N:
-            result = {"warmup_remaining": self.WARMUP_N - len(values)}
-            return result
+            return {"warmup_remaining": self.WARMUP_N - len(values)}
 
         n = len(values)
         mean_v = statistics.mean(values)
@@ -36,26 +38,29 @@ class BaselineManager:
             "warmup_remaining": 0,
         }
 
-        if hasattr(self.store, '_conn'):
-            with self.store._lock:
-                self.store._conn.execute("""
-                    INSERT OR REPLACE INTO dq_baselines
-                      (dataset, metric, n, mean_v, stddev_v, p01, p99, mad, updated_at, warmup_remaining)
-                    VALUES (?,?,?,?,?,?,?,?,?,?)
-                """, (dataset, metric, n, mean_v, stddev_v, p01, p99, mad,
-                      baseline["updated_at"], 0))
-                self.store._conn.commit()
+        # Persist via store's context-manager connection (works for SQLiteStore).
+        if hasattr(self._store, "_conn"):
+            with self._store._conn() as conn:
+                conn.execute(
+                    """INSERT OR REPLACE INTO dq_baselines
+                       (dataset, metric, n, mean_v, stddev_v, p01, p99, mad, updated_at, warmup_remaining)
+                       VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                    (dataset, metric, n, mean_v, stddev_v, p01, p99, mad,
+                     baseline["updated_at"], 0),
+                )
         return baseline
 
     def get_baseline(self, dataset: str, metric: str) -> Optional[dict]:
-        if not hasattr(self.store, '_conn'):
+        if not hasattr(self._store, "_conn"):
             return None
-        row = self.store._conn.execute(
-            "SELECT * FROM dq_baselines WHERE dataset=? AND metric=?", (dataset, metric)
-        ).fetchone()
+        with self._store._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_baselines WHERE dataset=? AND metric=?",
+                (dataset, metric),
+            ).fetchone()
         return dict(row) if row else None
 
-    def compute_bounds(self, baseline: dict, sigma: float = 3.0):
-        mean = baseline.get("mean_v", 0)
-        std = baseline.get("stddev_v", 0)
+    def compute_bounds(self, baseline: dict, sigma: float = 3.0) -> tuple[float, float]:
+        mean = baseline.get("mean_v", 0.0)
+        std = baseline.get("stddev_v", 0.0)
         return (mean - sigma * std, mean + sigma * std)

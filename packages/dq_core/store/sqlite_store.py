@@ -13,8 +13,17 @@ from ..engine.models import CheckResult, RunSummary
 class ResultStore:
     """SQLite-backed result store. [SCHEMA-MAP] schema binding lives at run-time."""
 
-    def __init__(self, db_path: str | Path = "signal.db") -> None:
+    def __init__(
+        self,
+        db_path: str | Path = "signal.db",
+        *,
+        allow_diagnostics: bool = False,
+        diagnostics_columns: list[str] | None = None,
+    ) -> None:
         self.db_path = str(db_path)
+        # [PII-GATE] Default off. Only persist diagnostic_rows when explicitly enabled (S1/G8).
+        self._allow_diagnostics = allow_diagnostics
+        self._diagnostics_columns = set(diagnostics_columns) if diagnostics_columns else None
         self._init_db()
 
     # ------------------------------------------------------------------
@@ -113,13 +122,17 @@ class ResultStore:
                         result.error, result.duration_ms, result.state,
                     ),
                 ).lastrowid
-                # [PII-GATE] diagnostic_rows only when explicitly enabled (handled upstream)
-                for diag in result.diagnostic_rows:
-                    conn.execute(
-                        "INSERT INTO dq_diagnostics(result_id, run_id, check_name, row_data) "
-                        "VALUES (?,?,?,?)",
-                        (row, summary.run_id, result.name, json.dumps(diag)),
-                    )
+                # [PII-GATE] Only persist diagnostics when explicitly enabled (S1/G8).
+                if self._allow_diagnostics and result.diagnostic_rows:
+                    for diag in result.diagnostic_rows:
+                        # Apply column allowlist when configured.
+                        if self._diagnostics_columns:
+                            diag = {k: v for k, v in diag.items() if k in self._diagnostics_columns}
+                        conn.execute(
+                            "INSERT INTO dq_diagnostics(result_id, run_id, check_name, row_data) "
+                            "VALUES (?,?,?,?)",
+                            (row, summary.run_id, result.name, json.dumps(diag)),
+                        )
 
     def set_run_state(self, run_id: str, state: str, finished_at: str | None = None) -> None:
         with self._conn() as conn:

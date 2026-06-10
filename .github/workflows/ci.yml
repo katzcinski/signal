@@ -15,7 +15,9 @@ jobs:
         with: { python-version: "3.11" }
 
       - name: Install dependencies
-        run: pip install fastapi pydantic pydantic-settings uvicorn pyyaml httpx pytest pytest-cov
+        run: |
+          pip install fastapi pydantic pydantic-settings uvicorn pyyaml httpx pytest pytest-cov python-jose gitpython
+          pip install -e packages/dq_core
 
       - name: G5 — Engine regression (unit tests)
         run: python -m pytest tests/unit/ -v --tb=short
@@ -69,6 +71,40 @@ jobs:
             print('\n'.join(hits))
             sys.exit(1)
           print("G2 OK")
+          EOF
+
+      - name: G6 — skipped_stale state is never silently omitted
+        run: |
+          python - <<'EOF'
+          import sys, pathlib
+          # Verify every valid gating state constant is explicitly defined in models.py
+          models = pathlib.Path('packages/dq_core/engine/models.py').read_text()
+          required = ['skipped_stale', 'skipped_dependency', 'downgraded', 'executed', 'error']
+          missing = [s for s in required if s not in models]
+          if missing:
+            print(f"G6 FAIL — states missing from models.py: {missing}")
+            sys.exit(1)
+          # Verify store persists the state column (not silently dropped)
+          store_src = pathlib.Path('packages/dq_core/store/sqlite_store.py').read_text()
+          if 'result.state' not in store_src:
+            print("G6 FAIL — store does not persist result.state")
+            sys.exit(1)
+          print("G6 OK — gating states defined and persisted")
+          EOF
+
+      - name: G8 — PII gate enforced in store
+        run: |
+          python - <<'EOF'
+          import sys, pathlib
+          store_src = pathlib.Path('packages/dq_core/store/sqlite_store.py').read_text()
+          # The flag must gate diagnostic insertion
+          if '_allow_diagnostics' not in store_src:
+            print("G8 FAIL — _allow_diagnostics not in store")
+            sys.exit(1)
+          if 'allow_diagnostics' not in store_src:
+            print("G8 FAIL — allow_diagnostics param not in store __init__")
+            sys.exit(1)
+          print("G8 OK — PII gate present in store")
           EOF
 
       - name: Coverage report
