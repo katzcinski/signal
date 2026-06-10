@@ -18,6 +18,28 @@ export const usePutContract = (id: string) => {
   });
 };
 
+export const useApproveContract = (id: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post(`/contracts/${id}/approve`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contracts', id] });
+      qc.invalidateQueries({ queryKey: ['objects'] });
+    },
+  });
+};
+
+export const useDeprecateContract = (id: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post(`/contracts/${id}/deprecate`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contracts', id] });
+      qc.invalidateQueries({ queryKey: ['objects'] });
+    },
+  });
+};
+
 export const useCompileContract = (id: string) =>
   useMutation({
     mutationFn: () => api.post(`/contracts/${id}/compile`).then(r => r.data),

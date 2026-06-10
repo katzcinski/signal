@@ -21,8 +21,22 @@ def _contracts_dir() -> Path:
     return Path(get_settings().contracts_dir)
 
 
+def _contract_path(product: str) -> Path:
+    """Return the on-disk path for a contract, tolerating .yaml and .yml.
+
+    Prefers an existing file (whatever its extension); falls back to .yaml
+    for new writes so seeded `<product>.yaml` files stay the source of truth.
+    """
+    base = _contracts_dir()
+    for ext in (".yaml", ".yml"):
+        candidate = base / f"{product}{ext}"
+        if candidate.exists():
+            return candidate
+    return base / f"{product}.yaml"
+
+
 def _load_contract(product: str) -> dict[str, Any] | None:
-    path = _contracts_dir() / f"{product}.yml"
+    path = _contract_path(product)
     if not path.exists():
         return None
     return yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -30,8 +44,13 @@ def _load_contract(product: str) -> dict[str, Any] | None:
 
 def _save_contract(product: str, data: dict[str, Any], principal_name: str) -> None:
     _contracts_dir().mkdir(parents=True, exist_ok=True)
-    path = _contracts_dir() / f"{product}.yml"
+    path = _contract_path(product)
     path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+
+def _active_snapshot_path(product: str) -> Path:
+    """Certified-version snapshot used as the diff baseline for approvals."""
+    return _contracts_dir() / f"{product}.active.yml"
 
 
 @router.get("", response_model=list[ContractOut])
@@ -43,7 +62,8 @@ def list_contracts(
     if not contracts_dir.exists():
         return []
     result = []
-    for path in sorted(contracts_dir.glob("*.yml")):
+    paths = sorted(p for p in contracts_dir.glob("*.y*ml") if not p.name.endswith(".active.yml"))
+    for path in paths:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         if not data:
             continue
@@ -160,6 +180,111 @@ def diff_contract(
             for e in entries
         ],
     }
+
+
+def _semver_major(version: str) -> int:
+    try:
+        return int(str(version).split(".")[0])
+    except (ValueError, IndexError):
+        return 0
+
+
+@router.post("/{product}/approve", response_model=ContractOut)
+def approve_contract(
+    product: str,
+    principal: PrincipalDep,
+    store: StoreDep = ...,
+):
+    """[AUTHZ] Promote a draft contract to active (WS2-6 / M2).
+
+    Server-side breaking guard (G3): if the change is breaking versus the last
+    certified version, a SemVer **major** bump is required. Exactly one commit
+    per approve via the serialised Git writer.
+    """
+    from dq_core.contract.diff import diff_contracts, is_breaking
+
+    data = _load_contract(product)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+    if data.get("lifecycle") != "draft":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Contract {product!r} is {data.get('lifecycle')!r}, only drafts can be approved.",
+        )
+
+    # [AUTHZ]
+    if not principal.can_write_contract(data.get("owned_by", "platform"), data.get("owners") or []):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to approve this contract.")
+
+    # G3 — breaking change must carry a major version bump.
+    snapshot_path = _active_snapshot_path(product)
+    if snapshot_path.exists():
+        prior = yaml.safe_load(snapshot_path.read_text(encoding="utf-8")) or {}
+        entries = diff_contracts(prior, data)
+        if is_breaking(entries) and _semver_major(data.get("version", "0")) <= _semver_major(prior.get("version", "0")):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Breaking change requires a major version bump (Gate G3).",
+                    "from_version": prior.get("version"),
+                    "to_version": data.get("version"),
+                    "breaking": [
+                        {"kind": e.kind, "path": e.path, "old": e.old_value, "new": e.new_value}
+                        for e in entries if e.breaking
+                    ],
+                },
+            )
+
+    data["lifecycle"] = "active"
+    _save_contract(product, data, principal.name)
+    snapshot_path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    _update_index(store, product, data)
+
+    # One commit per approve (best-effort; degrades to content-hash off-repo).
+    try:
+        from ..git_repo import GitRepo
+        GitRepo(get_settings().contracts_dir, get_settings().git_remote).write_contract(
+            product,
+            yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+            principal.name,
+            f"{principal.sub}@dq-cockpit",
+            f"Approve contract {product} v{data.get('version')}",
+        )
+    except Exception:
+        pass
+
+    # Compliance starts 'unknown' until the first run of the active version.
+    if not store.get_compliance(product):
+        store.set_compliance(product, str(data.get("version", "")), "unknown", "")
+
+    compliance_row = store.get_compliance(product)
+    return ContractOut(**data, compliance=compliance_row["compliance"] if compliance_row else None)
+
+
+@router.post("/{product}/deprecate", response_model=ContractOut)
+def deprecate_contract(
+    product: str,
+    principal: PrincipalDep,
+    store: StoreDep = ...,
+):
+    """[AUTHZ] Retire an active contract (WS2-6)."""
+    data = _load_contract(product)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+    if data.get("lifecycle") != "active":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only active contracts can be deprecated (got {data.get('lifecycle')!r}).",
+        )
+    if not principal.can_write_contract(data.get("owned_by", "platform"), data.get("owners") or []):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to deprecate this contract.")
+
+    data["lifecycle"] = "deprecated"
+    _save_contract(product, data, principal.name)
+    _update_index(store, product, data)
+
+    compliance_row = store.get_compliance(product)
+    return ContractOut(**data, compliance=compliance_row["compliance"] if compliance_row else None)
 
 
 @router.post("/{product}/compile", response_model=CompileOut)

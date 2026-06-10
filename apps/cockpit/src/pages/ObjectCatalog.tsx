@@ -34,7 +34,7 @@ export default function ObjectCatalog() {
     { key: 'space', header: 'Space', mono: true, render: o => o.space },
     {
       key: 'status', header: 'Status',
-      render: o => <StatusPill status={o.overall_status ?? 'unknown'} size="sm" />,
+      render: o => <StatusPill status={o.status ?? 'unknown'} size="sm" />,
     },
     {
       key: 'coverage', header: 'Cov',
@@ -47,7 +47,7 @@ export default function ObjectCatalog() {
     { key: 'owned_by', header: 'Owner', render: o => <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{o.owned_by}</span> },
     {
       key: 'last_run', header: 'Last Run', mono: true,
-      render: o => <span style={{ fontSize: 11 }}>{o.last_run_at ? new Date(o.last_run_at).toLocaleString() : '—'}</span>,
+      render: o => <span style={{ fontSize: 11 }}>{o.last_run ? new Date(o.last_run).toLocaleString() : '—'}</span>,
     },
   ];
 

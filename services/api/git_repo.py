@@ -13,8 +13,16 @@ class GitRepo:
         self.remote = remote
         self.contracts_dir.mkdir(parents=True, exist_ok=True)
 
+    def _path(self, product: str) -> Path:
+        """Resolve a contract path, tolerating both .yaml and .yml."""
+        for ext in (".yaml", ".yml"):
+            candidate = self.contracts_dir / f"{product}{ext}"
+            if candidate.exists():
+                return candidate
+        return self.contracts_dir / f"{product}.yaml"
+
     def read_contract(self, product: str) -> Optional[str]:
-        path = self.contracts_dir / f"{product}.yml"
+        path = self._path(product)
         if path.exists():
             return path.read_text()
         return None
@@ -22,7 +30,7 @@ class GitRepo:
     def write_contract(self, product: str, content: str, author_name: str, author_email: str, message: str) -> str:
         """Thread-safe write + commit. Returns commit hash."""
         with _write_lock:
-            path = self.contracts_dir / f"{product}.yml"
+            path = self._path(product)
             path.write_text(content)
 
             # Check for breaking diff before commit
@@ -50,7 +58,11 @@ class GitRepo:
                 return commit_hash
 
     def list_products(self) -> list:
-        return [p.stem for p in sorted(self.contracts_dir.glob("*.yml"))]
+        return [
+            p.stem
+            for p in sorted(self.contracts_dir.glob("*.y*ml"))
+            if not p.name.endswith(".active.yml")
+        ]
 
     def get_contract_hash(self, product: str) -> str:
         content = self.read_contract(product)

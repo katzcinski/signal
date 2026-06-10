@@ -8,18 +8,54 @@ from ..schemas.run_schemas import RunSummaryOut, RunListItem, CheckResultOut
 router = APIRouter(prefix="/api/runs", tags=["runs"])
 
 
+def _result_out(row: dict) -> CheckResultOut:
+    """Map a raw dq_check_results row to the API/FE field names."""
+    return CheckResultOut(
+        name=row.get("check_name", ""),
+        sql=row.get("sql_text", "") or "",
+        expect=row.get("expect_expr", "") or "",
+        severity=row.get("severity", "fail"),
+        passed=bool(row.get("passed")),
+        actual_value=row.get("actual_value"),
+        error=row.get("error_message"),
+        duration_ms=row.get("duration_ms", 0) or 0,
+        state=row.get("state", "executed"),
+    )
+
+
+def _run_out(run: dict) -> RunSummaryOut:
+    """Normalise a raw dq_runs row (+ results) into the FE-facing schema."""
+    return RunSummaryOut(
+        run_id=run["run_id"],
+        dataset=run.get("dataset", ""),
+        schema_name=run.get("schema_name", ""),
+        started_at=run.get("started_at", "") or "",
+        finished_at=run.get("finished_at", "") or "",
+        overall_status=run.get("overall_status", "pass"),
+        total=run.get("total_checks", 0) or 0,
+        passed=run.get("passed_checks", 0) or 0,
+        failed=run.get("failed_checks", 0) or 0,
+        warnings=run.get("warning_checks", 0) or 0,
+        triggered_by=run.get("triggered_by", "manual"),
+        contract_version=run.get("contract_version", "") or "",
+        actor=run.get("actor", "") or "",
+        run_state=run.get("run_state", "finished"),
+        results=[_result_out(r) for r in run.get("results", [])],
+    )
+
+
 @router.get("", response_model=list[RunListItem])
 def list_runs(store: StoreDep = ...):
     runs = store.get_all_runs(limit=200)
     return [RunListItem(**{k: v for k, v in r.items() if k in RunListItem.model_fields}) for r in runs]
 
 
-@router.get("/{run_id}")
+@router.get("/{run_id}", response_model=RunSummaryOut)
 def get_run(run_id: str, store: StoreDep = ...):
     run = store.get_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found")
-    return run
+    return _run_out(run)
 
 
 @router.get("/{run_id}/events")

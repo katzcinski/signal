@@ -51,10 +51,10 @@ export default function Governance() {
                     <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</td>
                     <td style={{ padding: '8px 12px', color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</td>
                     <td style={{ padding: '8px 12px' }}>
-                      <LifecycleStepper current={(o.lifecycle ?? 'draft') as Lifecycle} />
+                      <LifecycleStepper current={(o.contract_status || 'draft') as Lifecycle} />
                     </td>
-                    <td style={{ padding: '8px 12px', fontSize: 12, color: o.has_contract ? 'var(--status-ok)' : 'var(--status-fail)' }}>
-                      {o.has_contract ? '✓ Yes' : '○ No'}
+                    <td style={{ padding: '8px 12px', fontSize: 12, color: o.contract_status ? 'var(--status-ok)' : 'var(--status-fail)' }}>
+                      {o.contract_status ? '✓ Yes' : '○ No'}
                     </td>
                   </tr>
                 ))}
