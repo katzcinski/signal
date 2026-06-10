@@ -1,13 +1,18 @@
-"""ODCS → check_library → CheckDef Compiler.
+"""Garantie → check_library → CheckDef Compiler (Stufe 1, HANDOVER WS3-1).
 
 Der EINZIGE Ort, an dem aus einer semantischen Garantie ausführbares SQL wird.
-Liest einen ODCS-v3-Contract (als dict) und erzeugt das bestehende DatasetConfig/
-CheckDef — der Runner (check_engine) bleibt dadurch unverändert.
+Primärer Pfad: `compile_contract` liest das §1.5-Garantie-Format (SQL-frei) und
+bildet jede Garantie-Familie auf ein `check_library`-Template ab. Der Runner
+(check_engine) bleibt unverändert.
 
-Leitlinie: eine Quelle (ODCS in Git), ein Executor (HANA via hdbcli), zwei Einweg-Seams.
-Gates:  G1  kein roher SQL im Contract außer type:sql mit owned_by:product
-        G2  {schema} kommt aus servers[].schema / --db-schema, nie hartkodiert
-        G3  jede library-rule / templateId muss in check_library auflösen
+Der ODCS-v3-Pfad (`compile_contract_odcs`) ist Stufe 2 und bewusst zurückgestellt
+(O1) — er bleibt als Referenz erhalten, ist aber nicht verdrahtet.
+
+Gates:  G1  kein roher SQL im Contract (Validator erzwingt das beim PUT)
+        G2  {schema} bleibt Platzhalter im Output, nie hartkodiert (A2)
+        G3  jede Garantie muss auf ein check_library-Template auflösen
+        S2  Bezeichner werden vor dem Binden auf Sicherheit geprüft
+        A4  Determinismus: gleicher Contract ⇒ byte-identische checks.yml
 """
 from __future__ import annotations
 
@@ -208,9 +213,10 @@ def _check_from_sla(schema: str, dataset: str, sla: dict[str, Any], default_owne
 
 
 # --------------------------------------------------------------------------- #
-# Einstiegspunkt
+# Stufe 2 (zurückgestellt, O1) — ODCS-v3 → CheckDef.
+# Bewusst nicht verdrahtet bis R3/R9 geklärt; bleibt als Referenz erhalten.
 # --------------------------------------------------------------------------- #
-def compile_contract(odcs: dict[str, Any], *, schema_override: str = "") -> DatasetConfig:
+def compile_contract_odcs(odcs: dict[str, Any], *, schema_override: str = "") -> DatasetConfig:
     server = (odcs.get("servers") or [{}])[0]
     schema = schema_override or server.get("schema") or ""  # Gate G2
     obj = (odcs.get("schema") or [{}])[0]
@@ -232,3 +238,212 @@ def compile_contract(odcs: dict[str, Any], *, schema_override: str = "") -> Data
     return DatasetConfig(dataset=dataset, schema=schema,
                          contract_version=str(odcs.get("version") or ""),
                          owned_by=default_owner, checks=checks)
+
+
+# --------------------------------------------------------------------------- #
+# Stufe 1 — §1.5-Garantie-Format → CheckDef  (primärer Pfad, WS3-1)
+# --------------------------------------------------------------------------- #
+_SAFE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+# Feste Verarbeitungsreihenfolge ⇒ deterministischer Output unabhängig von
+# der Schlüsselreihenfolge im YAML (A4).
+_GUARANTEE_ORDER = [
+    "schema", "schema_columns", "keys", "not_null",
+    "completeness", "row_count", "referential", "freshness", "volume",
+]
+
+
+def _ident(col: Any) -> str:
+    """[S2] Bezeichner vor dem Binden prüfen; gibt den rohen Namen zurück."""
+    if not _SAFE_IDENT.match(str(col)):
+        raise ValueError(f"[S2] Unsicherer Bezeichner: {col!r}")
+    return str(col)
+
+
+def _col_token(columns: list[str]) -> str:
+    """Spalten als <SPALTE>-Tokenwert; das Template liefert die äußeren Quotes.
+
+    Einzelspalte ``A`` → ``A`` (Template macht ``"A"``).
+    Mehrspaltig ``[A, B]`` → ``A", "B`` (Template macht ``"A", "B"``).
+    """
+    cols = [_ident(c) for c in columns]
+    return '", "'.join(cols)
+
+
+def _duration_to_seconds(value: Any) -> int | None:
+    """ISO-8601-Dauer (PT24H/P1D) oder eine reine Stundenzahl → Sekunden."""
+    if value is None:
+        return None
+    s = str(value)
+    m = re.match(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$", s)
+    if m and any(m.groups()):
+        d, h, mi, se = (int(g or 0) for g in m.groups())
+        return d * 86400 + h * 3600 + mi * 60 + se
+    try:
+        return int(float(s))
+    except ValueError:
+        return None
+
+
+def _g_keys(schema: str, dataset: str, val: Any, owner: str) -> list[CheckDef]:
+    out: list[CheckDef] = []
+    for k in val or []:
+        cols = k.get("columns") or []
+        if not cols or not k.get("unique", True):
+            continue
+        out.append(_mk(
+            "duplicate", schema, dataset, {"<SPALTE>": _col_token(cols)},
+            "= 0", k.get("severity", "critical"), owner,
+            name="key_unique_" + "_".join(_ident(c) for c in cols),
+        ))
+    return out
+
+
+def _g_not_null(schema: str, dataset: str, val: Any, owner: str) -> list[CheckDef]:
+    out: list[CheckDef] = []
+    for entry in val or []:
+        for col in (entry.get("columns") or []):
+            out.append(_mk(
+                "missing", schema, dataset, {"<SPALTE>": _ident(col)},
+                "= 0", entry.get("severity", "fail"), owner, name=f"not_null_{_ident(col)}",
+            ))
+    return out
+
+
+def _g_completeness(schema: str, dataset: str, val: Any, owner: str) -> list[CheckDef]:
+    out: list[CheckDef] = []
+    for entry in val or []:
+        col = entry.get("column")
+        if not col:
+            continue
+        min_pct = float(entry.get("min_pct", 100))
+        max_null = round(100.0 - min_pct, 4)
+        out.append(_mk(
+            "completeness_pct", schema, dataset, {"<SPALTE>": _ident(col)},
+            f"<= {max_null}", entry.get("severity", "warn"), owner,
+            name=f"completeness_{_ident(col)}", unit="%",
+        ))
+    return out
+
+
+def _g_row_count(schema: str, dataset: str, val: Any, owner: str) -> list[CheckDef]:
+    val = val or {}
+    lo, hi = val.get("min"), val.get("max")
+    if lo is not None and hi is not None:
+        expect = f"BETWEEN {lo} AND {hi}"
+    elif lo is not None:
+        expect = f">= {lo}"
+    elif hi is not None:
+        expect = f"<= {hi}"
+    else:
+        expect = "> 0"
+    return [_mk("row_count", schema, dataset, {}, expect,
+               val.get("severity", "critical"), owner, name="row_count")]
+
+
+def _g_referential(schema: str, dataset: str, val: Any, owner: str) -> list[CheckDef]:
+    out: list[CheckDef] = []
+    for ref in val or []:
+        fk = ref.get("fk") or []
+        pk = ref.get("parent_key") or fk
+        parent = ref.get("parent")
+        if not fk or not parent:
+            continue
+        # Stufe 1: einspaltige FK; mehrspaltige FKs nutzen die erste Spalte.
+        out.append(_mk(
+            "reference_integrity", schema, dataset,
+            {"<DIMENSION>": _ident(parent), "<FK>": _ident(fk[0]), "<PK>": _ident(pk[0])},
+            "= 0", ref.get("severity", "critical"), owner,
+            name=f"ref_{_ident(fk[0])}_{_ident(parent)}",
+        ))
+    return out
+
+
+def _g_freshness(schema: str, dataset: str, val: Any, owner: str) -> list[CheckDef]:
+    val = val or {}
+    col = val.get("column")
+    if not col:
+        return []
+    seconds = _duration_to_seconds(val.get("max_age")) \
+        or _duration_to_seconds(val.get("max_age_hours") and val.get("max_age_hours") * 3600) \
+        or 86400
+    return [_mk("freshness", schema, dataset, {"<SPALTE>": _ident(col)},
+               f"< {seconds}", val.get("severity", "warn"), owner,
+               name=f"freshness_{_ident(col)}", unit="s")]
+
+
+def _g_schema(schema: str, dataset: str, val: Any, owner: str) -> list[CheckDef]:
+    val = val or {}
+    columns = val.get("columns") or val.get("expected") or []
+    if not columns:
+        return []
+    n = len(columns)
+    expect = f"= {n}" if (val.get("mode") == "closed") else f">= {n}"
+    return [_mk("schema", schema, dataset, {}, expect,
+               val.get("severity", "critical"), owner, name="schema_columns")]
+
+
+def _g_volume(schema: str, dataset: str, val: Any, owner: str) -> list[CheckDef]:
+    # Volume-Bounds brauchen Obs-Baselines (WS5-1). Bis dahin: sichtbar, aber
+    # deaktiviert (G6 — nie still auslassen), DELTA gegen den letzten Lauf.
+    return [CheckDef(
+        name="volume",
+        sql=_bind("row_count", schema, dataset, {}),
+        expect="DELTA <= 50%",
+        severity=(val or {}).get("severity", "warn"),
+        type="volume",
+        owned_by=owner,
+        enabled=False,
+        description="Volume drift — requires WS5-1 baselines (skipped_dependency).",
+    )]
+
+
+_BUILDERS = {
+    "schema": _g_schema,
+    "schema_columns": _g_schema,
+    "keys": _g_keys,
+    "not_null": _g_not_null,
+    "completeness": _g_completeness,
+    "row_count": _g_row_count,
+    "referential": _g_referential,
+    "freshness": _g_freshness,
+    "volume": _g_volume,
+}
+
+
+def compile_contract(contract: dict[str, Any], *, schema_override: str = "") -> DatasetConfig:
+    """§1.5-Garantie-Format → DatasetConfig. Primärer (Stufe-1) Pfad.
+
+    [G2] Schema bleibt als ``{schema}``-Platzhalter, sofern kein ``schema_override``
+    übergeben wird — Bindung erfolgt zur Laufzeit über das Environment (A2).
+    """
+    schema = schema_override or "{schema}"  # [G2] niemals hartkodieren
+    dataset = str(contract.get("dataset") or contract.get("product") or "")
+    if dataset and not _SAFE_IDENT.match(dataset):
+        raise ValueError(f"[S2] Unsicherer dataset-Name: {dataset!r}")
+
+    owner = contract.get("owned_by", "platform")
+    if owner not in VALID_OWNERS:
+        raise ValueError(f"Contract owned_by muss {sorted(VALID_OWNERS)} sein, nicht '{owner}'")
+
+    guarantees = contract.get("guarantees") or {}
+    checks: list[CheckDef] = []
+    seen: set[str] = set()
+    for family in _GUARANTEE_ORDER:
+        if family not in guarantees:
+            continue
+        for check in _BUILDERS[family](schema, dataset, guarantees[family], owner):
+            # Doppelte Namen eindeutig machen (z. B. zwei Keys gleicher Spalten).
+            base = check.name
+            i = 2
+            while check.name in seen:
+                check.name = f"{base}_{i}"
+                i += 1
+            seen.add(check.name)
+            checks.append(check)
+
+    return DatasetConfig(
+        dataset=dataset, schema=schema,
+        contract_version=str(contract.get("version") or ""),
+        owned_by=owner, checks=checks,
+    )

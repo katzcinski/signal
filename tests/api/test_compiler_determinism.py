@@ -28,3 +28,25 @@ def test_compile_is_deterministic(api_client):
     assert a["determinism_hash"]  # non-empty
     assert a["determinism_hash"] == b["determinism_hash"]
     assert a["yaml_preview"] == b["yaml_preview"]
+
+
+def test_compile_produces_checks_from_guarantees(api_client):
+    api_client.put(
+        "/api/contracts/RICH",
+        json={
+            "product": "RICH", "dataset": "RICH", "owned_by": "product",
+            "lifecycle": "draft", "version": "1.0.0",
+            "guarantees": {
+                "keys": [{"columns": ["ID"], "unique": True}],
+                "not_null": [{"columns": ["ID", "AMOUNT"]}],
+                "row_count": {"min": 10},
+            },
+        },
+    )
+    resp = api_client.post("/api/contracts/RICH/compile?dry_run=true")
+    assert resp.status_code == 200, resp.text
+    checks = resp.json()["checks"]
+    # 1 key + 2 not_null + 1 row_count
+    assert len(checks) == 4
+    assert {c["type"] for c in checks} == {"duplicate", "missing", "row_count"}
+    assert "{schema}" in resp.json()["yaml_preview"]  # G2 placeholder preserved
