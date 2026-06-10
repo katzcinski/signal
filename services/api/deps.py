@@ -22,7 +22,10 @@ def get_store() -> ResultStore:
     global _store_instance
     if _store_instance is None:
         settings = get_settings()
-        _store_instance = ResultStore(settings.sqlite_db)
+        _store_instance = ResultStore(
+            settings.sqlite_db,
+            allow_diagnostics=settings.allow_local_diagnostics,
+        )
     return _store_instance
 
 
@@ -48,3 +51,14 @@ def get_lineage() -> dict[str, Any]:
     if not path.exists():
         return {"nodes": [], "edges": []}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def get_environment(name: str) -> dict[str, Any] | None:
+    """[SCHEMA-MAP] Resolve environment name → {host, port, schema, ...} from ENVIRONMENTS_FILE."""
+    import yaml
+    settings = get_settings()
+    path = Path(settings.environments_file)
+    if not path.exists() or not name:
+        return None
+    envs = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return envs.get(name)
