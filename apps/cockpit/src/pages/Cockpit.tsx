@@ -11,9 +11,9 @@ export default function Cockpit() {
   const navigate = useNavigate();
 
   const totalObjects = objects.length;
-  const healthyObjects = objects.filter(o => o.overall_status === 'pass').length;
+  const healthyObjects = objects.filter(o => o.status === 'pass').length;
   const healthPct = totalObjects > 0 ? Math.round((healthyObjects / totalObjects) * 100) : 0;
-  const activeContracts = objects.filter(o => o.has_contract).length;
+  const activeContracts = objects.filter(o => o.contract_status === 'active').length;
   const criticalIncidents = incidents.filter(i => i.severity === 'critical').length;
 
   const obsFamilyObjects = objects.filter(o => o.family === 'observability');
@@ -53,7 +53,7 @@ export default function Cockpit() {
               }}
             >
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</span>
-              <StatusDot status={o.overall_status ?? 'unknown'} />
+              <StatusDot status={o.status ?? "unknown"} />
             </div>
           ))}
         </Panel>
@@ -70,7 +70,7 @@ export default function Cockpit() {
               }}
             >
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</span>
-              <StatusDot status={o.overall_status ?? 'unknown'} />
+              <StatusDot status={o.status ?? "unknown"} />
             </div>
           ))}
         </Panel>

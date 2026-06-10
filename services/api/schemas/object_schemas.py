@@ -14,7 +14,7 @@ class ObjectOut(BaseModel):
     layer: str = ""
     status: str = "unknown"
     contract_status: str = ""
-    coverage_flag: str = "○"
+    cov_flag: str = "out_of_scope"  # covered | partial | gap | out_of_scope
     check_count: int = 0
     owned_by: str = "platform"
     last_run: Optional[str] = None

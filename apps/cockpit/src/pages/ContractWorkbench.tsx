@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useObjects } from '@/api/objects';
 import {
-  useContract, usePutContract,
+  useContract, usePutContract, useApproveContract, useDeprecateContract,
   useCompileContractDryRun, useDryRunChecks, useRevertChecks, useExportBdc,
 } from '@/api/contracts';
+import type { AxiosError } from 'axios';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import type { Contract } from '@/types';
 
@@ -231,6 +232,45 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
   );
 }
 
+function ApprovalBar({ objectId, lifecycle }: { objectId: string; lifecycle: string }) {
+  const approve = useApproveContract(objectId);
+  const deprecate = useDeprecateContract(objectId);
+
+  const errOf = (e: unknown): string => {
+    const detail = (e as AxiosError<{ detail?: unknown }>)?.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (detail && typeof detail === 'object' && 'message' in detail) {
+      return String((detail as { message: unknown }).message);
+    }
+    return 'Request failed';
+  };
+
+  return (
+    <div style={{ ...cardStyle, marginTop: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ fontSize: 13, color: 'var(--fg-2)' }}>
+        Lifecycle: <strong style={{ color: 'var(--fg)' }}>{lifecycle}</strong>
+      </div>
+      <div style={{ flex: 1 }} />
+      {lifecycle === 'draft' && (
+        <button style={btnStyle()} disabled={approve.isPending} onClick={() => approve.mutate()}>
+          {approve.isPending ? 'Approving…' : 'Approve → Active'}
+        </button>
+      )}
+      {lifecycle === 'active' && (
+        <button style={btnStyle('danger')} disabled={deprecate.isPending} onClick={() => deprecate.mutate()}>
+          {deprecate.isPending ? 'Deprecating…' : 'Deprecate'}
+        </button>
+      )}
+      {approve.isError && (
+        <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{errOf(approve.error)}</span>
+      )}
+      {deprecate.isError && (
+        <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{errOf(deprecate.error)}</span>
+      )}
+    </div>
+  );
+}
+
 function Editor({ objectId }: { objectId: string }) {
   const { data: contract, isLoading } = useContract(objectId);
   const put = usePutContract(objectId);
@@ -260,6 +300,8 @@ function Editor({ objectId }: { objectId: string }) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 20, gap: 16, overflowY: 'auto' }}>
       <LifecycleStepper current={lifecycle} />
+
+      <ApprovalBar objectId={objectId} lifecycle={lifecycle} />
 
       {/* Contract JSON editor */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

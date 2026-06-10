@@ -24,6 +24,36 @@ def _object_status_map(store) -> dict[str, dict]:
         return {}
 
 
+def _contract_lifecycle_map() -> dict[str, str]:
+    """Map product → lifecycle from on-disk contracts (identity join: id == product)."""
+    import yaml
+    from pathlib import Path
+    out: dict[str, str] = {}
+    base = Path(get_settings().contracts_dir)
+    if not base.exists():
+        return out
+    for path in base.glob("*.y*ml"):
+        if path.name.endswith(".active.yml"):
+            continue
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            continue
+        product = data.get("product") or path.stem
+        out[product] = data.get("lifecycle", "draft")
+    return out
+
+
+def _coverage_flag(object_id: str, lifecycle: str, settings) -> str:
+    """Coverage status for the catalog/coverage map (WS4)."""
+    if not lifecycle:
+        return "out_of_scope"
+    if lifecycle != "active":
+        return "gap"  # contract exists but not yet certified (e.g. draft) → needs attention
+    has_checks = _find_checks_file(object_id, settings) is not None
+    return "covered" if has_checks else "partial"
+
+
 @router.get("", response_model=list[ObjectOut])
 def list_objects(
     space: str | None = Query(default=None),
@@ -31,12 +61,15 @@ def list_objects(
     inventory: list[dict] = Depends(get_inventory),
 ):
     statuses = _object_status_map(store)
+    contracts = _contract_lifecycle_map()
+    settings = get_settings()
     result = []
     for obj in inventory:
         obj_id = obj.get("id") or obj.get("technicalName") or obj.get("name") or ""
         if space and obj.get("space") != space:
             continue
         s = statuses.get(obj_id, {})
+        lifecycle = contracts.get(obj_id, "")
         result.append(
             ObjectOut(
                 id=obj_id,
@@ -45,8 +78,8 @@ def list_objects(
                 family=obj.get("family", "quality"),
                 layer=obj.get("layer", ""),
                 status=s.get("status", "unknown"),
-                contract_status=obj.get("lifecycle_state", ""),
-                coverage_flag=obj.get("coverage_flag", "○"),
+                contract_status=lifecycle,
+                cov_flag=_coverage_flag(obj_id, lifecycle, settings),
                 check_count=s.get("total_checks", obj.get("checkCount", 0)),
                 owned_by=obj.get("owned_by", "platform"),
                 last_run=s.get("last_run"),
@@ -99,6 +132,7 @@ def get_object(
         ]
         latest_run = results[0]
 
+    lifecycle = _contract_lifecycle_map().get(object_id, "")
     return ObjectDetailOut(
         id=object_id,
         name=obj.get("name") or object_id,
@@ -106,8 +140,8 @@ def get_object(
         family=obj.get("family", "quality"),
         layer=obj.get("layer", ""),
         status=s.get("status", "unknown"),
-        contract_status=obj.get("lifecycle_state", ""),
-        coverage_flag=obj.get("coverage_flag", "○"),
+        contract_status=lifecycle,
+        cov_flag=_coverage_flag(object_id, lifecycle, get_settings()),
         check_count=s.get("total_checks", 0),
         owned_by=obj.get("owned_by", "platform"),
         last_run=s.get("last_run"),
@@ -196,6 +230,18 @@ def trigger_run(
             summary.run_state = "finished"
             summary.actor = principal.name
             store.save_run(summary)
+
+            # WS2-5: compliance transition — breached on fail/critical, auto-recovery on green.
+            # Only objects under an active contract carry a compliance state.
+            if _contract_lifecycle_map().get(object_id) == "active":
+                from dq_core.contract.compliance import compute_compliance
+                store.set_compliance(
+                    object_id,
+                    summary.contract_version or "",
+                    compute_compliance(summary.results),
+                    run_id,
+                )
+
             push_event({"type": "run_finished", "run_id": run_id, "overall_status": summary.overall_status})
         except Exception as exc:
             store.set_run_state(run_id, "error", datetime.now(timezone.utc).isoformat())

@@ -20,15 +20,21 @@ export interface InventoryObject {
   description?: string;
 }
 
-// ---- Objects (API enriched) ----
-export interface ObjectSummary extends InventoryObject {
-  overall_status?: OverallStatus;
-  cov_flag?: CovFlag;
-  check_count?: number;
-  last_run_at?: string;
-  last_run_id?: string;
-  contract_version?: string;
-  has_contract?: boolean;
+// ---- Objects (API enriched) — mirrors backend ObjectOut ----
+export interface ObjectSummary {
+  id: string;
+  name: string;
+  schema_name: string;
+  family: Family;
+  layer: string;
+  status: OverallStatus;
+  contract_status: string;        // '' | draft | active | deprecated
+  cov_flag: CovFlag;              // covered | partial | gap | out_of_scope
+  check_count: number;
+  owned_by: string;
+  last_run?: string | null;
+  last_run_id?: string | null;
+  space: string;
 }
 
 // ---- Check Library ----

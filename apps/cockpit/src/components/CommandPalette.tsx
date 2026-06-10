@@ -25,7 +25,7 @@ export function CommandPalette({ onClose }: Props) {
   const q = query.toLowerCase();
   const routeHits = ROUTES.filter(r => r.label.toLowerCase().includes(q));
   const objectHits = (objects ?? []).filter(o =>
-    o.name.toLowerCase().includes(q) || o.display_name.toLowerCase().includes(q)
+    o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q)
   ).slice(0, 6);
 
   const go = (path: string) => { navigate(path); onClose(); };

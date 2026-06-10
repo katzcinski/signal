@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useObject, useObjectRuns, useTriggerRun } from '@/api/objects';
+import { useRun } from '@/api/runs';
 import { useContract } from '@/api/contracts';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { FamilyTag } from '@/components/ui/FamilyTag';
@@ -24,7 +25,8 @@ export default function ObjectDetail() {
   if (!obj) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>Object not found</div>;
 
   const latestRun = runs[0];
-  const results: CheckResult[] = latestRun ? [] : [];
+  const { data: latestRunDetail } = useRun(latestRun?.run_id ?? '');
+  const results: CheckResult[] = latestRunDetail?.results ?? [];
 
   const TAB_STYLE = (t: Tab) => ({
     padding: '8px 16px', border: 'none', background: 'none',
@@ -61,7 +63,7 @@ export default function ObjectDetail() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700 }}>{obj.name}</span>
             <FamilyTag family={obj.family} />
-            <StatusPill status={obj.overall_status ?? 'unknown'} size="sm" />
+            <StatusPill status={obj.status ?? 'unknown'} size="sm" />
           </div>
           <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{obj.space} · {obj.layer}</p>
         </div>
