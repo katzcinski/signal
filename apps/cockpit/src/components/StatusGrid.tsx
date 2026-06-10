@@ -1,17 +1,16 @@
 import { Link } from 'react-router-dom'
-import { ObjectStatus } from '../api/client'
+import type { ObjectSummary } from '@/types'
 import { StatusBadge } from './StatusBadge'
-import { ComplianceBadge } from './ComplianceBadge'
 import { t } from '../i18n/de'
 
 interface Props {
-  objects: ObjectStatus[]
+  objects: ObjectSummary[]
   filter?: string
 }
 
 export function StatusGrid({ objects, filter }: Props) {
   const filtered = filter
-    ? objects.filter(o => o.object_name.toLowerCase().includes(filter.toLowerCase()))
+    ? objects.filter(o => o.name.toLowerCase().includes(filter.toLowerCase()))
     : objects
 
   if (filtered.length === 0) {
@@ -25,31 +24,38 @@ export function StatusGrid({ objects, filter }: Props) {
           <tr className="border-b border-gray-800 text-gray-400 text-xs uppercase">
             <th className="text-left p-3">Objekt</th>
             <th className="text-left p-3">Quality</th>
-            <th className="text-left p-3">Compliance</th>
+            <th className="text-left p-3">Coverage</th>
             <th className="text-right p-3">Checks</th>
             <th className="text-left p-3">Letzter Run</th>
-            <th className="text-left p-3">Contract-Version</th>
+            <th className="text-left p-3">Contract</th>
           </tr>
         </thead>
         <tbody>
           {filtered.map(obj => (
-            <tr key={obj.object_name} className="border-b border-gray-900 hover:bg-gray-900/50 transition-colors">
+            <tr key={obj.id} className="border-b border-gray-900 hover:bg-gray-900/50 transition-colors">
               <td className="p-3">
                 <Link
-                  to={`/objects/${encodeURIComponent(obj.object_name)}`}
+                  to={`/objects/${encodeURIComponent(obj.id)}`}
                   className="text-blue-400 hover:text-blue-300 font-mono"
                 >
-                  {obj.object_name}
+                  {obj.name}
                 </Link>
               </td>
               <td className="p-3">
                 <StatusBadge status={obj.overall_status ?? 'unknown'} showTooltip />
               </td>
               <td className="p-3">
-                <ComplianceBadge compliance={obj.compliance} />
+                <span className={`text-sm ${
+                  obj.cov_flag === 'covered' ? 'text-green-400' :
+                  obj.cov_flag === 'partial' ? 'text-yellow-400' :
+                  obj.cov_flag === 'gap' ? 'text-red-400' :
+                  'text-gray-500'
+                }`}>
+                  {obj.cov_flag ?? 'gap'}
+                </span>
               </td>
               <td className="p-3 text-right font-mono text-xs text-gray-400">
-                {obj.passed_checks}/{obj.total_checks}
+                {obj.check_count ?? 0}
               </td>
               <td className="p-3 text-gray-400 text-xs">
                 {obj.last_run_at ? new Date(obj.last_run_at).toLocaleString('de-DE') : '—'}

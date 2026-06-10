@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = Field(default=["http://localhost:5173", "http://localhost:3000"])
 
+    # Webhook (WS5-3) — breach notification
+    webhook_url: str = Field(default="")
+    webhook_allowlist: list[str] = Field(default=[])  # host patterns (regex), e.g. [".*\\.example\\.com"]
+
 
 _settings: Settings | None = None
 

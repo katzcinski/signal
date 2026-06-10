@@ -51,8 +51,66 @@ def accept_proposal(
     principal: PrincipalDep,
     store: StoreDep = ...,
 ):
-    """Accept a proposal — stubs the contract amendment (WS2 will wire this fully)."""
-    return {"id": proposal_id, "status": "accepted", "message": "Proposal accepted (stub — contract amendment via /api/contracts WS2)"}
+    """Accept a proposal — creates a draft contract amendment. No auto-apply (WS5-2)."""
+    import yaml
+    from pathlib import Path
+    from ..settings import get_settings
+
+    # Re-mine to find the proposal (proposals are not persisted in DB yet)
+    all_runs = store.get_all_runs(limit=10)
+    datasets = list({r["dataset"] for r in all_runs})
+
+    from dq_core.obs.miner import ProposalMiner
+    miner = ProposalMiner(store)
+    target_proposal = None
+    for ds in datasets:
+        for p in miner.mine(ds):
+            if p.id == proposal_id:
+                target_proposal = p
+                break
+        if target_proposal:
+            break
+
+    if not target_proposal:
+        raise HTTPException(status_code=404, detail=f"Proposal {proposal_id!r} not found")
+
+    settings = get_settings()
+    contracts_dir = Path(settings.contracts_dir)
+    contract_path = contracts_dir / f"{target_proposal.product}.yml"
+
+    if not contract_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"No contract found for product {target_proposal.product!r}",
+        )
+
+    data = yaml.safe_load(contract_path.read_text(encoding="utf-8")) or {}
+
+    # Add proposed_expect as a quality annotation in the guarantees — draft amendment only
+    if "quality_proposals" not in data:
+        data["quality_proposals"] = []
+    data["quality_proposals"].append({
+        "check_name": target_proposal.check_name,
+        "proposed_expect": target_proposal.proposed_expect,
+        "rationale": target_proposal.rationale,
+        "accepted_by": principal.name,
+    })
+    # Downgrade to draft so it must be re-approved
+    data["lifecycle"] = "draft"
+
+    contract_path.write_text(
+        yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8"
+    )
+
+    return {
+        "id": proposal_id,
+        "status": "accepted",
+        "product": target_proposal.product,
+        "message": (
+            f"Draft amendment created for {target_proposal.product!r}. "
+            "Contract reverted to 'draft' — review in Workbench and re-approve."
+        ),
+    }
 
 
 @router.post("/{proposal_id}/reject")

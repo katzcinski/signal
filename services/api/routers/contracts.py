@@ -185,19 +185,45 @@ def compile_contract(
     schema_override = ""  # [SCHEMA-MAP] bound at run-time via environment
 
     config = _compile(data, schema_override=schema_override)
-    yaml_out = dataset_config_to_yaml(config)
 
-    # [DETERMINISM] hash = f(contract_hash, library_version) — A4
+    # [DETERMINISM] hash computed on pre-merge compiled output — A4
     contract_hash = _hashlib.sha256(
         yaml.safe_dump(data, sort_keys=True).encode()
     ).hexdigest()[:16]
     library_version = str(load_library().get("version", "1"))
     det_hash = _hashlib.sha256(f"{contract_hash}:{library_version}".encode()).hexdigest()[:16]
 
+    # Existing-wins merge: keep handwritten checks when names collide
+    checks_dir = Path(settings_obj.checks_dir) / product
+    existing_checks_path = checks_dir / "checks.yml"
+    conflicts: list[str] = []
+    if existing_checks_path.exists():
+        try:
+            existing_data = yaml.safe_load(existing_checks_path.read_text(encoding="utf-8")) or {}
+            existing_by_name = {c["name"]: c for c in (existing_data.get("checks") or [])}
+            merged = []
+            for c in config.checks:
+                if c.name in existing_by_name:
+                    conflicts.append(c.name)
+                    ec = existing_by_name[c.name]
+                    from dq_core.engine.models import CheckDef
+                    merged.append(CheckDef(
+                        name=ec["name"], sql=ec.get("sql", c.sql),
+                        expect=ec.get("expect", c.expect), severity=ec.get("severity", c.severity),
+                        type=ec.get("type", c.type), unit=ec.get("unit", c.unit),
+                        owned_by=ec.get("owned_by", c.owned_by),
+                    ))
+                else:
+                    merged.append(c)
+            config.checks = merged
+        except Exception:
+            pass  # if existing file is malformed, use compiled checks as-is
+
+    yaml_out = dataset_config_to_yaml(config)
+
     if not dry_run:
-        checks_dir = Path(settings_obj.checks_dir) / product
         checks_dir.mkdir(parents=True, exist_ok=True)
-        (checks_dir / "checks.yml").write_text(yaml_out, encoding="utf-8")
+        existing_checks_path.write_text(yaml_out, encoding="utf-8")
 
     return CompileOut(
         product=product,
@@ -215,7 +241,7 @@ def compile_contract(
             for c in config.checks
         ],
         yaml_preview=yaml_out,
-        conflicts=[],
+        conflicts=conflicts,
         determinism_hash=det_hash,
     )
 
@@ -243,3 +269,77 @@ def _update_index(store, product: str, data: dict) -> None:
         conn.close()
     except Exception:
         pass
+
+
+@router.post("/{product}/export/bdc")
+def export_bdc(product: str, principal: PrincipalDep):
+    """Generate CSN + ORD artifact fragments for BDC integration. (WS5-4)
+
+    Einseitig (E1): files are returned as JSON for manual deployment.
+    Never writes to DB or catalog.
+    """
+    data = _load_contract(product)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+
+    guarantees = data.get("guarantees") or {}
+    dataset = data.get("dataset", product)
+
+    # CSN fragment: custom namespace annotations per column/guarantee
+    csn_elements: dict = {}
+    schema_g = guarantees.get("schema") or {}
+    for col in (schema_g.get("columns") or []):
+        csn_elements[col] = {"@DQ.guarantee": "schema", "@DQ.product": product}
+    for comp in (guarantees.get("completeness") or []):
+        col = comp.get("column", "")
+        if col:
+            csn_elements.setdefault(col, {})
+            csn_elements[col]["@DQ.completeness"] = comp.get("min_pct", 99.0)
+    for ref in (guarantees.get("referential") or []):
+        for fk_col in (ref.get("fk") or []):
+            csn_elements.setdefault(fk_col, {})
+            csn_elements[fk_col]["@DQ.referential"] = ref.get("parent", "")
+
+    csn_fragment = {
+        "$version": "2.0",
+        "definitions": {
+            dataset: {
+                "kind": "entity",
+                "@DQ.product": product,
+                "@DQ.lifecycle": data.get("lifecycle", "draft"),
+                "elements": csn_elements,
+            }
+        },
+    }
+
+    # ORD fragment: custom labels for product-level guarantees
+    guarantee_labels: list[str] = []
+    if guarantees.get("keys"):
+        guarantee_labels.append("keys:unique")
+    if guarantees.get("freshness"):
+        freshness = guarantees["freshness"]
+        guarantee_labels.append(f"freshness:{freshness.get('max_age','')}")
+    if guarantees.get("volume"):
+        guarantee_labels.append("volume:baseline")
+    if guarantees.get("schema"):
+        mode = (guarantees["schema"].get("mode") or "open")
+        guarantee_labels.append(f"schema:{mode}")
+
+    ord_fragment = {
+        "openResourceDiscovery": "1.9",
+        "consumptionBundles": [
+            {
+                "ordId": f"sap.dq:{product}:consumptionBundle:dq:v1",
+                "title": f"DQ Contract — {dataset}",
+                "description": f"Data quality guarantees for {dataset}",
+                "labels": {
+                    "dq:product": [product],
+                    "dq:lifecycle": [data.get("lifecycle", "draft")],
+                    "dq:guarantee": guarantee_labels,
+                    "dq:owned_by": [data.get("owned_by", "platform")],
+                },
+            }
+        ],
+    }
+
+    return {"csn_fragment": csn_fragment, "ord_fragment": ord_fragment}

@@ -5,11 +5,12 @@ import { Spinner } from '../components/Spinner'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { ComplianceBadge } from '../components/ComplianceBadge'
 import { t } from '../i18n/de'
+import type { ContractOut } from '@/types'
 
 export function ContractList() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<ContractOut[]>({
     queryKey: ['contracts'],
-    queryFn: api.listContracts,
+    queryFn: () => api.get('/contracts').then(r => r.data),
   })
 
   if (isLoading) return <Spinner />

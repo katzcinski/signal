@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { api } from '../api/client'
+import { useObjects } from '@/api/objects'
 import { StatusGrid } from '../components/StatusGrid'
 import { RunTriggerDialog } from '../components/RunTriggerDialog'
 import { LiveRunPanel } from '../components/LiveRunPanel'
@@ -13,11 +12,7 @@ export function Dashboard() {
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
   const [filter, setFilter] = useState('')
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['objects'],
-    queryFn: api.getObjects,
-    refetchInterval: 30_000,
-  })
+  const { data, isLoading, error } = useObjects()
 
   if (isLoading) return <Spinner />
   if (error) return <ErrorMessage message={String(error)} />

@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .settings import get_settings
-from .routers import library, objects, runs, lineage, contracts, incidents, proposals, stream
+from .routers import library, objects, runs, lineage, contracts, incidents, proposals, stream, checks
 
 
 def create_app() -> FastAPI:
@@ -58,7 +58,8 @@ def create_app() -> FastAPI:
         )
 
     for router in [library.router, objects.router, runs.router, lineage.router,
-                   contracts.router, incidents.router, proposals.router, stream.router]:
+                   contracts.router, incidents.router, proposals.router, stream.router,
+                   checks.router]:
         app.include_router(router)
 
     @app.get("/api/health")

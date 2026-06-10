@@ -1,15 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { api } from '../api/client'
+import { useLineage } from '@/api/lineage'
 import { Spinner } from '../components/Spinner'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { t } from '../i18n/de'
 
 export function CoverageMap() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['lineage-graph'],
-    queryFn: api.getLineageGraph,
-  })
+  const { data, isLoading, error } = useLineage()
 
   if (isLoading) return <Spinner />
   if (error) return <ErrorMessage message={String(error)} />
@@ -17,7 +13,7 @@ export function CoverageMap() {
   const nodes = data?.nodes ?? []
   const covered = nodes.filter(n => n.has_contract).length
   const uncovered = nodes.filter(n => !n.has_contract).length
-  const staleWarning = data?.extract_age_seconds && data.extract_age_seconds > 3600
+  const staleWarning = false // extract_age_seconds not in current API response
 
   return (
     <div className="p-6">
@@ -25,7 +21,7 @@ export function CoverageMap() {
         <h1 className="text-xl font-semibold">{t.coverage}</h1>
         {staleWarning && (
           <span className="text-xs bg-yellow-900 text-yellow-300 border border-yellow-700 rounded px-2 py-1">
-            ⚠ Extrakt veraltet ({Math.round(data!.extract_age_seconds! / 3600)}h)
+            ⚠ Extrakt veraltet
           </span>
         )}
       </div>
@@ -63,14 +59,14 @@ export function CoverageMap() {
             </thead>
             <tbody>
               {nodes.map(n => {
-                const name = n.id || n.technicalName || ''
+                const name = n.label ?? n.id ?? ''
                 return (
-                  <tr key={name} className="border-b border-gray-900 hover:bg-gray-900/50">
+                  <tr key={n.id} className="border-b border-gray-900 hover:bg-gray-900/50">
                     <td className="p-3 font-mono text-xs">{name}</td>
                     <td className="p-3 text-xs text-gray-400">{n.layer ?? '—'}</td>
                     <td className="p-3">
                       <span className={n.has_contract ? 'text-green-400' : 'text-yellow-400'}>
-                        {n.coverage}
+                        {n.coverage_flag ?? (n.has_contract ? '●' : '○')}
                       </span>
                     </td>
                     <td className="p-3 text-xs">
