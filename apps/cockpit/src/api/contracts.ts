@@ -22,3 +22,27 @@ export const useCompileContract = (id: string) =>
   useMutation({
     mutationFn: () => api.post(`/contracts/${id}/compile`).then(r => r.data),
   });
+
+export const useCompileContractDryRun = (id: string) =>
+  useMutation({
+    mutationFn: () => api.post(`/contracts/${id}/compile?dry_run=true`).then(r => r.data),
+  });
+
+export const useDryRunChecks = (dataset: string) =>
+  useMutation({
+    mutationFn: (body: { environment?: string } = {}) =>
+      api.post(`/checks/${dataset}/dry-run`, body).then(r => r.data),
+  });
+
+export const useRevertChecks = (dataset: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post(`/checks/${dataset}/revert`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contracts'] }),
+  });
+};
+
+export const useExportBdc = (product: string) =>
+  useMutation({
+    mutationFn: () => api.post(`/contracts/${product}/export/bdc`).then(r => r.data),
+  });

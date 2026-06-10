@@ -11,7 +11,6 @@ const G1_POLICY = [
 
 export default function Governance() {
   const { data: objects = [] } = useObjects();
-  const withContract = objects.filter(o => o.has_contract);
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>

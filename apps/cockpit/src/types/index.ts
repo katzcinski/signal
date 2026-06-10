@@ -107,10 +107,16 @@ export interface Contract {
   dataset: string;
   schema?: string;
   owned_by: string;
+  owners?: string[];
   lifecycle: Lifecycle;
   version: string;
   description?: string;
   guarantees?: ContractGuarantees;
+}
+
+export interface ContractOut extends Contract {
+  compliance?: string | null;
+  updated_at?: string;
 }
 
 // ---- Lineage ----
@@ -120,6 +126,11 @@ export interface LineageNode {
   layer: number;
   family: Family;
   space: string;
+  // Coverage annotation fields (from /api/lineage)
+  coverage_flag?: '●' | '◐' | '▲' | '○';
+  dq_status?: string;
+  has_contract?: boolean;
+  last_run?: string;
 }
 
 export interface LineageEdge {
@@ -132,6 +143,7 @@ export interface LineageEdge {
 export interface LineageGraph {
   nodes: LineageNode[];
   edges: LineageEdge[];
+  extract_age?: string;
 }
 
 // ---- Incidents ----

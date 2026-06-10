@@ -17,7 +17,7 @@ interface SSEState {
 
 let es: EventSource | null = null;
 
-export const useSseStore = create<SSEState>((set, get) => ({
+export const useSseStore = create<SSEState>((set, _get) => ({
   liveRuns: {},
   connected: false,
 
