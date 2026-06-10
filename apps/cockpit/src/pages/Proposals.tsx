@@ -1,4 +1,5 @@
 import { useProposals, useProposalAction } from '@/api/proposals';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import type { Proposal } from '@/types';
 
 function ConfidenceBar({ value }: { value: number }) {
@@ -47,7 +48,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
         </div>
         <div>
           <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>Proposed</div>
-          <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--qual)' }}>
+          <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--status-ok)' }}>
             {proposal.proposed_expect}
           </code>
         </div>
@@ -76,9 +77,9 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
 
       <div style={{ fontSize: 11, color: 'var(--fg-3)', fontStyle: 'italic' }}>{proposal.rationale}</div>
 
-      {proposal.status === 'pending' && (
+      {proposal.status === 'open' && (
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => act('accept')} style={{ flex: 1, background: 'var(--qual)22', border: '1px solid var(--qual)', color: 'var(--qual)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={() => act('accept')} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
             Accept
           </button>
           <button onClick={() => act('snooze')} style={{ flex: 1, background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
@@ -94,16 +95,17 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
 }
 
 export default function Proposals() {
-  const { data: proposals = [], isLoading } = useProposals();
-  const pending = proposals.filter(p => p.status === 'pending');
-  const others  = proposals.filter(p => p.status !== 'pending');
+  const { data: proposals = [], isLoading, isError, refetch } = useProposals();
+  const pending = proposals.filter(p => p.status === 'open');
+  const others  = proposals.filter(p => p.status !== 'open');
 
   if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>Loading…</div>;
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Proposals</h1>
-      {proposals.length === 0 && (
+      {isError && <ErrorBanner onRetry={() => refetch()} />}
+      {!isError && proposals.length === 0 && (
         <div style={{ color: 'var(--fg-3)', padding: 40, textAlign: 'center' }}>
           No proposals yet — run checks on enough datasets to generate suggestions.
         </div>

@@ -20,6 +20,10 @@ class CheckDef:
     type: str = ""
     unit: str = ""
     owned_by: str = "platform"
+    # [PII-GATE] WS0-6: Diagnostik nur je Check mit Spalten-Allowlist.
+    # Default off — ohne enabled+Allowlist verlassen keine Rohzeilen HANA.
+    diagnostics_enabled: bool = False
+    diagnostics_columns: list[str] = field(default_factory=list)
 
 
 @dataclass

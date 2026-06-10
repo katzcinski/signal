@@ -1,9 +1,14 @@
+import { useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useObject, useObjectRuns, useTriggerRun } from '@/api/objects';
 import { useRun } from '@/api/runs';
 import { useContract } from '@/api/contracts';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { CheckStatusCell } from '@/components/ui/StatePill';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { FamilyTag } from '@/components/ui/FamilyTag';
+import { LiveRunPanel } from '@/components/LiveRunPanel';
 import { Table, type ColDef } from '@/components/ui/Table';
 import type { CheckResult, RunListItem } from '@/types';
 
@@ -15,18 +20,34 @@ export default function ObjectDetail() {
   const tab = (sp.get('tab') ?? 'checks') as Tab;
   const setTab = (t: Tab) => setSp({ tab: t });
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
-  const { data: obj, isLoading } = useObject(id);
+  // All hooks run unconditionally — no early return may come before them.
+  const { data: obj, isLoading, isError, refetch } = useObject(id);
   const { data: runs = [] } = useObjectRuns(id);
   const { data: contract } = useContract(id);
   const trigger = useTriggerRun(id);
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>Loading…</div>;
-  if (!obj) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>Object not found</div>;
-
-  const latestRun = runs[0];
+  const latestRun: RunListItem | undefined = runs[0];
   const { data: latestRunDetail } = useRun(latestRun?.run_id ?? '');
   const results: CheckResult[] = latestRunDetail?.results ?? [];
+
+  const isRunning = latestRun?.run_state === 'running' || latestRunDetail?.run_state === 'running';
+
+  // When the in-flight run completes, refresh object status + run list.
+  const runState = latestRunDetail?.run_state;
+  const prevRunState = useRef(runState);
+  useEffect(() => {
+    if (prevRunState.current === 'running' && runState && runState !== 'running') {
+      qc.invalidateQueries({ queryKey: ['objects', id] });
+      qc.invalidateQueries({ queryKey: ['objects', id, 'runs'] });
+    }
+    prevRunState.current = runState;
+  }, [runState, id, qc]);
+
+  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>Loading…</div>;
+  if (isError) return <div style={{ maxWidth: 1100, margin: '0 auto' }}><ErrorBanner onRetry={() => refetch()} /></div>;
+  if (!obj) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>Object not found</div>;
 
   const TAB_STYLE = (t: Tab) => ({
     padding: '8px 16px', border: 'none', background: 'none',
@@ -49,7 +70,7 @@ export default function ObjectDetail() {
 
   const checkColumns: ColDef<CheckResult>[] = [
     { key: 'name', header: 'Check', mono: true, render: c => c.name },
-    { key: 'status', header: 'Status', render: c => <StatusPill status={c.passed ? 'pass' : c.severity} size="sm" /> },
+    { key: 'status', header: 'Status', render: c => <CheckStatusCell state={c.state} passed={c.passed} severity={c.severity} /> },
     { key: 'expect', header: 'Expect', mono: true, render: c => c.expect },
     { key: 'actual', header: 'Actual', mono: true, render: c => c.actual_value ?? '—' },
     { key: 'ms', header: 'ms', mono: true, render: c => String(c.duration_ms) },
@@ -70,13 +91,13 @@ export default function ObjectDetail() {
         <div style={{ flex: 1 }} />
         <button
           onClick={() => trigger.mutate()}
-          disabled={trigger.isPending}
+          disabled={trigger.isPending || isRunning}
           style={{
             background: 'var(--cont)', color: '#fff', border: 'none',
             borderRadius: 5, padding: '7px 16px', fontSize: 13, cursor: 'pointer',
           }}
         >
-          {trigger.isPending ? 'Running…' : 'Run Now'}
+          {trigger.isPending || isRunning ? 'Running…' : 'Run Now'}
         </button>
       </div>
 
@@ -118,6 +139,10 @@ export default function ObjectDetail() {
             See full lineage on the <Link to="/lineage" style={{ color: 'var(--cont)' }}>Lineage Map</Link>.
           </p>
         </div>
+      )}
+
+      {latestRun && (
+        <LiveRunPanel runId={latestRun.run_id} dataset={latestRun.dataset} running={isRunning} />
       )}
     </div>
   );

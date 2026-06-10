@@ -25,10 +25,43 @@ const COVERAGE_LABEL: Record<string, string> = {
 
 const LAYERS = ['Landing', 'Harmonization', 'Product'];
 
-// Positions cache key based on node count
-function cacheKey(nodes: LineageNode[]) {
-  return `lineage-pos-n${nodes.length}`;
+// Cytoscape's canvas renderer cannot resolve `var(--x)` — resolve the CSS
+// variables to concrete values once and feed hex colors into the stylesheet.
+interface ResolvedTheme {
+  bg2: string; fg: string; fg3: string; line2: string; fontMono: string;
+  coverage: Record<string, string>;
 }
+let resolvedTheme: ResolvedTheme | null = null;
+function resolveTheme(): ResolvedTheme {
+  if (resolvedTheme) return resolvedTheme;
+  const styles = getComputedStyle(document.documentElement);
+  const cssVar = (name: string, fallback: string) => styles.getPropertyValue(name).trim() || fallback;
+  resolvedTheme = {
+    bg2: cssVar('--bg-2', '#1A1F27'),
+    fg: cssVar('--fg', '#E7EBF2'),
+    fg3: cssVar('--fg-3', '#5E6877'),
+    line2: cssVar('--line-2', '#313945'),
+    fontMono: cssVar('--font-mono', "'JetBrains Mono', monospace"),
+    coverage: {
+      '●': cssVar('--status-ok', '#3FB07A'),
+      '◐': cssVar('--status-warn', '#E0B23E'),
+      '▲': cssVar('--status-fail', '#E2783C'),
+      '○': cssVar('--fg-3', '#5E6877'),
+    },
+  };
+  return resolvedTheme;
+}
+
+// Position cache: keyed by a stable hash of the sorted node IDs so a graph
+// with the same nodes restores positions, while any membership change misses.
+function cacheKey(nodes: LineageNode[]) {
+  const ids = nodes.map(n => n.id).sort().join('|');
+  let h = 0;
+  for (let i = 0; i < ids.length; i++) h = (h * 31 + ids.charCodeAt(i)) | 0;
+  return `lineage-pos-${(h >>> 0).toString(36)}`;
+}
+
+type PositionMap = Record<string, { x: number; y: number }>;
 
 interface SidePanelProps {
   node: LineageNode;
@@ -104,23 +137,19 @@ export default function LineageMap() {
   const applyFilters = useCallback(() => {
     const cy = cyInstance.current as Cytoscape.Core | null;
     if (!cy) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (cy.nodes() as any).show();
+    cy.nodes().style('display', 'element');
     if (layerFilter !== '') {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (cy.nodes().filter(n => String(n.data('layer')) !== layerFilter) as any).hide();
+      cy.nodes().filter(n => String(n.data('layer')) !== layerFilter).style('display', 'none');
     }
     if (flagFilter) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (cy.nodes().filter(n => n.data('coverage_flag') !== flagFilter) as any).hide();
+      cy.nodes().filter(n => n.data('coverage_flag') !== flagFilter).style('display', 'none');
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (cy.nodes().filter(n =>
+      cy.nodes().filter(n =>
         !String(n.data('label')).toLowerCase().includes(q) &&
         !String(n.data('id')).toLowerCase().includes(q)
-      ) as any).hide();
+      ).style('display', 'none');
     }
   }, [layerFilter, flagFilter, search]);
 
@@ -136,15 +165,18 @@ export default function LineageMap() {
     {
       const nodes: LineageNode[] = data.nodes ?? [];
       const edges: { id: string; source: string; target: string }[] = data.edges ?? [];
+      const theme = resolveTheme();
+      const key = cacheKey(nodes);
 
-      // Try restoring cached positions
-      let restoredElements: unknown = null;
+      // Try restoring cached positions (positions ONLY — element data always
+      // comes fresh from the API so coverage flags can never go stale).
+      let restoredPositions: PositionMap | null = null;
       try {
-        const cached = sessionStorage.getItem(cacheKey(nodes));
+        const cached = sessionStorage.getItem(key);
         if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed?.nodes?.length === nodes.length) {
-            restoredElements = parsed;
+          const parsed = JSON.parse(cached) as PositionMap;
+          if (parsed && nodes.every(n => parsed[n.id])) {
+            restoredPositions = parsed;
           }
         }
       } catch {
@@ -172,14 +204,14 @@ export default function LineageMap() {
           {
             selector: 'node',
             style: {
-              'background-color': 'var(--bg-2)' as string,
+              'background-color': theme.bg2,
               'border-width': 2,
               'border-color': (el: Cytoscape.NodeSingular) =>
-                COVERAGE_COLOR[el.data('coverage_flag') as string] ?? 'var(--fg-3)',
+                theme.coverage[el.data('coverage_flag') as string] ?? theme.fg3,
               'label': 'data(label)',
               'font-size': 10,
-              'font-family': 'var(--font-mono)',
-              'color': 'var(--fg)' as string,
+              'font-family': theme.fontMono,
+              'color': theme.fg,
               'text-valign': 'center',
               'text-halign': 'right',
               'text-margin-x': 6,
@@ -192,8 +224,8 @@ export default function LineageMap() {
             selector: 'edge',
             style: {
               'width': 1.5,
-              'line-color': 'var(--line-2)' as string,
-              'target-arrow-color': 'var(--line-2)' as string,
+              'line-color': theme.line2,
+              'target-arrow-color': theme.line2,
               'target-arrow-shape': 'triangle',
               'curve-style': 'bezier',
             } as Record<string, unknown>,
@@ -203,16 +235,30 @@ export default function LineageMap() {
             style: { 'border-width': 3 } as Record<string, unknown>,
           },
         ],
-        layout: restoredElements
+        layout: restoredPositions
           ? { name: 'preset' }
           : { name: 'dagre', rankDir: 'LR', nodeSep: 60, rankSep: 120, padding: 40 } as unknown as { name: string },
         userZoomingEnabled: true,
         userPanningEnabled: true,
       });
 
-      if (restoredElements) {
-        cy.json({ elements: restoredElements as Cytoscape.ElementsDefinition });
+      if (restoredPositions) {
+        // Apply cached positions only — never replace element data.
+        for (const [nodeId, pos] of Object.entries(restoredPositions)) {
+          cy.getElementById(nodeId).position(pos);
+        }
+        cy.fit(undefined, 40);
       }
+
+      const savePositions = () => {
+        try {
+          const positions: PositionMap = {};
+          cy.nodes().forEach(n => { positions[n.id()] = { ...n.position() }; });
+          sessionStorage.setItem(key, JSON.stringify(positions));
+        } catch {
+          // ignore quota errors
+        }
+      };
 
       // Hide labels at low zoom
       cy.on('zoom', () => {
@@ -221,15 +267,9 @@ export default function LineageMap() {
         (cy.nodes() as any).style('label', z < 0.5 ? '' : 'data(label)');
       });
 
-      // Save positions after layout
-      cy.on('layoutstop', () => {
-        try {
-          const elements = cy.json().elements;
-          sessionStorage.setItem(cacheKey(nodes), JSON.stringify(elements));
-        } catch {
-          // ignore quota errors
-        }
-      });
+      // Save positions after layout and after manual node drags
+      cy.on('layoutstop', savePositions);
+      cy.on('dragfree', 'node', savePositions);
 
       // Node click → side panel
       cy.on('tap', 'node', (evt: unknown) => {

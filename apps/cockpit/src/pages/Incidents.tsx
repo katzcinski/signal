@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/api/incidents';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { StatusDot } from '@/components/ui/StatusDot';
+import { StatePill } from '@/components/ui/StatePill';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import type { Incident } from '@/types';
 
 export default function Incidents() {
-  const { data: incidents = [], isLoading } = useIncidents();
+  const { data: incidents = [], isLoading, isError, refetch } = useIncidents();
   const [severityFilter, setSeverityFilter] = useState('');
   const navigate = useNavigate();
 
@@ -16,8 +18,12 @@ export default function Incidents() {
     { key: 'sev', header: '', render: i => <StatusDot status={i.severity} size={10} />, width: 32 },
     { key: 'check', header: 'Check', mono: true, render: i => i.check_name },
     { key: 'dataset', header: 'Dataset', mono: true, render: i => i.dataset },
+    {
+      key: 'state', header: 'State',
+      render: i => i.state && i.state !== 'executed' ? <StatePill state={i.state} size="sm" /> : null,
+    },
     { key: 'actual', header: 'Actual', mono: true, render: i => i.actual_value ?? '—' },
-    { key: 'expected', header: 'Expected', mono: true, render: i => i.expected },
+    { key: 'expected', header: 'Expected', mono: true, render: i => i.expect_expr },
     { key: 'when', header: 'When', mono: true, render: i => new Date(i.started_at).toLocaleString() },
     {
       key: 'actions', header: '',
@@ -52,15 +58,18 @@ export default function Incidents() {
           <option value="warn">Warn</option>
         </select>
       </div>
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
-        <Table
-          columns={columns}
-          rows={rows}
-          rowKey={i => i.id}
-          onRowClick={i => navigate(`/objects/${i.dataset}`)}
-          empty="No incidents — all checks passing"
-        />
-      </div>
+      {isError && <ErrorBanner onRetry={() => refetch()} />}
+      {!isError && (
+        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+          <Table
+            columns={columns}
+            rows={rows}
+            rowKey={i => i.id}
+            onRowClick={i => navigate(`/objects/${i.dataset}`)}
+            empty="No incidents — all checks passing"
+          />
+        </div>
+      )}
     </div>
   );
 }

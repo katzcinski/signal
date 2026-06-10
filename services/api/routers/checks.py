@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Body, HTTPException
 
 from ..auth.provider import PrincipalDep
-from ..deps import StoreDep
+from ..deps import StoreDep, get_environment
 from ..settings import get_settings
 
 router = APIRouter(prefix="/api/checks", tags=["checks"])
@@ -23,20 +23,25 @@ def dry_run_checks(
 ):
     """Compile contract for dataset and run checks without persisting results.
 
-    Body: { "environment": "<env-name>" }
-    Returns the RunSummary dict or a compile-only preview when no DB connection
-    is configured for the environment.
+    Body: { "environment": "<env-name>", "execution_mode": "auto|batch|isolated" }
+    Ohne Environment: compile-only preview. Ergebnisse werden NIE persistiert.
     """
     import yaml
-    from dq_core.contract.compiler import compile_contract as _compile
-    from dq_core.engine.check_engine import dataset_config_to_yaml
+    from dq_core.contract.compiler import bind_schema, compile_contract as _compile, CompileError
+    from dq_core.contract.validator import validate_contract
+    from dq_core.engine.check_engine import dataset_config_to_yaml, run_checks
+
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Dry-runs require steward role or higher.")
 
     settings = get_settings()
     contracts_dir = Path(settings.contracts_dir)
 
     # Find the contract whose dataset matches (product slug or dataset name)
     contract_data = None
-    for path in contracts_dir.glob("*.yml"):
+    for path in sorted(contracts_dir.glob("*.y*ml")):
+        if path.name.endswith(".active.yml"):
+            continue
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         if data.get("dataset") == dataset or path.stem == dataset:
             contract_data = data
@@ -45,46 +50,26 @@ def dry_run_checks(
     if not contract_data:
         raise HTTPException(status_code=404, detail=f"No contract found for dataset {dataset!r}")
 
-    environment = body.get("environment", "")
-    schema_override = ""
+    # [CONTRACT-SQL-FREE] G1 gilt auch für den Disk-Pfad (S-3).
+    errors = validate_contract(contract_data)
+    if errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Contract validation failed (Gate G1)", "errors": errors},
+        )
 
-    # Resolve schema from environments file if provided
-    if environment and settings.environments_file:
-        env_path = Path(settings.environments_file)
-        if env_path.exists():
-            import yaml as _yaml
-            envs = _yaml.safe_load(env_path.read_text()) or {}
-            env_cfg = envs.get(environment, {})
-            schema_override = env_cfg.get("schema", "")
-
-    config = _compile(contract_data, schema_override=schema_override)
-
-    # Attempt a real run if a DB connection can be established; otherwise
-    # return a compile-only preview (no connection = stub/local mode).
     try:
-        from dq_core.connect.db_connection import DBConnection
-        if environment and settings.environments_file:
-            env_path = Path(settings.environments_file)
-            if env_path.exists():
-                import yaml as _yaml
-                envs = _yaml.safe_load(env_path.read_text()) or {}
-                env_cfg = envs.get(environment, {})
-                conn = DBConnection(
-                    host=env_cfg.get("host", ""),
-                    port=int(env_cfg.get("port", 443)),
-                    user=env_cfg.get("user", ""),
-                    password=env_cfg.get("password", ""),
-                    schema=schema_override,
-                )
-            else:
-                conn = None
-        else:
-            conn = None
-    except Exception:
-        conn = None
+        config = _compile(contract_data)
+    except CompileError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
-    if conn is None:
-        # No connection: return compile preview only
+    environment = body.get("environment", "")
+    env_cfg = get_environment(environment) if environment else None
+    if environment and env_cfg is None:
+        raise HTTPException(status_code=422, detail=f"Unknown environment {environment!r}")
+
+    if env_cfg is None:
+        # No connection: return compile preview only ('{schema}' bleibt ungebunden, G2)
         return {
             "mode": "compile_only",
             "dataset": config.dataset,
@@ -94,19 +79,35 @@ def dry_run_checks(
             "message": "No environment configured — compile-only preview. Provide 'environment' in body to run against HANA.",
         }
 
-    # Run without persisting (store=None)
-    from dq_core.engine.check_engine import CheckEngine
-    import uuid
-    from datetime import datetime, timezone
+    from dq_core.connect.db_connection import get_connection
 
-    run_id = str(uuid.uuid4())
-    engine = CheckEngine(connection=conn, store=None)
-    summary = engine.run_dataset(config, run_id=run_id)
+    schema = env_cfg.get("schema", "")
+    bind_schema(config, schema)  # [SCHEMA-MAP]
+    try:
+        conn = get_connection(
+            host=env_cfg.get("host", ""),
+            port=int(env_cfg.get("port", 443)),
+            user=env_cfg.get("user", ""),
+            password=env_cfg.get("password", ""),
+            schema=schema,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
 
     try:
-        conn.close()
-    except Exception:
-        pass
+        # results_db=None → nichts wird persistiert (WS3-2)
+        summary = run_checks(
+            config,
+            conn,
+            results_db=None,
+            execution_mode=str(body.get("execution_mode", "auto")),
+            triggered_by=principal.sub,
+        )
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
     return {
         "mode": "executed",
@@ -140,7 +141,10 @@ def revert_checks(
     dataset: str,
     principal: PrincipalDep,
 ):
-    """Revert checks/{dataset}/checks.yml to the previous git version (F7)."""
+    """[AUTHZ] Revert checks/{dataset}/checks.yml to the previous git version (F7)."""
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Revert requires steward role or higher.")
+
     settings = get_settings()
     checks_path = Path(settings.checks_dir) / dataset / "checks.yml"
 
@@ -155,7 +159,7 @@ def revert_checks(
             import git
 
             repo = git.Repo(search_parent_directories=True)
-            rel_path = checks_path.relative_to(repo.working_tree_dir)
+            rel_path = checks_path.resolve().relative_to(repo.working_tree_dir)
 
             # Get the hash of the previous version
             commits = list(repo.iter_commits(paths=str(rel_path), max_count=2))
@@ -169,11 +173,11 @@ def revert_checks(
             # Restore file from previous commit
             repo.git.checkout(str(prev_commit.hexsha), "--", str(rel_path))
 
-            # Commit the revert
-            repo.index.add([str(checks_path)])
+            # Commit the revert — explizit nur diese Datei stagen (S-12)
+            repo.index.add([str(rel_path)])
             revert_commit = repo.index.commit(
                 f"revert: restore checks/{dataset}/checks.yml to {prev_commit.hexsha[:8]}",
-                author=git.Actor(principal.name, principal.sub or ""),
+                author=git.Actor(principal.name, f"{principal.sub}@dq-cockpit"),
             )
 
             return {

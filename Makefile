@@ -1,8 +1,12 @@
 .PHONY: dev-backend dev-frontend test seed install lint
 
 install:
-	pip install fastapi pydantic pydantic-settings uvicorn pyyaml httpx pytest pytest-cov
+	pip install fastapi pydantic pydantic-settings uvicorn pyyaml httpx pytest pytest-cov jsonschema "python-jose[cryptography]" gitpython
 	cd apps/cockpit && npm install
+
+# S5: Bind-Host kommt aus den Settings — uvicorn wird explizit darauf gebunden,
+# damit die fail-closed-Prüfung in main.py den realen Bind beschreibt.
+BIND_HOST ?= 127.0.0.1
 
 dev-backend:
 	SQLITE_DB=signal.db \
@@ -10,7 +14,8 @@ dev-backend:
 	LINEAGE_FILE=data/lineage.json \
 	CONTRACTS_DIR=contracts \
 	CHECKS_DIR=checks \
-	uvicorn services.api.main:app --reload --port 8000
+	BIND_HOST=$(BIND_HOST) \
+	uvicorn services.api.main:app --reload --host $(BIND_HOST) --port 8000
 
 dev-frontend:
 	cd apps/cockpit && npm run dev

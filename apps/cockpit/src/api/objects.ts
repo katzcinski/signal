@@ -20,6 +20,8 @@ export const useObjectRuns = (id: string) =>
     queryKey: ['objects', id, 'runs'],
     queryFn: () => api.get(`/objects/${id}/runs`).then(r => r.data),
     enabled: !!id,
+    // Poll while the latest run is in-flight so the list/status updates live.
+    refetchInterval: (query) => query.state.data?.[0]?.run_state === 'running' ? 2000 : false,
   });
 
 export const useTriggerRun = (id: string) => {

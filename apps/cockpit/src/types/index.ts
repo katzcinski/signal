@@ -2,8 +2,10 @@ export type Family = 'observability' | 'quality' | 'contract';
 export type Lifecycle = 'draft' | 'active' | 'deprecated';
 export type Severity = 'critical' | 'fail' | 'warn';
 export type OverallStatus = 'pass' | 'fail' | 'warn' | 'critical' | 'unknown';
-export type RunState = 'running' | 'finished' | 'failed';
+export type RunState = 'running' | 'finished' | 'error';
 export type CovFlag = 'covered' | 'partial' | 'gap' | 'out_of_scope';
+// G6 gating states: anything other than 'executed' must NOT render as pass/fail.
+export type CheckState = 'executed' | 'skipped_stale' | 'skipped_dependency' | 'downgraded' | 'error';
 
 // ---- Inventory ----
 export interface InventoryObject {
@@ -63,7 +65,7 @@ export interface CheckResult {
   actual_value?: string;
   error?: string;
   duration_ms: number;
-  state: string;
+  state: CheckState;
 }
 
 export interface RunSummary {
@@ -154,14 +156,17 @@ export interface LineageGraph {
 
 // ---- Incidents ----
 export interface Incident {
-  id: string;
-  dataset: string;
+  id: string;                    // "<run_id>:<check_name>" (backend-provided)
   check_name: string;
+  dataset: string;
   severity: Severity;
+  expect_expr: string;
   actual_value?: string;
-  expected: string;
-  started_at: string;
+  error_message?: string;
+  state: CheckState;
   run_id: string;
+  started_at: string;
+  schema_name: string;
 }
 
 // ---- Proposals ----
@@ -183,12 +188,20 @@ export interface Proposal {
   proposed_expect: string;
   rationale: string;
   confidence: number;
-  status: 'pending' | 'accepted' | 'rejected' | 'snoozed';
+  status: 'open' | 'accepted' | 'rejected' | 'snoozed';
   stats?: ProposalStats;
+}
+
+// ---- Run progress events (polled via /api/runs/{id}/events) ----
+export interface RunEvent {
+  ts: string;
+  line: string;
 }
 
 // ---- SSE Events ----
 export type SSEEvent =
+  | { type: 'connected' }
   | { type: 'run_started'; run_id: string; dataset: string }
-  | { type: 'check_result'; run_id: string; result: CheckResult }
-  | { type: 'run_finished'; run_id: string; summary: RunSummary };
+  | { type: 'progress'; run_id: string; ts: string; line: string }
+  | { type: 'run_finished'; run_id: string; overall_status: OverallStatus }
+  | { type: 'run_error'; run_id: string; error: string };

@@ -195,7 +195,7 @@ CSN-Interop- + ORD-Fragment-Generierung gegen die aktuellen Spezifikationen (csn
 6. **Virtualisierte Tabelle** (`@tanstack/react-virtual` im generischen `Table`) + Spaltensortierung — Ziel >500 Objekte.
 7. **Density-Toggle** (compact/comfortable) auf Token-Basis.
 8. **Lineage-Map**: Layer-Swimlanes, Root-Cause-Modus (`predecessors()` highlighten), Legende, Form-Redundanz der Coverage-Badges (Carbon).
-9. **Horizon-Anmutung**: semantische Farb-Logik/Abstände an Fiori Evening Horizon anlehnen (Token-Datei, kein UI5-Umbau).
+9. ~~Horizon-Anmutung~~ — **Entscheidung 2026-06-10: kein Fiori-Alignment.** Die UI bleibt bei der eigenen modernen Dark-Token-Palette (Linear/Grafana-Richtung); konsolidiert wird nur die Doppelung Tailwind-Palette ↔ CSS-Vars (eine Quelle). WCAG-Kontrast und Carbon-Redundanz-Regel (Punkt 8) gelten unabhängig davon.
 
 ---
 

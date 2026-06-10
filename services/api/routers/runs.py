@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from ..deps import StoreDep
 from ..schemas.run_schemas import RunSummaryOut, RunListItem, CheckResultOut
@@ -38,6 +38,7 @@ def _run_out(run: dict) -> RunSummaryOut:
         warnings=run.get("warning_checks", 0) or 0,
         triggered_by=run.get("triggered_by", "manual"),
         contract_version=run.get("contract_version", "") or "",
+        contract_hash=run.get("contract_hash", "") or "",
         actor=run.get("actor", "") or "",
         run_state=run.get("run_state", "finished"),
         results=[_result_out(r) for r in run.get("results", [])],
@@ -45,8 +46,12 @@ def _run_out(run: dict) -> RunSummaryOut:
 
 
 @router.get("", response_model=list[RunListItem])
-def list_runs(store: StoreDep = ...):
-    runs = store.get_all_runs(limit=200)
+def list_runs(
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    store: StoreDep = ...,
+):
+    runs = store.get_all_runs(limit=limit + offset)[offset:]
     return [RunListItem(**{k: v for k, v in r.items() if k in RunListItem.model_fields}) for r in runs]
 
 

@@ -5,10 +5,11 @@ import { Table, type ColDef } from '@/components/ui/Table';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { FamilyTag } from '@/components/ui/FamilyTag';
 import { CovFlag } from '@/components/ui/CovFlag';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import type { ObjectSummary } from '@/types';
 
 export default function ObjectCatalog() {
-  const { data: objects = [], isLoading } = useObjects();
+  const { data: objects = [], isLoading, isError, refetch } = useObjects();
   const [spaceFilter, setSpaceFilter] = useState('');
   const navigate = useNavigate();
 
@@ -69,15 +70,18 @@ export default function ObjectCatalog() {
           {spaces.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
-        <Table
-          columns={columns}
-          rows={rows}
-          rowKey={o => o.id}
-          onRowClick={o => navigate(`/objects/${o.id}`)}
-          empty="No objects found"
-        />
-      </div>
+      {isError && <ErrorBanner onRetry={() => refetch()} />}
+      {!isError && (
+        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+          <Table
+            columns={columns}
+            rows={rows}
+            rowKey={o => o.id}
+            onRowClick={o => navigate(`/objects/${o.id}`)}
+            empty="No objects found"
+          />
+        </div>
+      )}
     </div>
   );
 }

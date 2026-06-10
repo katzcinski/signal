@@ -2,52 +2,60 @@
 """CLI for running DQ checks. Imports dq_core (framework-free)."""
 import argparse
 import json
-import sys
 import os
+import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages"))
 
 
 def main():
     parser = argparse.ArgumentParser(description="DQ Check Runner")
-    parser.add_argument("--dataset", required=True, help="Dataset name")
-    parser.add_argument("--schema", required=True, help="Schema name [SCHEMA-MAP]")
+    parser.add_argument("--schema", required=True, help="Schema name [SCHEMA-MAP] — bindet '{schema}'")
     parser.add_argument("--checks", required=True, help="Path to checks YAML file")
     parser.add_argument("--db", default="dq_results.db", help="SQLite DB path")
     parser.add_argument("--dry-run", action="store_true", help="Do not persist results")
+    parser.add_argument("--mock", action="store_true", help="Run against MockConnection (no HANA)")
+    parser.add_argument("--host", default="", help="HANA host")
+    parser.add_argument("--port", type=int, default=443, help="HANA port")
+    parser.add_argument("--user", default=os.environ.get("HANA_USER", ""))
+    parser.add_argument("--password", default=os.environ.get("HANA_PASSWORD", ""))
+    parser.add_argument("--execution-mode", choices=["auto", "batch", "isolated"], default="auto")
     parser.add_argument("--output", choices=["text", "json"], default="text")
     args = parser.parse_args()
 
-    import yaml
-    from dq_core.engine.models import CheckDef, DatasetConfig
-    from dq_core.engine.check_engine import CheckEngine
+    from dq_core.connect.db_connection import MockConnection, get_connection
+    from dq_core.contract.compiler import bind_schema
+    from dq_core.engine.check_engine import load_dataset_config, run_checks
 
-    with open(args.checks) as f:
-        data = yaml.safe_load(f) or {}
+    config = load_dataset_config(Path(args.checks))
+    bind_schema(config, args.schema)  # [SCHEMA-MAP] Laufzeit-Bindung (G2)
 
-    checks = [
-        CheckDef(
-            name=c["name"], sql=c.get("sql", ""), expect=c.get("expect", ">= 0"),
-            severity=c.get("severity", "fail"), enabled=c.get("enabled", True),
-            type=c.get("type", ""), description=c.get("description", ""),
+    if args.mock:
+        conn = MockConnection()
+    else:
+        if not args.host:
+            print("FEHLER: --host fehlt (oder nutze --mock für einen Lauf ohne HANA).", file=sys.stderr)
+            sys.exit(2)
+        conn = get_connection(
+            host=args.host, port=args.port,
+            user=args.user, password=args.password, schema=args.schema,
         )
-        for c in data.get("checks", [])
-    ]
 
-    dataset_config = DatasetConfig(dataset=args.dataset, schema=args.schema, checks=checks)
-
-    store = None
-    if not args.dry_run:
-        from dq_core.store.sqlite_store import SQLiteStore
-        store = SQLiteStore(db_path=args.db)
-
-    def on_progress(run_id, check_name, result):
-        status = "PASS" if result.passed else "FAIL"
-        print(f"  [{status}] {check_name}: {result.actual_value}")
-
-    # NOTE: connection=None means checks will fail — real usage requires a DBConnection
-    engine = CheckEngine(connection=None, store=store, on_progress=on_progress)
-    summary = engine.run_dataset(dataset_config, triggered_by="cli")
+    try:
+        summary = run_checks(
+            config,
+            conn,
+            results_db=None if args.dry_run else Path(args.db),
+            on_progress=lambda line: print(line),
+            execution_mode=args.execution_mode,
+            triggered_by="cli",
+        )
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
     if args.output == "json":
         print(json.dumps({
@@ -61,9 +69,6 @@ def main():
         print(f"\nRun: {summary.run_id}")
         print(f"Status: {summary.overall_status.upper()}")
         print(f"Checks: {summary.passed}/{summary.total} passed")
-
-    if store:
-        store.close()
 
     sys.exit(0 if summary.overall_status in ("pass", "warn") else 1)
 

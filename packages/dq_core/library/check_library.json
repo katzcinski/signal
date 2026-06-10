@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "categories": [
     "Vollständigkeit",
     "Konsistenz",
@@ -56,6 +56,19 @@
       "example": "Erwartung \"= 0\" → Schlüssel ist eindeutig.",
       "sql_template": "SELECT COUNT(*) - COUNT(DISTINCT \"<SPALTE>\") FROM \"{schema}\".\"{dataset}\"",
       "params": [{ "token": "<SPALTE>", "label": "Schlüsselspalte", "hint": "Spalte, die eindeutig sein soll" }],
+      "default_expect": "= 0",
+      "default_severity": "critical",
+      "unit": ""
+    },
+    {
+      "id": "duplicate_composite",
+      "label": "Duplicates (Composite Key)",
+      "category": "Konsistenz",
+      "short": "Doppelte zusammengesetzte Schlüssel",
+      "help": "Differenz zwischen Gesamtzahl und eindeutigen Kombinationen mehrerer Schlüsselspalten. Der Schlüsselausdruck wird vom Compiler aus validierten Spaltennamen erzeugt.",
+      "example": "Erwartung \"= 0\" → Kombination (OrderID, ItemNo) ist eindeutig.",
+      "sql_template": "SELECT COUNT(*) - COUNT(DISTINCT <KEY_EXPR>) FROM \"{schema}\".\"{dataset}\"",
+      "params": [{ "token": "<KEY_EXPR>", "label": "Schlüsselausdruck", "hint": "Vom Compiler aus validierten Spalten erzeugte Konkatenation" }],
       "default_expect": "= 0",
       "default_severity": "critical",
       "unit": ""

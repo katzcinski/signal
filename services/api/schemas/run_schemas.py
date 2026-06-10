@@ -33,6 +33,7 @@ class RunSummaryOut(BaseModel):
     warnings: int = 0
     triggered_by: str = "manual"
     contract_version: str = ""
+    contract_hash: str = ""
     actor: str = ""
     run_state: str = "finished"
     results: list[CheckResultOut] = []

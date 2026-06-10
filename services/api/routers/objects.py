@@ -1,17 +1,19 @@
 from __future__ import annotations
 
+import hashlib
 import threading
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 
 from ..auth.provider import PrincipalDep
-from ..deps import StoreDep, get_inventory
+from ..deps import StoreDep, get_environment, get_inventory
 from ..schemas.object_schemas import ObjectDetailOut, ObjectOut
 from ..schemas.run_schemas import RunListItem, RunSummaryOut
-from ..sse import make_progress_callback, push_event
+from ..sse import make_progress_callback
 from ..settings import get_settings
 
 router = APIRouter(prefix="/api/objects", tags=["objects"])
@@ -158,17 +160,61 @@ def get_object_runs(object_id: str, store: StoreDep = ...):
     return [RunListItem(**{k: v for k, v in r.items() if k in RunListItem.model_fields}) for r in runs]
 
 
+@router.get("/{object_id}/checks/{check_name}/history")
+def get_check_history(
+    object_id: str,
+    check_name: str,
+    limit: int = Query(default=50, ge=1, le=500),
+    store: StoreDep = ...,
+):
+    """WS1-2: actual_value-Zeitreihe je Check — Sparkline- und Miner-Quelle."""
+    return store.get_check_history(object_id, check_name, limit=limit)
+
+
+class RunTriggerIn(BaseModel):
+    environment: str = ""
+    execution_mode: str = "auto"
+
+
+def _active_contract_for(object_id: str) -> tuple[str, str]:
+    """F3: (contract_version, contract_hash) des aktiven Contracts, sonst ('', '')."""
+    import yaml
+    from pathlib import Path
+    base = Path(get_settings().contracts_dir)
+    for ext in (".yaml", ".yml"):
+        path = base / f"{object_id}{ext}"
+        if path.exists():
+            content = path.read_text(encoding="utf-8")
+            data = yaml.safe_load(content) or {}
+            if data.get("lifecycle") == "active":
+                return (
+                    str(data.get("version", "")),
+                    hashlib.sha256(content.encode()).hexdigest()[:16],
+                )
+    return "", ""
+
+
 @router.post("/{object_id}/run", status_code=status.HTTP_202_ACCEPTED)
 def trigger_run(
     object_id: str,
     principal: PrincipalDep,
+    body: RunTriggerIn = Body(default=RunTriggerIn()),
     store: StoreDep = ...,
     inventory: list[dict] = Depends(get_inventory),
 ):
-    """Trigger a DQ run for an object. Returns run_id immediately (202). [ENGINE-FROZEN]"""
-    from dq_core.connect.db_connection import MockConnection
+    """Trigger a DQ run for an object. Returns run_id immediately (202). [ENGINE-FROZEN]
+
+    [AUTHZ] Runs lösen Last auf HANA aus — viewer darf nicht triggern.
+    [SCHEMA-MAP] '{schema}' aus kompilierten Checks wird HIER gebunden (G2):
+    aus dem Environment, sonst aus dem Inventar-Schema des Objekts.
+    """
+    from dq_core.connect.db_connection import MockConnection, get_connection
+    from dq_core.contract.compiler import bind_schema
     from dq_core.engine.check_engine import run_checks
-    from dq_core.engine.models import DatasetConfig
+    from dq_core.engine.models import DatasetConfig, RunSummary
+
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Triggering runs requires steward role or higher.")
 
     settings = get_settings()
 
@@ -179,20 +225,27 @@ def trigger_run(
     if not obj:
         raise HTTPException(status_code=404, detail=f"Object {object_id!r} not found")
 
-    # Check if already running (F2)
-    runs = store.get_runs(object_id, limit=1)
-    if runs and runs[0].get("run_state") == "running":
-        return {"run_id": runs[0]["run_id"], "status": "already_running"}
+    # Verbindung auflösen, BEVOR der Run registriert wird — fail-closed (S-13).
+    env_cfg = get_environment(body.environment) if body.environment else None
+    if body.environment and env_cfg is None:
+        raise HTTPException(status_code=422, detail=f"Unknown environment {body.environment!r}")
+    if env_cfg is None and not settings.allow_mock_connection:
+        raise HTTPException(
+            status_code=422,
+            detail="No environment given and ALLOW_MOCK_CONNECTION=false — runs require a configured environment.",
+        )
 
     run_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
+    contract_version, contract_hash = _active_contract_for(object_id)
+    resolved_schema = (env_cfg or {}).get("schema") or obj.get("schema") or "LOCAL"
 
-    # Mark run as started in store immediately (F2: registry in DB not memory)
-    from dq_core.engine.models import RunSummary
+    # F2: Registry im Store, Doppellauf-Schutz über partiellen Unique-Index —
+    # check-then-act-frei, auch über mehrere Worker.
     seed_summary = RunSummary(
         run_id=run_id,
         dataset=object_id,
-        schema=obj.get("schema", ""),
+        schema=resolved_schema,
         started_at=now,
         finished_at="",
         overall_status="pass",
@@ -203,49 +256,75 @@ def trigger_run(
         triggered_by=principal.sub,
         actor=principal.name,
         run_state="running",
+        contract_version=contract_version,
+        contract_hash=contract_hash,
     )
-    store.save_run(seed_summary)
-    push_event({"type": "run_started", "run_id": run_id, "dataset": object_id})
+    if not store.try_begin_run(seed_summary):
+        runs = store.get_runs(object_id, limit=5)
+        running = next((r for r in runs if r.get("run_state") == "running"), None)
+        return {"run_id": running["run_id"] if running else "", "status": "already_running"}
 
     def _run_thread():
+        conn = None
         try:
-            # Load compiled checks if available
             checks_path = _find_checks_file(object_id, settings)
             if checks_path and checks_path.exists():
                 from dq_core.engine.check_engine import load_dataset_config
                 config = load_dataset_config(checks_path)
             else:
-                config = DatasetConfig(dataset=object_id, schema=obj.get("schema", ""))
+                config = DatasetConfig(dataset=object_id, schema=resolved_schema)
 
-            conn = MockConnection()  # [SCHEMA-MAP] real HANA conn via get_connection() in prod
+            bind_schema(config, resolved_schema)  # [SCHEMA-MAP]
+
+            if env_cfg is not None:
+                conn = get_connection(
+                    host=env_cfg.get("host", ""),
+                    port=int(env_cfg.get("port", 443)),
+                    user=env_cfg.get("user", ""),
+                    password=env_cfg.get("password", ""),
+                    schema=resolved_schema,
+                )
+            else:
+                conn = MockConnection()  # explizit erlaubt via ALLOW_MOCK_CONNECTION
+
             callback = make_progress_callback(run_id, store)
             summary = run_checks(
                 config,
                 conn,
                 results_db=None,
                 on_progress=callback,
+                execution_mode=body.execution_mode,
                 triggered_by=principal.sub,
             )
             summary.run_id = run_id
             summary.run_state = "finished"
             summary.actor = principal.name
+            summary.contract_version = contract_version
+            summary.contract_hash = contract_hash
             store.save_run(summary)
 
             # WS2-5: compliance transition — breached on fail/critical, auto-recovery on green.
             # Only objects under an active contract carry a compliance state.
             if _contract_lifecycle_map().get(object_id) == "active":
                 from dq_core.contract.compliance import compute_compliance
-                store.set_compliance(
-                    object_id,
-                    summary.contract_version or "",
-                    compute_compliance(summary.results),
-                    run_id,
-                )
-
-            push_event({"type": "run_finished", "run_id": run_id, "overall_status": summary.overall_status})
-        except Exception as exc:
+                previous = store.get_compliance(object_id)
+                new_compliance = compute_compliance(summary.results)
+                store.set_compliance(object_id, contract_version, new_compliance, run_id)
+                # WS5-3: Webhook genau beim Übergang → breached (S-10 geschlossen).
+                if new_compliance == "breached" and (not previous or previous.get("compliance") != "breached"):
+                    from ..webhook import fire_webhook_async
+                    fire_webhook_async(
+                        object_id, new_compliance, run_id,
+                        settings.webhook_url, settings.webhook_allowlist,
+                    )
+        except Exception:
             store.set_run_state(run_id, "error", datetime.now(timezone.utc).isoformat())
-            push_event({"type": "run_error", "run_id": run_id, "error": str(exc)})
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     t = threading.Thread(target=_run_thread, daemon=True)
     t.start()

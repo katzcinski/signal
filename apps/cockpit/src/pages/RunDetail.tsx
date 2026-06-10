@@ -1,15 +1,26 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRun } from '@/api/runs';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { CheckStatusCell } from '@/components/ui/StatePill';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Table, type ColDef } from '@/components/ui/Table';
 import type { CheckResult } from '@/types';
 
+// CSV field escaping: double inner quotes, wrap in quotes, and neutralize
+// formula injection by prefixing =, +, -, @ with a single quote.
+function csvField(value: unknown): string {
+  let s = String(value ?? '').replace(/"/g, '""');
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  return `"${s}"`;
+}
+
 export default function RunDetail() {
   const { id = '' } = useParams();
-  const { data: run, isLoading } = useRun(id);
+  const { data: run, isLoading, isError, refetch } = useRun(id);
   const navigate = useNavigate();
 
   if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>Loading…</div>;
+  if (isError) return <div style={{ maxWidth: 1100, margin: '0 auto' }}><ErrorBanner onRetry={() => refetch()} /></div>;
   if (!run) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>Run not found</div>;
 
   const durationMs = run.started_at && run.finished_at
@@ -18,7 +29,7 @@ export default function RunDetail() {
 
   const columns: ColDef<CheckResult>[] = [
     { key: 'name', header: 'Check', mono: true, render: c => c.name },
-    { key: 'status', header: 'Status', render: c => <StatusPill status={c.passed ? 'pass' : c.severity} size="sm" /> },
+    { key: 'status', header: 'Status', render: c => <CheckStatusCell state={c.state} passed={c.passed} severity={c.severity} /> },
     { key: 'expect', header: 'Expect', mono: true, render: c => c.expect },
     { key: 'actual', header: 'Actual', mono: true, render: c => c.actual_value ?? '—' },
     { key: 'error', header: 'Error', render: c => c.error ? <span style={{ color: 'var(--status-fail)', fontSize: 11 }}>{c.error}</span> : null },
@@ -26,9 +37,11 @@ export default function RunDetail() {
   ];
 
   const downloadCSV = () => {
-    const header = 'name,passed,expect,actual_value,severity,duration_ms,error\n';
+    const header = 'name,state,passed,expect,actual_value,severity,duration_ms,error\n';
     const rows = run.results.map(r =>
-      `"${r.name}",${r.passed},"${r.expect}","${r.actual_value ?? ''}","${r.severity}",${r.duration_ms},"${r.error ?? ''}"`
+      [r.name, r.state, r.passed, r.expect, r.actual_value ?? '', r.severity, r.duration_ms, r.error ?? '']
+        .map(csvField)
+        .join(',')
     ).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

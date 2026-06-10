@@ -3,25 +3,43 @@ from __future__ import annotations
 
 from typing import Any
 
+# Heuristik für Key-Kandidaten, wenn das Inventar keinen Schlüssel deklariert.
+_KEY_HINTS = ("ID", "NO", "NR", "KEY", "CODE")
+_TS_HINTS = ("TS", "TIME", "DATE", "LOAD", "CHANGE")
 
-def seed_from_inventory(obj: dict[str, Any]) -> dict[str, Any]:
-    """Generate a draft contract dict from an inventory object."""
-    name = obj.get("technicalName") or obj.get("id") or obj.get("name") or ""
-    schema = obj.get("schema") or obj.get("schemaName") or ""
-    owned_by = obj.get("owned_by", "platform")
 
-    guarantees: dict[str, Any] = {}
-
-    # Schema — capture declared columns
-    columns = [
+def _column_names(obj: dict[str, Any]) -> list[str]:
+    return [
         c.get("name") or c.get("technicalName")
         for c in (obj.get("columns") or obj.get("properties") or [])
         if c.get("name") or c.get("technicalName")
     ]
+
+
+def _key_candidates(columns: list[str]) -> list[str]:
+    """Deterministische Key-Heuristik: Spalten mit ID-artigen Suffixen,
+    in Inventar-Reihenfolge. WS2-2: ein Dataset ohne deklarierten Schlüssel
+    bekommt einen KONKRETEN Pflichtvorschlag, kein Freitext-Hinweisfeld."""
+    return [
+        col for col in columns
+        if any(col.upper().endswith(h) for h in _KEY_HINTS)
+    ]
+
+
+def seed_from_inventory(obj: dict[str, Any]) -> dict[str, Any]:
+    """Generate a draft contract dict from an inventory object.
+
+    A2: kein 'schema:'-Key im Output — Schema-Bindung erfolgt zur Laufzeit.
+    """
+    name = obj.get("technicalName") or obj.get("id") or obj.get("name") or ""
+    owned_by = obj.get("owned_by", "platform")
+
+    guarantees: dict[str, Any] = {}
+
+    columns = _column_names(obj)
     if columns:
         guarantees["schema"] = {"columns": columns, "mode": "closed"}
 
-    # Keys — declared key columns from CSN projection
     key_cols = (
         obj.get("csnProjection", {}).get("keyColumns")
         or obj.get("keyColumns")
@@ -30,27 +48,24 @@ def seed_from_inventory(obj: dict[str, Any]) -> dict[str, Any]:
     if key_cols:
         guarantees["keys"] = [{"columns": key_cols, "unique": True, "severity": "critical"}]
     else:
-        # Warn: no declared key — flag as coverage gap
-        guarantees["_key_gap"] = {
-            "_note": "No declared key found. Add 'keys' guarantee manually.",
-            "severity": "critical",
-        }
+        candidates = _key_candidates(columns)
+        if candidates:
+            guarantees["keys"] = [{
+                "columns": candidates,
+                "unique": True,
+                "severity": "critical",
+                "proposed": True,  # Steward muss den Vorschlag im Workbench bestätigen
+            }]
 
-    # Freshness — if object has a timestamp column
-    ts_cols = [
-        c.get("name") for c in (obj.get("columns") or [])
-        if any(kw in (c.get("name") or "").upper() for kw in ("TS", "TIME", "DATE", "LOAD", "CHANGE"))
-    ]
+    ts_cols = [c for c in columns if any(h in c.upper() for h in _TS_HINTS)]
     if ts_cols:
         guarantees["freshness"] = {"column": ts_cols[0], "max_age": "PT24H", "severity": "warn"}
 
-    # Volume
     guarantees["volume"] = {"baseline": "rolling", "bounds": "auto", "severity": "warn"}
 
     return {
         "product": name,
         "dataset": name,
-        "schema": schema,
         "owned_by": owned_by,
         "owners": [],
         "version": "0.1.0",

@@ -6,7 +6,9 @@ import {
 } from '@/api/contracts';
 import type { AxiosError } from 'axios';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
-import type { Contract } from '@/types';
+import { StatePill } from '@/components/ui/StatePill';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import type { Contract, CheckState } from '@/types';
 
 const SQL_PATTERNS = [/\bSELECT\b/i, /\bINSERT\b/i, /\bDROP\b/i, /\bDELETE\b/i, /\bUPDATE\b/i, /\bEXEC\b/i];
 function hasSQL(text: string): boolean {
@@ -85,7 +87,7 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
   } | undefined;
   const dryRunData = dryRun.data as {
     mode?: string; overall_status?: string; total?: number; passed?: number; failed?: number;
-    results?: { name: string; passed: boolean; actual_value: unknown; expect: string; state: string }[];
+    results?: { name: string; passed: boolean; actual_value: unknown; expect: string; state: CheckState }[];
     message?: string; checks_yaml?: string;
   } | undefined;
 
@@ -184,7 +186,15 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
                       <td style={{ padding: '4px 8px', ...monoStyle }}>{r.name}</td>
                       <td style={{ padding: '4px 8px', ...monoStyle }}>{String(r.actual_value ?? '—')}</td>
                       <td style={{ padding: '4px 8px', ...monoStyle }}>{r.expect}</td>
-                      <td style={{ padding: '4px 8px', color: r.passed ? 'var(--status-ok)' : 'var(--status-fail)' }}>{r.state}</td>
+                      <td style={{ padding: '4px 8px' }}>
+                        {r.state && r.state !== 'executed' ? (
+                          <StatePill state={r.state} size="sm" />
+                        ) : (
+                          <span style={{ color: r.passed ? 'var(--status-ok)' : 'var(--status-fail)' }}>
+                            {r.passed ? 'pass' : 'fail'}
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -272,7 +282,7 @@ function ApprovalBar({ objectId, lifecycle }: { objectId: string; lifecycle: str
 }
 
 function Editor({ objectId }: { objectId: string }) {
-  const { data: contract, isLoading } = useContract(objectId);
+  const { data: contract, isLoading, isError, refetch } = useContract(objectId);
   const put = usePutContract(objectId);
   const [text, setText] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
@@ -294,6 +304,7 @@ function Editor({ objectId }: { objectId: string }) {
   };
 
   if (isLoading) return <div style={{ padding: 24, color: 'var(--fg-3)' }}>Loading…</div>;
+  if (isError) return <div style={{ flex: 1, padding: 24 }}><ErrorBanner onRetry={() => refetch()} /></div>;
 
   const lifecycle = contract?.lifecycle ?? 'draft';
 
@@ -337,12 +348,13 @@ function Editor({ objectId }: { objectId: string }) {
 }
 
 export default function ContractWorkbench() {
-  const { data: objects = [] } = useObjects();
+  const { data: objects = [], isError, refetch } = useObjects();
   const [selectedId, setSelectedId] = useState('');
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Contract Workbench</h1>
+      {isError && <ErrorBanner onRetry={() => refetch()} />}
       <div style={{
         background: 'var(--bg-1)', border: '1px solid var(--line)',
         borderRadius: 8, overflow: 'hidden', display: 'flex', minHeight: 600,

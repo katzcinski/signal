@@ -29,8 +29,27 @@ def get_lineage_graph(
     # Annotate with live DQ status and coverage flags
     object_statuses = store.get_object_status()
     contracts_dir = Path(settings.contracts_dir)
-    contracted = [p.stem for p in contracts_dir.glob("*.yml")] if contracts_dir.exists() else []
+    contracted = (
+        [p.stem for p in contracts_dir.glob("*.y*ml") if not p.name.endswith(".active.yml")]
+        if contracts_dir.exists()
+        else []
+    )
 
     annotated_nodes = get_coverage(nodes, object_statuses, contracted)
 
-    return {"nodes": annotated_nodes, "edges": edges}
+    # F5: Extrakt-Alter — FE zeigt eine Staleness-Warnung darauf an.
+    extract_age_days = None
+    extracted_at = None
+    lineage_path = Path(settings.lineage_file)
+    if lineage_path.exists():
+        from datetime import datetime, timezone
+        mtime = datetime.fromtimestamp(lineage_path.stat().st_mtime, tz=timezone.utc)
+        extracted_at = mtime.isoformat()
+        extract_age_days = (datetime.now(timezone.utc) - mtime).days
+
+    return {
+        "nodes": annotated_nodes,
+        "edges": edges,
+        "extracted_at": extracted_at,
+        "extract_age": extract_age_days,
+    }

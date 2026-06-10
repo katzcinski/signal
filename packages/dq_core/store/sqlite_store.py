@@ -19,12 +19,16 @@ class ResultStore:
         *,
         allow_diagnostics: bool = False,
         diagnostics_columns: list[str] | None = None,
+        diagnostics_ttl_days: int = 0,
     ) -> None:
         self.db_path = str(db_path)
         # [PII-GATE] Default off. Only persist diagnostic_rows when explicitly enabled (S1/G8).
         self._allow_diagnostics = allow_diagnostics
         self._diagnostics_columns = set(diagnostics_columns) if diagnostics_columns else None
         self._init_db()
+        # [PII-GATE] Retention-TTL: abgelaufene Diagnostik beim Öffnen löschen.
+        if diagnostics_ttl_days > 0:
+            self._cleanup_diagnostics(diagnostics_ttl_days)
 
     # ------------------------------------------------------------------
     # Connection helper
@@ -148,13 +152,75 @@ class ResultStore:
                 )
 
     def set_compliance(self, product: str, version: str, compliance: str, run_id: str) -> None:
+        """WS2-5: Übergänge als Events; `since` markiert den letzten ÜBERGANG,
+        nicht den letzten Lauf. Gibt es keinen Zustandswechsel, bleibt `since`."""
         now = datetime.now(timezone.utc).isoformat()
         with self._conn() as conn:
+            row = conn.execute(
+                "SELECT compliance, since FROM dq_compliance WHERE product=?", (product,)
+            ).fetchone()
+            previous = row["compliance"] if row else None
+            since = now if previous != compliance else row["since"]
             conn.execute(
                 """INSERT OR REPLACE INTO dq_compliance
                    (product, contract_version, compliance, since, last_run_id)
                    VALUES (?,?,?,?,?)""",
-                (product, version, compliance, now, run_id),
+                (product, version, compliance, since, run_id),
+            )
+            if previous != compliance:
+                conn.execute(
+                    """INSERT INTO dq_compliance_events
+                       (product, from_state, to_state, contract_version, run_id, at)
+                       VALUES (?,?,?,?,?,?)""",
+                    (product, previous or "unknown", compliance, version, run_id, now),
+                )
+
+    def get_compliance_events(self, product: str, limit: int = 100) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM dq_compliance_events WHERE product=? ORDER BY id DESC LIMIT ?",
+                (product, limit),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def try_begin_run(self, summary: RunSummary) -> bool:
+        """F2: Run-Registrierung mit Store-seitigem Doppellauf-Schutz.
+
+        Returns False, wenn für das Dataset bereits ein Run läuft (partieller
+        Unique-Index idx_dq_runs_one_running) — check-then-act-frei. Bewusst
+        plain INSERT: save_run (INSERT OR REPLACE) würde den Konflikt still
+        durch Ersetzen auflösen.
+        """
+        try:
+            with self._conn() as conn:
+                conn.execute(
+                    """INSERT INTO dq_runs
+                       (run_id, dataset, schema_name, started_at, finished_at,
+                        overall_status, total_checks, passed_checks, failed_checks,
+                        warning_checks, triggered_by, contract_version, contract_hash,
+                        actor, run_state)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        summary.run_id, summary.dataset, summary.schema,
+                        summary.started_at, summary.finished_at,
+                        summary.overall_status, summary.total, summary.passed,
+                        summary.failed, summary.warnings, summary.triggered_by,
+                        summary.contract_version, summary.contract_hash,
+                        summary.actor, summary.run_state,
+                    ),
+                )
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def _cleanup_diagnostics(self, ttl_days: int) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                """DELETE FROM dq_diagnostics WHERE run_id IN (
+                     SELECT run_id FROM dq_runs
+                     WHERE started_at < datetime('now', ?)
+                   )""",
+                (f"-{int(ttl_days)} days",),
             )
 
     # ------------------------------------------------------------------

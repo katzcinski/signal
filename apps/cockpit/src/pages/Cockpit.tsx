@@ -1,13 +1,16 @@
 import { Kpi } from '@/components/ui/Kpi';
 import { Panel } from '@/components/ui/Panel';
 import { StatusDot } from '@/components/ui/StatusDot';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { useObjects } from '@/api/objects';
 import { useIncidents } from '@/api/incidents';
 import { useNavigate } from 'react-router-dom';
 
 export default function Cockpit() {
-  const { data: objects = [] } = useObjects();
-  const { data: incidents = [] } = useIncidents();
+  const objectsQuery = useObjects();
+  const incidentsQuery = useIncidents();
+  const { data: objects = [] } = objectsQuery;
+  const { data: incidents = [] } = incidentsQuery;
   const navigate = useNavigate();
 
   const totalObjects = objects.length;
@@ -26,6 +29,9 @@ export default function Cockpit() {
         <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>SAP Datasphere — Data Quality & Observability</p>
       </div>
 
+      {objectsQuery.isError && <ErrorBanner onRetry={() => objectsQuery.refetch()} />}
+      {incidentsQuery.isError && <ErrorBanner onRetry={() => incidentsQuery.refetch()} />}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <Kpi label="Objects" value={totalObjects} accent="var(--cont)" />
         <Kpi label="Health %" value={`${healthPct}%`} accent="var(--qual)" />
@@ -35,14 +41,16 @@ export default function Cockpit() {
           value={incidents.length}
           delta={criticalIncidents > 0 ? `${criticalIncidents} critical` : undefined}
           deltaPositive={false}
-          accent="var(--status-fail)"
+          accent="var(--cont)"
         />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
         <Panel title="Observability Objects" family="observability">
           {obsFamilyObjects.length === 0 ? (
-            <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>No observability objects</p>
+            <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
+              {objectsQuery.isSuccess ? 'No observability objects' : '—'}
+            </p>
           ) : obsFamilyObjects.map(o => (
             <div
               key={o.id}
@@ -59,7 +67,9 @@ export default function Cockpit() {
         </Panel>
         <Panel title="Quality Objects" family="quality">
           {qualFamilyObjects.length === 0 ? (
-            <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>No quality objects</p>
+            <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
+              {objectsQuery.isSuccess ? 'No quality objects' : '—'}
+            </p>
           ) : qualFamilyObjects.map(o => (
             <div
               key={o.id}
@@ -78,7 +88,9 @@ export default function Cockpit() {
 
       <Panel title="Recent Incidents">
         {incidents.length === 0 ? (
-          <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>No open incidents</p>
+          <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
+            {incidentsQuery.isSuccess ? 'No open incidents' : '—'}
+          </p>
         ) : incidents.slice(0, 5).map(i => (
           <div
             key={i.id}
