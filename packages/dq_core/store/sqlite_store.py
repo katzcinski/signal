@@ -183,6 +183,30 @@ class ResultStore:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    def get_diagnostics(self, run_id: str, check_name: str | None = None) -> list[dict[str, Any]]:
+        """Diagnostik-Zeilen eines Runs. Zeilen wurden beim Schreiben bereits
+        durch das PII-Gate (enabled + Allowlist) gefiltert — hier nur lesen."""
+        with self._conn() as conn:
+            if check_name:
+                rows = conn.execute(
+                    "SELECT check_name, row_data FROM dq_diagnostics "
+                    "WHERE run_id=? AND check_name=? ORDER BY id",
+                    (run_id, check_name),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT check_name, row_data FROM dq_diagnostics WHERE run_id=? ORDER BY id",
+                    (run_id,),
+                ).fetchall()
+        out = []
+        for r in rows:
+            try:
+                data = json.loads(r["row_data"])
+            except (TypeError, ValueError):
+                data = {}
+            out.append({"check_name": r["check_name"], "row": data})
+        return out
+
     def try_begin_run(self, summary: RunSummary) -> bool:
         """F2: Run-Registrierung mit Store-seitigem Doppellauf-Schutz.
 

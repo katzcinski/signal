@@ -711,6 +711,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/runs/{run_id}/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Diagnostics
+         * @description [PII-GATE] Diagnostik-Zeilen (bereits allowlist-projiziert persistiert).
+         *
+         *     Defense-in-depth: Rohzeilen-Sicht erfordert steward+ — viewer sieht
+         *     Skalare, nie Datensätze.
+         */
+        get: operations["get_run_diagnostics_api_runs__run_id__diagnostics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs/{run_id}/events": {
         parameters: {
             query?: never;
@@ -723,6 +746,26 @@ export interface paths {
          * @description Polling fallback for SSE (A5): returns persisted progress lines.
          */
         get: operations["get_run_events_api_runs__run_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{run_id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Results
+         * @description WS1-2: nur die Check-Ergebnisse eines Runs (ohne Run-Header).
+         */
+        get: operations["get_run_results_api_runs__run_id__results_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2476,6 +2519,42 @@ export interface operations {
             };
         };
     };
+    get_run_diagnostics_api_runs__run_id__diagnostics_get: {
+        parameters: {
+            query?: {
+                check_name?: string | null;
+            };
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_run_events_api_runs__run_id__events_get: {
         parameters: {
             query?: never;
@@ -2494,6 +2573,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_results_api_runs__run_id__results_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckResultOut"][];
                 };
             };
             /** @description Validation Error */
