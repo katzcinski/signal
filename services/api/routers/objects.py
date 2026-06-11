@@ -64,6 +64,7 @@ def list_objects(
 ):
     statuses = _object_status_map(store)
     contracts = _contract_lifecycle_map()
+    family_statuses = _family_status_map(store)
     settings = get_settings()
     result = []
     for obj in inventory:
@@ -80,6 +81,7 @@ def list_objects(
                 family=obj.get("family", "quality"),
                 layer=obj.get("layer", ""),
                 status=s.get("status", "unknown"),
+                family_status=_families_for(obj_id, family_statuses),
                 contract_status=lifecycle,
                 cov_flag=_coverage_flag(obj_id, lifecycle, settings),
                 check_count=s.get("total_checks", obj.get("checkCount", 0)),
@@ -90,6 +92,21 @@ def list_objects(
             )
         )
     return result
+
+
+def _family_status_map(store) -> dict[str, dict[str, str]]:
+    try:
+        return store.get_object_family_status()
+    except Exception:
+        return {}
+
+
+def _families_for(obj_id: str, family_map: dict[str, dict[str, str]]) -> dict[str, str]:
+    fs = family_map.get(obj_id, {})
+    return {
+        "observability": fs.get("observability", "unknown"),
+        "quality": fs.get("quality", "unknown"),
+    }
 
 
 @router.get("/{object_id}", response_model=ObjectDetailOut)
@@ -142,6 +159,7 @@ def get_object(
         family=obj.get("family", "quality"),
         layer=obj.get("layer", ""),
         status=s.get("status", "unknown"),
+        family_status=_families_for(object_id, _family_status_map(store)),
         contract_status=lifecycle,
         cov_flag=_coverage_flag(object_id, lifecycle, get_settings()),
         check_count=s.get("total_checks", 0),
@@ -295,6 +313,7 @@ def trigger_run(
                 on_progress=callback,
                 execution_mode=body.execution_mode,
                 triggered_by=principal.sub,
+                gating=True,  # G6: Frische-Gate produziert skipped_stale
             )
             summary.run_id = run_id
             summary.run_state = "finished"
@@ -303,6 +322,26 @@ def trigger_run(
             summary.contract_hash = contract_hash
             store.save_run(summary)
 
+            # WS5-1: Baselines aus den Zeitreihen der Obs-Checks aktualisieren —
+            # Rolling-Stats (Mean/Stddev/Perzentile/MAD) für volume/freshness.
+            try:
+                from dq_core.obs.baselines import BaselineManager
+                manager = BaselineManager(store)
+                for result in summary.results:
+                    if result.type not in ("row_count", "freshness", "sap_replication_lag"):
+                        continue
+                    history = store.get_check_history(object_id, result.name, limit=50)
+                    values = []
+                    for h in history:
+                        try:
+                            values.append(float(h["actual_value"]))
+                        except (TypeError, ValueError):
+                            continue
+                    if values:
+                        manager.update_baseline(object_id, result.name, values)
+            except Exception:
+                pass  # Baselines sind Beobachtung, nie Run-kritisch
+
             # WS2-5: compliance transition — breached on fail/critical, auto-recovery on green.
             # Only objects under an active contract carry a compliance state.
             if _contract_lifecycle_map().get(object_id) == "active":
@@ -310,13 +349,39 @@ def trigger_run(
                 previous = store.get_compliance(object_id)
                 new_compliance = compute_compliance(summary.results)
                 store.set_compliance(object_id, contract_version, new_compliance, run_id)
-                # WS5-3: Webhook genau beim Übergang → breached (S-10 geschlossen).
-                if new_compliance == "breached" and (not previous or previous.get("compliance") != "breached"):
+                newly_breached = new_compliance == "breached" and (
+                    not previous or previous.get("compliance") != "breached"
+                )
+                if newly_breached:
+                    # R4-1: Breach-Episode → persistentes Incident mit Timeline
+                    failed = [
+                        r.name for r in summary.results
+                        if not r.passed and r.state == "executed"
+                        and r.severity in ("fail", "critical")
+                    ]
+                    worst = "critical" if any(
+                        r.severity == "critical" and not r.passed and r.state == "executed"
+                        for r in summary.results
+                    ) else "fail"
+                    store.open_incident(
+                        product=object_id,
+                        run_id=run_id,
+                        severity=worst,
+                        title=f"Contract-Breach: {object_id} v{contract_version or '?'}",
+                        failed_checks=failed,
+                        contract_version=contract_version,
+                        actor="system",
+                    )
+                    # WS5-3: Webhook genau beim Übergang → breached (S-10 geschlossen).
                     from ..webhook import fire_webhook_async
                     fire_webhook_async(
                         object_id, new_compliance, run_id,
                         settings.webhook_url, settings.webhook_allowlist,
+                        contract_version=contract_version,
+                        failed_checks=failed,
                     )
+                elif new_compliance == "compliant" and previous and previous.get("compliance") == "breached":
+                    store.auto_resolve_incidents(object_id, run_id)
         except Exception:
             store.set_run_state(run_id, "error", datetime.now(timezone.utc).isoformat())
         finally:

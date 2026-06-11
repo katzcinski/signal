@@ -1,10 +1,24 @@
-import os
-import threading
+"""Serialisiertes Git-Schreibmodell für Contracts (WS2-3 / R2-1).
+
+- Prozess-übergreifendes Datei-Lock (fcntl) — Thread-Locks reichen bei ≥2
+  uvicorn-Workern nicht (S-12).
+- Commit committet AUSSCHLIESSLICH die Contract-Datei (`git commit --only`),
+  nie fremd-gestagtes Material; Author = Principal, Committer via Env —
+  keine Mutation der geteilten Repo-Config.
+- Push auf GIT_REMOTE, Reject → GitPushRejected (API antwortet 409 mit
+  Rebase-Hinweis).
+"""
+from __future__ import annotations
+
+import fcntl
 import hashlib
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
-_write_lock = threading.Lock()
+
+class GitPushRejected(Exception):
+    """Remote hat den Push abgelehnt — Rebase/Pull nötig."""
 
 
 class GitRepo:
@@ -12,6 +26,16 @@ class GitRepo:
         self.contracts_dir = Path(contracts_dir)
         self.remote = remote
         self.contracts_dir.mkdir(parents=True, exist_ok=True)
+        self._lock_path = self.contracts_dir / ".git_write.lock"
+
+    @contextmanager
+    def _process_lock(self):
+        with open(self._lock_path, "w") as lf:
+            fcntl.flock(lf, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lf, fcntl.LOCK_UN)
 
     def _path(self, product: str) -> Path:
         """Resolve a contract path, tolerating both .yaml and .yml."""
@@ -27,35 +51,65 @@ class GitRepo:
             return path.read_text()
         return None
 
-    def write_contract(self, product: str, content: str, author_name: str, author_email: str, message: str) -> str:
-        """Thread-safe write + commit. Returns commit hash."""
-        with _write_lock:
+    def write_contract(
+        self,
+        product: str,
+        content: str,
+        author_name: str,
+        author_email: str,
+        message: str,
+    ) -> str:
+        """Serialisierter Write + Commit (+ Push, wenn Remote). Returns commit hash."""
+        with self._process_lock():
             path = self._path(product)
             path.write_text(content)
-
-            # Check for breaking diff before commit
-            commit_hash = hashlib.sha256(content.encode()).hexdigest()[:12]
+            content_hash = hashlib.sha256(content.encode()).hexdigest()[:12]
 
             try:
                 import git
-                try:
-                    repo = git.Repo(search_parent_directories=True)
-                except git.InvalidGitRepositoryError:
-                    return commit_hash
-
-                # Only commit if the contract file lives inside the repo tree;
-                # otherwise fall back to the content hash (e.g. external CONTRACTS_DIR).
-                try:
-                    repo.index.add([str(path)])
-                except (ValueError, OSError):
-                    return commit_hash
-                with repo.config_writer() as cw:
-                    cw.set_value("user", "name", author_name)
-                    cw.set_value("user", "email", author_email)
-                commit = repo.index.commit(message)
-                return str(commit.hexsha)
             except ImportError:
-                return commit_hash
+                return content_hash
+
+            try:
+                repo = git.Repo(self.contracts_dir, search_parent_directories=True)
+            except git.InvalidGitRepositoryError:
+                # Externer CONTRACTS_DIR ohne Repo — legal im Lokalmodus.
+                return content_hash
+
+            try:
+                rel_path = str(path.resolve().relative_to(repo.working_tree_dir))
+            except ValueError:
+                return content_hash
+
+            author = f"{author_name} <{author_email}>"
+            env = {
+                "GIT_COMMITTER_NAME": author_name,
+                "GIT_COMMITTER_EMAIL": author_email,
+            }
+            with repo.git.custom_environment(**env):
+                repo.git.add("--", rel_path)
+                try:
+                    # --only: genau diese Datei, unabhängig vom restlichen Index (S-12)
+                    repo.git.commit(
+                        "-m", message, f"--author={author}", "--only", "--", rel_path
+                    )
+                except git.GitCommandError as exc:
+                    if "nothing to commit" in str(exc) or "nichts zu committen" in str(exc):
+                        return repo.head.commit.hexsha
+                    raise
+
+                if self.remote:
+                    try:
+                        repo.git.push(self.remote, "HEAD")
+                    except git.GitCommandError as exc:
+                        if "rejected" in str(exc) or "non-fast-forward" in str(exc):
+                            raise GitPushRejected(
+                                f"Push auf {self.remote!r} abgelehnt — Remote hat neuere "
+                                "Commits. Pull/Rebase erforderlich, dann Approve wiederholen."
+                            ) from exc
+                        raise
+
+            return repo.head.commit.hexsha
 
     def list_products(self) -> list:
         return [

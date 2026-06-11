@@ -101,14 +101,24 @@ def fire_webhook_async(
     run_id: str,
     url: str,
     allowlist: list[str],
+    *,
+    contract_version: str = "",
+    failed_checks: list[str] | None = None,
 ) -> None:
-    """Non-blocking wrapper — fires in a daemon thread."""
+    """Non-blocking wrapper — fires in a daemon thread.
+
+    Payload trägt Kontext für Chat-Routing (R4-2): Version, fehlgeschlagene
+    Checks, Deep-Link-Pfad — der Empfänger baut daraus seine Notification.
+    """
     if not url:
         return
     payload = {
         "product": product,
         "compliance": compliance,
         "run_id": run_id,
+        "contract_version": contract_version,
+        "failed_checks": failed_checks or [],
+        "link": f"/objects/{product}?run={run_id}",
         "ts": datetime.now(timezone.utc).isoformat(),
     }
     t = threading.Thread(

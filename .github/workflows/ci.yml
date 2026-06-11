@@ -169,6 +169,47 @@ jobs:
       - name: Coverage report
         run: python -m pytest tests/ --cov=packages --cov=services --cov-report=term-missing -q
 
+  odcs-second-opinion:
+    # R5-2: datacontract-cli als Zweitmeinung zum homegrown Breaking-Diff (O1).
+    # Bewusst non-blocking: Diskrepanzen sind ein Report, kein Merge-Stopper.
+    name: ODCS — datacontract-cli breaking check (advisory)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Export ODCS for base and head, run datacontract breaking
+        continue-on-error: true
+        run: |
+          pip install pyyaml jsonschema "datacontract-cli" 2>/dev/null || pip install pyyaml jsonschema
+          pip install -e packages/dq_core
+          mkdir -p /tmp/odcs/base /tmp/odcs/head
+          python - <<'EOF'
+          import pathlib, sys, yaml, subprocess
+          sys.path.insert(0, 'packages')
+          from dq_core.contract.odcs_export import to_odcs
+          base_ref = "origin/${{ github.base_ref }}"
+          for path in pathlib.Path('contracts').glob('*.y*ml'):
+              if path.name.endswith('.active.yml'):
+                  continue
+              head = to_odcs(yaml.safe_load(path.read_text()))
+              pathlib.Path(f"/tmp/odcs/head/{path.stem}.odcs.yaml").write_text(yaml.safe_dump(head))
+              show = subprocess.run(["git", "show", f"{base_ref}:{path}"], capture_output=True, text=True)
+              if show.returncode == 0:
+                  base = to_odcs(yaml.safe_load(show.stdout))
+                  pathlib.Path(f"/tmp/odcs/base/{path.stem}.odcs.yaml").write_text(yaml.safe_dump(base))
+          EOF
+          for f in /tmp/odcs/head/*.odcs.yaml; do
+            name=$(basename "$f")
+            if [ -f "/tmp/odcs/base/$name" ] && command -v datacontract >/dev/null; then
+              echo "=== datacontract breaking: $name ==="
+              datacontract breaking "/tmp/odcs/base/$name" "$f" || true
+            fi
+          done
+
   frontend:
     name: Frontend — typecheck + lint + G4 drift
     runs-on: ubuntu-latest

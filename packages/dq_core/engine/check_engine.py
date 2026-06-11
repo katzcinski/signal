@@ -113,6 +113,17 @@ def dataset_config_to_yaml(config: DatasetConfig) -> str:
     return yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
 
 
+# Gating (Konzept §2: günstige Checks gaten teure). Frische-Checks entscheiden,
+# ob teure Konsistenz-Checks überhaupt sinnvoll sind — stale Daten erzeugen
+# sonst Phantom-Failures. Übersprungene Checks erscheinen IMMER als explizites
+# Ergebnis mit state='skipped_stale' (G6), nie als stilles Auslassen.
+GATE_TYPES: frozenset[str] = frozenset({"freshness", "sap_replication_lag"})
+EXPENSIVE_TYPES: frozenset[str] = frozenset({
+    "reference_integrity", "aggregate_range", "duplicate", "duplicate_composite",
+    "sap_bseg_balance", "sap_bkpf_orphan", "sap_fiscal_completeness",
+})
+
+
 def run_checks(
     config: DatasetConfig,
     conn: Any,
@@ -121,6 +132,7 @@ def run_checks(
     *,
     triggered_by: str = "ui",
     execution_mode: str = "auto",
+    gating: bool = False,
 ) -> RunSummary:
     run_id = str(uuid.uuid4())
     started_at = _utc_now()
@@ -138,24 +150,13 @@ def run_checks(
 
     if not enabled_checks:
         results: list[CheckResult] = []
-    elif mode == "isolated":
-        results = _run_checks_isolated(conn, enabled_checks, on_progress, previous)
+    elif gating:
+        results = _run_with_gating(conn, enabled_checks, mode, on_progress, previous)
     else:
-        try:
-            results = _run_checks_batch(conn, enabled_checks, on_progress, previous)
-        except Exception as exc:  # noqa: BLE001
-            if mode == "auto":
-                if on_progress:
-                    on_progress(f"[DQ] Batch-Ausfuehrung fehlgeschlagen, wechsle auf Einzelchecks: {exc}")
-                results = _run_checks_isolated(conn, enabled_checks, on_progress, previous)
-            else:
-                message = str(exc)
-                results = [_error_result(check, message, 0) for check in enabled_checks]
-                for result in results:
-                    if on_progress:
-                        _emit_result_progress(result, on_progress)
+        results = _execute(conn, enabled_checks, mode, on_progress, previous)
 
     overall = _overall_status(results)
+    executed = [r for r in results if r.state in ("executed", "error")]
     summary = RunSummary(
         run_id=run_id,
         dataset=config.dataset,
@@ -164,9 +165,9 @@ def run_checks(
         finished_at=_utc_now(),
         overall_status=overall,
         total=len(results),
-        passed=sum(1 for result in results if result.passed),
-        failed=sum(1 for result in results if not result.passed and result.severity in {"critical", "fail"}),
-        warnings=sum(1 for result in results if not result.passed and result.severity == "warn"),
+        passed=sum(1 for result in executed if result.passed),
+        failed=sum(1 for result in executed if not result.passed and result.severity in {"critical", "fail"}),
+        warnings=sum(1 for result in executed if not result.passed and result.severity == "warn"),
         results=results,
         triggered_by=triggered_by,
     )
@@ -175,6 +176,61 @@ def run_checks(
         ResultStore(Path(results_db)).save_run(summary)
 
     return summary
+
+
+def _execute(
+    conn: Any,
+    checks: list[CheckDef],
+    mode: str,
+    on_progress: Callable[[str], None] | None,
+    previous: dict[str, str],
+) -> list[CheckResult]:
+    if not checks:
+        return []
+    if mode == "isolated":
+        return _run_checks_isolated(conn, checks, on_progress, previous)
+    try:
+        return _run_checks_batch(conn, checks, on_progress, previous)
+    except Exception as exc:  # noqa: BLE001
+        if mode == "auto":
+            if on_progress:
+                on_progress(f"[DQ] Batch-Ausfuehrung fehlgeschlagen, wechsle auf Einzelchecks: {exc}")
+            return _run_checks_isolated(conn, checks, on_progress, previous)
+        message = str(exc)
+        results = [_error_result(check, message, 0) for check in checks]
+        for result in results:
+            if on_progress:
+                _emit_result_progress(result, on_progress)
+        return results
+
+
+def _run_with_gating(
+    conn: Any,
+    checks: list[CheckDef],
+    mode: str,
+    on_progress: Callable[[str], None] | None,
+    previous: dict[str, str],
+) -> list[CheckResult]:
+    gates = [c for c in checks if c.type in GATE_TYPES]
+    rest = [c for c in checks if c.type not in GATE_TYPES]
+    gate_results = _execute(conn, gates, mode, on_progress, previous)
+    stale = any(not r.passed and r.state == "executed" for r in gate_results)
+    if not stale:
+        return gate_results + _execute(conn, rest, mode, on_progress, previous)
+
+    cheap = [c for c in rest if c.type not in EXPENSIVE_TYPES]
+    expensive = [c for c in rest if c.type in EXPENSIVE_TYPES]
+    results = gate_results + _execute(conn, cheap, mode, on_progress, previous)
+    for check in expensive:
+        skipped = CheckResult(
+            name=check.name, sql=check.sql, expect=check.expect,
+            severity=check.severity, passed=False,
+            state="skipped_stale", type=check.type,
+        )
+        results.append(skipped)
+        if on_progress:
+            on_progress(f"[DQ]   SKIPPED (stale): {check.name} — Frische-Gate verletzt, Check uebersprungen")
+    return results
 
 
 def _run_checks_isolated(
@@ -327,6 +383,7 @@ def _result_from_actual(check: CheckDef, actual: Any, duration_ms: int, *, previ
             passed=passed,
             actual_value=actual,
             duration_ms=duration_ms,
+            type=check.type,
         )
     except Exception as exc:  # noqa: BLE001
         return _error_result(check, str(exc), duration_ms, actual_value=actual)
@@ -348,6 +405,8 @@ def _error_result(
         actual_value=actual_value,
         error=message,
         duration_ms=duration_ms,
+        state="error",
+        type=check.type,
     )
 
 
@@ -403,9 +462,12 @@ def _emit_result_progress(result: CheckResult, on_progress: Callable[[str], None
 
 
 def _overall_status(results: list[CheckResult]) -> str:
-    if any(result.error for result in results):
+    """State-bewusst (G6): übersprungene Checks zählen weder als pass noch
+    als fail — sie sind sichtbar, aber statusneutral."""
+    executed = [r for r in results if r.state in ("executed", "error")]
+    if any(result.error for result in executed):
         return "error"
-    failed = [result.severity for result in results if not result.passed]
+    failed = [result.severity for result in executed if not result.passed]
     if "critical" in failed:
         return "critical"
     if "fail" in failed:

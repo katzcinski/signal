@@ -20,6 +20,7 @@ def _result_out(row: dict) -> CheckResultOut:
         error=row.get("error_message"),
         duration_ms=row.get("duration_ms", 0) or 0,
         state=row.get("state", "executed"),
+        type=row.get("check_type", "") or "",
     )
 
 

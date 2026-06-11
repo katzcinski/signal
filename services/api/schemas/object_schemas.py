@@ -13,6 +13,8 @@ class ObjectOut(BaseModel):
     family: str = "quality"
     layer: str = ""
     status: str = "unknown"
+    # R3-2: Objekt × Familie — beide Familien-Status nebeneinander, nie Entweder-oder
+    family_status: dict[str, str] = {"observability": "unknown", "quality": "unknown"}
     contract_status: str = ""
     cov_flag: str = "out_of_scope"  # covered | partial | gap | out_of_scope
     check_count: int = 0

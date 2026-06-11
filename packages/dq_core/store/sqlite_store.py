@@ -117,13 +117,13 @@ class ResultStore:
                 row = conn.execute(
                     """INSERT INTO dq_check_results
                        (run_id, check_name, sql_text, expect_expr, severity,
-                        passed, actual_value, error_message, duration_ms, state)
-                       VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                        passed, actual_value, error_message, duration_ms, state, check_type)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                     (
                         summary.run_id, result.name, result.sql, result.expect,
                         result.severity, int(result.passed),
                         str(result.actual_value) if result.actual_value is not None else None,
-                        result.error, result.duration_ms, result.state,
+                        result.error, result.duration_ms, result.state, result.type,
                     ),
                 ).lastrowid
                 # [PII-GATE] Only persist diagnostics when explicitly enabled (S1/G8).
@@ -212,6 +212,253 @@ class ResultStore:
             return True
         except sqlite3.IntegrityError:
             return False
+
+    # ------------------------------------------------------------------
+    # Incidents (R4-1) — persistente Breach-Episoden mit Timeline
+    # ------------------------------------------------------------------
+
+    def open_incident(
+        self,
+        product: str,
+        run_id: str,
+        severity: str,
+        title: str,
+        failed_checks: list[str],
+        contract_version: str = "",
+        actor: str = "",
+    ) -> int | None:
+        """Eröffnet ein Incident — höchstens EINES je product+Breach-Episode:
+        existiert bereits ein ungelöstes Incident für das Produkt, wird nur
+        ein Event angehängt (Sifflet-Lektion: gruppieren, nicht fluten)."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT id FROM dq_incidents WHERE product=? AND status != 'resolved' "
+                "ORDER BY id DESC LIMIT 1",
+                (product,),
+            ).fetchone()
+            if row:
+                conn.execute(
+                    "INSERT INTO dq_incident_events(incident_id, at, actor, action, note) "
+                    "VALUES (?,?,?,?,?)",
+                    (row["id"], now, actor, "note",
+                     f"Erneuter Breach in Run {run_id}: {', '.join(failed_checks)}"),
+                )
+                return row["id"]
+            cur = conn.execute(
+                """INSERT INTO dq_incidents
+                   (product, run_id, severity, status, title, failed_checks,
+                    opened_at, contract_version)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (product, run_id, severity, "open", title,
+                 json.dumps(failed_checks), now, contract_version),
+            )
+            incident_id = cur.lastrowid
+            conn.execute(
+                "INSERT INTO dq_incident_events(incident_id, at, actor, action, note) "
+                "VALUES (?,?,?,?,?)",
+                (incident_id, now, actor, "opened", title),
+            )
+            return incident_id
+
+    def auto_resolve_incidents(self, product: str, run_id: str) -> None:
+        """Recovery: offener Incident wird automatisch gelöst, mit Event."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT id FROM dq_incidents WHERE product=? AND status != 'resolved'",
+                (product,),
+            ).fetchall()
+            for row in rows:
+                conn.execute(
+                    "UPDATE dq_incidents SET status='resolved', resolved_at=? WHERE id=?",
+                    (now, row["id"]),
+                )
+                conn.execute(
+                    "INSERT INTO dq_incident_events(incident_id, at, actor, action, note) "
+                    "VALUES (?,?,?,?,?)",
+                    (row["id"], now, "system", "auto_resolved",
+                     f"Folgelauf {run_id} vollständig grün — automatisch gelöst."),
+                )
+
+    def list_incidents(
+        self, status: str | None = None, severity: str | None = None, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        where, params = [], []
+        if status:
+            where.append("status=?")
+            params.append(status)
+        if severity:
+            where.append("severity=?")
+            params.append(severity)
+        clause = ("WHERE " + " AND ".join(where)) if where else ""
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM dq_incidents {clause} ORDER BY id DESC LIMIT ?",
+                (*params, limit),
+            ).fetchall()
+            return [self._incident_row(r) for r in rows]
+
+    def get_incident(self, incident_id: int) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_incidents WHERE id=?", (incident_id,)
+            ).fetchone()
+            if not row:
+                return None
+            incident = self._incident_row(row)
+            events = conn.execute(
+                "SELECT id, at, actor, action, note FROM dq_incident_events "
+                "WHERE incident_id=? ORDER BY id",
+                (incident_id,),
+            ).fetchall()
+            incident["events"] = [dict(e) for e in events]
+            return incident
+
+    def transition_incident(
+        self,
+        incident_id: int,
+        status: str | None,
+        actor: str,
+        owner: str | None = None,
+        note: str = "",
+    ) -> dict[str, Any] | None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_incidents WHERE id=?", (incident_id,)
+            ).fetchone()
+            if not row:
+                return None
+            if status and status != row["status"]:
+                resolved_at = now if status == "resolved" else None
+                conn.execute(
+                    "UPDATE dq_incidents SET status=?, resolved_at=? WHERE id=?",
+                    (status, resolved_at, incident_id),
+                )
+                conn.execute(
+                    "INSERT INTO dq_incident_events(incident_id, at, actor, action, note) "
+                    "VALUES (?,?,?,?,?)",
+                    (incident_id, now, actor, "status_changed",
+                     f"{row['status']} → {status}" + (f" — {note}" if note else "")),
+                )
+            if owner is not None and owner != row["owner"]:
+                conn.execute(
+                    "UPDATE dq_incidents SET owner=? WHERE id=?", (owner, incident_id)
+                )
+                conn.execute(
+                    "INSERT INTO dq_incident_events(incident_id, at, actor, action, note) "
+                    "VALUES (?,?,?,?,?)",
+                    (incident_id, now, actor, "assigned", owner),
+                )
+            if note and not status:
+                conn.execute(
+                    "INSERT INTO dq_incident_events(incident_id, at, actor, action, note) "
+                    "VALUES (?,?,?,?,?)",
+                    (incident_id, now, actor, "note", note),
+                )
+        return self.get_incident(incident_id)
+
+    @staticmethod
+    def _incident_row(row) -> dict[str, Any]:
+        d = dict(row)
+        try:
+            d["failed_checks"] = json.loads(d.get("failed_checks") or "[]")
+        except (TypeError, ValueError):
+            d["failed_checks"] = []
+        return d
+
+    # ------------------------------------------------------------------
+    # SLA über Zeitfenster (R4-3) — aus dem Compliance-Event-Log
+    # ------------------------------------------------------------------
+
+    def get_sla(self, product: str, days: int) -> float | None:
+        """% der Zeit im Zustand 'compliant' innerhalb der letzten *days* Tage.
+
+        Timeline aus dq_compliance_events; gemessen ab max(Fensterbeginn,
+        erstem bekannten Zustand). None, wenn keine Events existieren.
+        """
+        from datetime import timedelta
+
+        now = datetime.now(timezone.utc)
+        window_start = now - timedelta(days=days)
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT from_state, to_state, at FROM dq_compliance_events "
+                "WHERE product=? ORDER BY id",
+                (product,),
+            ).fetchall()
+        if not rows:
+            return None
+
+        def _ts(s: str) -> datetime:
+            ts = datetime.fromisoformat(s)
+            return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+
+        events = [(_ts(r["at"]), r["from_state"], r["to_state"]) for r in rows]
+        # Zustand am Fensterbeginn: letztes Event davor, sonst from_state des ersten
+        state = events[0][1]
+        start = max(window_start, events[0][0]) if events[0][0] > window_start else window_start
+        for at, _from, to in events:
+            if at <= window_start:
+                state = to
+        # Messbeginn: Fensterstart, außer der erste bekannte Zustand liegt später
+        measure_start = max(window_start, min(e[0] for e in events))
+        compliant_s = 0.0
+        cursor = measure_start
+        cur_state = state
+        for at, _from, to in events:
+            if at <= measure_start:
+                cur_state = to
+                continue
+            if cur_state == "compliant":
+                compliant_s += (at - cursor).total_seconds()
+            cursor = at
+            cur_state = to
+        if cur_state == "compliant":
+            compliant_s += (now - cursor).total_seconds()
+        total_s = (now - measure_start).total_seconds()
+        if total_s <= 0:
+            return None
+        return round(100.0 * compliant_s / total_s, 2)
+
+    # ------------------------------------------------------------------
+    # Familien-Status (R3-2) — Objekt × Familie statt Entweder-oder
+    # ------------------------------------------------------------------
+
+    _OBS_TYPES = ("freshness", "sap_replication_lag", "row_count", "schema")
+
+    def get_object_family_status(self) -> dict[str, dict[str, str]]:
+        """Je Dataset der schlechteste Status getrennt nach Familie
+        (Observability = Frische/Volumen/Schema, Quality = Rest), aus dem
+        jeweils jüngsten abgeschlossenen Lauf. Gating-Zustände zählen nicht."""
+        placeholders = ",".join("?" for _ in self._OBS_TYPES)
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"""SELECT
+                      r.dataset,
+                      CASE WHEN cr.check_type IN ({placeholders})
+                           THEN 'observability' ELSE 'quality' END AS family,
+                      MAX(CASE WHEN cr.state != 'executed' THEN 0
+                               WHEN cr.severity='critical' AND cr.passed=0 THEN 4
+                               WHEN cr.severity='fail'     AND cr.passed=0 THEN 3
+                               WHEN cr.severity='warn'     AND cr.passed=0 THEN 2
+                               WHEN cr.error_message IS NOT NULL          THEN 1
+                               ELSE 0 END) AS worst_score
+                    FROM dq_check_results cr
+                    JOIN dq_runs r ON cr.run_id = r.run_id
+                    WHERE r.started_at = (
+                      SELECT MAX(r2.started_at) FROM dq_runs r2
+                      WHERE r2.dataset = r.dataset AND r2.run_state='finished'
+                    )
+                    GROUP BY r.dataset, family""",
+                self._OBS_TYPES,
+            ).fetchall()
+        status_map = {0: "pass", 1: "error", 2: "warn", 3: "fail", 4: "critical"}
+        out: dict[str, dict[str, str]] = {}
+        for r in rows:
+            out.setdefault(r["dataset"], {})[r["family"]] = status_map.get(r["worst_score"], "unknown")
+        return out
 
     def _cleanup_diagnostics(self, ttl_days: int) -> None:
         with self._conn() as conn:
