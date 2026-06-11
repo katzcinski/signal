@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, KeyboardEvent } from 'react';
 
 export interface ColDef<T> {
   key: string;
@@ -16,7 +16,13 @@ interface Props<T> {
   empty?: string;
 }
 
-export function Table<T>({ columns, rows, rowKey, onRowClick, empty = 'No data' }: Props<T>) {
+export function Table<T>({ columns, rows, rowKey, onRowClick, empty = 'Keine Daten' }: Props<T>) {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTableRowElement>, row: T) => {
+    if (onRowClick && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onRowClick(row);
+    }
+  };
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -46,6 +52,10 @@ export function Table<T>({ columns, rows, rowKey, onRowClick, empty = 'No data' 
             <tr
               key={rowKey(row)}
               onClick={() => onRowClick?.(row)}
+              // A11y: clickable rows are keyboard-operable (Enter/Space).
+              role={onRowClick ? 'button' : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
+              onKeyDown={onRowClick ? e => handleKeyDown(e, row) : undefined}
               style={{
                 borderBottom: '1px solid var(--line)',
                 cursor: onRowClick ? 'pointer' : undefined,

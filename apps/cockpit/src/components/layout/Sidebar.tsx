@@ -1,13 +1,14 @@
 import { NavLink } from 'react-router-dom';
+import { t } from '@/i18n/de';
 
 const NAV = [
-  { to: '/',           label: 'Cockpit',    icon: '⬡' },
-  { to: '/objects',    label: 'Objects',    icon: '⊞' },
-  { to: '/contracts',  label: 'Contracts',  icon: '⊟' },
-  { to: '/lineage',    label: 'Lineage',    icon: '⟁' },
-  { to: '/incidents',  label: 'Incidents',  icon: '⚑' },
-  { to: '/proposals',  label: 'Proposals',  icon: '✦' },
-  { to: '/governance', label: 'Governance', icon: '⊕' },
+  { to: '/',           label: t.nav.cockpit,    icon: '⬡' },
+  { to: '/objects',    label: t.nav.objects,    icon: '⊞' },
+  { to: '/contracts',  label: t.nav.contracts,  icon: '⊟' },
+  { to: '/lineage',    label: t.nav.lineage,    icon: '⟁' },
+  { to: '/incidents',  label: t.nav.incidents,  icon: '⚑' },
+  { to: '/proposals',  label: t.nav.proposals,  icon: '✦' },
+  { to: '/governance', label: t.nav.governance, icon: '⊕' },
 ];
 
 interface Props { collapsed: boolean }

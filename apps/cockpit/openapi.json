@@ -101,6 +101,11 @@
             "default": "executed",
             "title": "State",
             "type": "string"
+          },
+          "type": {
+            "default": "",
+            "title": "Type",
+            "type": "string"
           }
         },
         "required": [
@@ -277,6 +282,39 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IncidentTransitionIn": {
+        "properties": {
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "IncidentTransitionIn",
+        "type": "object"
+      },
       "ObjectDetailOut": {
         "properties": {
           "check_count": {
@@ -310,6 +348,17 @@
             "default": "quality",
             "title": "Family",
             "type": "string"
+          },
+          "family_status": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {
+              "observability": "unknown",
+              "quality": "unknown"
+            },
+            "title": "Family Status",
+            "type": "object"
           },
           "id": {
             "title": "Id",
@@ -413,6 +462,17 @@
             "default": "quality",
             "title": "Family",
             "type": "string"
+          },
+          "family_status": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {
+              "observability": "unknown",
+              "quality": "unknown"
+            },
+            "title": "Family Status",
+            "type": "object"
           },
           "id": {
             "title": "Id",
@@ -754,6 +814,57 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/badge/{product}": {
+      "get": {
+        "description": "Read-only Compliance-Badge. format=svg (default) | json.",
+        "operationId": "status_badge_api_badge__product__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "svg",
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Status Badge",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
     "/api/checks/{dataset}/dry-run": {
       "post": {
         "description": "Compile contract for dataset and run checks without persisting results.\n\nBody: { \"environment\": \"<env-name>\", \"execution_mode\": \"auto|batch|isolated\" }\nOhne Environment: compile-only preview. Ergebnisse werden NIE persistiert.",
@@ -914,6 +1025,7 @@
     },
     "/api/contracts": {
       "get": {
+        "description": "A3: Liste aus contract_index \u2014 Git ist keine Query-DB. `guarantees`\nist hier leer; das volle Contract liefert GET /api/contracts/{product}.",
         "operationId": "list_contracts_api_contracts_get",
         "parameters": [
           {
@@ -960,6 +1072,70 @@
           }
         },
         "summary": "List Contracts",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/contracts/reindex": {
+      "post": {
+        "description": "Index-Rebuild nach externen \u00c4nderungen (git pull) \u2014 steward+.",
+        "operationId": "reindex_contracts_api_contracts_reindex_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reindex Contracts",
         "tags": [
           "contracts"
         ]
@@ -1449,6 +1625,89 @@
         ]
       }
     },
+    "/api/contracts/{product}/export/odcs": {
+      "get": {
+        "description": "R5-1: ODCS-3.1-Export (Bitol) \u2014 Interop mit OpenMetadata/Collibra/\ndatacontract-cli/Soda. Einweg; Compliance bleibt drau\u00dfen (A1).",
+        "operationId": "export_odcs_api_contracts__product__export_odcs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "json",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Odcs",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
     "/api/contracts/{product}/seed": {
       "post": {
         "description": "[AUTHZ] Seed a draft contract from the inventory object (WS2-2).",
@@ -1524,6 +1783,86 @@
         ]
       }
     },
+    "/api/contracts/{product}/sla": {
+      "get": {
+        "description": "R4-3: SLA-Compliance \u00fcber Zeitfenster \u2014 %-compliant aus dem\nCompliance-Event-Log, nicht nur Letzter-Lauf-Zustand.",
+        "operationId": "get_contract_sla_api_contracts__product__sla_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Contract Sla",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/coverage/summary": {
+      "get": {
+        "operationId": "coverage_summary_api_coverage_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Coverage Summary",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/api/environments": {
+      "get": {
+        "description": "Environment-Namen f\u00fcr den RunTriggerDialog \u2014 NIE Credentials (S-13).",
+        "operationId": "list_environments_api_environments_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Environments",
+        "tags": [
+          "extract"
+        ]
+      }
+    },
     "/api/extract": {
       "post": {
         "description": "Reload inventory/lineage snapshots and report counts (analyzer placeholder).",
@@ -1584,8 +1923,83 @@
     },
     "/api/incidents": {
       "get": {
-        "description": "Derived view: breached dq_results within last 7 days (not a separate store).",
         "operationId": "list_incidents_api_incidents_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Incidents",
+        "tags": [
+          "incidents"
+        ]
+      }
+    },
+    "/api/incidents/checks": {
+      "get": {
+        "description": "Derived view: breached check results within last 7 days (not a separate store).",
+        "operationId": "list_failing_checks_api_incidents_checks_get",
         "parameters": [
           {
             "in": "query",
@@ -1640,7 +2054,130 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Incidents",
+        "summary": "List Failing Checks",
+        "tags": [
+          "incidents"
+        ]
+      }
+    },
+    "/api/incidents/{incident_id}": {
+      "get": {
+        "operationId": "get_incident_api_incidents__incident_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Incident",
+        "tags": [
+          "incidents"
+        ]
+      }
+    },
+    "/api/incidents/{incident_id}/transition": {
+      "post": {
+        "description": "[AUTHZ] Statuswechsel/Assign/Note \u2014 jede Aktion landet in der Timeline.",
+        "operationId": "transition_incident_api_incidents__incident_id__transition_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncidentTransitionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transition Incident",
         "tags": [
           "incidents"
         ]

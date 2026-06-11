@@ -66,6 +66,12 @@ button {
   cursor: pointer;
 }
 
+/* A11y floor: visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid var(--cont);
+  outline-offset: 2px;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

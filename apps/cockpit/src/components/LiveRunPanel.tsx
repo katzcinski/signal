@@ -41,7 +41,7 @@ export function LiveRunPanel({ runId, dataset, running }: Props) {
           fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)',
         }}>
           {events.length === 0 ? (
-            <div style={{ color: 'var(--fg-3)' }}>{t.loading}</div>
+            <div style={{ color: 'var(--fg-3)' }}>{t.common.loading}</div>
           ) : events.map((e, i) => (
             <div key={`${e.ts}-${i}`}>
               <span style={{ color: 'var(--fg-3)' }}>{e.ts}</span> {e.line}

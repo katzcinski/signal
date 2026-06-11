@@ -4,6 +4,9 @@ import Cytoscape from 'cytoscape';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import dagre from 'cytoscape-dagre';
 import { useLineage } from '@/api/lineage';
+import { useCoverageSummary } from '@/api/coverage';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
+import { t } from '@/i18n/de';
 import type { LineageNode } from '@/types';
 
 Cytoscape.use(dagre as Parameters<typeof Cytoscape.use>[0]);
@@ -16,11 +19,19 @@ const COVERAGE_COLOR: Record<string, string> = {
   '○': 'var(--fg-3)',         // grey — out of scope / external
 };
 
+// Legend vocabulary: ✓ / ◐ / ⚠ / ○ (WS4)
+const COVERAGE_GLYPH: Record<string, string> = {
+  '●': '✓',
+  '◐': '◐',
+  '▲': '⚠',
+  '○': '○',
+};
+
 const COVERAGE_LABEL: Record<string, string> = {
-  '●': 'Covered',
-  '◐': 'Partial',
-  '▲': 'Gap',
-  '○': 'Out of scope',
+  '●': t.lineage.covered,
+  '◐': t.lineage.partial,
+  '▲': t.lineage.gap,
+  '○': t.lineage.outOfScope,
 };
 
 const LAYERS = ['Landing', 'Harmonization', 'Product'];
@@ -28,7 +39,7 @@ const LAYERS = ['Landing', 'Harmonization', 'Product'];
 // Cytoscape's canvas renderer cannot resolve `var(--x)` — resolve the CSS
 // variables to concrete values once and feed hex colors into the stylesheet.
 interface ResolvedTheme {
-  bg2: string; fg: string; fg3: string; line2: string; fontMono: string;
+  bg2: string; fg: string; fg3: string; line2: string; cont: string; fontMono: string;
   coverage: Record<string, string>;
 }
 let resolvedTheme: ResolvedTheme | null = null;
@@ -41,6 +52,7 @@ function resolveTheme(): ResolvedTheme {
     fg: cssVar('--fg', '#E7EBF2'),
     fg3: cssVar('--fg-3', '#5E6877'),
     line2: cssVar('--line-2', '#313945'),
+    cont: cssVar('--cont', '#5E83E6'),
     fontMono: cssVar('--font-mono', "'JetBrains Mono', monospace"),
     coverage: {
       '●': cssVar('--status-ok', '#3FB07A'),
@@ -63,6 +75,18 @@ function cacheKey(nodes: LineageNode[]) {
 
 type PositionMap = Record<string, { x: number; y: number }>;
 
+// Root-cause highlight (K): emphasise the focused node + all its ancestors,
+// dim the rest. Empty focus resets.
+function applyRootCause(cy: Cytoscape.Core, focusId: string) {
+  cy.elements().removeClass('rc-dim rc-path');
+  if (!focusId) return;
+  const node = cy.getElementById(focusId);
+  if (node.empty()) return;
+  const path = node.predecessors().union(node);
+  cy.elements().not(path).addClass('rc-dim');
+  path.addClass('rc-path');
+}
+
 interface SidePanelProps {
   node: LineageNode;
   onClose: () => void;
@@ -79,44 +103,87 @@ function SidePanel({ node, onClose }: SidePanelProps) {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--fg)' }}>{node.label ?? node.id}</div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-3)', fontSize: 18 }}>×</button>
+        <button onClick={onClose} aria-label={t.common.close} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-3)', fontSize: 18 }}>×</button>
       </div>
       <div style={{ fontSize: 12, color: 'var(--fg-3)', marginBottom: 8 }}>
-        Layer: {LAYERS[node.layer ?? 0] ?? `Layer ${node.layer}`}
+        {t.lineage.layerLabel}: {LAYERS[node.layer ?? 0] ?? `Layer ${node.layer}`}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 18, color: COVERAGE_COLOR[flag] }}>{flag}</span>
+        <span aria-hidden style={{ fontSize: 16, color: COVERAGE_COLOR[flag] }}>{COVERAGE_GLYPH[flag]}</span>
         <span style={{ fontSize: 12 }}>{COVERAGE_LABEL[flag]}</span>
       </div>
       {node.dq_status && (
         <div style={{ fontSize: 12, color: 'var(--fg-3)', marginBottom: 8 }}>
-          DQ status: <strong style={{ color: 'var(--fg)' }}>{node.dq_status}</strong>
+          {t.lineage.dqStatus}: <strong style={{ color: 'var(--fg)' }}>{node.dq_status}</strong>
         </div>
       )}
       {node.last_run && (
         <div style={{ fontSize: 11, color: 'var(--fg-3)', marginBottom: 16 }}>
-          Last run: {new Date(node.last_run).toLocaleString()}
+          {t.lineage.lastRun}: {new Date(node.last_run).toLocaleString()}
         </div>
       )}
       {node.has_contract && (
         <div style={{ fontSize: 11, color: 'var(--fg-3)', marginBottom: 4 }}>
-          Family: <span style={{ color: 'var(--fg)' }}>{node.family ?? '—'}</span>
+          {t.lineage.family}: <span style={{ color: 'var(--fg)' }}>{node.family ?? '—'}</span>
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
         <button
-          onClick={() => navigate(`/contracts/${node.id}`)}
+          onClick={() => navigate(`/contracts?product=${encodeURIComponent(node.id)}`)}
           style={{ background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 5, padding: '7px 14px', fontSize: 13, cursor: 'pointer' }}
         >
-          Contract öffnen →
+          {t.lineage.openContract}
         </button>
         <button
-          onClick={() => navigate(`/contracts?compile=${node.id}`)}
+          onClick={() => navigate(`/contracts?compile=${encodeURIComponent(node.id)}`)}
           style={{ background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)', borderRadius: 5, padding: '7px 14px', fontSize: 13, cursor: 'pointer' }}
         >
-          Compile
+          {t.lineage.compile}
         </button>
       </div>
+    </div>
+  );
+}
+
+// G: Coverage KPI chips above the canvas.
+function CoverageKpis() {
+  const { data } = useCoverageSummary();
+  const [listOpen, setListOpen] = useState(false);
+  if (!data) return null;
+  const chip: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 6,
+    padding: '5px 12px', fontSize: 12, color: 'var(--fg-2)',
+  };
+  const num: React.CSSProperties = { fontWeight: 700, color: 'var(--fg)', fontSize: 13 };
+  return (
+    <div style={{ position: 'relative', display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+      <span style={chip}><span style={num}>{data.objects_total}</span> {t.lineage.kpiObjects}</span>
+      <span style={chip}><span style={num}>{data.with_active_contract}</span> {t.lineage.kpiWithContract}</span>
+      <span style={chip}><span style={num}>{data.with_checks}</span> {t.lineage.kpiWithChecks}</span>
+      <span style={chip}><span style={num}>{Math.round(data.contract_coverage_pct)}%</span> {t.lineage.kpiCoverage}</span>
+      <button
+        onClick={() => setListOpen(o => !o)}
+        title={data.unvalidated_30d.join('\n') || '—'}
+        style={{ ...chip, cursor: 'pointer', color: data.unvalidated_30d.length > 0 ? 'var(--status-warn)' : 'var(--fg-2)' }}
+      >
+        <span style={{ ...num, color: 'inherit' }}>{data.unvalidated_30d.length}</span> {t.lineage.kpiUnvalidated}
+      </button>
+      {listOpen && data.unvalidated_30d.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', right: 0, zIndex: 60, marginTop: 4,
+          background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 6,
+          padding: 12, maxHeight: 240, overflowY: 'auto', minWidth: 240,
+          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+        }}>
+          <div style={{ fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+            {t.lineage.unvalidatedTitle}
+          </div>
+          {data.unvalidated_30d.map(n => (
+            <div key={n} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)', padding: '2px 0' }}>{n}</div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -124,18 +191,20 @@ function SidePanel({ node, onClose }: SidePanelProps) {
 export default function LineageMap() {
   const { data, isLoading } = useLineage();
   const cyRef = useRef<HTMLDivElement>(null);
-  const cyInstance = useRef<unknown>(null);
+  const cyInstance = useRef<Cytoscape.Core | null>(null);
   const [selectedNode, setSelectedNode] = useState<LineageNode | null>(null);
-  const [layerFilter, setLayerFilter] = useState<string>('');
-  const [flagFilter, setFlagFilter] = useState<string>('');
-  const [search, setSearch] = useState('');
+  const [layerFilter, setLayerFilter] = useSearchParamState('layer');
+  const [flagFilter, setFlagFilter] = useSearchParamState('status');
+  const [search, setSearch] = useSearchParamState('search');
+  const [focus, setFocus] = useSearchParamState('focus');
+  const [graphReady, setGraphReady] = useState(0);
   const navigate = useNavigate();
 
   // Desktop-only guard (U3)
   const isNarrow = typeof window !== 'undefined' && window.innerWidth < 900;
 
   const applyFilters = useCallback(() => {
-    const cy = cyInstance.current as Cytoscape.Core | null;
+    const cy = cyInstance.current;
     if (!cy) return;
     cy.nodes().style('display', 'element');
     if (layerFilter !== '') {
@@ -155,7 +224,24 @@ export default function LineageMap() {
 
   useEffect(() => {
     applyFilters();
-  }, [applyFilters]);
+  }, [applyFilters, graphReady]);
+
+  // ?focus={id}: select + center node and apply the root-cause highlight (G/K).
+  useEffect(() => {
+    const cy = cyInstance.current;
+    if (!cy) return;
+    applyRootCause(cy, focus);
+    if (focus) {
+      const node = cy.getElementById(focus);
+      if (!node.empty()) {
+        cy.nodes().unselect();
+        node.select();
+        cy.center(node);
+        const nodeData = (data?.nodes ?? []).find(n => n.id === focus);
+        if (nodeData) setSelectedNode(nodeData);
+      }
+    }
+  }, [focus, graphReady, data]);
 
   useEffect(() => {
     if (!data || !cyRef.current || isNarrow) return;
@@ -234,6 +320,20 @@ export default function LineageMap() {
             selector: 'node:selected',
             style: { 'border-width': 3 } as Record<string, unknown>,
           },
+          {
+            // Root-cause path: emphasised
+            selector: '.rc-path',
+            style: { 'opacity': 1, 'border-width': 3 } as Record<string, unknown>,
+          },
+          {
+            selector: 'edge.rc-path',
+            style: { 'line-color': theme.cont, 'target-arrow-color': theme.cont, 'width': 2.5 } as Record<string, unknown>,
+          },
+          {
+            // Everything off the root-cause path: dimmed
+            selector: '.rc-dim',
+            style: { 'opacity': 0.18 } as Record<string, unknown>,
+          },
         ],
         layout: restoredPositions
           ? { name: 'preset' }
@@ -271,11 +371,25 @@ export default function LineageMap() {
       cy.on('layoutstop', savePositions);
       cy.on('dragfree', 'node', savePositions);
 
-      // Node click → side panel
+      // Node click → side panel + root-cause highlight (URL-synced focus)
       cy.on('tap', 'node', (evt: unknown) => {
         const nodeEl = (evt as { target: { data: (k: string) => unknown } }).target;
-        const nodeData = nodes.find(n => n.id === nodeEl.data('id'));
-        if (nodeData) setSelectedNode(nodeData);
+        const nodeId = String(nodeEl.data('id'));
+        const nodeData = nodes.find(n => n.id === nodeId);
+        if (nodeData) {
+          setSelectedNode(nodeData);
+          setFocus(nodeId);
+          applyRootCause(cy, nodeId);
+        }
+      });
+
+      // Background click → reset highlight + close panel
+      cy.on('tap', (evt: Cytoscape.EventObject) => {
+        if (evt.target === cy) {
+          applyRootCause(cy, '');
+          setSelectedNode(null);
+          setFocus('');
+        }
       });
 
       // Double-click → navigate to object detail
@@ -285,49 +399,53 @@ export default function LineageMap() {
       });
 
       cyInstance.current = cy;
+      setGraphReady(g => g + 1);
     }
 
     return () => {
       if (cyInstance.current) {
-        (cyInstance.current as Cytoscape.Core).destroy();
+        cyInstance.current.destroy();
         cyInstance.current = null;
       }
     };
-  }, [data, isNarrow, navigate]);
+  }, [data, isNarrow, navigate, setFocus]);
 
   if (isNarrow) {
     return (
       <div style={{ padding: 32, textAlign: 'center', color: 'var(--fg-3)' }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>🖥</div>
-        <div style={{ fontWeight: 600 }}>Desktop only</div>
+        <div style={{ fontWeight: 600 }}>{t.lineage.desktopOnly}</div>
         <div style={{ fontSize: 13, marginTop: 8 }}>
-          The Lineage Coverage Map requires a wider screen. Open this page on a desktop or tablet.
+          {t.lineage.desktopOnlyHint}
         </div>
       </div>
     );
   }
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>Loading lineage data…</div>;
+  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
 
   return (
     <div style={{ maxWidth: '100%', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700 }}>Lineage Coverage Map</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.lineage.title}</h1>
         {data?.extract_age && (
           <div style={{ fontSize: 12, color: 'var(--status-warn)' }}>
-            Extract age: {data.extract_age}
+            {t.lineage.extractAge}: {data.extract_age}
           </div>
         )}
       </div>
 
-      {/* Filter bar */}
+      <CoverageKpis />
+
+      {/* Filter bar (URL-synced) */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <select
           value={layerFilter}
           onChange={e => setLayerFilter(e.target.value)}
+          aria-label={t.lineage.layerLabel}
           style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 5, padding: '5px 10px', color: 'var(--fg)', fontSize: 12 }}
         >
-          <option value=''>All layers</option>
+          <option value=''>{t.lineage.allLayers}</option>
           <option value='0'>Landing</option>
           <option value='1'>Harmonization</option>
           <option value='2'>Product</option>
@@ -335,28 +453,30 @@ export default function LineageMap() {
         <select
           value={flagFilter}
           onChange={e => setFlagFilter(e.target.value)}
+          aria-label={t.lineage.allCoverage}
           style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 5, padding: '5px 10px', color: 'var(--fg)', fontSize: 12 }}
         >
-          <option value=''>All coverage</option>
-          <option value='●'>● Covered</option>
-          <option value='◐'>◐ Partial</option>
-          <option value='▲'>▲ Gap</option>
-          <option value='○'>○ Out of scope</option>
+          <option value=''>{t.lineage.allCoverage}</option>
+          <option value='●'>✓ {t.lineage.covered}</option>
+          <option value='◐'>◐ {t.lineage.partial}</option>
+          <option value='▲'>⚠ {t.lineage.gap}</option>
+          <option value='○'>○ {t.lineage.outOfScope}</option>
         </select>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name…"
+          placeholder={t.lineage.searchPlaceholder}
+          aria-label={t.lineage.searchPlaceholder}
           style={{
             background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 5,
             padding: '5px 10px', color: 'var(--fg)', fontSize: 12, minWidth: 180,
           }}
         />
-        {/* Legend */}
+        {/* Legend: ✓ / ◐ / ⚠ / ○ */}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginLeft: 'auto' }}>
           {Object.entries(COVERAGE_LABEL).map(([flag, label]) => (
             <span key={flag} style={{ fontSize: 11, color: 'var(--fg-3)' }}>
-              <span style={{ color: COVERAGE_COLOR[flag] }}>{flag}</span> {label}
+              <span aria-hidden style={{ color: COVERAGE_COLOR[flag] }}>{COVERAGE_GLYPH[flag]}</span> {label}
             </span>
           ))}
         </div>
@@ -366,7 +486,7 @@ export default function LineageMap() {
       <div style={{ position: 'relative', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', height: 560 }}>
         <div ref={cyRef} style={{ width: '100%', height: '100%' }} />
         {selectedNode && (
-          <SidePanel node={selectedNode} onClose={() => setSelectedNode(null)} />
+          <SidePanel node={selectedNode} onClose={() => { setSelectedNode(null); setFocus(''); const cy = cyInstance.current; if (cy) applyRootCause(cy, ''); }} />
         )}
       </div>
     </div>

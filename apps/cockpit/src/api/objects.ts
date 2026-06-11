@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
-import type { ObjectSummary, RunListItem } from '@/types';
+import type {
+  ObjectSummary, RunListItem, CheckHistoryPoint, EnvironmentsResponse,
+} from '@/types';
 
 export const useObjects = () =>
   useQuery<ObjectSummary[]>({
@@ -24,13 +26,50 @@ export const useObjectRuns = (id: string) =>
     refetchInterval: (query) => query.state.data?.[0]?.run_state === 'running' ? 2000 : false,
   });
 
+export interface TriggerRunBody {
+  environment?: string;
+  execution_mode?: string;
+}
+
 export const useTriggerRun = (id: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.post(`/objects/${id}/run`).then(r => r.data),
+    mutationFn: (body: TriggerRunBody = {}) =>
+      api.post(`/objects/${id}/run`, body).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['objects', id, 'runs'] });
       qc.invalidateQueries({ queryKey: ['objects', id] });
+    },
+  });
+};
+
+// actual_value time series per check (newest first).
+export const useCheckHistory = (objectId: string, checkName: string, enabled = true) =>
+  useQuery<CheckHistoryPoint[]>({
+    queryKey: ['objects', objectId, 'checks', checkName, 'history'],
+    queryFn: () =>
+      api.get(`/objects/${objectId}/checks/${encodeURIComponent(checkName)}/history`).then(r => r.data),
+    enabled: !!objectId && !!checkName && enabled,
+    staleTime: 60_000,
+  });
+
+export const useEnvironments = () =>
+  useQuery<EnvironmentsResponse>({
+    queryKey: ['environments'],
+    queryFn: () => api.get('/environments').then(r => r.data),
+    staleTime: 5 * 60_000,
+  });
+
+// Analyzer chain: refresh inventory/lineage (onboarding step 1).
+export const useExtract = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { environment?: string } = {}) =>
+      api.post('/extract', body).then(r => r.data as Record<string, unknown>),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+      qc.invalidateQueries({ queryKey: ['lineage'] });
+      qc.invalidateQueries({ queryKey: ['objects'] });
     },
   });
 };
