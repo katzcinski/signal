@@ -68,3 +68,8 @@ export const useExportBdc = (product: string) =>
   useMutation({
     mutationFn: () => api.post(`/contracts/${product}/export/bdc`).then(r => r.data),
   });
+
+export const useExportOdcs = (product: string) =>
+  useMutation({
+    mutationFn: () => api.get(`/contracts/${product}/export/odcs`).then(r => r.data),
+  });

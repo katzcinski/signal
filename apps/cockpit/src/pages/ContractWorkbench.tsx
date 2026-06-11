@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useObjects } from '@/api/objects';
 import {
   useContract, usePutContract, useApproveContract, useDeprecateContract,
-  useCompileContractDryRun, useDryRunChecks, useRevertChecks, useExportBdc,
+  useCompileContractDryRun, useDryRunChecks, useRevertChecks, useExportBdc, useExportOdcs,
 } from '@/api/contracts';
+import { useSla } from '@/api/coverage';
 import type { AxiosError } from 'axios';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { StatePill } from '@/components/ui/StatePill';
@@ -78,8 +79,9 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
   const dryRun = useDryRunChecks(dataset);
   const revert = useRevertChecks(dataset);
   const exportBdc = useExportBdc(objectId);
+  const exportOdcs = useExportOdcs(objectId);
   const [showRevertConfirm, setShowRevertConfirm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'preview' | 'dryrun' | 'export'>('preview');
+  const [activeTab, setActiveTab] = useState<'preview' | 'dryrun' | 'export' | 'odcs'>('preview');
 
   const compileData = compile.data as {
     yaml_preview?: string; conflicts?: string[]; determinism_hash?: string;
@@ -109,6 +111,7 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
             {dryRun.isPending ? 'Running…' : 'Run checks'}
           </button>
           <button style={btnStyle('ghost')} onClick={() => { exportBdc.mutate(); setActiveTab('export'); }}>BDC export</button>
+          <button style={btnStyle('ghost')} onClick={() => { exportOdcs.mutate(); setActiveTab('odcs'); }}>ODCS export</button>
           <button style={btnStyle('danger')} onClick={() => setShowRevertConfirm(true)}>Revert</button>
         </div>
       </div>
@@ -118,6 +121,7 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
         <div style={tabStyle('preview')} onClick={() => setActiveTab('preview')}>Preview</div>
         <div style={tabStyle('dryrun')} onClick={() => setActiveTab('dryrun')}>Dry Run</div>
         <div style={tabStyle('export')} onClick={() => setActiveTab('export')}>BDC Export</div>
+        <div style={tabStyle('odcs')} onClick={() => setActiveTab('odcs')}>ODCS Export</div>
       </div>
 
       {activeTab === 'preview' && compileData && (
@@ -217,6 +221,17 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
         </div>
       )}
 
+      {activeTab === 'odcs' && exportOdcs.data && (
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>
+            ODCS 3.1 document <span style={{ color: 'var(--fg-3)', fontWeight: 400 }}>(interop export — compliance excluded)</span>
+          </div>
+          <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 6, overflow: 'auto', maxHeight: 420, fontSize: 11 }}>
+            {JSON.stringify(exportOdcs.data, null, 2)}
+          </pre>
+        </div>
+      )}
+
       {compile.isError && <div style={{ color: 'var(--status-fail)', fontSize: 12, marginTop: 8 }}>Compile failed</div>}
       {dryRun.isError && <div style={{ color: 'var(--status-fail)', fontSize: 12, marginTop: 8 }}>Dry run failed</div>}
 
@@ -281,6 +296,24 @@ function ApprovalBar({ objectId, lifecycle }: { objectId: string; lifecycle: str
   );
 }
 
+function SlaBar({ product }: { product: string }) {
+  const { data: sla } = useSla(product, 30);
+  if (!sla) return null;
+  const pct = sla.uptime_pct;
+  const color = pct >= 99 ? 'var(--status-ok)' : pct >= 95 ? 'var(--status-warn)' : 'var(--status-fail)';
+  return (
+    <div style={{ ...cardStyle, marginTop: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--fg-3)', marginBottom: 6 }}>
+        <span>SLA compliance · last {sla.window_days} days</span>
+        <span style={{ color, fontWeight: 600 }}>{pct}% uptime</span>
+      </div>
+      <div style={{ height: 8, borderRadius: 4, background: 'var(--bg-2)', overflow: 'hidden' }}>
+        <div style={{ width: `${Math.max(0, Math.min(100, pct))}%`, height: '100%', background: color }} />
+      </div>
+    </div>
+  );
+}
+
 function Editor({ objectId }: { objectId: string }) {
   const { data: contract, isLoading, isError, refetch } = useContract(objectId);
   const put = usePutContract(objectId);
@@ -313,6 +346,8 @@ function Editor({ objectId }: { objectId: string }) {
       <LifecycleStepper current={lifecycle} />
 
       <ApprovalBar objectId={objectId} lifecycle={lifecycle} />
+
+      {lifecycle === 'active' && <SlaBar product={contract?.product ?? objectId} />}
 
       {/* Contract JSON editor */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

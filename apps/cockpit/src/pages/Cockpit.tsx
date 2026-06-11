@@ -10,7 +10,8 @@ export default function Cockpit() {
   const objectsQuery = useObjects();
   const incidentsQuery = useIncidents();
   const { data: objects = [] } = objectsQuery;
-  const { data: incidents = [] } = incidentsQuery;
+  // Dashboard shows active (non-resolved) incidents only.
+  const incidents = (incidentsQuery.data ?? []).filter(i => i.status !== 'resolved');
   const navigate = useNavigate();
 
   const totalObjects = objects.length;
@@ -100,8 +101,8 @@ export default function Cockpit() {
             }}
           >
             <StatusDot status={i.severity} />
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1 }}>{i.check_name}</span>
-            <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{i.dataset}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1 }}>{i.product}</span>
+            <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{i.status}</span>
           </div>
         ))}
       </Panel>

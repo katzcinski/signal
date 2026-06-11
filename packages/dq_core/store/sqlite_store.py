@@ -183,6 +183,223 @@ class ResultStore:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    # ------------------------------------------------------------------
+    # Incidents (R4-1) — one open incident per product breach-episode.
+    # ------------------------------------------------------------------
+
+    _INCIDENT_STATES = ("open", "acknowledged", "investigating", "resolved")
+
+    def open_incident(
+        self, product: str, run_id: str, severity: str, summary: str,
+        check_name: str = "",
+    ) -> str | None:
+        """Open an incident for a breach episode, or return the existing open
+        one's id (idempotent per episode via the partial unique index). Returns
+        the incident id, or None on a race that another writer won."""
+        import uuid
+
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            existing = conn.execute(
+                "SELECT id FROM dq_incidents WHERE product=? AND status!='resolved'",
+                (product,),
+            ).fetchone()
+            if existing:
+                return existing["id"]
+            incident_id = str(uuid.uuid4())
+            try:
+                conn.execute(
+                    """INSERT INTO dq_incidents
+                       (id, product, run_id, check_name, severity, status,
+                        owner, summary, opened_at, resolved_at)
+                       VALUES (?,?,?,?,?,'open','',?,?,'')""",
+                    (incident_id, product, run_id, check_name, severity, summary, now),
+                )
+                conn.execute(
+                    """INSERT INTO dq_incident_events
+                       (incident_id, kind, actor, detail, at)
+                       VALUES (?, 'opened', 'system', ?, ?)""",
+                    (incident_id, summary, now),
+                )
+                return incident_id
+            except sqlite3.IntegrityError:
+                row = conn.execute(
+                    "SELECT id FROM dq_incidents WHERE product=? AND status!='resolved'",
+                    (product,),
+                ).fetchone()
+                return row["id"] if row else None
+
+    def resolve_open_incidents(self, product: str, run_id: str) -> None:
+        """Auto-resolve open incidents for a product (compliance recovered)."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT id FROM dq_incidents WHERE product=? AND status!='resolved'",
+                (product,),
+            ).fetchall()
+            for r in rows:
+                conn.execute(
+                    "UPDATE dq_incidents SET status='resolved', resolved_at=? WHERE id=?",
+                    (now, r["id"]),
+                )
+                conn.execute(
+                    """INSERT INTO dq_incident_events (incident_id, kind, actor, detail, at)
+                       VALUES (?, 'resolved', 'system', ?, ?)""",
+                    (r["id"], f"auto-recovery run {run_id}", now),
+                )
+
+    def get_incidents(
+        self, status: str | None = None, severity: str | None = None,
+        limit: int = 50, offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        where, params = [], []
+        if status:
+            where.append("status=?")
+            params.append(status)
+        if severity:
+            where.append("severity=?")
+            params.append(severity)
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+        # Severity-Sortierung: critical > fail > warn, offene zuerst.
+        order = ("ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'fail' THEN 1 "
+                 "ELSE 2 END, opened_at DESC")
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM dq_incidents{clause} {order} LIMIT ? OFFSET ?",
+                (*params, limit, offset),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_incident(self, incident_id: str) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_incidents WHERE id=?", (incident_id,)
+            ).fetchone()
+            if not row:
+                return None
+            incident = dict(row)
+            events = conn.execute(
+                "SELECT kind, actor, detail, at FROM dq_incident_events "
+                "WHERE incident_id=? ORDER BY id",
+                (incident_id,),
+            ).fetchall()
+            incident["events"] = [dict(e) for e in events]
+            return incident
+
+    def transition_incident(
+        self, incident_id: str, status: str, actor: str, note: str = "",
+    ) -> dict[str, Any] | None:
+        if status not in self._INCIDENT_STATES:
+            raise ValueError(f"invalid incident status {status!r}")
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT id FROM dq_incidents WHERE id=?", (incident_id,)
+            ).fetchone()
+            if not row:
+                return None
+            resolved_at = now if status == "resolved" else ""
+            conn.execute(
+                "UPDATE dq_incidents SET status=?, resolved_at=? WHERE id=?",
+                (status, resolved_at, incident_id),
+            )
+            conn.execute(
+                """INSERT INTO dq_incident_events (incident_id, kind, actor, detail, at)
+                   VALUES (?,?,?,?,?)""",
+                (incident_id, status, actor, note, now),
+            )
+        return self.get_incident(incident_id)
+
+    def assign_incident(
+        self, incident_id: str, owner: str, actor: str,
+    ) -> dict[str, Any] | None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT id FROM dq_incidents WHERE id=?", (incident_id,)
+            ).fetchone()
+            if not row:
+                return None
+            conn.execute(
+                "UPDATE dq_incidents SET owner=? WHERE id=?", (owner, incident_id)
+            )
+            conn.execute(
+                """INSERT INTO dq_incident_events (incident_id, kind, actor, detail, at)
+                   VALUES (?, 'assigned', ?, ?, ?)""",
+                (incident_id, actor, owner, now),
+            )
+        return self.get_incident(incident_id)
+
+    # ------------------------------------------------------------------
+    # SLA over time (R4-3) — derived from the compliance event-log.
+    # ------------------------------------------------------------------
+
+    def get_sla(self, product: str, window_days: int = 30) -> dict[str, Any]:
+        """% of the window the product spent in a non-breached state, derived by
+        integrating the compliance event-log over [now - window, now]."""
+        now = datetime.now(timezone.utc)
+        window_start = now.timestamp() - window_days * 86400
+        with self._conn() as conn:
+            events = conn.execute(
+                "SELECT to_state, at FROM dq_compliance_events WHERE product=? ORDER BY at",
+                (product,),
+            ).fetchall()
+        # State at window start = last transition before it (else 'unknown').
+        state = "unknown"
+        transitions: list[tuple[float, str]] = []
+        for e in events:
+            ts = _parse_iso(e["at"])
+            if ts is None:
+                continue
+            if ts <= window_start:
+                state = e["to_state"]
+            else:
+                transitions.append((ts, e["to_state"]))
+        # Integrate seconds spent breached vs. observed.
+        breached_s = 0.0
+        cursor = window_start
+        cur_state = state
+        for ts, to_state in transitions:
+            if cur_state == "breached":
+                breached_s += ts - cursor
+            cursor = ts
+            cur_state = to_state
+        if cur_state == "breached":
+            breached_s += now.timestamp() - cursor
+        total_s = now.timestamp() - window_start
+        uptime_pct = round(100.0 * (1 - breached_s / total_s), 3) if total_s > 0 else 100.0
+        return {
+            "product": product,
+            "window_days": window_days,
+            "uptime_pct": uptime_pct,
+            "breached_seconds": int(breached_s),
+            "current_state": cur_state,
+        }
+
+    # ------------------------------------------------------------------
+    # Diagnostics reader (R2-6) — Allowlist-projected at write time already.
+    # ------------------------------------------------------------------
+
+    def get_diagnostics(self, run_id: str, check_name: str | None = None) -> list[dict[str, Any]]:
+        where = ["run_id=?"]
+        params: list = [run_id]
+        if check_name:
+            where.append("check_name=?")
+            params.append(check_name)
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"SELECT check_name, row_data FROM dq_diagnostics WHERE {' AND '.join(where)} ORDER BY id",
+                params,
+            ).fetchall()
+        out = []
+        for r in rows:
+            try:
+                data = json.loads(r["row_data"])
+            except (json.JSONDecodeError, TypeError):
+                data = {"_raw": r["row_data"]}
+            out.append({"check_name": r["check_name"], "row": data})
+        return out
+
     def try_begin_run(self, summary: RunSummary) -> bool:
         """F2: Run-Registrierung mit Store-seitigem Doppellauf-Schutz.
 
@@ -327,3 +544,18 @@ class ResultStore:
                 {**dict(r), "status": status_map.get(r["worst_score"], "unknown")}
                 for r in rows
             ]
+
+
+def _parse_iso(value: Any) -> float | None:
+    """Parse an ISO-8601 timestamp to a POSIX float; tolerant of a trailing Z
+    and of naive timestamps (assumed UTC)."""
+    if not value:
+        return None
+    try:
+        text = str(value).replace("Z", "+00:00")
+        dt = datetime.fromisoformat(text)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.timestamp()
+    except (ValueError, TypeError):
+        return None

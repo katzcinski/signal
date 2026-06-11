@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ODCS 3.1 (structural subset used for export validation)",
+  "type": "object",
+  "required": ["apiVersion", "kind", "id", "version", "status", "schema"],
+  "additionalProperties": true,
+  "properties": {
+    "apiVersion": { "type": "string", "pattern": "^v3\\." },
+    "kind": { "type": "string", "enum": ["DataContract"] },
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "status": { "type": "string", "enum": ["draft", "active", "deprecated", "proposed", "retired"] },
+    "description": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "schema": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "properties"],
+        "additionalProperties": true,
+        "properties": {
+          "name": { "type": "string" },
+          "physicalName": { "type": "string" },
+          "logicalType": { "type": "string" },
+          "properties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "additionalProperties": true,
+              "properties": {
+                "name": { "type": "string" },
+                "logicalType": { "type": "string" },
+                "required": { "type": "boolean" },
+                "unique": { "type": "boolean" },
+                "primaryKey": { "type": "boolean" },
+                "primaryKeyPosition": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "slaProperties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["property", "value"],
+        "additionalProperties": true,
+        "properties": {
+          "property": { "type": "string" },
+          "value": {},
+          "element": { "type": "string" }
+        }
+      }
+    },
+    "customProperties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["property", "value"],
+        "additionalProperties": true
+      }
+    }
+  }
+}

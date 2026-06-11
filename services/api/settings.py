@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     webhook_url: str = Field(default="")
     webhook_allowlist: list[str] = Field(default=[])  # host patterns (regex), e.g. [".*\\.example\\.com"]
 
+    # Status badge (R4-5) — optional shared-secret to gate embeddable badges
+    badge_token: str = Field(default="")
+
 
 _settings: Settings | None = None
 

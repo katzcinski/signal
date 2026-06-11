@@ -563,3 +563,27 @@ def export_bdc(product: str, principal: PrincipalDep):
     }
 
     return {"csn_fragment": csn_fragment, "ord_fragment": ord_fragment}
+
+
+@router.get("/{product}/export/odcs")
+def export_odcs(product: str):
+    """R5-1: deterministic ODCS 3.1 export. [A1] compliance stays out."""
+    _validate_product(product)
+    data = _load_contract(product)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+    from dq_core.contract.odcs_export import to_odcs
+    return to_odcs(data)
+
+
+@router.get("/{product}/sla")
+def get_sla(
+    product: str,
+    window_days: int = Query(default=30, ge=1, le=365),
+    store: StoreDep = ...,
+):
+    """R4-3: % of the window the contract spent non-breached (status-page style)."""
+    _validate_product(product)
+    if not _load_contract(product):
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+    return store.get_sla(product, window_days)

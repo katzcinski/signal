@@ -310,13 +310,31 @@ def trigger_run(
                 previous = store.get_compliance(object_id)
                 new_compliance = compute_compliance(summary.results)
                 store.set_compliance(object_id, contract_version, new_compliance, run_id)
-                # WS5-3: Webhook genau beim Übergang → breached (S-10 geschlossen).
-                if new_compliance == "breached" and (not previous or previous.get("compliance") != "breached"):
+                was_breached = bool(previous) and previous.get("compliance") == "breached"
+                if new_compliance == "breached" and not was_breached:
+                    # R4-1: Incident je Breach-Episode (nicht je Check-Fail).
+                    failed = [
+                        r for r in summary.results
+                        if not r.passed and r.severity in ("fail", "critical")
+                    ]
+                    worst = "critical" if any(r.severity == "critical" for r in failed) else "fail"
+                    names = ", ".join(r.name for r in failed[:5]) or "compliance breached"
+                    store.open_incident(
+                        object_id, run_id, worst,
+                        f"{len(failed)} breaching check(s): {names}",
+                        check_name=failed[0].name if failed else "",
+                    )
+                    # WS5-3: Webhook genau beim Übergang → breached (S-10 geschlossen).
                     from ..webhook import fire_webhook_async
                     fire_webhook_async(
                         object_id, new_compliance, run_id,
                         settings.webhook_url, settings.webhook_allowlist,
+                        failed_checks=[r.name for r in failed],
+                        contract_version=contract_version,
                     )
+                elif new_compliance == "compliant" and was_breached:
+                    # Auto-Recovery: offene Incidents des Produkts schließen.
+                    store.resolve_open_incidents(object_id, run_id)
         except Exception:
             store.set_run_state(run_id, "error", datetime.now(timezone.utc).isoformat())
         finally:

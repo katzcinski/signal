@@ -154,19 +154,52 @@ export interface LineageGraph {
   extract_age?: string;
 }
 
-// ---- Incidents ----
+// ---- Incidents (R4-1 lifecycle) ----
+export type IncidentStatus = 'open' | 'acknowledged' | 'investigating' | 'resolved';
+
 export interface Incident {
-  id: string;                    // "<run_id>:<check_name>" (backend-provided)
-  check_name: string;
-  dataset: string;
-  severity: Severity;
-  expect_expr: string;
-  actual_value?: string;
-  error_message?: string;
-  state: CheckState;
+  id: string;
+  product: string;
   run_id: string;
-  started_at: string;
-  schema_name: string;
+  check_name: string;
+  severity: Severity;
+  status: IncidentStatus;
+  owner: string;
+  summary: string;
+  opened_at: string;
+  resolved_at: string;
+}
+
+export interface IncidentEvent {
+  kind: string;          // opened | acknowledged | investigating | resolved | assigned | comment
+  actor: string;
+  detail: string;
+  at: string;
+}
+
+export interface IncidentDetail extends Incident {
+  events: IncidentEvent[];
+}
+
+// ---- Coverage (R4-4) ----
+export interface CoverageSummary {
+  total_objects: number;
+  objects_with_contract: number;
+  objects_with_checks: number;
+  pct_with_contract: number;
+  pct_with_checks: number;
+  stale_objects: string[];
+  stale_threshold_days: number;
+  unvalidated: Array<{ object: string; layer: string; space: string }>;
+}
+
+// ---- SLA over time (R4-3) ----
+export interface SlaSummary {
+  product: string;
+  window_days: number;
+  uptime_pct: number;
+  breached_seconds: number;
+  current_state: string;
 }
 
 // ---- Proposals ----

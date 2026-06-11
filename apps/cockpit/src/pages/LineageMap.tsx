@@ -4,6 +4,8 @@ import Cytoscape from 'cytoscape';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import dagre from 'cytoscape-dagre';
 import { useLineage } from '@/api/lineage';
+import { useCoverageSummary } from '@/api/coverage';
+import { Kpi } from '@/components/ui/Kpi';
 import type { LineageNode } from '@/types';
 
 Cytoscape.use(dagre as Parameters<typeof Cytoscape.use>[0]);
@@ -123,6 +125,7 @@ function SidePanel({ node, onClose }: SidePanelProps) {
 
 export default function LineageMap() {
   const { data, isLoading } = useLineage();
+  const { data: coverage } = useCoverageSummary();
   const cyRef = useRef<HTMLDivElement>(null);
   const cyInstance = useRef<unknown>(null);
   const [selectedNode, setSelectedNode] = useState<LineageNode | null>(null);
@@ -319,6 +322,30 @@ export default function LineageMap() {
           </div>
         )}
       </div>
+
+      {/* R4-4: coverage KPIs above the map */}
+      {coverage && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
+          <Kpi label="Objects" value={coverage.total_objects} accent="var(--obs)" />
+          <Kpi
+            label="With contract"
+            value={`${coverage.pct_with_contract}%`}
+            delta={`${coverage.objects_with_contract}/${coverage.total_objects}`}
+            accent="var(--status-ok)"
+          />
+          <Kpi
+            label="With checks"
+            value={`${coverage.pct_with_checks}%`}
+            delta={`${coverage.objects_with_checks}/${coverage.total_objects}`}
+            accent="var(--qual)"
+          />
+          <Kpi
+            label={`Unvalidated`}
+            value={coverage.unvalidated.length}
+            accent={coverage.unvalidated.length > 0 ? 'var(--status-fail)' : 'var(--status-ok)'}
+          />
+        </div>
+      )}
 
       {/* Filter bar */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>

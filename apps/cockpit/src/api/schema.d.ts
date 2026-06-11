@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/badge/{product}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Badge */
+        get: operations["badge_api_badge__product__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/checks/{dataset}/dry-run": {
         parameters: {
             query?: never;
@@ -200,6 +217,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/contracts/{product}/export/odcs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Odcs
+         * @description R5-1: deterministic ODCS 3.1 export. [A1] compliance stays out.
+         */
+        get: operations["export_odcs_api_contracts__product__export_odcs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/contracts/{product}/seed": {
         parameters: {
             query?: never;
@@ -214,6 +251,43 @@ export interface paths {
          * @description [AUTHZ] Seed a draft contract from the inventory object (WS2-2).
          */
         post: operations["seed_contract_api_contracts__product__seed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contracts/{product}/sla": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Sla
+         * @description R4-3: % of the window the contract spent non-breached (status-page style).
+         */
+        get: operations["get_sla_api_contracts__product__sla_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coverage/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Coverage Summary */
+        get: operations["coverage_summary_api_coverage_summary_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -266,11 +340,68 @@ export interface paths {
         };
         /**
          * List Incidents
-         * @description Derived view: breached dq_results within last 7 days (not a separate store).
+         * @description R4-1 Inbox: incidents from the lifecycle table, severity-sorted.
          */
         get: operations["list_incidents_api_incidents_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incidents/{incident_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Incident */
+        get: operations["get_incident_api_incidents__incident_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incidents/{incident_id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assign Incident
+         * @description [AUTHZ] Assign an owner — steward role or higher.
+         */
+        post: operations["assign_incident_api_incidents__incident_id__assign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incidents/{incident_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transition Incident
+         * @description [AUTHZ] Acknowledge/investigate/resolve — steward role or higher.
+         */
+        post: operations["transition_incident_api_incidents__incident_id__transition_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -534,6 +665,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/runs/{run_id}/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Diagnostics
+         * @description R2-6/[PII-GATE]: diagnostic rows persisted for a run. Already projected
+         *     to the allowlist at write time — no raw column leaks here.
+         */
+        get: operations["get_run_diagnostics_api_runs__run_id__diagnostics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs/{run_id}/events": {
         parameters: {
             query?: never;
@@ -546,6 +698,26 @@ export interface paths {
          * @description Polling fallback for SSE (A5): returns persisted progress lines.
          */
         get: operations["get_run_events_api_runs__run_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{run_id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Results
+         * @description R2-6: check results of a run (without the run envelope).
+         */
+        get: operations["get_run_results_api_runs__run_id__results_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -761,6 +933,140 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** IncidentAssignIn */
+        IncidentAssignIn: {
+            /** Owner */
+            owner: string;
+        };
+        /** IncidentDetailOut */
+        IncidentDetailOut: {
+            /**
+             * Check Name
+             * @default
+             */
+            check_name: string;
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["IncidentEventOut"][];
+            /** Id */
+            id: string;
+            /**
+             * Opened At
+             * @default
+             */
+            opened_at: string;
+            /**
+             * Owner
+             * @default
+             */
+            owner: string;
+            /** Product */
+            product: string;
+            /**
+             * Resolved At
+             * @default
+             */
+            resolved_at: string;
+            /**
+             * Run Id
+             * @default
+             */
+            run_id: string;
+            /**
+             * Severity
+             * @default fail
+             */
+            severity: string;
+            /**
+             * Status
+             * @default open
+             */
+            status: string;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+        };
+        /** IncidentEventOut */
+        IncidentEventOut: {
+            /**
+             * Actor
+             * @default
+             */
+            actor: string;
+            /**
+             * At
+             * @default
+             */
+            at: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Kind */
+            kind: string;
+        };
+        /** IncidentOut */
+        IncidentOut: {
+            /**
+             * Check Name
+             * @default
+             */
+            check_name: string;
+            /** Id */
+            id: string;
+            /**
+             * Opened At
+             * @default
+             */
+            opened_at: string;
+            /**
+             * Owner
+             * @default
+             */
+            owner: string;
+            /** Product */
+            product: string;
+            /**
+             * Resolved At
+             * @default
+             */
+            resolved_at: string;
+            /**
+             * Run Id
+             * @default
+             */
+            run_id: string;
+            /**
+             * Severity
+             * @default fail
+             */
+            severity: string;
+            /**
+             * Status
+             * @default open
+             */
+            status: string;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+        };
+        /** IncidentTransitionIn */
+        IncidentTransitionIn: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Status */
+            status: string;
         };
         /** ObjectDetailOut */
         ObjectDetailOut: {
@@ -1091,6 +1397,40 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    badge_api_badge__product__get: {
+        parameters: {
+            query?: {
+                format?: string;
+                token?: string;
+            };
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     dry_run_checks_api_checks__dataset__dry_run_post: {
         parameters: {
             query?: never;
@@ -1438,6 +1778,37 @@ export interface operations {
             };
         };
     };
+    export_odcs_api_contracts__product__export_odcs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     seed_contract_api_contracts__product__seed_post: {
         parameters: {
             query?: never;
@@ -1468,6 +1839,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sla_api_contracts__product__sla_get: {
+        parameters: {
+            query?: {
+                window_days?: number;
+            };
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    coverage_summary_api_coverage_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -1526,8 +1950,10 @@ export interface operations {
     list_incidents_api_incidents_get: {
         parameters: {
             query?: {
+                status?: string | null;
                 severity?: string | null;
-                dataset?: string | null;
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -1541,7 +1967,114 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["IncidentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_incident_api_incidents__incident_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_incident_api_incidents__incident_id__assign_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentAssignIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transition_incident_api_incidents__incident_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentTransitionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetailOut"];
                 };
             };
             /** @description Validation Error */
@@ -1988,6 +2521,39 @@ export interface operations {
             };
         };
     };
+    get_run_diagnostics_api_runs__run_id__diagnostics_get: {
+        parameters: {
+            query?: {
+                check_name?: string | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_run_events_api_runs__run_id__events_get: {
         parameters: {
             query?: never;
@@ -2006,6 +2572,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_results_api_runs__run_id__results_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckResultOut"][];
                 };
             };
             /** @description Validation Error */

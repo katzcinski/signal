@@ -63,6 +63,29 @@ def get_run(run_id: str, store: StoreDep = ...):
     return _run_out(run)
 
 
+@router.get("/{run_id}/results", response_model=list[CheckResultOut])
+def get_run_results(run_id: str, store: StoreDep = ...):
+    """R2-6: check results of a run (without the run envelope)."""
+    run = store.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found")
+    return [_result_out(r) for r in run.get("results", [])]
+
+
+@router.get("/{run_id}/diagnostics")
+def get_run_diagnostics(
+    run_id: str,
+    check_name: str | None = Query(default=None),
+    store: StoreDep = ...,
+):
+    """R2-6/[PII-GATE]: diagnostic rows persisted for a run. Already projected
+    to the allowlist at write time — no raw column leaks here."""
+    run = store.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found")
+    return store.get_diagnostics(run_id, check_name)
+
+
 @router.get("/{run_id}/events")
 def get_run_events(run_id: str, store: StoreDep = ...):
     """Polling fallback for SSE (A5): returns persisted progress lines."""

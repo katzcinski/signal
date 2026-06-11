@@ -95,22 +95,47 @@ def fire_webhook(
         pass  # best-effort: webhook failure must not break the main flow
 
 
+def build_payload(
+    product: str,
+    compliance: str,
+    run_id: str,
+    failed_checks: list[str] | None = None,
+    contract_version: str = "",
+) -> dict[str, Any]:
+    """R4-2: notification payload with a Slack/Teams-friendly ``text`` block
+    alongside the structured fields (consumers can read either)."""
+    failed = failed_checks or []
+    summary = (
+        f"⚠️ Data contract *{product}* breached"
+        if compliance == "breached"
+        else f"✅ Data contract *{product}* recovered"
+    )
+    if failed:
+        summary += "\nFailing checks: " + ", ".join(failed[:10])
+    return {
+        "product": product,
+        "compliance": compliance,
+        "contract_version": contract_version,
+        "run_id": run_id,
+        "failed_checks": failed,
+        "text": summary,  # Slack/Teams compatible
+        "ts": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 def fire_webhook_async(
     product: str,
     compliance: str,
     run_id: str,
     url: str,
     allowlist: list[str],
+    failed_checks: list[str] | None = None,
+    contract_version: str = "",
 ) -> None:
     """Non-blocking wrapper — fires in a daemon thread."""
     if not url:
         return
-    payload = {
-        "product": product,
-        "compliance": compliance,
-        "run_id": run_id,
-        "ts": datetime.now(timezone.utc).isoformat(),
-    }
+    payload = build_payload(product, compliance, run_id, failed_checks, contract_version)
     t = threading.Thread(
         target=fire_webhook,
         args=(url, payload, allowlist),

@@ -1,57 +1,70 @@
 from __future__ import annotations
 
-import sqlite3
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 
+from ..auth.provider import PrincipalDep
 from ..deps import StoreDep
+from ..schemas.incident_schemas import (
+    IncidentAssignIn,
+    IncidentDetailOut,
+    IncidentOut,
+    IncidentTransitionIn,
+)
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 
+_VALID_STATUS = {"open", "acknowledged", "investigating", "resolved"}
 
-@router.get("")
+
+@router.get("", response_model=list[IncidentOut])
 def list_incidents(
+    status: str | None = Query(default=None),
     severity: str | None = Query(default=None),
-    dataset: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     store: StoreDep = ...,
 ):
-    """Derived view: breached dq_results within last 7 days (not a separate store)."""
-    conn = sqlite3.connect(store.db_path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
+    """R4-1 Inbox: incidents from the lifecycle table, severity-sorted."""
+    return store.get_incidents(status=status, severity=severity, limit=limit, offset=offset)
 
-    where_clauses = [
-        "cr.passed = 0",
-        "cr.severity IN ('critical', 'fail')",
-        "r.started_at >= datetime('now', '-7 days')",
-        "r.run_state = 'finished'",
-    ]
-    params: list = []
-    if severity:
-        where_clauses.append("cr.severity = ?")
-        params.append(severity)
-    if dataset:
-        where_clauses.append("r.dataset = ?")
-        params.append(dataset)
 
-    sql = f"""
-        SELECT
-          cr.check_name,
-          r.dataset,
-          cr.severity,
-          cr.expect_expr,
-          cr.actual_value,
-          cr.error_message,
-          cr.state,
-          r.run_id,
-          r.started_at,
-          r.schema_name
-        FROM dq_check_results cr
-        JOIN dq_runs r ON cr.run_id = r.run_id
-        WHERE {' AND '.join(where_clauses)}
-        ORDER BY r.started_at DESC
-        LIMIT 200
-    """
-    rows = conn.execute(sql, params).fetchall()
-    conn.close()
+@router.get("/{incident_id}", response_model=IncidentDetailOut)
+def get_incident(incident_id: str, store: StoreDep = ...):
+    incident = store.get_incident(incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail=f"Incident {incident_id!r} not found")
+    return incident
 
-    # Stabile id für FE-Row-Keys (run_id × check_name ist eindeutig je Lauf).
-    return [{**dict(r), "id": f"{r['run_id']}:{r['check_name']}"} for r in rows]
+
+@router.post("/{incident_id}/transition", response_model=IncidentDetailOut)
+def transition_incident(
+    incident_id: str,
+    principal: PrincipalDep,
+    body: IncidentTransitionIn = Body(...),
+    store: StoreDep = ...,
+):
+    """[AUTHZ] Acknowledge/investigate/resolve — steward role or higher."""
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Incident actions require steward role or higher.")
+    if body.status not in _VALID_STATUS:
+        raise HTTPException(status_code=422, detail=f"Invalid status {body.status!r}")
+    incident = store.transition_incident(incident_id, body.status, principal.name, body.note)
+    if not incident:
+        raise HTTPException(status_code=404, detail=f"Incident {incident_id!r} not found")
+    return incident
+
+
+@router.post("/{incident_id}/assign", response_model=IncidentDetailOut)
+def assign_incident(
+    incident_id: str,
+    principal: PrincipalDep,
+    body: IncidentAssignIn = Body(...),
+    store: StoreDep = ...,
+):
+    """[AUTHZ] Assign an owner — steward role or higher."""
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Incident actions require steward role or higher.")
+    incident = store.assign_incident(incident_id, body.owner, principal.name)
+    if not incident:
+        raise HTTPException(status_code=404, detail=f"Incident {incident_id!r} not found")
+    return incident

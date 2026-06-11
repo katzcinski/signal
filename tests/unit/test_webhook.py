@@ -3,7 +3,28 @@ from unittest.mock import patch
 
 import pytest
 
-from services.api.webhook import _is_private_host, _host_in_allowlist, fire_webhook
+from services.api.webhook import (
+    _is_private_host, _host_in_allowlist, fire_webhook, build_payload,
+)
+
+
+class TestBuildPayload:
+    def test_breach_payload_has_slack_text_and_fields(self):
+        p = build_payload("DS_X", "breached", "r1",
+                          failed_checks=["keys_unique", "freshness"],
+                          contract_version="1.2.0")
+        assert p["product"] == "DS_X"
+        assert p["compliance"] == "breached"
+        assert p["contract_version"] == "1.2.0"
+        assert p["failed_checks"] == ["keys_unique", "freshness"]
+        # Slack/Teams consumers read `text`.
+        assert "DS_X" in p["text"] and "breached" in p["text"]
+        assert "keys_unique" in p["text"]
+
+    def test_recovery_payload(self):
+        p = build_payload("DS_X", "compliant", "r2")
+        assert "recovered" in p["text"]
+        assert p["failed_checks"] == []
 
 
 class TestPrivateHostDetection:
