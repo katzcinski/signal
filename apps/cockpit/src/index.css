@@ -73,3 +73,20 @@ button {
 ::-webkit-scrollbar-track { background: var(--bg-1); }
 ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--fg-3); }
+
+/* R3-7 A11y: visible keyboard focus on all interactive elements. */
+:focus-visible {
+  outline: 2px solid var(--cont, #6aa3ff);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* R3-7: respect reduced-motion — disable transitions/animations on request. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

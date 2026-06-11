@@ -59,17 +59,18 @@ export default function Cockpit() {
               {objectsQuery.isSuccess ? 'No observability objects' : '—'}
             </p>
           ) : obsFamilyObjects.map(o => (
-            <div
+            <button
               key={o.id}
               onClick={() => navigate(`/objects/${o.id}`)}
               style={{
+                width: '100%', textAlign: 'left', background: 'none', border: 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '6px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer',
+                padding: '6px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer', color: 'var(--fg)',
               }}
             >
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</span>
               <StatusDot status={o.status ?? "unknown"} />
-            </div>
+            </button>
           ))}
         </Panel>
         <Panel title="Quality Objects" family="quality">
@@ -78,17 +79,18 @@ export default function Cockpit() {
               {objectsQuery.isSuccess ? 'No quality objects' : '—'}
             </p>
           ) : qualFamilyObjects.map(o => (
-            <div
+            <button
               key={o.id}
               onClick={() => navigate(`/objects/${o.id}`)}
               style={{
+                width: '100%', textAlign: 'left', background: 'none', border: 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '6px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer',
+                padding: '6px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer', color: 'var(--fg)',
               }}
             >
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</span>
               <StatusDot status={o.status ?? "unknown"} />
-            </div>
+            </button>
           ))}
         </Panel>
       </div>
