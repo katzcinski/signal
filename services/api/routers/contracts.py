@@ -87,24 +87,73 @@ def _contract_out(store, product: str, data: dict[str, Any]) -> ContractOut:
     )
 
 
+def _reindex(store) -> None:
+    """A3: contract_index aus dem Working Tree neu aufbauen (lazy, wenn leer
+    oder explizit über POST /reindex — z. B. nach externem git pull)."""
+    contracts_dir = _contracts_dir()
+    if not contracts_dir.exists():
+        return
+    for path in sorted(contracts_dir.glob("*.y*ml")):
+        if path.name.endswith(".active.yml"):
+            continue
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            continue
+        if data:
+            _update_index(store, data.get("product") or path.stem, data)
+
+
 @router.get("", response_model=list[ContractOut])
 def list_contracts(
     lifecycle: str | None = Query(default=None),
     store: StoreDep = ...,
 ):
-    contracts_dir = _contracts_dir()
-    if not contracts_dir.exists():
-        return []
+    """A3: Liste aus contract_index — Git ist keine Query-DB. `guarantees`
+    ist hier leer; das volle Contract liefert GET /api/contracts/{product}."""
+    import sqlite3
+
+    def _query():
+        conn = sqlite3.connect(store.db_path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        clause, params = "", []
+        if lifecycle:
+            clause = "WHERE lifecycle=?"
+            params.append(lifecycle)
+        rows = conn.execute(
+            f"SELECT * FROM contract_index {clause} ORDER BY product", params
+        ).fetchall()
+        conn.close()
+        return rows
+
+    rows = _query()
+    if not rows and not lifecycle:
+        _reindex(store)
+        rows = _query()
+
     result = []
-    paths = sorted(p for p in contracts_dir.glob("*.y*ml") if not p.name.endswith(".active.yml"))
-    for path in paths:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        if not data:
-            continue
-        if lifecycle and data.get("lifecycle") != lifecycle:
-            continue
-        result.append(_contract_out(store, data.get("product") or path.stem, data))
+    for row in rows:
+        compliance_row = store.get_compliance(row["product"])
+        result.append(ContractOut(
+            product=row["product"],
+            dataset=row["product"],
+            owned_by=row["owned_by"] or "platform",
+            owners=[],
+            version=row["version"] or "0.1.0",
+            lifecycle=row["lifecycle"] or "draft",
+            guarantees={},
+            compliance=compliance_row["compliance"] if compliance_row else None,
+        ))
     return result
+
+
+@router.post("/reindex")
+def reindex_contracts(principal: PrincipalDep, store: StoreDep = ...):
+    """Index-Rebuild nach externen Änderungen (git pull) — steward+."""
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Reindex requires steward role or higher.")
+    _reindex(store)
+    return {"status": "reindexed"}
 
 
 @router.get("/{product}", response_model=ContractOut)
@@ -279,7 +328,7 @@ def approve_contract(
     # fehlendes Git-Repo (lokaler Modus mit externem CONTRACTS_DIR) ist legal.
     commit_error = None
     try:
-        from ..git_repo import GitRepo
+        from ..git_repo import GitPushRejected, GitRepo
         GitRepo(get_settings().contracts_dir, get_settings().git_remote).write_contract(
             product,
             yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
@@ -287,6 +336,9 @@ def approve_contract(
             f"{principal.sub}@dq-cockpit",
             f"Approve contract {product} v{data.get('version')}",
         )
+    except GitPushRejected as exc:
+        # Lokal committed, Push abgelehnt → 409 mit Rebase-Hinweis (WS2-3)
+        raise HTTPException(status_code=409, detail=str(exc))
     except Exception as exc:  # noqa: BLE001
         commit_error = str(exc)
 
@@ -465,6 +517,25 @@ def compile_contract(
     )
 
 
+@router.get("/{product}/sla")
+def get_contract_sla(product: str, store: StoreDep = ...):
+    """R4-3: SLA-Compliance über Zeitfenster — %-compliant aus dem
+    Compliance-Event-Log, nicht nur Letzter-Lauf-Zustand."""
+    _validate_product(product)
+    if not _load_contract(product):
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+    compliance_row = store.get_compliance(product)
+    return {
+        "product": product,
+        "current": compliance_row["compliance"] if compliance_row else "unknown",
+        "windows": {
+            "7d": store.get_sla(product, 7),
+            "30d": store.get_sla(product, 30),
+            "90d": store.get_sla(product, 90),
+        },
+    }
+
+
 def _update_index(store, product: str, data: dict) -> None:
     import sqlite3
     from datetime import datetime, timezone
@@ -488,6 +559,26 @@ def _update_index(store, product: str, data: dict) -> None:
         conn.close()
     except Exception:
         pass
+
+
+@router.get("/{product}/export/odcs")
+def export_odcs(product: str, principal: PrincipalDep, format: str = Query(default="json")):
+    """R5-1: ODCS-3.1-Export (Bitol) — Interop mit OpenMetadata/Collibra/
+    datacontract-cli/Soda. Einweg; Compliance bleibt draußen (A1)."""
+    from dq_core.contract.odcs_export import to_odcs
+
+    _validate_product(product)
+    data = _load_contract(product)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+    odcs = to_odcs(data)
+    if format == "yaml":
+        from fastapi.responses import Response
+        return Response(
+            content=yaml.safe_dump(odcs, sort_keys=False, allow_unicode=True),
+            media_type="application/yaml",
+        )
+    return odcs
 
 
 @router.post("/{product}/export/bdc")

@@ -1,10 +1,11 @@
 import type { Lifecycle } from '@/types';
+import { t } from '@/i18n/de';
 
 const STEPS: Lifecycle[] = ['draft', 'active', 'deprecated'];
 const STEP_LABELS: Record<Lifecycle, string> = {
-  draft:      'Draft',
-  active:     'Active',
-  deprecated: 'Deprecated',
+  draft:      t.lifecycle.draft,
+  active:     t.lifecycle.active,
+  deprecated: t.lifecycle.deprecated,
 };
 
 interface Props { current: Lifecycle }

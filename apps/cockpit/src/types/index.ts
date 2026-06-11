@@ -22,6 +22,41 @@ export interface InventoryObject {
   description?: string;
 }
 
+// ---- Inventory picker source (GET /api/inventory) ----
+export interface InventoryColumn {
+  name: string;
+  [key: string]: unknown;
+}
+
+export interface InventoryDataset {
+  id?: string;
+  technicalName?: string;
+  name?: string;
+  schema?: string;
+  columns?: InventoryColumn[];
+  [key: string]: unknown;
+}
+
+export interface InventoryResponse {
+  datasets: InventoryDataset[];
+}
+
+// ---- Environments (GET /api/environments) ----
+export interface Environment {
+  name: string;
+  schema: string;
+}
+
+export interface EnvironmentsResponse {
+  environments: Environment[];
+}
+
+// ---- Per-family status rollup ----
+export interface FamilyStatus {
+  observability: string; // pass|warn|fail|critical|error|unknown
+  quality: string;       // pass|warn|fail|critical|error|unknown
+}
+
 // ---- Objects (API enriched) — mirrors backend ObjectOut ----
 export interface ObjectSummary {
   id: string;
@@ -30,6 +65,7 @@ export interface ObjectSummary {
   family: Family;
   layer: string;
   status: OverallStatus;
+  family_status?: FamilyStatus;
   contract_status: string;        // '' | draft | active | deprecated
   cov_flag: CovFlag;              // covered | partial | gap | out_of_scope
   check_count: number;
@@ -100,14 +136,68 @@ export interface RunListItem {
   triggered_by: string;
 }
 
-// ---- Contracts ----
+// ---- Check history (GET /api/objects/{id}/checks/{name}/history) ----
+export interface CheckHistoryPoint {
+  actual_value: string | null;
+  passed: 0 | 1;
+  state: string;
+  started_at: string;
+  run_id: string;
+}
+
+// ---- Contracts: canonical guarantee schema (§1.5) ----
+export interface GuaranteeSchema {
+  columns: string[];
+  mode: 'closed' | 'open';
+  severity?: Severity;
+}
+
+export interface GuaranteeKey {
+  columns: string[];
+  unique: boolean;
+  severity?: Severity;
+  proposed?: boolean;
+}
+
+export interface GuaranteeReferential {
+  fk: string[];          // single-column in v1
+  parent: string;
+  parent_key: string[];  // single-column in v1
+  severity?: Severity;
+}
+
+export interface GuaranteeFreshness {
+  column: string;
+  max_age: string; // ISO-8601 duration, e.g. PT24H
+  severity?: Severity;
+}
+
+export interface GuaranteeVolume {
+  min_rows?: number;
+  baseline?: 'rolling';
+  bounds?: 'auto';
+  severity?: Severity;
+}
+
+export interface GuaranteeCompleteness {
+  column: string;
+  min_pct: number;
+  severity?: Severity;
+}
+
+export interface GuaranteeNotNull {
+  columns: string[];
+  severity?: Severity;
+}
+
 export interface ContractGuarantees {
-  keys?: Array<{ columns: string[]; unique?: boolean }>;
-  not_null?: Array<{ columns: string[] }>;
-  row_count?: { min?: number; max?: number };
-  freshness?: { column: string; max_age_hours: number };
-  schema_columns?: { expected: string[] };
-  [key: string]: unknown;
+  schema?: GuaranteeSchema;
+  keys?: GuaranteeKey[];
+  referential?: GuaranteeReferential[];
+  freshness?: GuaranteeFreshness;
+  volume?: GuaranteeVolume;
+  completeness?: GuaranteeCompleteness[];
+  not_null?: GuaranteeNotNull[];
 }
 
 export interface Contract {
@@ -125,6 +215,49 @@ export interface Contract {
 export interface ContractOut extends Contract {
   compliance?: string | null;
   updated_at?: string;
+}
+
+// PUT body has NO lifecycle field (server forces draft).
+export interface ContractPutBody {
+  product: string;
+  dataset: string;
+  owned_by: string;
+  owners?: string[];
+  version: string;
+  description?: string;
+  guarantees?: ContractGuarantees;
+}
+
+// ---- Breaking-diff (POST /api/contracts/{product}/diff) ----
+export interface DiffEntry {
+  kind: string;
+  path: string;
+  old?: unknown;
+  new?: unknown;
+  breaking?: boolean;
+}
+
+export interface DiffReport {
+  breaking?: boolean;
+  entries?: DiffEntry[];
+  active_version?: string;
+  [key: string]: unknown;
+}
+
+// ---- SLA (GET /api/contracts/{product}/sla) ----
+export interface SlaResponse {
+  product: string;
+  current: string;
+  windows: { '7d': number | null; '30d': number | null; '90d': number | null };
+}
+
+// ---- Coverage (GET /api/coverage/summary) ----
+export interface CoverageSummary {
+  objects_total: number;
+  with_active_contract: number;
+  with_checks: number;
+  contract_coverage_pct: number;
+  unvalidated_30d: string[];
 }
 
 // ---- Lineage ----
@@ -154,8 +287,43 @@ export interface LineageGraph {
   extract_age?: string;
 }
 
-// ---- Incidents ----
+// ---- Incidents: persistent lifecycle objects ----
+export type IncidentStatus = 'open' | 'acknowledged' | 'investigating' | 'resolved';
+
 export interface Incident {
+  id: number;
+  product: string;
+  run_id: string;
+  severity: string;
+  status: IncidentStatus;
+  owner: string;
+  title: string;
+  failed_checks: string[];
+  opened_at: string;
+  resolved_at: string | null;
+  contract_version: string;
+}
+
+export interface IncidentEvent {
+  id: number;
+  at: string;
+  actor: string;
+  action: string;
+  note: string;
+}
+
+export interface IncidentDetail extends Incident {
+  events: IncidentEvent[];
+}
+
+export interface IncidentTransitionBody {
+  status: string;
+  owner?: string;
+  note?: string;
+}
+
+// ---- Derived failing-checks view (GET /api/incidents/checks) ----
+export interface FailedCheck {
   id: string;                    // "<run_id>:<check_name>" (backend-provided)
   check_name: string;
   dataset: string;

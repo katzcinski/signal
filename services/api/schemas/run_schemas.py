@@ -16,6 +16,7 @@ class CheckResultOut(BaseModel):
     error: Optional[str] = None
     duration_ms: int = 0
     state: str = "executed"
+    type: str = ""
 
 
 class RunSummaryOut(BaseModel):

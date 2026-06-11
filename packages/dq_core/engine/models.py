@@ -40,6 +40,8 @@ class CheckResult:
     # Gating state — never silently omit (G6)
     state: str = "executed"
     # allowed: executed | skipped_stale | skipped_dependency | downgraded | error
+    # Garantie-Typ des Checks (Rückverfolgbarkeit + Familien-Rollup, WS3-1)
+    type: str = ""
 
 
 @dataclass

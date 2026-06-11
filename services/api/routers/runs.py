@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
+from ..auth.provider import PrincipalDep
 from ..deps import StoreDep
 from ..schemas.run_schemas import RunSummaryOut, RunListItem, CheckResultOut
 
@@ -20,6 +21,7 @@ def _result_out(row: dict) -> CheckResultOut:
         error=row.get("error_message"),
         duration_ms=row.get("duration_ms", 0) or 0,
         state=row.get("state", "executed"),
+        type=row.get("check_type", "") or "",
     )
 
 
@@ -61,6 +63,34 @@ def get_run(run_id: str, store: StoreDep = ...):
     if not run:
         raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found")
     return _run_out(run)
+
+
+@router.get("/{run_id}/results", response_model=list[CheckResultOut])
+def get_run_results(run_id: str, store: StoreDep = ...):
+    """WS1-2: nur die Check-Ergebnisse eines Runs (ohne Run-Header)."""
+    run = store.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found")
+    return [_result_out(r) for r in run.get("results", [])]
+
+
+@router.get("/{run_id}/diagnostics")
+def get_run_diagnostics(
+    run_id: str,
+    principal: PrincipalDep,
+    check_name: str | None = Query(default=None),
+    store: StoreDep = ...,
+):
+    """[PII-GATE] Diagnostik-Zeilen (bereits allowlist-projiziert persistiert).
+
+    Defense-in-depth: Rohzeilen-Sicht erfordert steward+ — viewer sieht
+    Skalare, nie Datensätze.
+    """
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Diagnostics require steward role or higher.")
+    if not store.get_run(run_id):
+        raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found")
+    return store.get_diagnostics(run_id, check_name)
 
 
 @router.get("/{run_id}/events")

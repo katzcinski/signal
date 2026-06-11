@@ -23,7 +23,7 @@ export function StatePill({ state, size = 'md' }: Props) {
   const label = t.status[state] ?? state;
   const hint = t.stateHint[state] ?? label;
   return (
-    <span title={hint} style={{
+    <span title={hint} aria-label={hint} style={{
       display: 'inline-flex', alignItems: 'center', gap: 5,
       background: 'transparent',
       borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--fg-3)',

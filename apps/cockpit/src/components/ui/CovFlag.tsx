@@ -17,7 +17,12 @@ interface Props { flag: CovFlag; showLabel?: boolean }
 
 export function CovFlag({ flag, showLabel = false }: Props) {
   return (
-    <span style={{ color: COLORS[flag], fontFamily: 'inherit', whiteSpace: 'nowrap' }} title={flag}>
+    <span
+      role="img"
+      aria-label={flag}
+      style={{ color: COLORS[flag], fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+      title={flag}
+    >
       {SYMBOLS[flag]}{showLabel && <span style={{ marginLeft: 4, fontSize: 11, color: 'var(--fg-2)' }}>{flag.replace('_', ' ')}</span>}
     </span>
   );

@@ -38,6 +38,9 @@ class HanaStore:
     def set_compliance(self, product: str, version: str, compliance: str, run_id: str) -> None:
         raise NotImplementedError
 
+    def get_diagnostics(self, run_id: str, check_name: str | None = None) -> list[dict[str, Any]]:
+        raise NotImplementedError
+
     def close(self) -> None:
         try:
             self._conn.close()

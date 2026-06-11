@@ -14,7 +14,7 @@ export function ErrorBanner({ message, onRetry }: Props) {
       borderRadius: 6, padding: '10px 14px', marginBottom: 16,
       display: 'flex', alignItems: 'center', gap: 12,
     }}>
-      <span style={{ color: 'var(--status-crit)', fontSize: 12 }}>{message ?? t.error}</span>
+      <span style={{ color: 'var(--status-crit)', fontSize: 12 }}>{message ?? t.common.error}</span>
       <div style={{ flex: 1 }} />
       {onRetry && (
         <button
@@ -24,7 +24,7 @@ export function ErrorBanner({ message, onRetry }: Props) {
             borderRadius: 5, padding: '4px 12px', fontSize: 12, cursor: 'pointer',
           }}
         >
-          {t.retry}
+          {t.common.retry}
         </button>
       )}
     </div>

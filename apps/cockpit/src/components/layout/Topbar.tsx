@@ -1,3 +1,5 @@
+import { t } from '@/i18n/de';
+
 interface Props {
   onToggleSidebar: () => void;
   onOpenPalette: () => void;
@@ -25,7 +27,7 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
           fontSize: 12, display: 'flex', alignItems: 'center', gap: 8,
         }}
       >
-        <span>Search objects, contracts…</span>
+        <span>{t.palette.placeholder}</span>
         <kbd style={{
           background: 'var(--bg-3)', border: '1px solid var(--line-2)',
           borderRadius: 3, padding: '1px 5px', fontSize: 10,

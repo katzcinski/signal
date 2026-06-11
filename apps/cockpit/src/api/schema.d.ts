@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/badge/{product}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Status Badge
+         * @description Read-only Compliance-Badge. format=svg (default) | json.
+         */
+        get: operations["status_badge_api_badge__product__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/checks/{dataset}/dry-run": {
         parameters: {
             query?: never;
@@ -54,10 +74,34 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Contracts */
+        /**
+         * List Contracts
+         * @description A3: Liste aus contract_index — Git ist keine Query-DB. `guarantees`
+         *     ist hier leer; das volle Contract liefert GET /api/contracts/{product}.
+         */
         get: operations["list_contracts_api_contracts_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contracts/reindex": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reindex Contracts
+         * @description Index-Rebuild nach externen Änderungen (git pull) — steward+.
+         */
+        post: operations["reindex_contracts_api_contracts_reindex_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -200,6 +244,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/contracts/{product}/export/odcs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Odcs
+         * @description R5-1: ODCS-3.1-Export (Bitol) — Interop mit OpenMetadata/Collibra/
+         *     datacontract-cli/Soda. Einweg; Compliance bleibt draußen (A1).
+         */
+        get: operations["export_odcs_api_contracts__product__export_odcs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/contracts/{product}/seed": {
         parameters: {
             query?: never;
@@ -214,6 +279,64 @@ export interface paths {
          * @description [AUTHZ] Seed a draft contract from the inventory object (WS2-2).
          */
         post: operations["seed_contract_api_contracts__product__seed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contracts/{product}/sla": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Contract Sla
+         * @description R4-3: SLA-Compliance über Zeitfenster — %-compliant aus dem
+         *     Compliance-Event-Log, nicht nur Letzter-Lauf-Zustand.
+         */
+        get: operations["get_contract_sla_api_contracts__product__sla_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coverage/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Coverage Summary */
+        get: operations["coverage_summary_api_coverage_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/environments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Environments
+         * @description Environment-Namen für den RunTriggerDialog — NIE Credentials (S-13).
+         */
+        get: operations["list_environments_api_environments_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -264,13 +387,67 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Incidents
-         * @description Derived view: breached dq_results within last 7 days (not a separate store).
-         */
+        /** List Incidents */
         get: operations["list_incidents_api_incidents_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incidents/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Failing Checks
+         * @description Derived view: breached check results within last 7 days (not a separate store).
+         */
+        get: operations["list_failing_checks_api_incidents_checks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incidents/{incident_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Incident */
+        get: operations["get_incident_api_incidents__incident_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incidents/{incident_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transition Incident
+         * @description [AUTHZ] Statuswechsel/Assign/Note — jede Aktion landet in der Timeline.
+         */
+        post: operations["transition_incident_api_incidents__incident_id__transition_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -534,6 +711,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/runs/{run_id}/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Diagnostics
+         * @description [PII-GATE] Diagnostik-Zeilen (bereits allowlist-projiziert persistiert).
+         *
+         *     Defense-in-depth: Rohzeilen-Sicht erfordert steward+ — viewer sieht
+         *     Skalare, nie Datensätze.
+         */
+        get: operations["get_run_diagnostics_api_runs__run_id__diagnostics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs/{run_id}/events": {
         parameters: {
             query?: never;
@@ -546,6 +746,26 @@ export interface paths {
          * @description Polling fallback for SSE (A5): returns persisted progress lines.
          */
         get: operations["get_run_events_api_runs__run_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{run_id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Results
+         * @description WS1-2: nur die Check-Ergebnisse eines Runs (ohne Run-Header).
+         */
+        get: operations["get_run_results_api_runs__run_id__results_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -644,6 +864,11 @@ export interface components {
              * @default executed
              */
             state: string;
+            /**
+             * Type
+             * @default
+             */
+            type: string;
         };
         /** CompileOut */
         CompileOut: {
@@ -762,6 +987,18 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** IncidentTransitionIn */
+        IncidentTransitionIn: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Owner */
+            owner?: string | null;
+            /** Status */
+            status?: string | null;
+        };
         /** ObjectDetailOut */
         ObjectDetailOut: {
             /**
@@ -788,6 +1025,16 @@ export interface components {
              * @default quality
              */
             family: string;
+            /**
+             * Family Status
+             * @default {
+             *       "observability": "unknown",
+             *       "quality": "unknown"
+             *     }
+             */
+            family_status: {
+                [key: string]: string;
+            };
             /** Id */
             id: string;
             /** Last Run */
@@ -850,6 +1097,16 @@ export interface components {
              * @default quality
              */
             family: string;
+            /**
+             * Family Status
+             * @default {
+             *       "observability": "unknown",
+             *       "quality": "unknown"
+             *     }
+             */
+            family_status: {
+                [key: string]: string;
+            };
             /** Id */
             id: string;
             /** Last Run */
@@ -1091,6 +1348,39 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    status_badge_api_badge__product__get: {
+        parameters: {
+            query?: {
+                format?: string;
+            };
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     dry_run_checks_api_checks__dataset__dry_run_post: {
         parameters: {
             query?: never;
@@ -1183,6 +1473,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reindex_contracts_api_contracts_reindex_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -1438,6 +1760,42 @@ export interface operations {
             };
         };
     };
+    export_odcs_api_contracts__product__export_odcs_get: {
+        parameters: {
+            query?: {
+                format?: string;
+            };
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     seed_contract_api_contracts__product__seed_post: {
         parameters: {
             query?: never;
@@ -1468,6 +1826,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_contract_sla_api_contracts__product__sla_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    coverage_summary_api_coverage_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_environments_api_environments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -1526,6 +1955,39 @@ export interface operations {
     list_incidents_api_incidents_get: {
         parameters: {
             query?: {
+                status?: string | null;
+                severity?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_failing_checks_api_incidents_checks_get: {
+        parameters: {
+            query?: {
                 severity?: string | null;
                 dataset?: string | null;
             };
@@ -1534,6 +1996,75 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_incident_api_incidents__incident_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transition_incident_api_incidents__incident_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                incident_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentTransitionIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -1988,6 +2519,42 @@ export interface operations {
             };
         };
     };
+    get_run_diagnostics_api_runs__run_id__diagnostics_get: {
+        parameters: {
+            query?: {
+                check_name?: string | null;
+            };
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_run_events_api_runs__run_id__events_get: {
         parameters: {
             query?: never;
@@ -2006,6 +2573,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_results_api_runs__run_id__results_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckResultOut"][];
                 };
             };
             /** @description Validation Error */
