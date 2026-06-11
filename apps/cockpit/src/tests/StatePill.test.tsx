@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { StatePill, CheckStatusCell } from '@/components/ui/StatePill';
-import { t } from '@/i18n/de';
+import { t } from '@/i18n/strings';
 
 describe('StatePill', () => {
   it('renders a neutral pill with glyph, label and tooltip for skipped_stale', () => {

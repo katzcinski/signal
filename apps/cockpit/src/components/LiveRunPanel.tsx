@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRunEvents } from '@/api/runs';
-import { t } from '@/i18n/de';
+import { t } from '@/i18n/strings';
 
 interface Props {
   runId: string;
@@ -30,7 +30,7 @@ export function LiveRunPanel({ runId, dataset, running }: Props) {
         }}
       >
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-warn)', flexShrink: 0 }} />
-        <span>{t.liveRun}</span>
+        <span>{t.actions.liveRun}</span>
         <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg)' }}>{dataset}</span>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }}>{runId.slice(0, 12)}…</span>
         <span style={{ marginLeft: 'auto', color: 'var(--fg-3)' }}>{open ? '▾' : '▴'}</span>
@@ -41,7 +41,7 @@ export function LiveRunPanel({ runId, dataset, running }: Props) {
           fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)',
         }}>
           {events.length === 0 ? (
-            <div style={{ color: 'var(--fg-3)' }}>{t.loading}</div>
+            <div style={{ color: 'var(--fg-3)' }}>{t.common.loading}</div>
           ) : events.map((e, i) => (
             <div key={`${e.ts}-${i}`}>
               <span style={{ color: 'var(--fg-3)' }}>{e.ts}</span> {e.line}

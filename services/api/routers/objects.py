@@ -26,6 +26,14 @@ def _object_status_map(store) -> dict[str, dict]:
         return {}
 
 
+def _object_family_status_map(store) -> dict[str, dict]:
+    """R3-2: per dataset, status per check family (observability/quality)."""
+    try:
+        return store.get_object_family_status()
+    except Exception:
+        return {}
+
+
 def _contract_lifecycle_map() -> dict[str, str]:
     """Map product → lifecycle from on-disk contracts (identity join: id == product)."""
     import yaml
@@ -63,6 +71,7 @@ def list_objects(
     inventory: list[dict] = Depends(get_inventory),
 ):
     statuses = _object_status_map(store)
+    families = _object_family_status_map(store)
     contracts = _contract_lifecycle_map()
     settings = get_settings()
     result = []
@@ -87,6 +96,7 @@ def list_objects(
                 last_run=s.get("last_run"),
                 last_run_id=s.get("last_run_id"),
                 space=obj.get("space", ""),
+                families=families.get(obj_id, {}),
             )
         )
     return result
@@ -149,6 +159,7 @@ def get_object(
         last_run=s.get("last_run"),
         last_run_id=s.get("last_run_id"),
         space=obj.get("space", ""),
+        families=_object_family_status_map(store).get(object_id, {}),
         latest_run=latest_run,
         run_history=[RunListItem(**{k: v for k, v in r.items() if k in RunListItem.model_fields}) for r in runs[:20]],
     )

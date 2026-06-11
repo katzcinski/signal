@@ -1,6 +1,6 @@
 import type { CheckState, Severity } from '@/types';
 import { StatusPill } from './StatusPill';
-import { t } from '@/i18n/de';
+import { t } from '@/i18n/strings';
 
 // G6: gating states must render as neutral state pills, never as pass/fail.
 type GatedState = Exclude<CheckState, 'executed'>;

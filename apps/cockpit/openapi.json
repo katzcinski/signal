@@ -264,6 +264,27 @@
         "title": "ContractOut",
         "type": "object"
       },
+      "FamilyStatus": {
+        "properties": {
+          "passed": {
+            "default": 0,
+            "title": "Passed",
+            "type": "integer"
+          },
+          "status": {
+            "default": "unknown",
+            "title": "Status",
+            "type": "string"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "FamilyStatus",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -489,6 +510,14 @@
             "title": "Cov Flag",
             "type": "string"
           },
+          "families": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FamilyStatus"
+            },
+            "default": {},
+            "title": "Families",
+            "type": "object"
+          },
           "family": {
             "default": "quality",
             "title": "Family",
@@ -591,6 +620,14 @@
             "default": "out_of_scope",
             "title": "Cov Flag",
             "type": "string"
+          },
+          "families": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FamilyStatus"
+            },
+            "default": {},
+            "title": "Families",
+            "type": "object"
           },
           "family": {
             "default": "quality",

@@ -42,3 +42,6 @@ class ResultStoreProtocol(Protocol):
 
     # SLA over time (R4-3)
     def get_sla(self, product: str, window_days: int = 30) -> dict[str, Any]: ...
+
+    # Per-family rollup (R3-2)
+    def get_object_family_status(self) -> dict[str, dict[str, dict[str, Any]]]: ...

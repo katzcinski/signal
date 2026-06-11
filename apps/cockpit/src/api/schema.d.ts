@@ -929,6 +929,24 @@ export interface components {
              */
             version: string;
         };
+        /** FamilyStatus */
+        FamilyStatus: {
+            /**
+             * Passed
+             * @default 0
+             */
+            passed: number;
+            /**
+             * Status
+             * @default unknown
+             */
+            status: string;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1090,6 +1108,13 @@ export interface components {
              */
             cov_flag: string;
             /**
+             * Families
+             * @default {}
+             */
+            families: {
+                [key: string]: components["schemas"]["FamilyStatus"];
+            };
+            /**
              * Family
              * @default quality
              */
@@ -1151,6 +1176,13 @@ export interface components {
              * @default out_of_scope
              */
             cov_flag: string;
+            /**
+             * Families
+             * @default {}
+             */
+            families: {
+                [key: string]: components["schemas"]["FamilyStatus"];
+            };
             /**
              * Family
              * @default quality

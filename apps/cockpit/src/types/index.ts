@@ -23,6 +23,12 @@ export interface InventoryObject {
 }
 
 // ---- Objects (API enriched) — mirrors backend ObjectOut ----
+export interface FamilyStatus {
+  status: OverallStatus;
+  passed: number;
+  total: number;
+}
+
 export interface ObjectSummary {
   id: string;
   name: string;
@@ -37,6 +43,8 @@ export interface ObjectSummary {
   last_run?: string | null;
   last_run_id?: string | null;
   space: string;
+  // R3-2: per-family status map (family is an attribute of checks).
+  families?: Partial<Record<Family, FamilyStatus>>;
 }
 
 // ---- Check Library ----

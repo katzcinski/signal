@@ -104,6 +104,48 @@ def test_sla_accounts_for_breached_interval(tmp_path):
     assert sla["current_state"] == "compliant"
 
 
+# ---------------------------------------------------------------- family rollup
+
+
+def test_object_family_status_splits_by_family(tmp_path):
+    store = _store(tmp_path)
+    summary = RunSummary(
+        run_id="r1", dataset="DS", schema="S",
+        started_at=datetime.now(timezone.utc).isoformat(), finished_at="",
+        overall_status="warn", total=3, passed=2, failed=1, warnings=0,
+        results=[
+            # observability family
+            CheckResult(name="freshness_LOAD_TS", sql="x", expect="< 1", severity="warn", passed=False),
+            # quality family
+            CheckResult(name="key_ORDER_ID_unique", sql="x", expect="= 0", severity="critical", passed=True),
+            CheckResult(name="completeness_AMOUNT", sql="x", expect="<= 1", severity="fail", passed=True),
+        ],
+    )
+    store.save_run(summary)
+    fam = store.get_object_family_status()["DS"]
+    assert fam["observability"]["status"] == "warn"   # failing warn freshness
+    assert fam["observability"]["total"] == 1
+    assert fam["quality"]["status"] == "pass"          # key + completeness both pass
+    assert fam["quality"]["total"] == 2
+
+
+def test_object_family_status_ignores_gated_checks(tmp_path):
+    store = _store(tmp_path)
+    summary = RunSummary(
+        run_id="r1", dataset="DS", schema="S",
+        started_at=datetime.now(timezone.utc).isoformat(), finished_at="",
+        overall_status="pass", total=1, passed=0, failed=0, warnings=0,
+        results=[
+            CheckResult(name="volume_min_rows", sql="x", expect=">= 1", severity="warn",
+                        passed=False, state="skipped_stale"),
+        ],
+    )
+    store.save_run(summary)
+    fam = store.get_object_family_status().get("DS", {})
+    # The only check is gated → it contributes no pass/fail verdict to any family.
+    assert "observability" not in fam
+
+
 # ---------------------------------------------------------------- diagnostics
 
 

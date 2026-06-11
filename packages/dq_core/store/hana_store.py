@@ -62,6 +62,9 @@ class HanaStore:
     def get_sla(self, product: str, window_days: int = 30) -> dict[str, Any]:
         raise NotImplementedError
 
+    def get_object_family_status(self) -> dict[str, dict[str, dict[str, Any]]]:
+        raise NotImplementedError
+
     def close(self) -> None:
         try:
             self._conn.close()

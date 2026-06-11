@@ -545,6 +545,59 @@ class ResultStore:
                 for r in rows
             ]
 
+    def get_object_family_status(self) -> dict[str, dict[str, dict[str, Any]]]:
+        """R3-2: per dataset, the worst status per *check family* from the latest
+        finished run. Family is derived from the check name/type (families.py),
+        so no schema change is needed. Returns
+        ``{dataset: {family: {status, passed, total}}}``."""
+        from ..library.families import family_of
+
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT r.dataset, cr.check_name, cr.severity, cr.passed,
+                          cr.error_message, cr.state
+                   FROM dq_check_results cr
+                   JOIN dq_runs r ON cr.run_id = r.run_id
+                   WHERE r.started_at = (
+                     SELECT MAX(r2.started_at) FROM dq_runs r2
+                     WHERE r2.dataset = r.dataset AND r2.run_state='finished'
+                   )""",
+            ).fetchall()
+
+        score_of = lambda sev, passed, err: (
+            4 if sev == "critical" and not passed
+            else 3 if sev == "fail" and not passed
+            else 2 if sev == "warn" and not passed
+            else 1 if err is not None
+            else 0
+        )
+        status_map = {0: "pass", 1: "error", 2: "warn", 3: "fail", 4: "critical"}
+
+        out: dict[str, dict[str, dict[str, Any]]] = {}
+        for r in rows:
+            # Gated (non-executed) checks don't contribute a pass/fail verdict.
+            if r["state"] and r["state"] != "executed":
+                continue
+            fam = family_of(r["check_name"], "")
+            bucket = out.setdefault(r["dataset"], {}).setdefault(
+                fam, {"worst": 0, "passed": 0, "total": 0}
+            )
+            bucket["total"] += 1
+            bucket["passed"] += 1 if r["passed"] else 0
+            bucket["worst"] = max(bucket["worst"], score_of(r["severity"], r["passed"], r["error_message"]))
+
+        return {
+            dataset: {
+                fam: {
+                    "status": status_map.get(b["worst"], "unknown"),
+                    "passed": b["passed"],
+                    "total": b["total"],
+                }
+                for fam, b in fams.items()
+            }
+            for dataset, fams in out.items()
+        }
+
 
 def _parse_iso(value: Any) -> float | None:
     """Parse an ISO-8601 timestamp to a POSIX float; tolerant of a trailing Z
