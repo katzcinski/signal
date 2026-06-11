@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }  # G3 braucht die Merge-Base zu origin/<base>
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
 
@@ -49,17 +50,25 @@ jobs:
       - name: G3 — Breaking contract change requires major bump (PRs)
         if: github.event_name == 'pull_request'
         run: |
-          git fetch origin ${{ github.base_ref }} --depth=1
+          git fetch --no-tags origin ${{ github.base_ref }}
           python - <<'EOF'
           import subprocess, sys, pathlib, yaml
           sys.path.insert(0, 'packages')
           from dq_core.contract.diff import diff_contracts, is_breaking
 
           base = "origin/${{ github.base_ref }}"
-          changed = subprocess.run(
+          # Drei-Punkte (Merge-Base) bevorzugt; Fallback Zwei-Punkte, falls die
+          # Historie wider Erwarten flach ist.
+          diff = subprocess.run(
             ["git", "diff", "--name-only", f"{base}...HEAD", "--", "contracts/"],
-            capture_output=True, text=True, check=True,
-          ).stdout.split()
+            capture_output=True, text=True,
+          )
+          if diff.returncode != 0:
+            diff = subprocess.run(
+              ["git", "diff", "--name-only", base, "HEAD", "--", "contracts/"],
+              capture_output=True, text=True, check=True,
+            )
+          changed = diff.stdout.split()
           failed = False
           for name in changed:
             path = pathlib.Path(name)
@@ -229,8 +238,11 @@ jobs:
           pip install fastapi pydantic pydantic-settings pyyaml jsonschema httpx
           pip install -e packages/dq_core
           python scripts/export_openapi.py
-          cd apps/cockpit && npm run gen:api
-          git diff --exit-code apps/cockpit/openapi.json apps/cockpit/src/api/schema.d.ts
+          # Subshell: das cd darf nicht in den git-diff-Schritt lecken
+          (cd apps/cockpit && npm run gen:api)
+          # add -N: auch UNGETRACKTE Artefakte zählen als Drift, nicht als Pass
+          git add -N apps/cockpit/openapi.json apps/cockpit/src/api/schema.d.ts
+          git diff --exit-code -- apps/cockpit/openapi.json apps/cockpit/src/api/schema.d.ts
 
       - name: TypeScript type-check
         working-directory: apps/cockpit
