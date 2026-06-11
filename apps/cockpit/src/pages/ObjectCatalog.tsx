@@ -5,6 +5,7 @@ import { Table, type ColDef } from '@/components/ui/Table';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { CovFlag } from '@/components/ui/CovFlag';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { t } from '@/i18n/strings';
 import type { Family, ObjectSummary } from '@/types';
 
@@ -134,7 +135,17 @@ export default function ObjectCatalog() {
             rows={rows}
             rowKey={o => o.id}
             onRowClick={o => navigate(`/objects/${o.id}`)}
-            empty="No objects match these filters"
+            empty={
+              <EmptyState
+                title={objects.length === 0 ? 'No objects yet' : 'No objects match these filters'}
+                hint={objects.length === 0
+                  ? 'Run an extract from the Cockpit to load your inventory.'
+                  : 'Try clearing the space, layer, family or severity filters.'}
+                action={objects.length === 0
+                  ? { label: 'Go to Cockpit', onClick: () => navigate('/') }
+                  : { label: 'Clear filters', onClick: () => { setSpace(''); setLayer(''); setFamily(''); setSeverity(''); } }}
+              />
+            }
           />
         </div>
       )}

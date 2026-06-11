@@ -2,6 +2,7 @@ import { Kpi } from '@/components/ui/Kpi';
 import { Panel } from '@/components/ui/Panel';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { Onboarding } from '@/components/Onboarding';
 import { useObjects } from '@/api/objects';
 import { useIncidents } from '@/api/incidents';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +14,11 @@ export default function Cockpit() {
   // Dashboard shows active (non-resolved) incidents only.
   const incidents = (incidentsQuery.data ?? []).filter(i => i.status !== 'resolved');
   const navigate = useNavigate();
+
+  // R3-4: empty tenant (loaded, no objects, no error) → guided onboarding.
+  if (objectsQuery.isSuccess && objects.length === 0) {
+    return <Onboarding />;
+  }
 
   const totalObjects = objects.length;
   const healthyObjects = objects.filter(o => o.status === 'pass').length;

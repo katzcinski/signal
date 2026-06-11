@@ -9,6 +9,7 @@ import {
 import { Table, type ColDef } from '@/components/ui/Table';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { EmptyState } from '@/components/ui/EmptyState';
 import type { Incident, IncidentStatus } from '@/types';
 
 const STATUS_LABEL: Record<IncidentStatus, string> = {
@@ -209,7 +210,15 @@ export default function Incidents() {
             rows={incidents}
             rowKey={i => i.id}
             onRowClick={i => setSelected(i.id)}
-            empty="No incidents — all contracts compliant"
+            empty={
+              <EmptyState
+                icon="✓"
+                title="No incidents"
+                hint={statusFilter || severityFilter
+                  ? 'No incidents match the current filters.'
+                  : 'All contracts are currently compliant. Incidents open automatically when a contract is breached.'}
+              />
+            }
           />
         </div>
       )}

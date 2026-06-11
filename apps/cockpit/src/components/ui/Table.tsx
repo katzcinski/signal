@@ -13,7 +13,7 @@ interface Props<T> {
   rows: T[];
   rowKey: (row: T) => string;
   onRowClick?: (row: T) => void;
-  empty?: string;
+  empty?: ReactNode;
 }
 
 export function Table<T>({ columns, rows, rowKey, onRowClick, empty = 'No data' }: Props<T>) {
