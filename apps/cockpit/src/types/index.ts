@@ -108,13 +108,23 @@ export interface RunListItem {
   triggered_by: string;
 }
 
-// ---- Contracts ----
+// ---- Contracts (guarantee families, §1.5) ----
+export interface SchemaGuarantee { columns: string[]; mode: 'open' | 'closed' }
+export interface KeyGuarantee { columns: string[]; unique: boolean; severity: Severity }
+export interface RefGuarantee { fk: string[]; parent: string; parent_key: string[]; severity: Severity }
+export interface FreshnessGuarantee { column: string; max_age: string; severity: Severity }
+export interface VolumeGuarantee { min_rows?: number; baseline?: string; bounds?: string; severity: Severity }
+export interface CompletenessGuarantee { column: string; min_pct: number; severity: Severity }
+export interface NotNullGuarantee { columns: string[]; severity: Severity }
+
 export interface ContractGuarantees {
-  keys?: Array<{ columns: string[]; unique?: boolean }>;
-  not_null?: Array<{ columns: string[] }>;
-  row_count?: { min?: number; max?: number };
-  freshness?: { column: string; max_age_hours: number };
-  schema_columns?: { expected: string[] };
+  schema?: SchemaGuarantee;
+  keys?: KeyGuarantee[];
+  referential?: RefGuarantee[];
+  freshness?: FreshnessGuarantee;
+  volume?: VolumeGuarantee;
+  completeness?: CompletenessGuarantee[];
+  not_null?: NotNullGuarantee[];
   [key: string]: unknown;
 }
 

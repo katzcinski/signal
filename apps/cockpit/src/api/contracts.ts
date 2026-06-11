@@ -1,14 +1,37 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
-import type { Contract } from '@/types';
+import type { Contract, ContractOut } from '@/types';
+
+export interface DiffEntry { kind: string; path: string; old: unknown; new: unknown }
+export interface DiffResult { breaking: boolean; entries: DiffEntry[]; message?: string }
+
+export const useContracts = (lifecycle?: string) =>
+  useQuery<ContractOut[]>({
+    queryKey: ['contracts', 'list', lifecycle ?? ''],
+    queryFn: () =>
+      api.get('/contracts', { params: { lifecycle: lifecycle || undefined } }).then(r => r.data),
+  });
 
 export const useContract = (id: string) =>
-  useQuery<Contract>({
+  useQuery<ContractOut>({
     queryKey: ['contracts', id],
     queryFn: () => api.get(`/contracts/${id}`).then(r => r.data),
     enabled: !!id,
     retry: false,
   });
+
+export const useDiffContract = (id: string) =>
+  useMutation({
+    mutationFn: (data: Contract) => api.post(`/contracts/${id}/diff`, data).then(r => r.data as DiffResult),
+  });
+
+export const useSeedContract = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (product: string) => api.post(`/contracts/${product}/seed`).then(r => r.data as ContractOut),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contracts', 'list'] }),
+  });
+};
 
 export const usePutContract = (id: string) => {
   const qc = useQueryClient();
