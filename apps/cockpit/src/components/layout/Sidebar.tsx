@@ -5,7 +5,7 @@ const NAV = [
   { to: '/',           label: t.nav.dashboard,  icon: '⬡' },
   { to: '/objects',    label: t.nav.objects,    icon: '⊞' },
   { to: '/contracts',  label: t.nav.contracts,  icon: '⊟' },
-  { to: '/lineage',    label: t.nav.coverage,   icon: '⟁' },
+  { to: '/coverage',   label: t.nav.coverage,   icon: '⟁' },
   { to: '/incidents',  label: t.nav.incidents,  icon: '⚑' },
   { to: '/proposals',  label: t.nav.proposals,  icon: '✦' },
   { to: '/governance', label: t.nav.governance, icon: '⊕' },

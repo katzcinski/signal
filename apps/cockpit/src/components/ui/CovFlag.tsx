@@ -1,9 +1,10 @@
 import type { CovFlag } from '@/types';
 
+// R3-6: unified coverage badges ✓/◐/⚠/○ (matches the lineage map + i18n).
 const SYMBOLS: Record<CovFlag, string> = {
-  covered:      '●',
+  covered:      '✓',
   partial:      '◐',
-  gap:          '▲',
+  gap:          '⚠',
   out_of_scope: '○',
 };
 const COLORS: Record<CovFlag, string> = {

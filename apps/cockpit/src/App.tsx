@@ -33,6 +33,8 @@ export default function App() {
               <Route path="/objects/:id" element={<ObjectDetail />} />
               <Route path="/contracts"   element={<ContractWorkbench />} />
               <Route path="/lineage"     element={<LineageMap />} />
+              {/* R3-6: /coverage is the canonical route; /lineage kept as an alias. */}
+              <Route path="/coverage"    element={<LineageMap />} />
               <Route path="/incidents"   element={<Incidents />} />
               <Route path="/proposals"   element={<Proposals />} />
               <Route path="/runs/:id"    element={<RunDetail />} />

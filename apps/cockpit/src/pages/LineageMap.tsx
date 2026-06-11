@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Cytoscape from 'cytoscape';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import dagre from 'cytoscape-dagre';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { useLineage } from '@/api/lineage';
 import { useCoverageSummary } from '@/api/coverage';
 import { Kpi } from '@/components/ui/Kpi';
@@ -129,9 +130,9 @@ export default function LineageMap() {
   const cyRef = useRef<HTMLDivElement>(null);
   const cyInstance = useRef<unknown>(null);
   const [selectedNode, setSelectedNode] = useState<LineageNode | null>(null);
-  const [layerFilter, setLayerFilter] = useState<string>('');
-  const [flagFilter, setFlagFilter] = useState<string>('');
-  const [search, setSearch] = useState('');
+  const [layerFilter, setLayerFilter] = useSearchParamState('layer');
+  const [flagFilter, setFlagFilter] = useSearchParamState('flag');
+  const [search, setSearch] = useSearchParamState('q');
   const navigate = useNavigate();
 
   // Desktop-only guard (U3)

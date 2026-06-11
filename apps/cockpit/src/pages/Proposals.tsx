@@ -4,11 +4,12 @@ import type { Proposal } from '@/types';
 
 function ConfidenceBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
-  const color = pct >= 80 ? 'var(--status-ok)' : pct >= 50 ? 'var(--status-warn)' : 'var(--status-fail)';
+  // U1: confidence is not a pass/fail verdict — use a neutral intensity scale,
+  // not the status ampel, so it reads as "how sure", not "good/bad".
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <div style={{ flex: 1, height: 4, background: 'var(--line-2)', borderRadius: 2, overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
+        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--fg-2)', opacity: 0.4 + 0.6 * value, borderRadius: 2 }} />
       </div>
       <span style={{ fontSize: 11, color: 'var(--fg-2)', width: 32, textAlign: 'right' }}>{pct}%</span>
     </div>

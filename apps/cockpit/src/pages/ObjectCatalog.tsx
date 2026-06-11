@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { useObjects } from '@/api/objects';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { StatusPill } from '@/components/ui/StatusPill';
@@ -41,10 +41,10 @@ function FamilyCell({ obj, family, onClick }: {
 
 export default function ObjectCatalog() {
   const { data: objects = [], isLoading, isError, refetch } = useObjects();
-  const [space, setSpace] = useState('');
-  const [layer, setLayer] = useState('');
-  const [family, setFamily] = useState('');
-  const [severity, setSeverity] = useState('');
+  const [space, setSpace] = useSearchParamState('space');
+  const [layer, setLayer] = useSearchParamState('layer');
+  const [family, setFamily] = useSearchParamState('family');
+  const [severity, setSeverity] = useSearchParamState('severity');
   const navigate = useNavigate();
 
   const spaces = [...new Set(objects.map(o => o.space))].filter(Boolean).sort();

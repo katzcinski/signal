@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import {
   useIncidents,
   useIncident,
@@ -154,8 +155,8 @@ function IncidentDrawer({ id, onClose }: { id: string; onClose: () => void }) {
 }
 
 export default function Incidents() {
-  const [statusFilter, setStatusFilter] = useState('');
-  const [severityFilter, setSeverityFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useSearchParamState('status');
+  const [severityFilter, setSeverityFilter] = useSearchParamState('severity');
   const { data: incidents = [], isLoading, isError, refetch } = useIncidents(statusFilter, severityFilter);
   const [selected, setSelected] = useState<string | null>(null);
 

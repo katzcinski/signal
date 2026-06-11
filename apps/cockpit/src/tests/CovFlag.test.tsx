@@ -7,7 +7,7 @@ describe('CovFlag', () => {
     const { container } = render(<CovFlag flag="covered" />);
     const span = container.querySelector('span');
     expect(span?.getAttribute('title')).toBe('covered');
-    expect(span?.textContent).toContain('●');
+    expect(span?.textContent).toContain('✓');
   });
 
   it('renders distinct symbols per coverage state', () => {
