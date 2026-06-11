@@ -75,7 +75,7 @@ export function Onboarding() {
       done: runs.length > 0,
       action: () => {
         if (firstContract?.product || firstObject) {
-          triggerRun.mutate(undefined, {
+          triggerRun.mutate({}, {
             onSuccess: () => navigate(`/objects/${firstContract?.product || firstObject}`),
           });
         }

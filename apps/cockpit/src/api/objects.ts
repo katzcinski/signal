@@ -24,13 +24,26 @@ export const useObjectRuns = (id: string) =>
     refetchInterval: (query) => query.state.data?.[0]?.run_state === 'running' ? 2000 : false,
   });
 
+export interface RunTriggerBody { environment?: string; execution_mode?: string }
+
 export const useTriggerRun = (id: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.post(`/objects/${id}/run`).then(r => r.data),
+    mutationFn: (body: RunTriggerBody = {}) => api.post(`/objects/${id}/run`, body).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['objects', id, 'runs'] });
       qc.invalidateQueries({ queryKey: ['objects', id] });
     },
   });
 };
+
+export interface CheckHistoryPoint {
+  actual_value: string | null; passed: boolean; state: string; started_at: string; run_id: string;
+}
+
+export const useCheckHistory = (objectId: string, checkName: string, enabled = true) =>
+  useQuery<CheckHistoryPoint[]>({
+    queryKey: ['objects', objectId, 'history', checkName],
+    queryFn: () => api.get(`/objects/${objectId}/checks/${encodeURIComponent(checkName)}/history`).then(r => r.data),
+    enabled: enabled && !!objectId && !!checkName,
+  });

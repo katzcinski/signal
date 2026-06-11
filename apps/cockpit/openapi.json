@@ -1917,6 +1917,26 @@
         ]
       }
     },
+    "/api/environments": {
+      "get": {
+        "description": "R3-5: environment names for the run dialog. Names only \u2014 never secrets.",
+        "operationId": "list_environments_api_environments_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Environments",
+        "tags": [
+          "extract"
+        ]
+      }
+    },
     "/api/extract": {
       "post": {
         "description": "Reload inventory/lineage snapshots and report counts (analyzer placeholder).",

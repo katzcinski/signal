@@ -25,3 +25,13 @@ export const useRunEvents = (id: string, active: boolean) =>
     enabled: !!id && active,
     refetchInterval: active ? 2000 : false,
   });
+
+// R1-3/R2-6: diagnostic rows for a check in a run (allowlist-projected at the
+// source — no raw column leaks). Only fetched on demand (drawer open).
+export const useRunDiagnostics = (runId: string, checkName: string, enabled: boolean) =>
+  useQuery<{ check_name: string; row: Record<string, unknown> }[]>({
+    queryKey: ['runs', runId, 'diagnostics', checkName],
+    queryFn: () =>
+      api.get(`/runs/${runId}/diagnostics`, { params: { check_name: checkName } }).then(r => r.data),
+    enabled: enabled && !!runId && !!checkName,
+  });

@@ -1,16 +1,30 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useObject, useObjectRuns, useTriggerRun } from '@/api/objects';
+import { useObject, useObjectRuns, useTriggerRun, useCheckHistory } from '@/api/objects';
 import { useRun } from '@/api/runs';
 import { useContract } from '@/api/contracts';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { CheckStatusCell } from '@/components/ui/StatePill';
+import { Spark } from '@/components/ui/Spark';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { FamilyTag } from '@/components/ui/FamilyTag';
 import { LiveRunPanel } from '@/components/LiveRunPanel';
+import { RunTriggerDialog } from '@/components/RunTriggerDialog';
+import { DiagnosticsDrawer } from '@/components/DiagnosticsDrawer';
 import { Table, type ColDef } from '@/components/ui/Table';
 import type { CheckResult, RunListItem } from '@/types';
+
+// R3-5: per-check actual-value trend from the history endpoint.
+function ActualValueSparkline({ objectId, checkName }: { objectId: string; checkName: string }) {
+  const { data = [] } = useCheckHistory(objectId, checkName);
+  const points = data
+    .map(d => Number(d.actual_value))
+    .filter(n => Number.isFinite(n))
+    .reverse();
+  if (points.length < 2) return <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>—</span>;
+  return <Spark data={points} />;
+}
 
 type Tab = 'checks' | 'runs' | 'contract' | 'lineage';
 
@@ -21,6 +35,8 @@ export default function ObjectDetail() {
   const setTab = (t: Tab) => setSp({ tab: t });
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [showRunDialog, setShowRunDialog] = useState(false);
+  const [diagFor, setDiagFor] = useState<string | null>(null);
 
   // All hooks run unconditionally — no early return may come before them.
   const { data: obj, isLoading, isError, refetch } = useObject(id);
@@ -73,7 +89,19 @@ export default function ObjectDetail() {
     { key: 'status', header: 'Status', render: c => <CheckStatusCell state={c.state} passed={c.passed} severity={c.severity} /> },
     { key: 'expect', header: 'Expect', mono: true, render: c => c.expect },
     { key: 'actual', header: 'Actual', mono: true, render: c => c.actual_value ?? '—' },
-    { key: 'ms', header: 'ms', mono: true, render: c => String(c.duration_ms) },
+    { key: 'trend', header: 'Trend', render: c => <ActualValueSparkline objectId={id} checkName={c.name} /> },
+    {
+      key: 'diag', header: '',
+      render: c => latestRun ? (
+        <button
+          onClick={e => { e.stopPropagation(); setDiagFor(c.name); }}
+          title="View diagnostics"
+          style={{ background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 4, padding: '2px 8px', fontSize: 11, cursor: 'pointer' }}
+        >
+          Diag
+        </button>
+      ) : null,
+    },
   ];
 
   return (
@@ -90,16 +118,28 @@ export default function ObjectDetail() {
         </div>
         <div style={{ flex: 1 }} />
         <button
-          onClick={() => trigger.mutate()}
+          onClick={() => setShowRunDialog(true)}
           disabled={trigger.isPending || isRunning}
           style={{
             background: 'var(--cont)', color: '#fff', border: 'none',
             borderRadius: 5, padding: '7px 16px', fontSize: 13, cursor: 'pointer',
           }}
         >
-          {trigger.isPending || isRunning ? 'Running…' : 'Run Now'}
+          {trigger.isPending || isRunning ? 'Running…' : 'Run checks'}
         </button>
       </div>
+
+      {showRunDialog && (
+        <RunTriggerDialog
+          dataset={obj.name}
+          pending={trigger.isPending}
+          onClose={() => setShowRunDialog(false)}
+          onRun={body => { trigger.mutate(body); setShowRunDialog(false); }}
+        />
+      )}
+      {diagFor && latestRun && (
+        <DiagnosticsDrawer runId={latestRun.run_id} checkName={diagFor} onClose={() => setDiagFor(null)} />
+      )}
 
       <div style={{ borderBottom: '1px solid var(--line)', marginBottom: 20 }}>
         {(['checks', 'runs', 'contract', 'lineage'] as Tab[]).map(t => (

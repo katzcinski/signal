@@ -34,3 +34,21 @@ def trigger_extract(
 def list_inventory(inventory: list[dict] = Depends(get_inventory)):
     """Object/column picker source for the ContractEditor autocomplete (U2)."""
     return {"datasets": inventory}
+
+
+@router.get("/environments")
+def list_environments():
+    """R3-5: environment names for the run dialog. Names only — never secrets."""
+    import yaml
+    from pathlib import Path
+    from ..settings import get_settings
+
+    path = Path(get_settings().environments_file)
+    if not path.exists():
+        return {"environments": []}
+    try:
+        envs = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {"environments": []}
+    return {"environments": sorted(envs.keys())}
+
