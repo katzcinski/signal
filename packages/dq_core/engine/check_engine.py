@@ -7,13 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-try:
-    import yaml
-except ImportError:  # pragma: no cover - fallback for minimal local runtimes
-    try:
-        from . import simple_yaml as yaml
-    except ImportError:
-        import simple_yaml as yaml
+import yaml
 
 from .expectation import evaluate, validate_expectation
 from .models import CheckDef, CheckResult, DatasetConfig, RunSummary, VALID_SEVERITIES
@@ -65,6 +59,7 @@ def load_dataset_config(path: Path, *, allow_empty: bool = False) -> DatasetConf
         except ValueError as exc:
             raise ValueError(f'Check "{name}": Ungueltiger Ausdruck "{expect}"') from exc
 
+        diagnostics = item.get("diagnostics") or {}
         checks.append(
             CheckDef(
                 name=name,
@@ -76,6 +71,8 @@ def load_dataset_config(path: Path, *, allow_empty: bool = False) -> DatasetConf
                 enabled=bool(item.get("enabled", True)),
                 type=str(item.get("type") or "").strip(),
                 unit=str(item.get("unit") or "").strip(),
+                diagnostics_enabled=bool(diagnostics.get("enabled", False)),
+                diagnostics_columns=[str(c) for c in (diagnostics.get("columns") or [])],
             )
         )
 
@@ -105,6 +102,11 @@ def dataset_config_to_yaml(config: DatasetConfig) -> str:
             "enabled": check.enabled,
             **({"type": check.type} if check.type else {}),
             **({"unit": check.unit} if check.unit else {}),
+            **(
+                {"diagnostics": {"enabled": True, "columns": list(check.diagnostics_columns)}}
+                if check.diagnostics_enabled
+                else {}
+            ),
         }
         for check in config.checks
     ]
@@ -254,8 +256,14 @@ def _run_one_check(conn: Any, check: CheckDef, previous_value: Any = None) -> Ch
             raise ValueError("Check-SQL muss genau eine Zeile zurueckgeben.")
         actual = row[0] if row else None
         result = _result_from_actual(check, actual, _elapsed_ms(t0), previous_value=previous_value)
-        if not result.passed and not result.error:
-            result.diagnostic_rows = _fetch_diagnostic_rows(conn, check.sql)
+        # [PII-GATE] S1: Rohzeilen werden nur geholt, wenn der Check es explizit
+        # erlaubt — Unterdrückung an der Quelle, nicht erst am Store.
+        if not result.passed and not result.error and check.diagnostics_enabled:
+            rows = _fetch_diagnostic_rows(conn, check.sql)
+            if check.diagnostics_columns:
+                allow = set(check.diagnostics_columns)
+                rows = [{k: v for k, v in r.items() if k in allow} for r in rows]
+            result.diagnostic_rows = rows
         return result
     except Exception as exc:  # noqa: BLE001
         return _error_result(check, str(exc), _elapsed_ms(t0))

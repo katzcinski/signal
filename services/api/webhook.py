@@ -65,6 +65,9 @@ def fire_webhook(
     parsed = urlparse(url)
     hostname = parsed.hostname or ""
 
+    if parsed.scheme != "https":
+        raise ValueError(f"SSRF: webhook scheme must be https, got {parsed.scheme!r}")
+
     if not _host_in_allowlist(hostname, allowlist):
         raise ValueError(f"SSRF: host {hostname!r} not in WEBHOOK_ALLOWLIST")
 

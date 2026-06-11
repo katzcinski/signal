@@ -9,6 +9,7 @@ description = "Framework-free Data Quality engine for SAP Datasphere"
 requires-python = ">=3.11"
 dependencies = [
     "pyyaml>=6",
+    "jsonschema>=4",
 ]
 
 [project.optional-dependencies]

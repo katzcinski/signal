@@ -1,48 +1,98 @@
 from __future__ import annotations
 
+import sqlite3
+from datetime import datetime, timezone
+
+import yaml
 from fastapi import APIRouter, HTTPException, Query
 
-from ..auth.provider import PrincipalDep
+from ..auth.provider import PrincipalDep, can_write_contract_data
 from ..deps import StoreDep
 from ..schemas.proposal_schemas import ProposalOut
 
 router = APIRouter(prefix="/api/proposals", tags=["proposals"])
 
 
-@router.get("", response_model=list[ProposalOut])
-def list_proposals(
-    dataset: str | None = Query(default=None),
-    store: StoreDep = ...,
-):
-    """Mine proposals from all datasets (or a specific one)."""
+def _decision_map(store) -> dict[str, str]:
+    """Persistierte Steward-Entscheidungen (dq_proposals) — reject/snooze/accept
+    überleben Neustarts, statt bei jedem Re-Mining zurückzukommen."""
+    try:
+        conn = sqlite3.connect(store.db_path, check_same_thread=False)
+        rows = conn.execute("SELECT id, status FROM dq_proposals").fetchall()
+        conn.close()
+        return {r[0]: r[1] for r in rows}
+    except Exception:
+        return {}
+
+
+def _persist_decision(store, proposal, status_value: str) -> None:
+    conn = sqlite3.connect(store.db_path, check_same_thread=False)
+    conn.execute(
+        """INSERT OR REPLACE INTO dq_proposals
+           (id, product, guarantee_patch, evidence, status, created_at)
+           VALUES (?,?,?,?,?,?)""",
+        (
+            proposal.id,
+            proposal.product,
+            proposal.proposed_expect,
+            str(proposal.stats),
+            status_value,
+            datetime.now(timezone.utc).isoformat(),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _mine_all(store, dataset: str | None = None):
     from dq_core.obs.miner import ProposalMiner
 
     all_runs = store.get_all_runs(limit=10)
     datasets = list({r["dataset"] for r in all_runs})
     if dataset:
         datasets = [d for d in datasets if d == dataset]
-
     miner = ProposalMiner(store)
-    all_proposals = []
+    out = []
     for ds in datasets:
-        proposals = miner.mine(ds)
-        all_proposals.extend(proposals)
+        out.extend(miner.mine(ds))
+    return out
 
-    return [
-        ProposalOut(
-            id=p.id,
-            product=p.product,
-            check_name=p.check_name,
-            current_expect=p.current_expect,
-            proposed_expect=p.proposed_expect,
-            rationale=p.rationale,
-            confidence=p.confidence,
-            stats=p.stats,
-            status=p.status,
-            created_at=p.created_at,
+
+def _find_proposal(store, proposal_id: str):
+    for p in _mine_all(store):
+        if p.id == proposal_id:
+            return p
+    return None
+
+
+@router.get("", response_model=list[ProposalOut])
+def list_proposals(
+    dataset: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    store: StoreDep = ...,
+):
+    """Mine proposals; overlay persisted steward decisions. Filter via ?status=open."""
+    decisions = _decision_map(store)
+    result = []
+    for p in _mine_all(store, dataset):
+        effective_status = decisions.get(p.id, p.status)
+        if status and effective_status != status:
+            continue
+        result.append(
+            ProposalOut(
+                id=p.id,
+                product=p.product,
+                check_name=p.check_name,
+                current_expect=p.current_expect,
+                proposed_expect=p.proposed_expect,
+                rationale=p.rationale,
+                confidence=p.confidence,
+                stats=p.stats,
+                status=effective_status,
+                created_at=p.created_at,
+            )
         )
-        for p in all_proposals
-    ]
+    return result
 
 
 @router.post("/{proposal_id}/accept")
@@ -51,40 +101,35 @@ def accept_proposal(
     principal: PrincipalDep,
     store: StoreDep = ...,
 ):
-    """Accept a proposal — creates a draft contract amendment. No auto-apply (WS5-2)."""
-    import yaml
+    """[AUTHZ] Accept a proposal — creates a draft contract amendment. No auto-apply (WS5-2)."""
     from pathlib import Path
     from ..settings import get_settings
 
-    # Re-mine to find the proposal (proposals are not persisted in DB yet)
-    all_runs = store.get_all_runs(limit=10)
-    datasets = list({r["dataset"] for r in all_runs})
-
-    from dq_core.obs.miner import ProposalMiner
-    miner = ProposalMiner(store)
-    target_proposal = None
-    for ds in datasets:
-        for p in miner.mine(ds):
-            if p.id == proposal_id:
-                target_proposal = p
-                break
-        if target_proposal:
-            break
-
+    target_proposal = _find_proposal(store, proposal_id)
     if not target_proposal:
         raise HTTPException(status_code=404, detail=f"Proposal {proposal_id!r} not found")
 
     settings = get_settings()
     contracts_dir = Path(settings.contracts_dir)
-    contract_path = contracts_dir / f"{target_proposal.product}.yml"
+    contract_path = None
+    for ext in (".yaml", ".yml"):
+        candidate = contracts_dir / f"{target_proposal.product}{ext}"
+        if candidate.exists():
+            contract_path = candidate
+            break
 
-    if not contract_path.exists():
+    if contract_path is None:
         raise HTTPException(
             status_code=404,
             detail=f"No contract found for product {target_proposal.product!r}",
         )
 
     data = yaml.safe_load(contract_path.read_text(encoding="utf-8")) or {}
+
+    # [AUTHZ] S-6: Ein Accept degradiert den Contract auf draft — das ist eine
+    # Contract-Schreiboperation und braucht das entsprechende Recht.
+    if not can_write_contract_data(principal, data):
+        raise HTTPException(status_code=403, detail="Insufficient permissions for this contract.")
 
     # Add proposed_expect as a quality annotation in the guarantees — draft amendment only
     if "quality_proposals" not in data:
@@ -101,6 +146,7 @@ def accept_proposal(
     contract_path.write_text(
         yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8"
     )
+    _persist_decision(store, target_proposal, "accepted")
 
     return {
         "id": proposal_id,
@@ -114,10 +160,22 @@ def accept_proposal(
 
 
 @router.post("/{proposal_id}/reject")
-def reject_proposal(proposal_id: str, principal: PrincipalDep):
+def reject_proposal(proposal_id: str, principal: PrincipalDep, store: StoreDep = ...):
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Reviewing proposals requires steward role or higher.")
+    proposal = _find_proposal(store, proposal_id)
+    if not proposal:
+        raise HTTPException(status_code=404, detail=f"Proposal {proposal_id!r} not found")
+    _persist_decision(store, proposal, "rejected")
     return {"id": proposal_id, "status": "rejected"}
 
 
 @router.post("/{proposal_id}/snooze")
-def snooze_proposal(proposal_id: str, principal: PrincipalDep):
+def snooze_proposal(proposal_id: str, principal: PrincipalDep, store: StoreDep = ...):
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Reviewing proposals requires steward role or higher.")
+    proposal = _find_proposal(store, proposal_id)
+    if not proposal:
+        raise HTTPException(status_code=404, detail=f"Proposal {proposal_id!r} not found")
+    _persist_decision(store, proposal, "snoozed")
     return {"id": proposal_id, "status": "snoozed"}

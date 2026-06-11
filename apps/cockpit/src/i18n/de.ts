@@ -12,6 +12,14 @@ export const t = {
     error: 'Fehler',
     unknown: 'Unbekannt',
     skipped_stale: 'Übersprungen (veraltet)',
+    skipped_dependency: 'Übersprungen (Abhängigkeit)',
+    downgraded: 'Herabgestuft',
+  },
+  stateHint: {
+    skipped_stale: 'Check übersprungen: Datenstand veraltet — kein Pass/Fail-Ergebnis.',
+    skipped_dependency: 'Check übersprungen: vorausgesetzter Check nicht bestanden — kein Pass/Fail-Ergebnis.',
+    downgraded: 'Schweregrad wurde durch Gating herabgestuft.',
+    error: 'Check konnte nicht ausgeführt werden (technischer Fehler) — kein Pass/Fail-Ergebnis.',
   },
   compliance: {
     compliant: 'Konform',
@@ -26,6 +34,8 @@ export const t = {
   noData: 'Keine Daten vorhanden',
   loading: 'Lädt…',
   error: 'Fehler beim Laden',
+  retry: 'Erneut versuchen',
+  liveRun: 'Run läuft',
   triggerRun: 'Run starten',
   approve: 'Genehmigen',
   deprecate: 'Veralten',

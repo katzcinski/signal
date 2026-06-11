@@ -22,9 +22,16 @@ def get_store() -> ResultStore:
     global _store_instance
     if _store_instance is None:
         settings = get_settings()
+        if settings.store_backend == "hana":
+            # Kein stilles SQLite-Fallback (L-8): HANA-Store ist noch ein Stub.
+            raise RuntimeError(
+                "STORE_BACKEND=hana ist konfiguriert, aber HanaStore ist noch "
+                "nicht implementiert (O6). Setze STORE_BACKEND=sqlite."
+            )
         _store_instance = ResultStore(
             settings.sqlite_db,
             allow_diagnostics=settings.allow_local_diagnostics,
+            diagnostics_ttl_days=settings.diagnostics_ttl_days,
         )
     return _store_instance
 

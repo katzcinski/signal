@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, Header, HTTPException, status
 
@@ -16,27 +16,42 @@ class Principal:
     sub: str
     name: str
     roles: list[str] = field(default_factory=list)
+    groups: list[str] = field(default_factory=list)
 
     def has_role(self, *roles: str) -> bool:
         return bool(set(self.roles) & set(roles))
 
     def can_write_contract(self, owned_by: str, owners: list[str]) -> bool:
-        """[AUTHZ] Write permission = role × owned_by × owners membership (S3)."""
+        """[AUTHZ] Write permission = role × owned_by × owners membership (S3).
+
+        `grp:`-Einträge matchen ausschließlich gegen die Gruppen des Principals
+        (aus dem IdP-Claim) — fail-closed: ohne Gruppenzugehörigkeit kein Match.
+        """
         if self.has_role("admin"):
             return True
         if owned_by == "platform" and self.has_role("steward", "owner"):
             return True
         if owned_by == "product" and self.has_role("owner"):
             return True
-        # Group membership check
         for owner_entry in owners:
             if owner_entry.startswith("grp:"):
-                # Placeholder: in production check IdP group membership
-                if self.has_role("steward", "owner"):
+                if owner_entry[len("grp:"):] in self.groups:
                     return True
             elif owner_entry == self.sub:
                 return True
         return False
+
+
+def can_write_contract_data(principal: Principal, contract: dict[str, Any] | None) -> bool:
+    """[AUTHZ] S-2: Entscheidung anhand des BESTEHENDEN Contracts (Platte/Index),
+    nie anhand des Request-Bodys. Bei Neuanlage gilt die Default-Policy
+    (owned_by=platform, keine Owner)."""
+    if contract is None:
+        return principal.can_write_contract("platform", [])
+    return principal.can_write_contract(
+        str(contract.get("owned_by", "platform")),
+        list(contract.get("owners") or []),
+    )
 
 
 _ADMIN_PRINCIPAL = Principal(sub="dev", name="Development Admin", roles=["admin"])
@@ -53,12 +68,13 @@ async def _noauth_principal(
 
 async def get_principal(
     x_dq_role: str | None = Header(default=None, alias="X-DQ-Role"),
+    authorization: str | None = Header(default=None),
 ) -> Principal:
     settings = get_settings()
     if settings.auth_mode == "noauth":
         return await _noauth_principal(x_dq_role)
-    # OIDC path (stub — full implementation in WS5)
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="OIDC not configured")
+    from .oidc import get_oidc_principal
+    return get_oidc_principal(authorization)
 
 
 PrincipalDep = Annotated[Principal, Depends(get_principal)]

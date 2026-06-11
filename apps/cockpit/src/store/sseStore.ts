@@ -1,11 +1,13 @@
 import { create } from 'zustand';
-import type { SSEEvent, CheckResult } from '@/types';
+import type { SSEEvent, OverallStatus, RunEvent } from '@/types';
 
 interface LiveRun {
   run_id: string;
   dataset: string;
-  results: CheckResult[];
-  finished: boolean;
+  lines: RunEvent[];
+  status: 'running' | 'finished' | 'error';
+  overall_status?: OverallStatus;
+  error?: string;
 }
 
 interface SSEState {
@@ -17,7 +19,7 @@ interface SSEState {
 
 let es: EventSource | null = null;
 
-export const useSseStore = create<SSEState>((set, _get) => ({
+export const useSseStore = create<SSEState>((set) => ({
   liveRuns: {},
   connected: false,
 
@@ -28,16 +30,23 @@ export const useSseStore = create<SSEState>((set, _get) => ({
     es.addEventListener('message', (ev) => {
       try {
         const event: SSEEvent = JSON.parse(ev.data);
+        if (event.type === 'connected') {
+          set({ connected: true });
+          return;
+        }
         set(state => {
           const runs = { ...state.liveRuns };
           if (event.type === 'run_started') {
-            runs[event.run_id] = { run_id: event.run_id, dataset: event.dataset, results: [], finished: false };
-          } else if (event.type === 'check_result') {
+            runs[event.run_id] = { run_id: event.run_id, dataset: event.dataset, lines: [], status: 'running' };
+          } else if (event.type === 'progress') {
             const run = runs[event.run_id];
-            if (run) runs[event.run_id] = { ...run, results: [...run.results, event.result] };
+            if (run) runs[event.run_id] = { ...run, lines: [...run.lines, { ts: event.ts, line: event.line }] };
           } else if (event.type === 'run_finished') {
             const run = runs[event.run_id];
-            if (run) runs[event.run_id] = { ...run, finished: true };
+            if (run) runs[event.run_id] = { ...run, status: 'finished', overall_status: event.overall_status };
+          } else if (event.type === 'run_error') {
+            const run = runs[event.run_id];
+            if (run) runs[event.run_id] = { ...run, status: 'error', error: event.error };
           }
           return { liveRuns: runs };
         });

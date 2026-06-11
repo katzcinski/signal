@@ -1,24 +1,27 @@
 product: DS_REVENUE_SUMMARY
 dataset: DS_REVENUE_SUMMARY
-schema: ANALYTICS
 owned_by: product
 lifecycle: active
 version: "1.2.0"
 description: "Monthly revenue summary with YoY and MoM delta columns"
 
 guarantees:
-  keys:
-    - columns: [YEAR_MONTH, REGION_CODE]
-      unique: true
-  not_null:
-    - columns: [YEAR_MONTH, REGION_CODE, GROSS_REVENUE, NET_REVENUE]
-  row_count:
-    min: 12
-  schema_columns:
-    expected:
+  schema:
+    columns:
       - YEAR_MONTH
       - REGION_CODE
       - GROSS_REVENUE
       - NET_REVENUE
       - YOY_DELTA_PCT
       - MOM_DELTA_PCT
+    mode: closed
+  keys:
+    - columns: [YEAR_MONTH, REGION_CODE]
+      unique: true
+      severity: critical
+  not_null:
+    - columns: [YEAR_MONTH, REGION_CODE, GROSS_REVENUE, NET_REVENUE]
+      severity: fail
+  volume:
+    min_rows: 12
+    severity: warn

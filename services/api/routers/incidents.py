@@ -53,4 +53,5 @@ def list_incidents(
     rows = conn.execute(sql, params).fetchall()
     conn.close()
 
-    return [dict(r) for r in rows]
+    # Stabile id für FE-Row-Keys (run_id × check_name ist eindeutig je Lauf).
+    return [{**dict(r), "id": f"{r['run_id']}:{r['check_name']}"} for r in rows]

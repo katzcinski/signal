@@ -15,11 +15,15 @@ class Settings(BaseSettings):
     bind_port: int = Field(default=8000)
     debug: bool = Field(default=False)
 
-    # Auth — S5: if noauth + 0.0.0.0, fail-closed at startup
+    # Auth — S5: if noauth + non-loopback bind, fail-closed at startup
     auth_mode: Literal["noauth", "oidc"] = Field(default="noauth")
     oidc_issuer: str = Field(default="")
     oidc_audience: str = Field(default="")
+    oidc_jwks_url: str = Field(default="")  # optional override; sonst Issuer-Discovery
     oidc_role_claim: str = Field(default="roles")
+    oidc_groups_claim: str = Field(default="groups")
+    # Claim-Wert → Cockpit-Rolle (viewer|steward|owner|admin), pro Engagement (O4)
+    oidc_role_mapping: dict[str, str] = Field(default_factory=dict)
 
     # Store
     store_backend: Literal["sqlite", "hana"] = Field(default="sqlite")
@@ -41,6 +45,11 @@ class Settings(BaseSettings):
     # Diagnostics PII gate (S1)
     allow_local_diagnostics: bool = Field(default=False)
     diagnostics_ttl_days: int = Field(default=7)
+
+    # Lokalmodus: Runs ohne konfiguriertes Environment laufen gegen den Mock.
+    # In Kunden-Deployments MUSS dies false sein — dann erfordert jeder Run ein
+    # Environment mit echter HANA-Verbindung (kein stiller Fail-Open, S-13).
+    allow_mock_connection: bool = Field(default=True)
 
     # CORS
     cors_origins: list[str] = Field(default=["http://localhost:5173", "http://localhost:3000"])

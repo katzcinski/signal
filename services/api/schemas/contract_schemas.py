@@ -5,12 +5,14 @@ from pydantic import BaseModel
 
 
 class ContractIn(BaseModel):
+    """Lifecycle ist bewusst KEIN Eingabefeld — Übergänge laufen nur über
+    approve/deprecate; PUT erzwingt draft (S-2)."""
     product: str
     dataset: str = ""
     owned_by: str = "platform"
     owners: list[str] = []
     version: str = "0.1.0"
-    lifecycle: str = "draft"
+    description: str = ""
     guarantees: dict[str, Any] = {}
 
 
@@ -21,6 +23,7 @@ class ContractOut(BaseModel):
     owners: list[str] = []
     version: str = "0.1.0"
     lifecycle: str = "draft"
+    description: str = ""
     guarantees: dict[str, Any] = {}
     compliance: Optional[str] = None
 
