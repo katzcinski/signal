@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useRunEvents } from '@/api/runs';
+import { useRunStream } from '@/api/runs';
 import { t } from '@/i18n/de';
 
 interface Props {
@@ -9,10 +9,11 @@ interface Props {
 }
 
 // Collapsible bottom bar showing live progress lines of an in-flight run,
-// fed by polling /api/runs/{id}/events every 2s while the run is running.
+// streamed over SSE (/api/stream) while the run is running, with a polling
+// fallback when the stream is unavailable.
 export function LiveRunPanel({ runId, dataset, running }: Props) {
   const [open, setOpen] = useState(true);
-  const { data: events = [] } = useRunEvents(runId, running);
+  const { events } = useRunStream(runId, running);
 
   if (!running) return null;
 
