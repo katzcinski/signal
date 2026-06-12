@@ -69,3 +69,18 @@ def test_deprecate_rejects_non_active(api_client):
 
 def test_approve_missing_contract_404(api_client):
     assert api_client.post("/api/contracts/NOPE/approve").status_code == 404
+
+
+def test_approve_returns_409_on_push_rejection(api_client, monkeypatch):
+    """F1: Git push rejection surfaces as 409 with rebase hint (WS2-3 / R2-1)."""
+    from services.api.git_repo import GitPushRejected, GitRepo
+
+    def _raise_push_rejected(self, *args, **kwargs):
+        raise GitPushRejected("Remote rejected — rebase required.")
+
+    monkeypatch.setattr(GitRepo, "write_contract", _raise_push_rejected)
+
+    _put_draft(api_client, "P_PUSH", "1.0.0", ["ORDER_ID"])
+    resp = api_client.post("/api/contracts/P_PUSH/approve")
+    assert resp.status_code == 409, resp.text
+    assert "rejected" in resp.json()["detail"].lower() or "rebase" in resp.json()["detail"].lower()

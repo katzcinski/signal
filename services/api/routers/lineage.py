@@ -40,16 +40,19 @@ def get_lineage_graph(
     # F5: Extrakt-Alter — FE zeigt eine Staleness-Warnung darauf an.
     extract_age_days = None
     extracted_at = None
+    stale = False
     lineage_path = Path(settings.lineage_file)
     if lineage_path.exists():
         from datetime import datetime, timezone
         mtime = datetime.fromtimestamp(lineage_path.stat().st_mtime, tz=timezone.utc)
         extracted_at = mtime.isoformat()
         extract_age_days = (datetime.now(timezone.utc) - mtime).days
+        stale = extract_age_days > settings.extract_stale_days
 
     return {
         "nodes": annotated_nodes,
         "edges": edges,
         "extracted_at": extracted_at,
         "extract_age": extract_age_days,
+        "stale": stale,
     }

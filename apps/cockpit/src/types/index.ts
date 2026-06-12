@@ -298,7 +298,9 @@ export interface LineageEdge {
 export interface LineageGraph {
   nodes: LineageNode[];
   edges: LineageEdge[];
-  extract_age?: string;
+  extract_age?: number | null;
+  extracted_at?: string | null;
+  stale?: boolean;
 }
 
 // ---- Incidents: persistent lifecycle objects ----

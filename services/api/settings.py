@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     allow_local_diagnostics: bool = Field(default=False)
     diagnostics_ttl_days: int = Field(default=7)
 
+    # F5: Staleness threshold for inventory/lineage extract (days)
+    extract_stale_days: int = Field(default=7)
+
     # Lokalmodus: Runs ohne konfiguriertes Environment laufen gegen den Mock.
     # In Kunden-Deployments MUSS dies false sein — dann erfordert jeder Run ein
     # Environment mit echter HANA-Verbindung (kein stiller Fail-Open, S-13).
