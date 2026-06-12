@@ -1,12 +1,14 @@
 # PLAN — Remediation & Ausbau v2 · DQ & Observability Cockpit
 
-> **Status 2026-06-11:** R0–R5 implementiert (Branch `claude/tool-review-improvements-2mpgix`).
+> **Status 2026-06-12:** R0–R6 implementiert.
 > R0/R1 vollständig; R2 bis auf HANA-Store-Implementierung (O6, bewusst Stub);
 > R3 inkl. Gating-Produktion, StatusGrid, ContractEditor-Neubau, Onboarding, URL-Sync, i18n der
 > angefassten Screens; R4 Incidents/SLA/Coverage/Badge/Webhook-Kontext; R5 ODCS-3.1-Export
-> (validiert gegen offizielles Bitol-Schema) + Advisory-CI. Offen: R6-Politur (Virtualisierung,
-> Density-Toggle, Skeletons, Toasts), Spaltenebene Lineage (O3), Multi-Worker-Playwright (F2),
-> volle i18n-Abdeckung der Restscreens.
+> (validiert gegen offizielles Bitol-Schema) + Advisory-CI; R6-Politur (Peek-Drilldown,
+> Sparkline-Zellen, Skeletons, Toasts, Cmd-K, Virtualisierung, Density-Toggle,
+> Lineage-Swimlanes) komplett. Volle i18n-Abdeckung der Restscreens (Proposals, Governance,
+> Workbench-Reste) nachgezogen — kein Sprachmix mehr. **Offen:** Spaltenebene Lineage
+> (O3, blockiert durch `columnEdges`-Parser-Defekt), Multi-Worker-Playwright (F2).
 
 **Stand:** 2026-06-10 · **Grundlage:** `REVIEW_Tool_v1_Befunde.md` (Befund-IDs S-x/L-x/FE-x werden referenziert) + Marktabgleich § 7.
 **Modus:** sequentiell wie HANDOVER; jeder Schritt mit Acceptance, kein Merge bei rotem Gate. Boundary-Tags und Goldene Regeln des HANDOVER gelten unverändert weiter.

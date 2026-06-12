@@ -1,5 +1,6 @@
 import { useProposals, useProposalAction } from '@/api/proposals';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { t } from '@/i18n/de';
 import type { Proposal } from '@/types';
 
 function ConfidenceBar({ value }: { value: number }) {
@@ -35,19 +36,19 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
           background: 'var(--bg-3)', border: '1px solid var(--line-2)',
           borderRadius: 4, padding: '2px 8px', fontSize: 10, color: 'var(--fg-3)',
         }}>
-          {proposal.status}
+          {t.proposals.statusLabel[proposal.status] ?? proposal.status}
         </span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <div>
-          <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>Current</div>
+          <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.proposals.current}</div>
           <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)' }}>
             {proposal.current_expect || '—'}
           </code>
         </div>
         <div>
-          <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>Proposed</div>
+          <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.proposals.proposed}</div>
           <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--status-ok)' }}>
             {proposal.proposed_expect}
           </code>
@@ -55,7 +56,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       </div>
 
       <div>
-        <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 6 }}>Confidence</div>
+        <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 6 }}>{t.proposals.confidence}</div>
         <ConfidenceBar value={proposal.confidence} />
       </div>
 
@@ -80,13 +81,13 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       {proposal.status === 'open' && (
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => act('accept')} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
-            Accept
+            {t.proposals.accept}
           </button>
           <button onClick={() => act('snooze')} style={{ flex: 1, background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
-            Snooze
+            {t.proposals.snooze}
           </button>
           <button onClick={() => act('reject')} style={{ flex: 1, background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', color: 'var(--status-fail)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
-            Reject
+            {t.proposals.reject}
           </button>
         </div>
       )}
@@ -99,20 +100,20 @@ export default function Proposals() {
   const pending = proposals.filter(p => p.status === 'open');
   const others  = proposals.filter(p => p.status !== 'open');
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>Loading…</div>;
+  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Proposals</h1>
+      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.proposals.title}</h1>
       {isError && <ErrorBanner onRetry={() => refetch()} />}
       {!isError && proposals.length === 0 && (
         <div style={{ color: 'var(--fg-3)', padding: 40, textAlign: 'center' }}>
-          No proposals yet — run checks on enough datasets to generate suggestions.
+          {t.proposals.empty}
         </div>
       )}
       {pending.length > 0 && (
         <>
-          <h2 style={{ fontSize: 13, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Pending ({pending.length})</h2>
+          <h2 style={{ fontSize: 13, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>{t.proposals.pending} ({pending.length})</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16, marginBottom: 24 }}>
             {pending.map(p => <ProposalCard key={p.id} proposal={p} />)}
           </div>
@@ -120,7 +121,7 @@ export default function Proposals() {
       )}
       {others.length > 0 && (
         <>
-          <h2 style={{ fontSize: 13, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Reviewed ({others.length})</h2>
+          <h2 style={{ fontSize: 13, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>{t.proposals.reviewed} ({others.length})</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
             {others.map(p => <ProposalCard key={p.id} proposal={p} />)}
           </div>
