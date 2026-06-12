@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from '../CommandPalette';
 import { useSseStore } from '@/store/sseStore';
+import { useUIStore } from '@/store/ui';
 
 interface Props { children: ReactNode }
 
@@ -10,8 +11,12 @@ export function Shell({ children }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const connect = useSseStore(s => s.connect);
+  const density = useUIStore(s => s.density);
 
   useEffect(() => { connect(); }, [connect]);
+
+  // R6-7: drive density tokens off a root data attribute.
+  useEffect(() => { document.documentElement.dataset.density = density; }, [density]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

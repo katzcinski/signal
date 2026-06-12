@@ -36,6 +36,9 @@ const COVERAGE_LABEL: Record<string, string> = {
 
 const LAYERS = ['Landing', 'Harmonization', 'Product'];
 
+// R6-8: shape hint per coverage flag (matches the cytoscape node shapes).
+const LANE_SHAPE: Record<string, string> = { '●': '▭', '◐': '◯', '▲': '◇', '○': '⬡' };
+
 // Cytoscape's canvas renderer cannot resolve `var(--x)` — resolve the CSS
 // variables to concrete values once and feed hex colors into the stylesheet.
 interface ResolvedTheme {
@@ -272,18 +275,26 @@ export default function LineageMap() {
       cy = Cytoscape({
         container: cyRef.current,
         elements: {
-          nodes: nodes.map(n => ({
-            data: {
-              id: n.id,
-              label: n.label ?? n.id,
-              layer: n.layer ?? 0,
-              family: n.family ?? '',
-              coverage_flag: n.coverage_flag ?? '○',
-              dq_status: n.dq_status ?? 'unknown',
-              has_contract: n.has_contract ?? false,
-              last_run: n.last_run ?? '',
-            },
-          })),
+          nodes: [
+            // R6-8: one compound parent per layer → swimlanes.
+            ...[...new Set(nodes.map(n => n.layer ?? 0))].sort().map(layer => ({
+              data: { id: `lane-${layer}`, label: LAYERS[layer] ?? `Layer ${layer}`, isLane: true },
+              selectable: false, grabbable: false,
+            })),
+            ...nodes.map(n => ({
+              data: {
+                id: n.id,
+                label: n.label ?? n.id,
+                layer: n.layer ?? 0,
+                parent: `lane-${n.layer ?? 0}`,
+                family: n.family ?? '',
+                coverage_flag: n.coverage_flag ?? '○',
+                dq_status: n.dq_status ?? 'unknown',
+                has_contract: n.has_contract ?? false,
+                last_run: n.last_run ?? '',
+              },
+            })),
+          ],
           edges: edges.map(e => ({ data: { id: e.id, source: e.source, target: e.target } })),
         },
         style: [
@@ -316,6 +327,32 @@ export default function LineageMap() {
               'curve-style': 'bezier',
             } as Record<string, unknown>,
           },
+          // R6-8 swimlane parents.
+          {
+            selector: 'node[?isLane]',
+            style: {
+              'background-color': theme.bg2,
+              'background-opacity': 0.35,
+              'border-width': 1,
+              'border-color': theme.line2,
+              'border-style': 'dashed',
+              'shape': 'roundrectangle',
+              'label': 'data(label)',
+              'text-valign': 'top',
+              'text-halign': 'center',
+              'text-margin-y': -6,
+              'text-margin-x': 0,
+              'font-size': 11,
+              'font-family': theme.fontMono,
+              'color': theme.fg3,
+              'padding': 24,
+            } as Record<string, unknown>,
+          },
+          // R6-8 Carbon redundancy: coverage encoded by node shape, not colour alone.
+          { selector: 'node[coverage_flag = "●"]', style: { shape: 'roundrectangle' } as Record<string, unknown> },
+          { selector: 'node[coverage_flag = "◐"]', style: { shape: 'ellipse' } as Record<string, unknown> },
+          { selector: 'node[coverage_flag = "▲"]', style: { shape: 'diamond' } as Record<string, unknown> },
+          { selector: 'node[coverage_flag = "○"]', style: { shape: 'hexagon' } as Record<string, unknown> },
           {
             selector: 'node:selected',
             style: { 'border-width': 3 } as Record<string, unknown>,
@@ -472,11 +509,12 @@ export default function LineageMap() {
             padding: '5px 10px', color: 'var(--fg)', fontSize: 12, minWidth: 180,
           }}
         />
-        {/* Legend: ✓ / ◐ / ⚠ / ○ */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginLeft: 'auto' }}>
+        {/* Legend: colour + shape redundancy (R6-8 Carbon) */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
           {Object.entries(COVERAGE_LABEL).map(([flag, label]) => (
-            <span key={flag} style={{ fontSize: 11, color: 'var(--fg-3)' }}>
-              <span aria-hidden style={{ color: COVERAGE_COLOR[flag] }}>{COVERAGE_GLYPH[flag]}</span> {label}
+            <span key={flag} style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span aria-hidden style={{ color: COVERAGE_COLOR[flag] }}>{COVERAGE_GLYPH[flag]}</span>
+              <span aria-hidden style={{ color: 'var(--fg-3)' }}>{LANE_SHAPE[flag]}</span> {label}
             </span>
           ))}
         </div>

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useObjects } from '@/api/objects';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
@@ -6,12 +7,15 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { FamilyTag } from '@/components/ui/FamilyTag';
 import { CovFlag } from '@/components/ui/CovFlag';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { TableSkeleton } from '@/components/ui/Skeleton';
+import { ObjectPeek } from '@/components/ObjectPeek';
 import { t } from '@/i18n/de';
 import type { ObjectSummary } from '@/types';
 
 export default function ObjectCatalog() {
   const { data: objects = [], isLoading, isError, refetch } = useObjects();
   const [spaceFilter, setSpaceFilter] = useSearchParamState('space');
+  const [peekId, setPeekId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const spaces = [...new Set(objects.map(o => o.space))].sort();
@@ -19,7 +23,7 @@ export default function ObjectCatalog() {
 
   const columns: ColDef<ObjectSummary>[] = [
     {
-      key: 'name', header: t.objects.colName, mono: true,
+      key: 'name', header: t.objects.colName, mono: true, sortable: true, sortValue: o => o.name,
       render: o => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{
@@ -27,13 +31,19 @@ export default function ObjectCatalog() {
             background: o.family === 'observability' ? 'var(--obs)'
               : o.family === 'quality' ? 'var(--qual)' : 'var(--cont)',
           }} />
-          {o.name}
+          {/* R6-1: the name navigates to the full page; the rest of the row peeks. */}
+          <button
+            onClick={e => { e.stopPropagation(); navigate(`/objects/${o.id}`); }}
+            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--fg)', cursor: 'pointer', font: 'inherit' }}
+          >
+            {o.name}
+          </button>
         </div>
       ),
     },
-    { key: 'family', header: t.objects.colFamily, render: o => <FamilyTag family={o.family} /> },
-    { key: 'layer', header: t.objects.colLayer, render: o => <span style={{ color: 'var(--fg-2)', fontSize: 12 }}>{o.layer}</span> },
-    { key: 'space', header: t.objects.colSpace, mono: true, render: o => o.space },
+    { key: 'family', header: t.objects.colFamily, sortable: true, sortValue: o => o.family, render: o => <FamilyTag family={o.family} /> },
+    { key: 'layer', header: t.objects.colLayer, sortable: true, sortValue: o => o.layer, render: o => <span style={{ color: 'var(--fg-2)', fontSize: 12 }}>{o.layer}</span> },
+    { key: 'space', header: t.objects.colSpace, mono: true, sortable: true, sortValue: o => o.space, render: o => o.space },
     {
       key: 'status', header: t.objects.colStatus,
       render: o => <StatusPill status={o.status ?? 'unknown'} size="sm" />,
@@ -43,17 +53,22 @@ export default function ObjectCatalog() {
       render: o => <CovFlag flag={o.cov_flag ?? 'gap'} />,
     },
     {
-      key: 'checks', header: t.objects.colChecks,
+      key: 'checks', header: t.objects.colChecks, sortable: true, sortValue: o => o.check_count ?? 0,
       render: o => <span style={{ color: 'var(--fg-2)', fontSize: 12 }}>{o.check_count ?? '—'}</span>,
     },
-    { key: 'owned_by', header: t.objects.colOwner, render: o => <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{o.owned_by}</span> },
+    { key: 'owned_by', header: t.objects.colOwner, sortable: true, sortValue: o => o.owned_by, render: o => <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{o.owned_by}</span> },
     {
-      key: 'last_run', header: t.objects.colLastRun, mono: true,
+      key: 'last_run', header: t.objects.colLastRun, mono: true, sortable: true, sortValue: o => o.last_run ?? '',
       render: o => <span style={{ fontSize: 11 }}>{o.last_run ? new Date(o.last_run).toLocaleString() : '—'}</span>,
     },
   ];
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
+  if (isLoading) return (
+    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.objects.title}</h1>
+      <TableSkeleton columns={9} />
+    </div>
+  );
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -79,11 +94,12 @@ export default function ObjectCatalog() {
             columns={columns}
             rows={rows}
             rowKey={o => o.id}
-            onRowClick={o => navigate(`/objects/${o.id}`)}
+            onRowClick={o => setPeekId(o.id)}
             empty={t.objects.empty}
           />
         </div>
       )}
+      {peekId && <ObjectPeek objectId={peekId} onClose={() => setPeekId(null)} />}
     </div>
   );
 }

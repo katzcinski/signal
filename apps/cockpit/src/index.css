@@ -38,6 +38,33 @@
 
   /* Transitions */
   --t: 150ms ease;
+
+  /* R6-7 density tokens (comfortable default) */
+  --row-pad-y: 7px;
+  --row-pad-x: 12px;
+  --cell-fs: 13px;
+}
+
+/* R6-7 compact density: denser rows, slightly smaller text. */
+[data-density="compact"] {
+  --row-pad-y: 3px;
+  --row-pad-x: 10px;
+  --cell-fs: 12px;
+}
+
+/* R6-3 skeleton shimmer. */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-2) 25%, var(--bg-3) 37%, var(--bg-2) 63%);
+  background-size: 400px 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
 }
 
 *, *::before, *::after {

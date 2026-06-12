@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from './client';
+import { t } from '@/i18n/de';
 import type {
   Contract, ContractOut, ContractPutBody, DiffReport, InventoryResponse, SlaResponse,
 } from '@/types';
@@ -30,7 +32,9 @@ export const usePutContract = (id: string) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['contracts', id] });
       qc.invalidateQueries({ queryKey: ['contracts'] });
+      toast.success(t.toast.contractSaved);
     },
+    onError: () => toast.error(t.toast.contractSaveError),
   });
 };
 
