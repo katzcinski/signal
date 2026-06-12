@@ -360,7 +360,7 @@ export interface Proposal {
   stats?: ProposalStats;
 }
 
-// ---- Run progress events (polled via /api/runs/{id}/events) ----
+// ---- Run progress events (streamed via SSE, polled as fallback) ----
 export interface RunEvent {
   ts: string;
   line: string;

@@ -212,6 +212,26 @@ def _active_contract_for(object_id: str) -> tuple[str, str]:
     return "", ""
 
 
+def _active_contract_owner(object_id: str) -> tuple[str, list[str]]:
+    """R4-2: (owned_by, owners) des aktiven Contracts für Notification-Routing."""
+    import yaml
+    from pathlib import Path
+    base = Path(get_settings().contracts_dir)
+    for ext in (".yaml", ".yml"):
+        path = base / f"{object_id}{ext}"
+        if path.exists():
+            try:
+                data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            except Exception:
+                return "", []
+            if data.get("lifecycle") == "active":
+                owners = data.get("owners") or []
+                if not isinstance(owners, list):
+                    owners = [owners]
+                return str(data.get("owned_by", "")), [str(o) for o in owners]
+    return "", []
+
+
 @router.post("/{object_id}/run", status_code=status.HTTP_202_ACCEPTED)
 def trigger_run(
     object_id: str,
@@ -363,22 +383,32 @@ def trigger_run(
                         r.severity == "critical" and not r.passed and r.state == "executed"
                         for r in summary.results
                     ) else "fail"
-                    store.open_incident(
+                    title = f"Contract-Breach: {object_id} v{contract_version or '?'}"
+                    incident_id = store.open_incident(
                         product=object_id,
                         run_id=run_id,
                         severity=worst,
-                        title=f"Contract-Breach: {object_id} v{contract_version or '?'}",
+                        title=title,
                         failed_checks=failed,
                         contract_version=contract_version,
                         actor="system",
                     )
-                    # WS5-3: Webhook genau beim Übergang → breached (S-10 geschlossen).
-                    from ..webhook import fire_webhook_async
-                    fire_webhook_async(
-                        object_id, new_compliance, run_id,
-                        settings.webhook_url, settings.webhook_allowlist,
+                    # R4-2: route the breach/incident-open to the owner's
+                    # channel(s) (Slack/Teams/webhook). SSRF-safe per target.
+                    from ..notify import notify_breach
+                    owned_by, owners = _active_contract_owner(object_id)
+                    notify_breach(
+                        product=object_id,
+                        compliance=new_compliance,
+                        run_id=run_id,
                         contract_version=contract_version,
                         failed_checks=failed,
+                        severity=worst,
+                        title=title,
+                        incident_id=incident_id,
+                        owned_by=owned_by,
+                        owners=owners,
+                        settings=settings,
                     )
                 elif new_compliance == "compliant" and previous and previous.get("compliance") == "breached":
                     store.auto_resolve_incidents(object_id, run_id)
@@ -399,9 +429,12 @@ def trigger_run(
 
 def _find_checks_file(object_id: str, settings) -> "Path | None":
     from pathlib import Path
+    base = Path(settings.checks_dir)
     candidates = [
-        Path(settings.checks_dir) / f"{object_id}.yml",
-        Path(settings.checks_dir) / object_id / "checks.yml",
+        base / f"{object_id}.yml",
+        base / f"{object_id}.yaml",
+        base / object_id / "checks.yml",
+        base / object_id / "checks.yaml",
     ]
     for c in candidates:
         if c.exists():
