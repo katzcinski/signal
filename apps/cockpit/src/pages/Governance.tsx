@@ -1,46 +1,41 @@
 import { useObjects } from '@/api/objects';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { Panel } from '@/components/ui/Panel';
+import { t } from '@/i18n/de';
 import type { Lifecycle } from '@/types';
-
-const G1_POLICY = [
-  'Contract guarantees must not contain SQL keywords (SELECT, INSERT, UPDATE, DELETE, DROP, EXEC).',
-  'All string values in the guarantees block are scanned at PUT time.',
-  'Violations are rejected with HTTP 422 and error code G1.',
-];
 
 export default function Governance() {
   const { data: objects = [] } = useObjects();
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>Governance</h1>
+      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>{t.governance.title}</h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-        <Panel title="Gate G1 — SQL-free Contracts" family="contract">
+        <Panel title={t.governance.g1Title} family="contract">
           <ul style={{ paddingLeft: 16, margin: 0 }}>
-            {G1_POLICY.map((p, i) => (
+            {t.governance.g1Policy.map((p, i) => (
               <li key={i} style={{ fontSize: 12, color: 'var(--fg-2)', marginBottom: 6, lineHeight: 1.6 }}>{p}</li>
             ))}
           </ul>
         </Panel>
-        <Panel title="Contract Lifecycle Policy" family="contract">
+        <Panel title={t.governance.lifecycleTitle} family="contract">
           <p style={{ fontSize: 12, color: 'var(--fg-2)', marginBottom: 12 }}>
-            Contracts progress through three states. Compiled checks are only generated from <strong>active</strong> contracts.
+            {t.governance.lifecycleDesc1}<strong>{t.governance.lifecycleDescActive}</strong>{t.governance.lifecycleDesc2}
           </p>
           <LifecycleStepper current="active" />
         </Panel>
       </div>
 
-      <Panel title="Object Lifecycle Status">
+      <Panel title={t.governance.objectStatusTitle}>
         {objects.length === 0 ? (
-          <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>No objects</p>
+          <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.governance.noObjects}</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Object', 'Space', 'Contract Lifecycle', 'Has Contract'].map(h => (
+                  {[t.governance.colObject, t.governance.colSpace, t.governance.colLifecycle, t.governance.colHasContract].map(h => (
                     <th key={h} style={{ padding: '6px 12px', textAlign: 'left', fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--line)' }}>{h}</th>
                   ))}
                 </tr>
@@ -54,7 +49,7 @@ export default function Governance() {
                       <LifecycleStepper current={(o.contract_status || 'draft') as Lifecycle} />
                     </td>
                     <td style={{ padding: '8px 12px', fontSize: 12, color: o.contract_status ? 'var(--status-ok)' : 'var(--status-fail)' }}>
-                      {o.contract_status ? '✓ Yes' : '○ No'}
+                      {o.contract_status ? t.governance.yes : t.governance.no}
                     </td>
                   </tr>
                 ))}

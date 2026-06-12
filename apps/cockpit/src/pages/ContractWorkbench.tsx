@@ -726,7 +726,7 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
           ) : (
             <div>
               <div style={{ display: 'flex', gap: 24, marginBottom: 12 }}>
-                <span style={{ fontSize: 13 }}>Status: <strong style={{ color: dryRunData.overall_status === 'pass' ? 'var(--status-ok)' : 'var(--status-fail)' }}>{dryRunData.overall_status}</strong></span>
+                <span style={{ fontSize: 13 }}>{t.workbench.compile.statusLabel} <strong style={{ color: dryRunData.overall_status === 'pass' ? 'var(--status-ok)' : 'var(--status-fail)' }}>{dryRunData.overall_status}</strong></span>
                 <span style={{ fontSize: 13, color: 'var(--fg-3)' }}>{dryRunData.passed}/{dryRunData.total} {t.workbench.compile.passedOf}</span>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
