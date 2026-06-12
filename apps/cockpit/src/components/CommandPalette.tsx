@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Command } from 'cmdk';
 import { toast } from 'sonner';
 import { useObjects } from '@/api/objects';
+import { useContracts } from '@/api/contracts';
 import { api } from '@/api/client';
 import { useUIStore } from '@/store/ui';
 import { t } from '@/i18n/de';
@@ -18,29 +20,17 @@ const ROUTES = [
 
 interface Props { onClose: () => void }
 
-type Group = 'recent' | 'pages' | 'objects' | 'actions';
-
-interface Hit {
-  key: string;
-  group: Group;
-  primary: string;
-  secondary?: string;
-  path?: string;          // navigation target
-  action?: () => void;    // R6-5: run-checks (or other) command
-}
-
+// R6-5: cmdk-based palette — pages, object/contract open (deep-link), run
+// actions, and a persisted Recent group.
 export function CommandPalette({ onClose }: Props) {
   const [query, setQuery] = useState('');
-  const [activeIndex, setActiveIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { data: objects } = useObjects();
+  const { data: objects = [] } = useObjects();
+  const { data: contracts = [] } = useContracts();
   const recents = useUIStore(s => s.recents);
   const pushRecent = useUIStore(s => s.pushRecent);
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
-
-  const q = query.toLowerCase();
+  const go = (path: string, label: string) => { pushRecent(`${path}|${label}`); navigate(path); onClose(); };
 
   const runChecks = (id: string) => {
     onClose();
@@ -51,134 +41,67 @@ export function CommandPalette({ onClose }: Props) {
     });
   };
 
-  // Recent group only when the query is empty (most-recent commands).
-  const recentHits: Hit[] = query ? [] : recents
+  const recentItems = recents
     .map(r => { const [path, label] = r.split('|'); return { path, label: label || path }; })
-    .filter(r => ROUTES.some(x => x.path === r.path) || (objects ?? []).some(o => `/objects/${o.id}` === r.path))
-    .map(r => ({ key: `recent-${r.path}`, group: 'recent' as Group, primary: r.label, path: r.path }));
-
-  const routeHits: Hit[] = ROUTES
-    .filter(r => r.label.toLowerCase().includes(q))
-    .map(r => ({ key: `route-${r.path}`, path: r.path, group: 'pages', primary: r.label }));
-
-  const objectHits: Hit[] = (objects ?? [])
-    .filter(o => o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q))
-    .slice(0, 6)
-    .map(o => ({
-      key: `obj-${o.id}`, path: `/objects/${o.id}`, group: 'objects',
-      primary: o.name, secondary: o.space,
-    }));
-
-  // R6-5: "run checks on X" actions — surfaced when the query matches a run verb
-  // or the object name.
-  const wantsRun = ['run', 'check', 'ausführen', 'ausfuhren'].some(w => q.includes(w));
-  const actionHits: Hit[] = (objects ?? [])
-    .filter(o => wantsRun || o.name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q))
-    .slice(0, 6)
-    .map(o => ({
-      key: `run-${o.id}`, group: 'actions', primary: `▶ ${t.palette.runChecks} ${o.name}`,
-      action: () => runChecks(o.id),
-    }));
-
-  const hits = [...recentHits, ...routeHits, ...objectHits, ...actionHits];
-  const clampedIndex = Math.min(activeIndex, Math.max(hits.length - 1, 0));
-
-  const select = (hit: Hit) => {
-    if (hit.action) { hit.action(); return; }
-    if (hit.path) { pushRecent(`${hit.path}|${hit.primary}`); navigate(hit.path); onClose(); }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActiveIndex(i => Math.min(i + 1, hits.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIndex(i => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const hit = hits[clampedIndex];
-      if (hit) select(hit);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-    }
-  };
-
-  const renderGroup = (group: Group, label: string) => {
-    const groupHits = hits.filter(h => h.group === group);
-    if (groupHits.length === 0) return null;
-    return (
-      <div>
-        <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          {label}
-        </div>
-        {groupHits.map(hit => {
-          const idx = hits.indexOf(hit);
-          const active = idx === clampedIndex;
-          return (
-            <button
-              key={hit.key}
-              onClick={() => select(hit)}
-              onMouseEnter={() => setActiveIndex(idx)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
-                background: active ? 'var(--bg-3)' : 'none', border: 'none', color: 'var(--fg)',
-                padding: '8px 16px', fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              {hit.group === 'objects' ? (
-                <>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)' }}>{hit.primary}</span>
-                  {hit.secondary && <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{hit.secondary}</span>}
-                </>
-              ) : hit.primary}
-            </button>
-          );
-        })}
-      </div>
-    );
-  };
+    .filter(r => ROUTES.some(x => x.path === r.path)
+      || objects.some(o => `/objects/${o.id}` === r.path)
+      || contracts.some(c => `/contracts?product=${c.product}` === r.path));
 
   return (
     <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-start',
-        justifyContent: 'center', paddingTop: '12vh',
-      }}
       onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh' }}
     >
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={t.palette.placeholder}
-        style={{
-          background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-          borderRadius: 10, width: 560, overflow: 'hidden', boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
-        }}
         onClick={e => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
+        style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 10, width: 560, overflow: 'hidden', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}
       >
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={e => { setQuery(e.target.value); setActiveIndex(0); }}
-          placeholder={t.palette.placeholder}
-          style={{
-            width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--line)',
-            padding: '14px 16px', fontSize: 14, color: 'var(--fg)', outline: 'none',
-          }}
-        />
-        <div style={{ maxHeight: 360, overflowY: 'auto', paddingBottom: 6 }}>
-          {renderGroup('recent', t.palette.recent)}
-          {renderGroup('pages', t.palette.pages)}
-          {renderGroup('objects', t.palette.objects)}
-          {renderGroup('actions', t.palette.actions)}
-          {hits.length === 0 && (
-            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--fg-3)' }}>{t.palette.noResults}</div>
-          )}
-        </div>
+        <Command label={t.palette.placeholder} shouldFilter>
+          <Command.Input autoFocus value={query} onValueChange={setQuery} placeholder={t.palette.placeholder} />
+          <Command.List>
+            <Command.Empty>{t.palette.noResults}</Command.Empty>
+
+            {!query && recentItems.length > 0 && (
+              <Command.Group heading={t.palette.recent}>
+                {recentItems.map(r => (
+                  <Command.Item key={`recent:${r.path}`} value={`recent ${r.label}`} onSelect={() => go(r.path, r.label)}>
+                    <span style={{ color: 'var(--fg-3)' }}>↩</span> {r.label}
+                  </Command.Item>
+                ))}
+              </Command.Group>
+            )}
+
+            <Command.Group heading={t.palette.pages}>
+              {ROUTES.map(r => (
+                <Command.Item key={r.path} value={`page ${r.label}`} onSelect={() => go(r.path, r.label)}>
+                  {r.label}
+                </Command.Item>
+              ))}
+            </Command.Group>
+
+            <Command.Group heading={t.palette.objects}>
+              {objects.slice(0, 50).map(o => (
+                <Command.Item key={`open:${o.id}`} value={`object ${o.name} ${o.id}`} onSelect={() => go(`/objects/${o.id}`, o.name)}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)' }}>{o.name}</span>
+                  <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{o.space}</span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+
+            <Command.Group heading={t.palette.actions}>
+              {objects.slice(0, 50).map(o => (
+                <Command.Item key={`run:${o.id}`} value={`run checks ausführen ${o.name} ${o.id}`} onSelect={() => runChecks(o.id)}>
+                  <span style={{ color: 'var(--cont)' }}>▶</span> {t.palette.runChecks} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</span>
+                </Command.Item>
+              ))}
+              {contracts.slice(0, 50).map(c => (
+                <Command.Item key={`contract:${c.product}`} value={`contract ${c.product} öffnen`} onSelect={() => go(`/contracts?product=${c.product}`, c.product)}>
+                  <span style={{ color: 'var(--fg-3)' }}>⊟</span> {t.palette.openContract} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{c.product}</span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+          </Command.List>
+        </Command>
       </div>
     </div>
   );
