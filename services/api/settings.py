@@ -62,6 +62,15 @@ class Settings(BaseSettings):
     # still validated against webhook_allowlist (no SSRF bypass via routing).
     notifications_file: str = Field(default="notifications.yml")
 
+    # Datasphere API — data load status (R7)
+    # base_url: e.g. https://mytenant.eu10.hcs.cloud.sap
+    # token_url: defaults to {base_url}/oauth/token when empty
+    datasphere_base_url: str = Field(default="")
+    datasphere_client_id: str = Field(default="")
+    datasphere_client_secret: str = Field(default="")
+    datasphere_token_url: str = Field(default="")
+    datasphere_space_id: str = Field(default="")
+
 
 _settings: Settings | None = None
 

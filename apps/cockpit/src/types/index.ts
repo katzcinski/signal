@@ -1,4 +1,18 @@
 export type Family = 'observability' | 'quality' | 'contract';
+
+// ---- Datasphere data loads ----
+export interface DataLoad {
+  object_id: string;
+  load_type: 'task_chain' | 'replication_flow' | string;
+  run_id: string | null;
+  status: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  duration_ms: number | null;
+  error_message: string | null;
+  triggered_by: string | null;
+  raw: Record<string, unknown>;
+}
 export type Lifecycle = 'draft' | 'active' | 'deprecated';
 export type Severity = 'critical' | 'fail' | 'warn';
 export type OverallStatus = 'pass' | 'fail' | 'warn' | 'critical' | 'unknown';
