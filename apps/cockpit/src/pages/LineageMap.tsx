@@ -465,9 +465,10 @@ export default function LineageMap() {
     <div style={{ maxWidth: '100%', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.lineage.title}</h1>
-        {data?.extract_age && (
-          <div style={{ fontSize: 12, color: 'var(--status-warn)' }}>
-            {t.lineage.extractAge}: {data.extract_age}
+        {data?.extract_age != null && (
+          <div style={{ fontSize: 12, color: data.stale ? 'var(--status-warn)' : 'var(--fg-3)' }}
+               title={data.stale ? t.lineage.staleWarning : undefined}>
+            {t.lineage.extractAge}: {data.extract_age}{data.stale ? ' ⚠' : ''}
           </div>
         )}
       </div>

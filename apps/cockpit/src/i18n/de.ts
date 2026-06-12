@@ -246,6 +246,7 @@ export const t = {
   lineage: {
     title: 'Lineage Coverage Map',
     extractAge: 'Extrakt-Alter',
+    staleWarning: 'Extrakt ist veraltet — bitte Extraktion neu auslösen (POST /api/extract)',
     desktopOnly: 'Nur Desktop',
     desktopOnlyHint: 'Die Lineage Coverage Map benötigt einen breiteren Bildschirm.',
     allLayers: 'Alle Layer',

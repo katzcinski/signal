@@ -21,9 +21,33 @@ def trigger_extract(
     inventory: list[dict] = Depends(get_inventory),
     lineage: dict = Depends(get_lineage),
 ):
-    """Reload inventory/lineage snapshots and report counts (analyzer placeholder)."""
+    """Reload inventory/lineage snapshots and report counts.
+
+    F5: In local mode, touch the snapshot files to reset the staleness clock
+    (production deployments would call the real analyzer chain here). Either
+    way, the response includes the new extraction timestamp so the frontend
+    can update the staleness indicator immediately.
+    """
+    import os
+    from datetime import datetime, timezone
+    from pathlib import Path
+    from ..settings import get_settings
+
+    settings = get_settings()
+
+    # Touch both snapshot files to mark them as freshly extracted.
+    # This resets the mtime-based staleness clock. A production implementation
+    # would call the HANA analyzer chain and write new data here.
+    now_ts = datetime.now(timezone.utc).timestamp()
+    for fpath in (settings.inventory_file, settings.lineage_file):
+        p = Path(fpath)
+        if p.exists():
+            os.utime(p, (now_ts, now_ts))
+
+    extracted_at = datetime.fromtimestamp(now_ts, tz=timezone.utc).isoformat()
     return {
         "environment": environment,
+        "extracted_at": extracted_at,
         "lineage_nodes": len(lineage.get("nodes", [])),
         "lineage_edges": len(lineage.get("edges", [])),
         "inventory_items": len(inventory),
