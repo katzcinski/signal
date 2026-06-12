@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # Webhook (WS5-3) — breach notification
     webhook_url: str = Field(default="")
     webhook_allowlist: list[str] = Field(default=[])  # host patterns (regex), e.g. [".*\\.example\\.com"]
+    # Notification routing (R4-2): owner → channel(s). Optional YAML file; when
+    # absent, webhook_url acts as an implicit default target. Every target URL is
+    # still validated against webhook_allowlist (no SSRF bypass via routing).
+    notifications_file: str = Field(default="notifications.yml")
 
 
 _settings: Settings | None = None
