@@ -7,8 +7,13 @@
 > (validiert gegen offizielles Bitol-Schema) + Advisory-CI; R6-Politur (Peek-Drilldown,
 > Sparkline-Zellen, Skeletons, Toasts, Cmd-K, Virtualisierung, Density-Toggle,
 > Lineage-Swimlanes) komplett. Volle i18n-Abdeckung der Restscreens (Proposals, Governance,
-> Workbench-Reste) nachgezogen — kein Sprachmix mehr. **Offen:** Spaltenebene Lineage
-> (O3, blockiert durch `columnEdges`-Parser-Defekt), Multi-Worker-Playwright (F2).
+> Workbench-Reste) nachgezogen — kein Sprachmix mehr. F2-Kern (Run-Status +
+> Progress store-getrieben, über Worker-Grenzen identisch) jetzt durch
+> Integrationstest belegt (`tests/unit/test_multi_worker_f2.py`: zwei Store-
+> Instanzen auf einer DB + realer SSE-Generator). **Offen:** Spaltenebene
+> Lineage (O3, blockiert durch `columnEdges`-Parser-Defekt im Analyzer),
+> optionaler Playwright-E2E-Smoke obendrauf (Browser-Ebene, kein
+> Korrektheitsrisiko mehr).
 
 **Stand:** 2026-06-10 · **Grundlage:** `REVIEW_Tool_v1_Befunde.md` (Befund-IDs S-x/L-x/FE-x werden referenziert) + Marktabgleich § 7.
 **Modus:** sequentiell wie HANDOVER; jeder Schritt mit Acceptance, kein Merge bei rotem Gate. Boundary-Tags und Goldene Regeln des HANDOVER gelten unverändert weiter.
