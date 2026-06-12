@@ -1,4 +1,5 @@
 import { t } from '@/i18n/de';
+import { useUIStore } from '@/store/ui';
 
 interface Props {
   onToggleSidebar: () => void;
@@ -6,6 +7,8 @@ interface Props {
 }
 
 export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
+  const density = useUIStore(s => s.density);
+  const toggleDensity = useUIStore(s => s.toggleDensity);
   return (
     <header style={{
       height: 44, background: 'var(--bg-1)', borderBottom: '1px solid var(--line)',
@@ -34,6 +37,17 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
         }}>⌘K</kbd>
       </button>
       <div style={{ flex: 1 }} />
+      <button
+        onClick={toggleDensity}
+        title={t.density.toggle}
+        aria-label={t.density.toggle}
+        style={{
+          background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-3)',
+          borderRadius: 5, padding: '4px 10px', fontSize: 12, cursor: 'pointer',
+        }}
+      >
+        ↕ {density === 'compact' ? t.density.compact : t.density.comfortable}
+      </button>
       <span style={{
         background: 'var(--cont)22', border: '1px solid var(--cont)55',
         color: 'var(--cont)', borderRadius: 4, padding: '2px 8px', fontSize: 11,

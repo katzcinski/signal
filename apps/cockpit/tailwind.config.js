@@ -8,13 +8,23 @@ export default {
         sans: ['DM Sans', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
+      // R6-9: single source of truth — the CSS custom properties in index.css.
+      // No divergent hex palette here; Tailwind colour utilities resolve to the
+      // same vars the inline styles use.
       colors: {
-        obs: { DEFAULT: '#f97316', light: '#fed7aa' },         // Orange — Observability
-        quality: { DEFAULT: '#22c55e', light: '#bbf7d0' },     // Green — Quality
-        flow: { DEFAULT: '#14b8a6', light: '#99f6e4' },        // Teal — Flow
-        contract: { DEFAULT: '#3b82f6', light: '#bfdbfe' },    // Blue — Contract
-        feedback: { DEFAULT: '#a855f7', light: '#e9d5ff' },    // Violet — Feedback
-        hitl: { DEFAULT: '#ec4899', light: '#fbcfe8' },        // Pink — HITL
+        obs: 'var(--obs)',          // Observability
+        quality: 'var(--qual)',     // Quality
+        contract: 'var(--cont)',    // Contract
+        'status-ok': 'var(--status-ok)',
+        'status-warn': 'var(--status-warn)',
+        'status-fail': 'var(--status-fail)',
+        'status-crit': 'var(--status-crit)',
+        line: 'var(--line)',
+        'line-2': 'var(--line-2)',
+        fg: 'var(--fg)',
+        'fg-2': 'var(--fg-2)',
+        'fg-3': 'var(--fg-3)',
+        bg: 'var(--bg-1)',
       },
     },
   },

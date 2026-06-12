@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
 import { Shell } from './components/layout/Shell';
 
 const Cockpit           = lazy(() => import('./pages/Cockpit'));
@@ -43,6 +44,13 @@ export default function App() {
           </Suspense>
         </Shell>
       </BrowserRouter>
+      <Toaster
+        theme="dark"
+        position="bottom-right"
+        toastOptions={{
+          style: { background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg)' },
+        }}
+      />
     </QueryClientProvider>
   );
 }
