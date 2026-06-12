@@ -10,6 +10,7 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { FamilyTag } from '@/components/ui/FamilyTag';
 import { LiveRunPanel } from '@/components/LiveRunPanel';
 import { RunTriggerDialog } from '@/components/RunTriggerDialog';
+import { BadgeEmbed } from '@/components/BadgeEmbed';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { t } from '@/i18n/de';
@@ -158,19 +159,22 @@ export default function ObjectDetail() {
       )}
 
       {tab === 'contract' && (
-        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 20 }}>
-          {contract ? (
-            <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)', whiteSpace: 'pre-wrap' }}>
-              {JSON.stringify(contract, null, 2)}
-            </pre>
-          ) : (
-            <p style={{ color: 'var(--fg-3)' }}>
-              {t.objectDetail.noContractPrefix}{' '}
-              <Link to="/contracts" style={{ color: 'var(--cont)' }}>{t.objectDetail.noContractLink}</Link>{' '}
-              {t.objectDetail.noContractSuffix}
-            </p>
-          )}
-        </div>
+        <>
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 20 }}>
+            {contract ? (
+              <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)', whiteSpace: 'pre-wrap' }}>
+                {JSON.stringify(contract, null, 2)}
+              </pre>
+            ) : (
+              <p style={{ color: 'var(--fg-3)' }}>
+                {t.objectDetail.noContractPrefix}{' '}
+                <Link to="/contracts" style={{ color: 'var(--cont)' }}>{t.objectDetail.noContractLink}</Link>{' '}
+                {t.objectDetail.noContractSuffix}
+              </p>
+            )}
+          </div>
+          <BadgeEmbed product={obj.id} />
+        </>
       )}
 
       {tab === 'lineage' && (
