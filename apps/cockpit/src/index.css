@@ -67,27 +67,6 @@
   .skeleton { animation: none; }
 }
 
-/* R6-5 cmdk command palette. */
-[cmdk-root] { width: 100%; }
-[cmdk-input] {
-  width: 100%; background: none; border: none; outline: none;
-  border-bottom: 1px solid var(--line); padding: 14px 16px;
-  font-size: 14px; color: var(--fg); font-family: var(--font-ui);
-}
-[cmdk-group-heading] {
-  padding: 8px 14px 4px; font-size: 10px; color: var(--fg-3);
-  text-transform: uppercase; letter-spacing: 0.06em;
-}
-[cmdk-item] {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 14px; font-size: 13px; color: var(--fg);
-  cursor: pointer; border-radius: 6px; margin: 1px 6px;
-}
-[cmdk-item][data-selected="true"] { background: var(--bg-3); }
-[cmdk-item][data-disabled="true"] { opacity: 0.4; pointer-events: none; }
-[cmdk-empty] { padding: 24px; text-align: center; color: var(--fg-3); font-size: 13px; }
-[cmdk-list] { max-height: 360px; overflow-y: auto; padding-bottom: 6px; }
-
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
