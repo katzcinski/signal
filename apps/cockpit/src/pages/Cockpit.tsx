@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Kpi } from '@/components/ui/Kpi';
+import { KpiSkeleton } from '@/components/ui/Skeleton';
 import { Panel } from '@/components/ui/Panel';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -70,6 +71,7 @@ export default function Cockpit() {
       {objectsQuery.isError && <ErrorBanner onRetry={() => objectsQuery.refetch()} />}
       {incidentsQuery.isError && <ErrorBanner onRetry={() => incidentsQuery.refetch()} />}
 
+      {objectsQuery.isLoading ? <KpiSkeleton count={4} /> : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <Kpi label={t.cockpit.kpiObjects} value={totalObjects} accent="var(--cont)" />
         <Kpi label={t.cockpit.kpiHealth} value={`${healthPct}%`} accent="var(--qual)" />
@@ -82,6 +84,7 @@ export default function Cockpit() {
           accent="var(--cont)"
         />
       </div>
+      )}
 
       <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
         <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--line)', fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

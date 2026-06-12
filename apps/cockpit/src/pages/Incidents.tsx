@@ -7,6 +7,7 @@ import { StatusDot } from '@/components/ui/StatusDot';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { StatePill } from '@/components/ui/StatePill';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { t } from '@/i18n/de';
 import type { FailedCheck, Incident, IncidentStatus } from '@/types';
 
@@ -286,7 +287,7 @@ export default function Incidents() {
       ) : (
         <>
           {isError && <ErrorBanner onRetry={() => refetch()} />}
-          {isLoading && <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>}
+          {isLoading && <TableSkeleton columns={6} />}
           {!isError && !isLoading && (
             <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
               <Table
