@@ -8,6 +8,7 @@ import { Table, type ColDef } from '@/components/ui/Table';
 import { OnboardingPanel } from '@/components/OnboardingPanel';
 import { useObjects } from '@/api/objects';
 import { useIncidents } from '@/api/incidents';
+import { useCoverageSummary } from '@/api/coverage';
 import { t } from '@/i18n/de';
 import type { Incident, ObjectSummary } from '@/types';
 
@@ -26,14 +27,16 @@ function FamilyStatusCell({ status }: { status: string }) {
 export default function Cockpit() {
   const objectsQuery = useObjects();
   const incidentsQuery = useIncidents();
+  const coverageQuery = useCoverageSummary();
   const { data: objects = [] } = objectsQuery;
   const { data: incidents = [] } = incidentsQuery;
+  const coverage = coverageQuery.data;
   const navigate = useNavigate();
 
   const totalObjects = objects.length;
   const healthyObjects = objects.filter(o => o.status === 'pass').length;
   const healthPct = totalObjects > 0 ? Math.round((healthyObjects / totalObjects) * 100) : 0;
-  const activeContracts = objects.filter(o => o.contract_status === 'active').length;
+  const unvalidated = coverage?.unvalidated_30d ?? [];
 
   const openIncidents = incidents.filter(i => i.status !== 'resolved');
   const criticalIncidents = openIncidents.filter(i => i.severity === 'critical').length;
@@ -75,7 +78,12 @@ export default function Cockpit() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <Kpi label={t.cockpit.kpiObjects} value={totalObjects} accent="var(--cont)" />
         <Kpi label={t.cockpit.kpiHealth} value={`${healthPct}%`} accent="var(--qual)" />
-        <Kpi label={t.cockpit.kpiActiveContracts} value={activeContracts} accent="var(--cont)" />
+        <Kpi
+          label={t.cockpit.kpiCoverage}
+          value={`${coverage?.contract_coverage_pct ?? 0}%`}
+          delta={coverage ? `${coverage.with_active_contract}/${coverage.objects_total} ${t.cockpit.coverageOf}` : undefined}
+          accent="var(--cont)"
+        />
         <Kpi
           label={t.cockpit.kpiOpenIncidents}
           value={openIncidents.length}
@@ -122,6 +130,36 @@ export default function Cockpit() {
           </button>
         ))}
       </Panel>
+
+      <div style={{ marginTop: 16 }}>
+        <Panel title={`${t.cockpit.unvalidatedTitle}${unvalidated.length ? ` (${unvalidated.length})` : ''}`}>
+          {unvalidated.length === 0 ? (
+            <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
+              {coverageQuery.isSuccess ? t.cockpit.unvalidatedEmpty : '—'}
+            </p>
+          ) : (
+            <>
+              <p style={{ color: 'var(--fg-3)', fontSize: 11, marginBottom: 8 }}>{t.cockpit.unvalidatedHint}</p>
+              {unvalidated.map(objId => (
+                <button
+                  key={objId}
+                  onClick={() => navigate(`/objects/${objId}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
+                    padding: '6px 0', background: 'none', border: 'none',
+                    borderBottom: '1px solid var(--line)', borderRadius: 0,
+                    color: 'var(--fg)', cursor: 'pointer',
+                  }}
+                >
+                  <StatusDot status="unknown" />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1 }}>{objId}</span>
+                  <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{t.common.open} →</span>
+                </button>
+              ))}
+            </>
+          )}
+        </Panel>
+      </div>
     </div>
   );
 }
