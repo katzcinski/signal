@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents, useIncident, useIncidentTransition, useFailedChecks } from '@/api/incidents';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
@@ -38,6 +38,18 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
   const [ownerInput, setOwnerInput] = useState('');
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState('');
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      prev?.focus();
+    };
+  }, [onClose]);
 
   const requestAct = (status: string) => {
     setPendingStatus(status);
@@ -57,16 +69,22 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="false"
-      aria-label={incident?.title ?? t.incidents.title}
-      style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: 420, zIndex: 100,
-        background: 'var(--bg-1)', borderLeft: '1px solid var(--line)',
-        padding: 20, overflowY: 'auto', boxShadow: '-12px 0 32px rgba(0,0,0,0.4)',
-      }}
-    >
+    <>
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 99, background: 'rgba(0,0,0,0.4)' }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={incident?.title ?? t.incidents.title}
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 420, zIndex: 100,
+          background: 'var(--bg-1)', borderLeft: '1px solid var(--line)',
+          padding: 20, overflowY: 'auto', boxShadow: '-12px 0 32px rgba(0,0,0,0.4)',
+        }}
+      >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
           {incident && (
@@ -85,7 +103,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
           )}
           {isLoading && <div style={{ color: 'var(--fg-3)' }}>{t.common.loading}</div>}
         </div>
-        <button onClick={onClose} aria-label={t.common.close} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', fontSize: 18, cursor: 'pointer' }}>×</button>
+        <button ref={closeRef} onClick={onClose} aria-label={t.common.close} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', fontSize: 18, cursor: 'pointer' }}>×</button>
       </div>
 
       {incident && (
@@ -216,7 +234,8 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useObjects } from '@/api/objects';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
@@ -12,14 +12,49 @@ import { ObjectPeek } from '@/components/ObjectPeek';
 import { t } from '@/i18n/de';
 import type { ObjectSummary } from '@/types';
 
+const chipBtn = (active: boolean): CSSProperties => ({
+  padding: '4px 10px', borderRadius: 20,
+  border: active ? '1px solid var(--cont)' : '1px solid var(--line-2)',
+  background: active ? 'var(--cont)' : 'var(--bg-2)',
+  color: active ? '#fff' : 'var(--fg-3)',
+  fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' as const,
+});
+
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '2px 6px 2px 8px', borderRadius: 20,
+      background: 'var(--cont)', color: '#fff', fontSize: 11,
+    }}>
+      {label}
+      <button
+        onClick={onClear}
+        aria-label={t.objects.clearFilters}
+        style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}
+      >×</button>
+    </span>
+  );
+}
+
 export default function ObjectCatalog() {
   const { data: objects = [], isLoading, isError, refetch } = useObjects();
   const [spaceFilter, setSpaceFilter] = useSearchParamState('space');
+  const [textFilter, setTextFilter] = useSearchParamState('q');
+  const [familyFilter, setFamilyFilter] = useSearchParamState('family');
+  const [statusFilter, setStatusFilter] = useSearchParamState('dqstatus');
   const [peekId, setPeekId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const spaces = [...new Set(objects.map(o => o.space))].sort();
-  const rows = spaceFilter ? objects.filter(o => o.space === spaceFilter) : objects;
+  const q = textFilter.toLowerCase();
+  const rows = objects.filter(o => {
+    if (spaceFilter && o.space !== spaceFilter) return false;
+    if (familyFilter && o.family !== familyFilter) return false;
+    if (statusFilter && o.status !== statusFilter) return false;
+    if (q && !o.name.toLowerCase().includes(q) && !o.space.toLowerCase().includes(q) && !(o.owned_by ?? '').toLowerCase().includes(q)) return false;
+    return true;
+  });
 
   const columns: ColDef<ObjectSummary>[] = [
     {
@@ -70,23 +105,62 @@ export default function ObjectCatalog() {
     </div>
   );
 
+  const FAMILIES = ['observability', 'quality', 'contract'] as const;
+  const STATUSES = ['pass', 'warn', 'fail', 'critical', 'unknown'] as const;
+  const hasActiveFilter = !!(textFilter || familyFilter || statusFilter || spaceFilter);
+
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.objects.title}</h1>
-        <select
-          value={spaceFilter}
-          onChange={e => setSpaceFilter(e.target.value)}
-          aria-label={t.objects.colSpace}
+        <input
+          type="search"
+          value={textFilter}
+          onChange={e => setTextFilter(e.target.value)}
+          placeholder={t.objects.searchPlaceholder}
           style={{
             background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-            color: 'var(--fg)', borderRadius: 5, padding: '5px 10px', fontSize: 12,
+            color: 'var(--fg)', borderRadius: 5, padding: '5px 10px', fontSize: 12, minWidth: 220,
           }}
-        >
-          <option value="">{t.objects.allSpaces}</option>
-          {spaces.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+        />
       </div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+        <button style={chipBtn(familyFilter === '')} onClick={() => setFamilyFilter('')}>{t.objects.allFamilies}</button>
+        {FAMILIES.map(f => (
+          <button key={f} style={chipBtn(familyFilter === f)} onClick={() => setFamilyFilter(familyFilter === f ? '' : f)}>
+            {t.workbench.families[f] ?? f}
+          </button>
+        ))}
+        <div style={{ width: 1, height: 16, background: 'var(--line-2)', margin: '0 4px' }} />
+        <button style={chipBtn(statusFilter === '')} onClick={() => setStatusFilter('')}>{t.common.all}</button>
+        {STATUSES.map(s => (
+          <button key={s} style={chipBtn(statusFilter === s)} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}>
+            {t.status[s] ?? s}
+          </button>
+        ))}
+        <div style={{ marginLeft: 'auto' }}>
+          <select
+            value={spaceFilter}
+            onChange={e => setSpaceFilter(e.target.value)}
+            aria-label={t.objects.colSpace}
+            style={{
+              background: 'var(--bg-2)', border: '1px solid var(--line-2)',
+              color: 'var(--fg)', borderRadius: 5, padding: '5px 10px', fontSize: 12,
+            }}
+          >
+            <option value="">{t.objects.allSpaces}</option>
+            {spaces.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      {hasActiveFilter && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
+          {textFilter && <FilterChip label={`"${textFilter}"`} onClear={() => setTextFilter('')} />}
+          {familyFilter && <FilterChip label={t.workbench.families[familyFilter] ?? familyFilter} onClear={() => setFamilyFilter('')} />}
+          {statusFilter && <FilterChip label={t.status[statusFilter] ?? statusFilter} onClear={() => setStatusFilter('')} />}
+          {spaceFilter && <FilterChip label={spaceFilter} onClear={() => setSpaceFilter('')} />}
+        </div>
+      )}
       {isError && <ErrorBanner onRetry={() => refetch()} />}
       {!isError && (
         <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>

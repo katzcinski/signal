@@ -8,6 +8,7 @@ export const t = {
     proposals: 'Vorschläge',
     governance: 'Governance',
     runs: 'Runs',
+    library: 'Bibliothek',
   },
   common: {
     loading: 'Lädt…',
@@ -78,6 +79,13 @@ export const t = {
     unvalidatedTitle: 'Seit >30 Tagen nicht validiert',
     unvalidatedHint: 'Ohne Lauf oder letzter Lauf älter als 30 Tage — zur Prüfung öffnen.',
     unvalidatedEmpty: 'Alle Objekte innerhalb der letzten 30 Tage validiert.',
+    slaTitle: 'SLA-Übersicht (aktive Contracts)',
+    slaEmpty: 'Keine aktiven Contracts',
+    slaProduct: 'Produkt',
+    slaCurrent: 'Aktuell',
+    sla7d: '7 Tage',
+    sla30d: '30 Tage',
+    sla90d: '90 Tage',
   },
   badge: {
     title: 'Status-Badge einbetten',
@@ -296,6 +304,9 @@ export const t = {
     colChecks: 'Checks',
     colOwner: 'Owner',
     colLastRun: 'Letzter Lauf',
+    searchPlaceholder: 'Suchen nach Name, Space, Owner…',
+    allFamilies: 'Alle Familien',
+    clearFilters: 'Filter löschen',
   },
   objectDetail: {
     back: '← Objekte',
@@ -417,6 +428,14 @@ export const t = {
     runError: 'Run konnte nicht gestartet werden für',
     incidentUpdated: 'Incident aktualisiert.',
     incidentUpdateError: 'Statuswechsel fehlgeschlagen.',
+  },
+  library: {
+    title: 'Check-Bibliothek',
+    searchPlaceholder: 'Check suchen…',
+    allCategories: 'Alle Kategorien',
+    noResults: 'Keine Checks gefunden',
+    params: 'Parameter',
+    templateSql: 'SQL-Vorlage',
   },
   liveRun: 'Run läuft',
 };
