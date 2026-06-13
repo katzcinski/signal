@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
   ObjectSummary, RunListItem, CheckHistoryPoint, EnvironmentsResponse,
+  ObjectTimeseries,
 } from '@/types';
 
 export const useObjects = () =>
@@ -50,6 +51,15 @@ export const useCheckHistory = (objectId: string, checkName: string, enabled = t
     queryFn: () =>
       api.get(`/objects/${objectId}/checks/${encodeURIComponent(checkName)}/history`).then(r => r.data),
     enabled: !!objectId && !!checkName && enabled,
+    staleTime: 60_000,
+  });
+
+// UX-N1: freshness/volume time-series with baseline band + anomaly markers.
+export const useObjectTimeseries = (objectId: string, enabled = true) =>
+  useQuery<ObjectTimeseries>({
+    queryKey: ['objects', objectId, 'timeseries'],
+    queryFn: () => api.get(`/objects/${objectId}/timeseries`).then(r => r.data),
+    enabled: !!objectId && enabled,
     staleTime: 60_000,
   });
 

@@ -189,6 +189,18 @@ def get_check_history(
     return store.get_check_history(object_id, check_name, limit=limit)
 
 
+@router.get("/{object_id}/timeseries")
+def get_object_timeseries(
+    object_id: str,
+    limit: int = Query(default=200, ge=1, le=1000),
+    store: StoreDep = ...,
+):
+    """UX-N1: Freshness-/Volume-Zeitreihen je Objekt mit erwartetem Baseline-Band
+    (Mean ± 3σ aus `dq_baselines`) und Anomalie-Markern. Macht aus dem
+    Status-Board ein Monitoring-Tool."""
+    return store.get_metric_series(object_id, limit=limit)
+
+
 class RunTriggerIn(BaseModel):
     environment: str = ""
     execution_mode: str = "auto"
