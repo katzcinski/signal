@@ -124,3 +124,76 @@ def test_notify_breach_noop_without_targets(tmp_path, monkeypatch):
         owned_by="x", owners=[], settings=s,
     )
     assert calls == []
+
+
+# ---- notify_incident_transition ----
+
+def _transition_ctx():
+    return dict(
+        product="DS_X", incident_id=7, severity="critical", title="Breach",
+        action="status_changed", actor="alice", note="urgent",
+        new_status="acknowledged", new_owner=None,
+    )
+
+
+def test_transition_slack_payload():
+    p = notify._format_transition_payload("slack", {**_transition_ctx(), "link": "/incidents/7", "ts": "t"})
+    assert "text" in p
+    assert "DS_X" in p["text"]
+    assert "acknowledged" in p["text"]
+    assert "alice" in p["text"]
+
+
+def test_transition_teams_payload():
+    p = notify._format_transition_payload("teams", {**_transition_ctx(), "link": "/incidents/7", "ts": "t"})
+    assert p["@type"] == "MessageCard"
+    assert p["themeColor"] == notify._SEVERITY_COLOR["critical"]
+    facts_names = [f["name"] for f in p["sections"][0]["facts"]]
+    assert "Action" in facts_names and "Actor" in facts_names
+
+
+def test_transition_webhook_payload():
+    p = notify._format_transition_payload("webhook", {**_transition_ctx(), "link": "/incidents/7", "ts": "t"})
+    assert p["product"] == "DS_X"
+    assert p["incident_id"] == 7
+    assert p["action"] == "status_changed"
+    assert p["new_status"] == "acknowledged"
+
+
+def test_notify_incident_transition_fires_on_status_change(tmp_path, monkeypatch):
+    calls = _capture(monkeypatch)
+    routes = {"routes": [{"match": {"owned_by": "platform"},
+                          "targets": [{"type": "webhook", "url": "https://hooks.dq/x"}]}]}
+    s = _settings(tmp_path, routes=routes, allowlist=[r".*\.dq"])
+    notify.notify_incident_transition(
+        product="DS_X", incident_id=5, severity="fail", title="T",
+        action="status_changed", actor="alice", note="", new_status="resolved",
+        new_owner=None, owned_by="platform", owners=[], settings=s,
+    )
+    assert len(calls) == 1
+    assert calls[0][0] == "https://hooks.dq/x"
+
+
+def test_notify_incident_transition_fires_on_owner_assignment(tmp_path, monkeypatch):
+    calls = _capture(monkeypatch)
+    routes = {"default": [{"type": "webhook", "url": "https://hooks.dq/x"}]}
+    s = _settings(tmp_path, routes=routes, allowlist=[r".*\.dq"])
+    notify.notify_incident_transition(
+        product="DS_X", incident_id=5, severity="fail", title="T",
+        action="assigned", actor="bob", note="", new_status=None,
+        new_owner="carol", owned_by="x", owners=[], settings=s,
+    )
+    assert len(calls) == 1
+    payload = calls[0][1]
+    assert payload["new_owner"] == "carol"
+
+
+def test_notify_incident_transition_noop_without_targets(tmp_path, monkeypatch):
+    calls = _capture(monkeypatch)
+    s = _settings(tmp_path, routes={}, webhook_url="")
+    notify.notify_incident_transition(
+        product="DS_X", incident_id=5, severity="fail", title="T",
+        action="status_changed", actor="alice", note="", new_status="resolved",
+        new_owner=None, owned_by="x", owners=[], settings=s,
+    )
+    assert calls == []

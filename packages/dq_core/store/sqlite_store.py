@@ -306,7 +306,11 @@ class ResultStore:
                 )
 
     def list_incidents(
-        self, status: str | None = None, severity: str | None = None, limit: int = 100
+        self,
+        status: str | None = None,
+        severity: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[dict[str, Any]]:
         where, params = [], []
         if status:
@@ -318,8 +322,8 @@ class ResultStore:
         clause = ("WHERE " + " AND ".join(where)) if where else ""
         with self._conn() as conn:
             rows = conn.execute(
-                f"SELECT * FROM dq_incidents {clause} ORDER BY id DESC LIMIT ?",
-                (*params, limit),
+                f"SELECT * FROM dq_incidents {clause} ORDER BY id DESC LIMIT ? OFFSET ?",
+                (*params, limit, offset),
             ).fetchall()
             return [self._incident_row(r) for r in rows]
 
@@ -521,10 +525,11 @@ class ResultStore:
             ).fetchall()
             return [dict(r) for r in rows]
 
-    def get_all_runs(self, limit: int = 200) -> list[dict[str, Any]]:
+    def get_all_runs(self, limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
         with self._conn() as conn:
             rows = conn.execute(
-                "SELECT * FROM dq_runs ORDER BY started_at DESC LIMIT ?", (limit,)
+                "SELECT * FROM dq_runs ORDER BY started_at DESC LIMIT ? OFFSET ?",
+                (limit, offset),
             ).fetchall()
             return [dict(r) for r in rows]
 

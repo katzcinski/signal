@@ -111,3 +111,53 @@ def test_contract_list_served_from_index(api_client):
     assert entry["guarantees"] == {}
     detail = api_client.get("/api/contracts/IDX1").json()
     assert detail["guarantees"]["keys"]
+
+
+# ---- Pagination ----
+
+def test_incidents_pagination(api_client):
+    assert api_client.get("/api/incidents?limit=10&offset=0").status_code == 200
+    assert api_client.get("/api/incidents?limit=1&offset=0").status_code == 200
+    assert api_client.get("/api/incidents?limit=501").status_code == 422
+    assert api_client.get("/api/incidents?limit=0").status_code == 422
+
+
+def test_runs_pagination(api_client):
+    assert api_client.get("/api/runs?limit=10&offset=0").status_code == 200
+    assert api_client.get("/api/runs?limit=501").status_code == 422
+    assert api_client.get("/api/runs?limit=0").status_code == 422
+
+
+def test_incidents_pagination_offset_reduces_result(api_client):
+    """Offset pagination: requesting past the end returns an empty list."""
+    result = api_client.get("/api/incidents?limit=50&offset=999").json()
+    assert result == []
+
+
+def test_runs_pagination_offset_reduces_result(api_client):
+    result = api_client.get("/api/runs?limit=50&offset=999").json()
+    assert result == []
+
+
+# ---- Observability ----
+
+def test_metrics_health_endpoint(api_client):
+    resp = api_client.get("/api/metrics/health")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "requests_total" in body
+    assert "requests_4xx" in body
+    assert "requests_5xx" in body
+    assert "uptime_s" in body
+    assert body["requests_total"] >= 1  # at least this request was counted
+
+
+def test_request_id_header_injected(api_client):
+    resp = api_client.get("/api/health")
+    assert resp.status_code == 200
+    assert "x-request-id" in resp.headers
+
+
+def test_request_id_propagated(api_client):
+    resp = api_client.get("/api/health", headers={"X-Request-ID": "test-id-123"})
+    assert resp.headers.get("x-request-id") == "test-id-123"

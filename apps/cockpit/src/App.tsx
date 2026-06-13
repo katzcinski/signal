@@ -13,6 +13,7 @@ const Incidents         = lazy(() => import('./pages/Incidents'));
 const Proposals         = lazy(() => import('./pages/Proposals'));
 const RunDetail         = lazy(() => import('./pages/RunDetail'));
 const Governance        = lazy(() => import('./pages/Governance'));
+const CheckLibrary      = lazy(() => import('./pages/CheckLibrary'));
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="/proposals"   element={<Proposals />} />
               <Route path="/runs/:id"    element={<RunDetail />} />
               <Route path="/governance"  element={<Governance />} />
+              <Route path="/library"    element={<CheckLibrary />} />
             </Routes>
           </Suspense>
         </Shell>

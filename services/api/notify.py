@@ -133,6 +133,94 @@ def _format_payload(target_type: str, ctx: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _format_transition_payload(target_type: str, ctx: dict[str, Any]) -> dict[str, Any]:
+    action_label = {
+        "status_changed": f"Status → {ctx['new_status']}",
+        "assigned": f"Assigned to {ctx['new_owner']}",
+    }.get(ctx["action"], ctx["action"])
+    summary = f"Incident update: {ctx['product']} — {action_label}"
+    note_part = f"\nNote: {ctx['note']}" if ctx.get("note") else ""
+    if target_type == "slack":
+        return {
+            "text": (
+                f":bell: *{summary}*\n"
+                f"Actor: {ctx['actor']}{note_part}\n"
+                f"<{ctx['link']}|Open incident>"
+            )
+        }
+    if target_type == "teams":
+        facts = [
+            {"name": "Product", "value": ctx["product"]},
+            {"name": "Action", "value": action_label},
+            {"name": "Actor", "value": ctx["actor"]},
+        ]
+        if ctx.get("note"):
+            facts.append({"name": "Note", "value": ctx["note"]})
+        return {
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "summary": summary,
+            "themeColor": _SEVERITY_COLOR.get(ctx["severity"], "999999"),
+            "title": summary,
+            "sections": [{"facts": facts, "text": f"[Open incident]({ctx['link']})"}],
+        }
+    # Generic webhook — structured context.
+    return {
+        k: ctx[k]
+        for k in (
+            "product", "incident_id", "severity", "title",
+            "action", "actor", "note", "new_status", "new_owner", "link", "ts",
+        )
+    }
+
+
+def notify_incident_transition(
+    *,
+    product: str,
+    incident_id: int,
+    severity: str,
+    title: str,
+    action: str,
+    actor: str,
+    note: str,
+    new_status: str | None,
+    new_owner: str | None,
+    owned_by: str,
+    owners: list[str],
+    settings: Any,
+) -> None:
+    """Fire incident-transition notifications on status changes and owner assignment.
+
+    Non-blocking: each target is dispatched on a daemon thread. SSRF-safe via
+    ``fire_webhook``. A misconfigured target never breaks the API response.
+    """
+    routes = _load_routes(settings.notifications_file)
+    targets = resolve_targets(routes, owned_by, owners or [], settings.webhook_url)
+    if not targets:
+        return
+    ctx = {
+        "product": product,
+        "incident_id": incident_id,
+        "severity": severity,
+        "title": title,
+        "action": action,
+        "actor": actor,
+        "note": note,
+        "new_status": new_status,
+        "new_owner": new_owner,
+        "link": f"/incidents/{incident_id}",
+        "ts": datetime.now(timezone.utc).isoformat(),
+    }
+    allowlist = settings.webhook_allowlist
+    for tgt in targets:
+        payload = _format_transition_payload(tgt.get("type", "webhook"), ctx)
+        threading.Thread(
+            target=fire_webhook,
+            args=(tgt["url"], payload, allowlist),
+            daemon=True,
+        ).start()
+
+
 def notify_breach(
     *,
     product: str,

@@ -9,10 +9,40 @@ import { OnboardingPanel } from '@/components/OnboardingPanel';
 import { useObjects } from '@/api/objects';
 import { useIncidents } from '@/api/incidents';
 import { useCoverageSummary } from '@/api/coverage';
+import { useContracts, useContractSla } from '@/api/contracts';
 import { t } from '@/i18n/de';
 import type { Incident, ObjectSummary } from '@/types';
 
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, fail: 1, warn: 2 };
+
+function SlaBar({ pct }: { pct: number | null }) {
+  if (pct === null) return <span style={{ fontSize: 10, color: 'var(--fg-3)' }}>—</span>;
+  const color = pct >= 99 ? 'var(--qual)' : pct >= 90 ? '#e6b000' : '#c44';
+  return (
+    <div title={`${pct}%`} style={{ display: 'flex', alignItems: 'center', gap: 4, width: 84 }}>
+      <div style={{ width: 52, height: 5, background: 'var(--bg-2)', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: color, borderRadius: 3 }} />
+      </div>
+      <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>{pct}%</span>
+    </div>
+  );
+}
+
+function SlaRow({ product }: { product: string }) {
+  const { data: sla } = useContractSla(product);
+  const w = sla?.windows;
+  const cur = sla?.current ?? 'unknown';
+  const curColor = cur === 'compliant' ? 'var(--qual)' : cur === 'breached' ? '#c44' : 'var(--fg-3)';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product}</span>
+      <span style={{ fontSize: 11, color: curColor, minWidth: 64 }}>{t.compliance[cur] ?? cur}</span>
+      <SlaBar pct={w?.['7d'] ?? null} />
+      <SlaBar pct={w?.['30d'] ?? null} />
+      <SlaBar pct={w?.['90d'] ?? null} />
+    </div>
+  );
+}
 
 // Status cell: dot + text label — never color-only (U1).
 function FamilyStatusCell({ status }: { status: string }) {
@@ -28,8 +58,11 @@ export default function Cockpit() {
   const objectsQuery = useObjects();
   const incidentsQuery = useIncidents();
   const coverageQuery = useCoverageSummary();
+  const contractsQuery = useContracts();
   const { data: objects = [] } = objectsQuery;
   const { data: incidents = [] } = incidentsQuery;
+  const { data: contracts = [] } = contractsQuery;
+  const activeContracts = contracts.filter(c => c.lifecycle === 'active');
   const coverage = coverageQuery.data;
   const navigate = useNavigate();
 
@@ -130,6 +163,21 @@ export default function Cockpit() {
           </button>
         ))}
       </Panel>
+
+      {activeContracts.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <Panel title={t.cockpit.slaTitle}>
+            <div style={{ display: 'flex', gap: 16, padding: '0 0 6px 0', borderBottom: '1px solid var(--line)', marginBottom: 4 }}>
+              <span style={{ fontSize: 10, color: 'var(--fg-3)', flex: 1 }}>{t.cockpit.slaProduct}</span>
+              <span style={{ fontSize: 10, color: 'var(--fg-3)', minWidth: 64 }}>{t.cockpit.slaCurrent}</span>
+              <span style={{ fontSize: 10, color: 'var(--fg-3)', width: 84 }}>{t.cockpit.sla7d}</span>
+              <span style={{ fontSize: 10, color: 'var(--fg-3)', width: 84 }}>{t.cockpit.sla30d}</span>
+              <span style={{ fontSize: 10, color: 'var(--fg-3)', width: 84 }}>{t.cockpit.sla90d}</span>
+            </div>
+            {activeContracts.map(c => <SlaRow key={c.product} product={c.product} />)}
+          </Panel>
+        </div>
+      )}
 
       <div style={{ marginTop: 16 }}>
         <Panel title={`${t.cockpit.unvalidatedTitle}${unvalidated.length ? ` (${unvalidated.length})` : ''}`}>

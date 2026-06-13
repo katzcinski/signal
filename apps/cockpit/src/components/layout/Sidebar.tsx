@@ -9,6 +9,7 @@ const NAV = [
   { to: '/incidents',  label: t.nav.incidents,  icon: '⚑' },
   { to: '/proposals',  label: t.nav.proposals,  icon: '✦' },
   { to: '/governance', label: t.nav.governance, icon: '⊕' },
+  { to: '/library',    label: t.nav.library,    icon: '⊞' },
 ];
 
 interface Props { collapsed: boolean }

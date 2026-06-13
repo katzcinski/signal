@@ -63,6 +63,13 @@ def _active_products(contracts_dir: Path) -> set[str]:
     return active
 
 
+@router.get("/metrics/health")
+def service_health_metrics():
+    """Self-observability: request counters, uptime, latency percentiles (JSON)."""
+    from ..middleware import get_metrics
+    return get_metrics()
+
+
 @router.get("/coverage/summary")
 def coverage_summary(
     store: StoreDep = ...,

@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useObject, useObjectRuns, useTriggerRun, useCheckHistory } from '@/api/objects';
 import { useRun } from '@/api/runs';
 import { useContract } from '@/api/contracts';
+import { useLineage } from '@/api/lineage';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { CheckStatusCell } from '@/components/ui/StatePill';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -15,12 +16,229 @@ import { MinedProposalsCallout } from '@/components/MinedProposalsCallout';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { t } from '@/i18n/de';
-import type { CheckResult, RunListItem } from '@/types';
+import type { CheckResult, ContractOut, RunListItem } from '@/types';
 
 type Tab = 'checks' | 'runs' | 'contract' | 'lineage';
 
+// ---------------------------------------------------------------------------
+// Structured contract view — replaces raw JSON.stringify
+// ---------------------------------------------------------------------------
+function ContractView({ contract }: { contract: ContractOut }) {
+  const guaranteeEntries = Object.entries(contract.guarantees ?? {}).filter(([, v]) => {
+    if (!v) return false;
+    if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === 'object') return Object.keys(v).length > 0;
+    return true;
+  });
+
+  const lifecycleColor = contract.lifecycle === 'active'
+    ? { bg: 'rgba(45,164,78,0.15)', fg: '#2da44e' }
+    : { bg: 'var(--bg-2)', fg: 'var(--fg-3)' };
+
+  return (
+    <div>
+      {/* Metadata row */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 16 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
+          v{contract.version}
+        </span>
+        <span style={{
+          fontSize: 11, borderRadius: 4, padding: '2px 8px',
+          background: lifecycleColor.bg, color: lifecycleColor.fg,
+          border: `1px solid ${lifecycleColor.fg}`,
+        }}>
+          {t.lifecycle[contract.lifecycle] ?? contract.lifecycle}
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>{contract.owned_by}</span>
+        {contract.owners && contract.owners.length > 0 && (
+          <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>
+            {contract.owners.join(', ')}
+          </span>
+        )}
+        {contract.compliance && (
+          <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>
+            · {t.compliance[contract.compliance] ?? contract.compliance}
+          </span>
+        )}
+      </div>
+
+      {/* Description */}
+      {contract.description && (
+        <p style={{ fontSize: 13, color: 'var(--fg-2)', marginBottom: 16, lineHeight: 1.6 }}>
+          {contract.description}
+        </p>
+      )}
+
+      {/* Guarantee families */}
+      {guaranteeEntries.length === 0 ? (
+        <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>Keine Garantien definiert.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {guaranteeEntries.map(([family, value]) => (
+            <div key={family}>
+              <div style={{
+                fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase',
+                letterSpacing: '0.05em', marginBottom: 4,
+              }}>
+                {t.workbench.families[family] ?? family}
+              </div>
+              <div style={{ background: 'var(--bg-2)', borderRadius: 6, padding: '8px 12px' }}>
+                <pre style={{
+                  margin: 0, fontFamily: 'var(--font-mono)', fontSize: 11,
+                  color: 'var(--fg-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                }}>
+                  {JSON.stringify(value, null, 2)}
+                </pre>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Mini-DAG — SVG 1-hop neighbourhood (simple SVG, no Cytoscape)
+// ---------------------------------------------------------------------------
+const _BOX_W = 144;
+const _BOX_H = 34;
+const _H_GAP = 56;
+const _V_GAP = 10;
+
+function _colH(count: number): number {
+  return Math.max(1, count) * (_BOX_H + _V_GAP) - _V_GAP;
+}
+
+function _boxY(svgH: number, idx: number, total: number): number {
+  const totalH = _colH(total);
+  return (svgH - totalH) / 2 + idx * (_BOX_H + _V_GAP);
+}
+
+function _truncate(s: string, max = 17): string {
+  return s.length > max ? s.slice(0, max - 1) + '…' : s;
+}
+
+function MiniLineageDag({ focusId }: { focusId: string }) {
+  const { data: graph, isLoading } = useLineage();
+  const navigate = useNavigate();
+
+  if (isLoading) {
+    return <div style={{ color: 'var(--fg-3)', fontSize: 12, padding: 12 }}>{t.common.loading}</div>;
+  }
+  if (!graph || graph.nodes.length === 0) return null;
+
+  const { nodes, edges } = graph;
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const MAX = 5;
+
+  const predIds = [...new Set(edges.filter(e => e.target === focusId).map(e => e.source))].slice(0, MAX);
+  const succIds = [...new Set(edges.filter(e => e.source === focusId).map(e => e.target))].slice(0, MAX);
+  const focusNode = nodeMap.get(focusId);
+
+  const hasPreds = predIds.length > 0;
+  const hasSuccs = succIds.length > 0;
+
+  const SVG_H = Math.max(_colH(predIds.length), _BOX_H, _colH(succIds.length)) + 20;
+  const FOCUS_X = hasPreds ? _BOX_W + _H_GAP : 0;
+  const SUCC_X = FOCUS_X + _BOX_W + _H_GAP;
+  const SVG_W = hasSuccs ? SUCC_X + _BOX_W : FOCUS_X + _BOX_W;
+  const FOCUS_Y = (SVG_H - _BOX_H) / 2;
+
+  const curve = (x1: number, y1: number, x2: number, y2: number) => {
+    const mx = (x1 + x2) / 2;
+    return `M ${x1} ${y1} C ${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`;
+  };
+
+  return (
+    <div>
+      <svg
+        width={SVG_W} height={SVG_H}
+        style={{ display: 'block', maxWidth: '100%', overflow: 'visible' }}
+        aria-label={`Lineage: ${focusId}`}
+      >
+        <defs>
+          <marker id="dag-arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <polygon points="0 0, 7 3.5, 0 7" fill="var(--fg-3)" opacity={0.5} />
+          </marker>
+        </defs>
+
+        {/* Predecessor → focus edges */}
+        {predIds.map((pid, i) => (
+          <path key={pid}
+            d={curve(_BOX_W, _boxY(SVG_H, i, predIds.length) + _BOX_H / 2,
+                     FOCUS_X, FOCUS_Y + _BOX_H / 2)}
+            stroke="var(--line-2)" strokeWidth={1.5} fill="none" markerEnd="url(#dag-arr)"
+          />
+        ))}
+
+        {/* Focus → successor edges */}
+        {succIds.map((sid, i) => (
+          <path key={sid}
+            d={curve(FOCUS_X + _BOX_W, FOCUS_Y + _BOX_H / 2,
+                     SUCC_X, _boxY(SVG_H, i, succIds.length) + _BOX_H / 2)}
+            stroke="var(--line-2)" strokeWidth={1.5} fill="none" markerEnd="url(#dag-arr)"
+          />
+        ))}
+
+        {/* Predecessor boxes */}
+        {predIds.map((pid, i) => {
+          const y = _boxY(SVG_H, i, predIds.length);
+          const nd = nodeMap.get(pid);
+          return (
+            <g key={pid} transform={`translate(0,${y})`}
+               style={{ cursor: 'pointer' }} onClick={() => navigate(`/objects/${pid}`)}>
+              <rect width={_BOX_W} height={_BOX_H} rx={4}
+                    fill="var(--bg-2)" stroke="var(--line)" strokeWidth={1} />
+              <text x={_BOX_W / 2} y={_BOX_H / 2 + 4} textAnchor="middle"
+                    fontSize={10} fontFamily="var(--font-mono)" fill="var(--fg-2)">
+                {_truncate(nd?.label ?? pid)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Focus box */}
+        <g transform={`translate(${FOCUS_X},${FOCUS_Y})`}>
+          <rect width={_BOX_W} height={_BOX_H} rx={4} fill="var(--cont)" />
+          <text x={_BOX_W / 2} y={_BOX_H / 2 + 4} textAnchor="middle"
+                fontSize={10} fontFamily="var(--font-mono)" fill="#fff" fontWeight="bold">
+            {_truncate(focusNode?.label ?? focusId)}
+          </text>
+        </g>
+
+        {/* Successor boxes */}
+        {succIds.map((sid, i) => {
+          const y = _boxY(SVG_H, i, succIds.length);
+          const nd = nodeMap.get(sid);
+          return (
+            <g key={sid} transform={`translate(${SUCC_X},${y})`}
+               style={{ cursor: 'pointer' }} onClick={() => navigate(`/objects/${sid}`)}>
+              <rect width={_BOX_W} height={_BOX_H} rx={4}
+                    fill="var(--bg-2)" stroke="var(--line)" strokeWidth={1} />
+              <text x={_BOX_W / 2} y={_BOX_H / 2 + 4} textAnchor="middle"
+                    fontSize={10} fontFamily="var(--font-mono)" fill="var(--fg-2)">
+                {_truncate(nd?.label ?? sid)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      <div style={{ marginTop: 10, textAlign: 'right' }}>
+        <Link to={`/lineage?focus=${encodeURIComponent(focusId)}`}
+              style={{ color: 'var(--cont)', fontSize: 11 }}>
+          {t.objectDetail.lineageLink} →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Sparkline over the numeric actual_value history of one check (newest-first
 // API order is reversed into chronological order). Non-numeric series → dash.
+// ---------------------------------------------------------------------------
 function HistorySpark({ objectId, checkName, enabled }: {
   objectId: string;
   checkName: string;
@@ -167,9 +385,7 @@ export default function ObjectDetail() {
           {!contract && <MinedProposalsCallout productId={obj.id} />}
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 20 }}>
             {contract ? (
-              <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)', whiteSpace: 'pre-wrap' }}>
-                {JSON.stringify(contract, null, 2)}
-              </pre>
+              <ContractView contract={contract as ContractOut} />
             ) : (
               <p style={{ color: 'var(--fg-3)' }}>
                 {t.objectDetail.noContractPrefix}{' '}
@@ -183,10 +399,13 @@ export default function ObjectDetail() {
       )}
 
       {tab === 'lineage' && (
-        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 40, textAlign: 'center' }}>
-          <p style={{ color: 'var(--fg-3)' }}>
+        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 24 }}>
+          <MiniLineageDag focusId={obj.id} />
+          <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 16 }}>
             {t.objectDetail.lineageHint}{' '}
-            <Link to={`/lineage?focus=${encodeURIComponent(obj.id)}`} style={{ color: 'var(--cont)' }}>{t.objectDetail.lineageLink}</Link>.
+            <Link to={`/lineage?focus=${encodeURIComponent(obj.id)}`} style={{ color: 'var(--cont)' }}>
+              {t.objectDetail.lineageLink}
+            </Link>.
           </p>
         </div>
       )}
