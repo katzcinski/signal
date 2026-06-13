@@ -250,8 +250,10 @@ export const t = {
   mined: {
     title: 'Vorschläge aus dem Miner',
     hint: 'Aus beobachteten Läufen abgeleitet — prüfen und als Garantie übernehmen.',
-    review: 'Vorschläge prüfen',
+    review: 'Alle prüfen',
     confidence: 'Konfidenz',
+    accept: 'Übernehmen',
+    reject: 'Ablehnen',
   },
   lineage: {
     title: 'Lineage Coverage Map',

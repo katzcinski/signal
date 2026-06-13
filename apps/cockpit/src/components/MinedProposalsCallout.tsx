@@ -1,18 +1,27 @@
 import { useNavigate } from 'react-router-dom';
-import { useProposals } from '@/api/proposals';
+import { useProposals, useProposalAction } from '@/api/proposals';
 import { t } from '@/i18n/de';
 
 // Empty-state nudge (WS5-2 / NN-g): when an object has no guarantees yet, the
 // deterministic miner's open suggestions are the most useful call to action —
-// "here are N mined suggestions" beats a blank panel. Renders nothing when the
-// object has no open proposals, so callers can drop it into any empty state.
+// "here are N mined suggestions" beats a blank panel. Suggestions can be
+// accepted/rejected inline (optimistic via useProposalAction). Renders nothing
+// when the object has no open proposals, so callers can drop it into any empty
+// state.
 export function MinedProposalsCallout({ productId }: { productId: string }) {
   const { data: proposals = [] } = useProposals();
+  const action = useProposalAction();
   const navigate = useNavigate();
   const open = proposals.filter(p => p.product === productId && p.status === 'open');
   if (open.length === 0) return null;
 
   const top = open.slice(0, 3);
+  const rowBtn = (variant: 'primary' | 'ghost'): React.CSSProperties => ({
+    background: variant === 'primary' ? 'var(--cont)' : 'var(--bg-2)',
+    color: variant === 'primary' ? '#fff' : 'var(--fg-2)',
+    border: variant === 'primary' ? 'none' : '1px solid var(--line-2)',
+    borderRadius: 5, padding: '4px 10px', fontSize: 11, cursor: 'pointer',
+  });
 
   return (
     <div style={{
@@ -45,6 +54,22 @@ export function MinedProposalsCallout({ productId }: { productId: string }) {
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--cont)', marginTop: 2 }}>{p.proposed_expect}</div>
           {p.rationale && <div style={{ color: 'var(--fg-3)', marginTop: 2 }}>{p.rationale}</div>}
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            <button
+              style={rowBtn('primary')}
+              disabled={action.isPending}
+              onClick={() => action.mutate({ id: p.id, action: 'accept' })}
+            >
+              {t.mined.accept}
+            </button>
+            <button
+              style={rowBtn('ghost')}
+              disabled={action.isPending}
+              onClick={() => action.mutate({ id: p.id, action: 'reject' })}
+            >
+              {t.mined.reject}
+            </button>
+          </div>
         </div>
       ))}
     </div>
