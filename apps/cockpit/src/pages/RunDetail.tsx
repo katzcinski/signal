@@ -4,6 +4,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { CheckStatusCell } from '@/components/ui/StatePill';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Table, type ColDef } from '@/components/ui/Table';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { t } from '@/i18n/de';
 import type { CheckResult } from '@/types';
 
@@ -53,6 +54,12 @@ export default function RunDetail() {
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <Breadcrumbs items={[
+        { label: t.breadcrumb.home, to: '/' },
+        { label: t.breadcrumb.objects, to: '/objects' },
+        { label: run.dataset, to: `/objects/${run.dataset}` },
+        { label: `${t.breadcrumb.runs} ${run.run_id.slice(0, 12)}…` },
+      ]} />
       <div style={{ marginBottom: 20 }}>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', cursor: 'pointer', marginBottom: 12 }}>{t.runDetail.back}</button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>

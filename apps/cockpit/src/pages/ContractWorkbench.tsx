@@ -10,9 +10,12 @@ import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { StatePill } from '@/components/ui/StatePill';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
+import { OwnershipTag } from '@/components/ui/OwnershipTag';
 import { Combobox } from '@/components/ui/Combobox';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
+import { useRoleStore, canWriteContract } from '@/store/role';
 import type {
   Contract, ContractGuarantees, ContractOut, ContractPutBody, CheckState, DiffEntry,
   GuaranteeCompleteness, GuaranteeKey, GuaranteeNotNull, GuaranteeReferential,
@@ -920,6 +923,7 @@ function EditorPane({ product, lite, onToggleLite }: {
   const deprecate = useDeprecateContract(product);
   const diff = useDiffContract(product);
   const inventory = useInventory();
+  const role = useRoleStore(s => s.role);
 
   const [draft, setDraft] = useState<ContractPutBody | null>(null);
   const [confirmApprove, setConfirmApprove] = useState(false);
@@ -969,6 +973,9 @@ function EditorPane({ product, lite, onToggleLite }: {
   }
 
   const lifecycle = contract?.lifecycle ?? 'draft';
+  // [AUTHZ] FE mirror of can_write_contract_data — server stays authoritative on PUT.
+  const canWrite = canWriteContract(role, contract?.owned_by);
+  const writeTitle = canWrite ? undefined : t.role.noWriteContract;
 
   // Breaking gate (G3): breaking diff + draft major ≤ active major ⇒ block approve.
   const report = diff.data;
@@ -1007,7 +1014,12 @@ function EditorPane({ product, lite, onToggleLite }: {
   );
 
   const saveButton = (
-    <button onClick={() => put.mutate(JSON.parse(draftJson) as ContractPutBody)} disabled={put.isPending} style={btnStyle()}>
+    <button
+      onClick={() => put.mutate(JSON.parse(draftJson) as ContractPutBody)}
+      disabled={!canWrite || put.isPending}
+      title={writeTitle}
+      style={{ ...btnStyle(), opacity: canWrite ? 1 : 0.5, cursor: canWrite ? 'pointer' : 'not-allowed' }}
+    >
       {put.isPending ? t.workbench.saving : lite ? t.common.save : t.workbench.saveDraft}
     </button>
   );
@@ -1025,9 +1037,11 @@ function EditorPane({ product, lite, onToggleLite }: {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 20, gap: 14, overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ ...monoStyle, fontSize: 15, fontWeight: 700 }}>{draft.product}</span>
+          <OwnershipTag ownedBy={contract?.owned_by} />
           <div style={{ flex: 1 }} />
           <button onClick={onToggleLite} style={{ ...btnStyle('ghost'), fontSize: 12 }}>{t.workbench.fullMode}</button>
         </div>
+        {!canWrite && <ReadOnlyBanner hint={t.role.noWriteContract} />}
         <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.noSql}</div>
         {guaranteeEditor}
         {errorsBlock}
@@ -1043,9 +1057,11 @@ function EditorPane({ product, lite, onToggleLite }: {
   // ── Voll-Modus ──
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 20, gap: 14, overflowY: 'auto', minWidth: 0 }}>
+      {!canWrite && <ReadOnlyBanner hint={t.role.noWriteContract} />}
       {/* ApprovalBar: visible state machine + actions */}
       <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <LifecycleStepper current={lifecycle} />
+        <OwnershipTag ownedBy={contract?.owned_by} />
         <div style={{ flex: 1 }} />
         {lifecycle === 'active' && <SlaBars product={product} />}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1053,16 +1069,21 @@ function EditorPane({ product, lite, onToggleLite }: {
           {saveButton}
           {lifecycle === 'draft' && (
             <button
-              style={{ ...btnStyle(), opacity: breakingBlocked || approve.isPending ? 0.5 : 1 }}
-              disabled={breakingBlocked || approve.isPending}
-              title={breakingBlocked ? t.workbench.breakingHint : undefined}
+              style={{ ...btnStyle(), opacity: !canWrite || breakingBlocked || approve.isPending ? 0.5 : 1, cursor: canWrite ? 'pointer' : 'not-allowed' }}
+              disabled={!canWrite || breakingBlocked || approve.isPending}
+              title={!canWrite ? writeTitle : breakingBlocked ? t.workbench.breakingHint : undefined}
               onClick={() => setConfirmApprove(true)}
             >
               {approve.isPending ? t.workbench.approving : t.workbench.approve}
             </button>
           )}
           {lifecycle === 'active' && (
-            <button style={btnStyle('danger')} disabled={deprecate.isPending} onClick={() => deprecate.mutate()}>
+            <button
+              style={{ ...btnStyle('danger'), opacity: canWrite ? 1 : 0.5, cursor: canWrite ? 'pointer' : 'not-allowed' }}
+              disabled={!canWrite || deprecate.isPending}
+              title={writeTitle}
+              onClick={() => deprecate.mutate()}
+            >
               {deprecate.isPending ? t.workbench.deprecating : t.workbench.deprecate}
             </button>
           )}

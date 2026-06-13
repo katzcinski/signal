@@ -1,11 +1,13 @@
 import { useObjects } from '@/api/objects';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { Panel } from '@/components/ui/Panel';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { t } from '@/i18n/de';
 import type { Lifecycle } from '@/types';
 
 export default function Governance() {
-  const { data: objects = [] } = useObjects();
+  const { data: objects = [], isLoading, isError, refetch } = useObjects();
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -28,7 +30,11 @@ export default function Governance() {
       </div>
 
       <Panel title={t.governance.objectStatusTitle}>
-        {objects.length === 0 ? (
+        {isError ? (
+          <ErrorBanner onRetry={() => refetch()} />
+        ) : isLoading ? (
+          <TableSkeleton columns={4} />
+        ) : objects.length === 0 ? (
           <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.governance.noObjects}</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>

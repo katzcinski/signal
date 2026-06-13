@@ -1,6 +1,8 @@
 import { useProposals, useProposalAction } from '@/api/proposals';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { t } from '@/i18n/de';
+import { useRoleStore, canAcceptProposal } from '@/store/role';
 import type { Proposal } from '@/types';
 
 function ConfidenceBar({ value }: { value: number }) {
@@ -18,6 +20,9 @@ function ConfidenceBar({ value }: { value: number }) {
 
 function ProposalCard({ proposal }: { proposal: Proposal }) {
   const action = useProposalAction();
+  const role = useRoleStore(s => s.role);
+  // FE mirror only — the server re-checks role × ownership on accept (S-2).
+  const canWrite = canAcceptProposal(role);
   const act = (a: 'accept' | 'reject' | 'snooze') => action.mutate({ id: proposal.id, action: a });
 
   return (
@@ -67,7 +72,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
         }}>
           {(['n', 'min', 'max', 'mean'] as const).map(k => (
             <div key={k}>
-              <div style={{ fontSize: 9, color: 'var(--fg-3)', textTransform: 'uppercase' }}>{k}</div>
+              <div style={{ fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase' }}>{k}</div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)' }}>
                 {typeof proposal.stats![k] === 'number' ? (proposal.stats![k] as number).toFixed(k === 'n' ? 0 : 1) : '—'}
               </div>
@@ -79,14 +84,14 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       <div style={{ fontSize: 11, color: 'var(--fg-3)', fontStyle: 'italic' }}>{proposal.rationale}</div>
 
       {proposal.status === 'open' && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => act('accept')} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
+        <div style={{ display: 'flex', gap: 8 }} title={canWrite ? undefined : t.role.noWriteAction}>
+          <button onClick={() => act('accept')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
             {t.proposals.accept}
           </button>
-          <button onClick={() => act('snooze')} style={{ flex: 1, background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={() => act('snooze')} disabled={!canWrite} style={{ flex: 1, background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
             {t.proposals.snooze}
           </button>
-          <button onClick={() => act('reject')} style={{ flex: 1, background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', color: 'var(--status-fail)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
+          <button onClick={() => act('reject')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', color: 'var(--status-fail)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
             {t.proposals.reject}
           </button>
         </div>
@@ -97,6 +102,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
 
 export default function Proposals() {
   const { data: proposals = [], isLoading, isError, refetch } = useProposals();
+  const role = useRoleStore(s => s.role);
   const pending = proposals.filter(p => p.status === 'open');
   const others  = proposals.filter(p => p.status !== 'open');
 
@@ -105,6 +111,7 @@ export default function Proposals() {
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.proposals.title}</h1>
+      {!canAcceptProposal(role) && <ReadOnlyBanner />}
       {isError && <ErrorBanner onRetry={() => refetch()} />}
       {!isError && proposals.length === 0 && (
         <div style={{ color: 'var(--fg-3)', padding: 40, textAlign: 'center' }}>
