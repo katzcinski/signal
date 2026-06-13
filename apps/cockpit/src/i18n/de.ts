@@ -241,6 +241,17 @@ export const t = {
     colExpected: 'Erwartung',
     colWhen: 'Zeitpunkt',
     run: 'Run',
+    colSla: 'Wartezeit',
+    slaUnacknowledged: 'unbestätigt seit',
+    slaOpenFor: 'offen seit',
+    slaResolvedAfter: 'gelöst nach',
+    slaBreached: 'SLA überschritten',
+  },
+  mined: {
+    title: 'Vorschläge aus dem Miner',
+    hint: 'Aus beobachteten Läufen abgeleitet — prüfen und als Garantie übernehmen.',
+    review: 'Vorschläge prüfen',
+    confidence: 'Konfidenz',
   },
   lineage: {
     title: 'Lineage Coverage Map',
