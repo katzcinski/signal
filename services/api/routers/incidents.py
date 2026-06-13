@@ -5,15 +5,35 @@ from __future__ import annotations
 
 import sqlite3
 
+import yaml
 from fastapi import APIRouter, Body, HTTPException, Query
+from pathlib import Path
 from pydantic import BaseModel
 
 from ..auth.provider import PrincipalDep
 from ..deps import StoreDep
+from ..settings import get_settings
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 
 VALID_INCIDENT_STATUS = {"open", "acknowledged", "investigating", "resolved"}
+
+
+def _contract_owner(product: str) -> tuple[str, list[str]]:
+    """Return (owned_by, owners) from the contract file for notification routing."""
+    base = Path(get_settings().contracts_dir)
+    for ext in (".yaml", ".yml"):
+        path = base / f"{product}{ext}"
+        if path.exists():
+            try:
+                data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            except Exception:
+                return "", []
+            owners = data.get("owners") or []
+            if not isinstance(owners, list):
+                owners = [owners]
+            return str(data.get("owned_by", "")), [str(o) for o in owners]
+    return "", []
 
 
 class IncidentTransitionIn(BaseModel):
@@ -26,12 +46,13 @@ class IncidentTransitionIn(BaseModel):
 def list_incidents(
     status: str | None = Query(default=None),
     severity: str | None = Query(default=None),
-    limit: int = Query(default=100, ge=1, le=500),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     store: StoreDep = ...,
 ):
     if status and status not in VALID_INCIDENT_STATUS:
         raise HTTPException(status_code=422, detail=f"Unknown status {status!r}")
-    return store.list_incidents(status=status, severity=severity, limit=limit)
+    return store.list_incidents(status=status, severity=severity, limit=limit, offset=offset)
 
 
 @router.get("/checks")
@@ -104,9 +125,39 @@ def transition_incident(
         raise HTTPException(status_code=403, detail="Incident actions require steward role or higher.")
     if body.status and body.status not in VALID_INCIDENT_STATUS:
         raise HTTPException(status_code=422, detail=f"Unknown status {body.status!r}")
+
+    # Snapshot pre-transition state to detect what actually changed.
+    before = store.get_incident(incident_id)
+    if not before:
+        raise HTTPException(status_code=404, detail=f"Incident {incident_id} not found")
+
     incident = store.transition_incident(
         incident_id, body.status, principal.name, owner=body.owner, note=body.note
     )
     if not incident:
         raise HTTPException(status_code=404, detail=f"Incident {incident_id} not found")
+
+    status_changed = body.status and body.status != before.get("status")
+    owner_changed = body.owner is not None and body.owner != before.get("owner")
+    if status_changed or owner_changed:
+        try:
+            from ..notify import notify_incident_transition
+            owned_by, owners = _contract_owner(incident["product"])
+            notify_incident_transition(
+                product=incident["product"],
+                incident_id=incident_id,
+                severity=incident.get("severity", "fail"),
+                title=incident.get("title", ""),
+                action="status_changed" if status_changed else "assigned",
+                actor=principal.name,
+                note=body.note,
+                new_status=body.status,
+                new_owner=body.owner,
+                owned_by=owned_by,
+                owners=owners,
+                settings=get_settings(),
+            )
+        except Exception:
+            pass  # notifications are best-effort; never fail the API response
+
     return incident

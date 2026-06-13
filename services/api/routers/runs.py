@@ -53,7 +53,7 @@ def list_runs(
     offset: int = Query(default=0, ge=0),
     store: StoreDep = ...,
 ):
-    runs = store.get_all_runs(limit=limit + offset)[offset:]
+    runs = store.get_all_runs(limit=limit, offset=offset)
     return [RunListItem(**{k: v for k, v in r.items() if k in RunListItem.model_fields}) for r in runs]
 
 
