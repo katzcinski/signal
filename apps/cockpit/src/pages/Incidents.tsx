@@ -6,6 +6,7 @@ import { Table, type ColDef } from '@/components/ui/Table';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { StatePill } from '@/components/ui/StatePill';
+import { IncidentSla } from '@/components/ui/IncidentSla';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { t } from '@/i18n/de';
@@ -59,6 +60,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <StatusPill status={incident.severity} size="sm" />
                 <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{t.incidents.statusLabel[incident.status] ?? incident.status}</span>
+                <IncidentSla incident={incident} />
               </div>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{incident.title}</div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)', marginTop: 4 }}>{incident.product}</div>
@@ -256,6 +258,10 @@ export default function Incidents() {
     {
       key: 'opened', header: t.incidents.colOpened,
       render: i => <span style={{ color: 'var(--fg-3)', fontSize: 12 }} title={new Date(i.opened_at).toLocaleString()}>{relativeTime(i.opened_at)}</span>,
+    },
+    {
+      key: 'sla', header: t.incidents.colSla, width: 120,
+      render: i => <IncidentSla incident={i} />,
     },
   ];
 

@@ -11,6 +11,7 @@ import { FamilyTag } from '@/components/ui/FamilyTag';
 import { LiveRunPanel } from '@/components/LiveRunPanel';
 import { RunTriggerDialog } from '@/components/RunTriggerDialog';
 import { BadgeEmbed } from '@/components/BadgeEmbed';
+import { MinedProposalsCallout } from '@/components/MinedProposalsCallout';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { t } from '@/i18n/de';
@@ -147,9 +148,12 @@ export default function ObjectDetail() {
       </div>
 
       {tab === 'checks' && (
-        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
-          <Table columns={checkColumns} rows={results} rowKey={c => c.name} empty={t.objectDetail.noResults} />
-        </div>
+        <>
+          {results.length === 0 && <MinedProposalsCallout productId={obj.id} />}
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+            <Table columns={checkColumns} rows={results} rowKey={c => c.name} empty={t.objectDetail.noResults} />
+          </div>
+        </>
       )}
 
       {tab === 'runs' && (
@@ -160,6 +164,7 @@ export default function ObjectDetail() {
 
       {tab === 'contract' && (
         <>
+          {!contract && <MinedProposalsCallout productId={obj.id} />}
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 20 }}>
             {contract ? (
               <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)', whiteSpace: 'pre-wrap' }}>

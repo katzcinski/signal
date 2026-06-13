@@ -5,27 +5,13 @@ import Cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import { useLineage } from '@/api/lineage';
 import { useCoverageSummary } from '@/api/coverage';
+import { CoverageIcon } from '@/components/ui/CoverageIcon';
+import { coverageColor, coverageIconDataUri } from '@/components/ui/coverageIcon';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
 import type { LineageNode } from '@/types';
 
 Cytoscape.use(dagre as Parameters<typeof Cytoscape.use>[0]);
-
-// Coverage flag → status-ampel color (U1: status colors only, NOT family colors)
-const COVERAGE_COLOR: Record<string, string> = {
-  '●': 'var(--status-ok)',    // green — active contract + passing
-  '◐': 'var(--status-warn)',  // yellow — partial / some checks failing
-  '▲': 'var(--status-fail)',  // red — no contract or key gap
-  '○': 'var(--fg-3)',         // grey — out of scope / external
-};
-
-// Legend vocabulary: ✓ / ◐ / ⚠ / ○ (WS4)
-const COVERAGE_GLYPH: Record<string, string> = {
-  '●': '✓',
-  '◐': '◐',
-  '▲': '⚠',
-  '○': '○',
-};
 
 const COVERAGE_LABEL: Record<string, string> = {
   '●': t.lineage.covered,
@@ -36,14 +22,10 @@ const COVERAGE_LABEL: Record<string, string> = {
 
 const LAYERS = ['Landing', 'Harmonization', 'Product'];
 
-// R6-8: shape hint per coverage flag (matches the cytoscape node shapes).
-const LANE_SHAPE: Record<string, string> = { '●': '▭', '◐': '◯', '▲': '◇', '○': '⬡' };
-
 // Cytoscape's canvas renderer cannot resolve `var(--x)` — resolve the CSS
 // variables to concrete values once and feed hex colors into the stylesheet.
 interface ResolvedTheme {
   bg2: string; fg: string; fg3: string; line2: string; cont: string; fontMono: string;
-  coverage: Record<string, string>;
 }
 let resolvedTheme: ResolvedTheme | null = null;
 function resolveTheme(): ResolvedTheme {
@@ -57,12 +39,6 @@ function resolveTheme(): ResolvedTheme {
     line2: cssVar('--line-2', '#313945'),
     cont: cssVar('--cont', '#5E83E6'),
     fontMono: cssVar('--font-mono', "'JetBrains Mono', monospace"),
-    coverage: {
-      '●': cssVar('--status-ok', '#3FB07A'),
-      '◐': cssVar('--status-warn', '#E0B23E'),
-      '▲': cssVar('--status-fail', '#E2783C'),
-      '○': cssVar('--fg-3', '#5E6877'),
-    },
   };
   return resolvedTheme;
 }
@@ -112,7 +88,7 @@ function SidePanel({ node, onClose }: SidePanelProps) {
         {t.lineage.layerLabel}: {LAYERS[node.layer ?? 0] ?? `Layer ${node.layer}`}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span aria-hidden style={{ fontSize: 16, color: COVERAGE_COLOR[flag] }}>{COVERAGE_GLYPH[flag]}</span>
+        <CoverageIcon flag={flag} size={16} label={COVERAGE_LABEL[flag]} />
         <span style={{ fontSize: 12 }}>{COVERAGE_LABEL[flag]}</span>
       </div>
       {node.dq_status && (
@@ -299,21 +275,31 @@ export default function LineageMap() {
         },
         style: [
           {
+            // Uniform icon-chip node: a status icon (background-image) carries
+            // the coverage state, with the border colour as a second channel and
+            // the label as the third (Carbon ≥3-of-4, never colour alone).
             selector: 'node',
             style: {
               'background-color': theme.bg2,
+              'background-image': (el: Cytoscape.NodeSingular) =>
+                coverageIconDataUri(String(el.data('coverage_flag'))),
+              'background-fit': 'none',
+              'background-width': '18px',
+              'background-height': '18px',
+              'background-position-x': '50%',
+              'background-position-y': '50%',
               'border-width': 2,
               'border-color': (el: Cytoscape.NodeSingular) =>
-                theme.coverage[el.data('coverage_flag') as string] ?? theme.fg3,
+                coverageColor(String(el.data('coverage_flag'))),
               'label': 'data(label)',
               'font-size': 10,
               'font-family': theme.fontMono,
               'color': theme.fg,
               'text-valign': 'center',
               'text-halign': 'right',
-              'text-margin-x': 6,
-              'width': 120,
-              'height': 30,
+              'text-margin-x': 8,
+              'width': 28,
+              'height': 28,
               'shape': 'roundrectangle',
             } as Record<string, unknown>,
           },
@@ -333,6 +319,7 @@ export default function LineageMap() {
             style: {
               'background-color': theme.bg2,
               'background-opacity': 0.35,
+              'background-image': 'none',
               'border-width': 1,
               'border-color': theme.line2,
               'border-style': 'dashed',
@@ -348,11 +335,6 @@ export default function LineageMap() {
               'padding': 24,
             } as Record<string, unknown>,
           },
-          // R6-8 Carbon redundancy: coverage encoded by node shape, not colour alone.
-          { selector: 'node[coverage_flag = "●"]', style: { shape: 'roundrectangle' } as Record<string, unknown> },
-          { selector: 'node[coverage_flag = "◐"]', style: { shape: 'ellipse' } as Record<string, unknown> },
-          { selector: 'node[coverage_flag = "▲"]', style: { shape: 'diamond' } as Record<string, unknown> },
-          { selector: 'node[coverage_flag = "○"]', style: { shape: 'hexagon' } as Record<string, unknown> },
           {
             selector: 'node:selected',
             style: { 'border-width': 3 } as Record<string, unknown>,
@@ -510,12 +492,11 @@ export default function LineageMap() {
             padding: '5px 10px', color: 'var(--fg)', fontSize: 12, minWidth: 180,
           }}
         />
-        {/* Legend: colour + shape redundancy (R6-8 Carbon) */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
+        {/* Legend: the same icons used on the canvas nodes (colour + shape + text) */}
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
           {Object.entries(COVERAGE_LABEL).map(([flag, label]) => (
-            <span key={flag} style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <span aria-hidden style={{ color: COVERAGE_COLOR[flag] }}>{COVERAGE_GLYPH[flag]}</span>
-              <span aria-hidden style={{ color: 'var(--fg-3)' }}>{LANE_SHAPE[flag]}</span> {label}
+            <span key={flag} style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <CoverageIcon flag={flag} size={14} /> {label}
             </span>
           ))}
         </div>
