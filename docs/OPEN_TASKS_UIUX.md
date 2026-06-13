@@ -19,6 +19,12 @@ gesetzt und werden nicht neu verhandelt.
 > Konzept und Implementierung** schließen (Rollenmodell, eingebettete Lineage, designte statt
 > Roh-Views).
 
+> **Umgesetzt 2026-06-13** (Branch `claude/open-items-implementation`): **UX-F1** (Rollenmodell +
+> Read-only-Zustände, `X-DQ-Role`-gespiegelt, Ownership-Lock), **UX-N3** (Rollen-Landing „Meine
+> Arbeit" `/my`), **UX-F4** (Kontrast `--fg-3` → AA, SVG-Nav-Icons mit aria-label, 9px-Fix),
+> **UX-F7** (Breadcrumbs Objekt→Run, Governance Loading/Error, vereinheitlichte Relativzeit).
+> Bereits zuvor erledigt: UX-F2, UX-F3, UX-F5, UX-N4, UX-N8.
+
 ## Übersicht & Priorisierung
 
 | ID | Inhalt | Klasse | Tier | Aufwand (PT) | hängt ab von |

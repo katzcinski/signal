@@ -12,7 +12,9 @@
   /* Foregrounds */
   --fg: #E7EBF2;
   --fg-2: #98A2B2;
-  --fg-3: #5E6877;
+  /* UX-F4: raised from #5E6877 (~3.2:1 on --bg-1) to clear AA 4.5:1 for the
+     tertiary text that uses it at <18px. Still a clear step below --fg-2. */
+  --fg-3: #7C8696;
 
   /* Family accent colours */
   --obs: #E8973C;

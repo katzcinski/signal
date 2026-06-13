@@ -246,7 +246,10 @@ jobs:
 
       - name: TypeScript type-check
         working-directory: apps/cockpit
-        run: npx tsc --noEmit
+        # Use the locked compiler from node_modules (npm run → PATH), never
+        # `npx tsc` which fetches the latest major from the registry and fails
+        # on options the pinned TypeScript still accepts.
+        run: npm run typecheck
 
       - name: ESLint (S8 — no-danger, rules-of-hooks)
         working-directory: apps/cockpit

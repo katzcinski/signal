@@ -8,21 +8,14 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { StatePill } from '@/components/ui/StatePill';
 import { IncidentSla } from '@/components/ui/IncidentSla';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { TableSkeleton } from '@/components/ui/Skeleton';
+import { relativeTime, absoluteTime } from '@/lib/time';
 import { t } from '@/i18n/de';
+import { useRoleStore, canActOnIncidents } from '@/store/role';
 import type { FailedCheck, Incident, IncidentStatus } from '@/types';
 
 const TABS = ['open', 'acknowledged', 'investigating', 'resolved', 'checks'] as const;
-
-function relativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const min = Math.round(diffMs / 60_000);
-  if (min < 1) return 'gerade eben';
-  if (min < 60) return `vor ${min} Min.`;
-  const h = Math.round(min / 60);
-  if (h < 24) return `vor ${h} Std.`;
-  return `vor ${Math.round(h / 24)} Tagen`;
-}
 
 const drawerBtn = (variant: 'primary' | 'ghost' = 'primary'): React.CSSProperties => ({
   background: variant === 'primary' ? 'var(--cont)' : 'var(--bg-2)',
@@ -35,6 +28,8 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
   const { data: incident, isLoading } = useIncident(id);
   const transition = useIncidentTransition(id);
   const navigate = useNavigate();
+  const role = useRoleStore(s => s.role);
+  const canAct = canActOnIncidents(role); // server re-checks (incidents.py:124)
   const [ownerInput, setOwnerInput] = useState('');
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState('');
@@ -108,23 +103,26 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
 
       {incident && (
         <>
+          {/* Read-only roles keep the same layout — actions are marked, not hidden. */}
+          {!canAct && <ReadOnlyBanner />}
           {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: pendingStatus ? 8 : 16 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: pendingStatus ? 8 : 16 }}
+               title={canAct ? undefined : t.role.noWriteAction}>
             {incident.status === 'open' && (
               <button style={drawerBtn(pendingStatus === 'acknowledged' ? 'primary' : 'ghost')}
-                      disabled={transition.isPending} onClick={() => requestAct('acknowledged')}>
+                      disabled={!canAct || transition.isPending} onClick={() => requestAct('acknowledged')}>
                 {t.incidents.acknowledge}
               </button>
             )}
             {(incident.status === 'open' || incident.status === 'acknowledged') && (
               <button style={drawerBtn(pendingStatus === 'investigating' ? 'primary' : 'ghost')}
-                      disabled={transition.isPending} onClick={() => requestAct('investigating')}>
+                      disabled={!canAct || transition.isPending} onClick={() => requestAct('investigating')}>
                 {t.incidents.investigate}
               </button>
             )}
             {incident.status !== 'resolved' && (
               <button style={drawerBtn(pendingStatus === 'resolved' ? 'primary' : 'ghost')}
-                      disabled={transition.isPending} onClick={() => requestAct('resolved')}>
+                      disabled={!canAct || transition.isPending} onClick={() => requestAct('resolved')}>
                 {t.incidents.resolve}
               </button>
             )}
@@ -190,7 +188,8 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
               />
               <button
                 style={drawerBtn()}
-                disabled={!ownerInput.trim() || transition.isPending}
+                disabled={!canAct || !ownerInput.trim() || transition.isPending}
+                title={canAct ? undefined : t.role.noWriteAction}
                 onClick={() => {
                   transition.mutate({ status: incident.status, owner: ownerInput.trim() });
                   setOwnerInput('');
@@ -222,7 +221,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
               <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>—</div>
             ) : (incident.events ?? []).map(ev => (
               <div key={ev.id} style={{ borderLeft: '2px solid var(--line-2)', paddingLeft: 10, marginBottom: 10 }}>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }}>{ev.at}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }} title={absoluteTime(ev.at)}>{relativeTime(ev.at)}</div>
                 <div style={{ fontSize: 12 }}>
                   <span style={{ color: 'var(--fg)' }}>{ev.actor}</span>
                   {' — '}
@@ -323,7 +322,7 @@ export default function Incidents() {
     },
     {
       key: 'opened', header: t.incidents.colOpened,
-      render: i => <span style={{ color: 'var(--fg-3)', fontSize: 12 }} title={new Date(i.opened_at).toLocaleString()}>{relativeTime(i.opened_at)}</span>,
+      render: i => <span style={{ color: 'var(--fg-3)', fontSize: 12 }} title={absoluteTime(i.opened_at)}>{relativeTime(i.opened_at)}</span>,
     },
     {
       key: 'sla', header: t.incidents.colSla, width: 120,

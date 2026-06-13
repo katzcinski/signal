@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { Shell } from './components/layout/Shell';
 
 const Cockpit           = lazy(() => import('./pages/Cockpit'));
+const MyWork            = lazy(() => import('./pages/MyWork'));
 const ObjectCatalog     = lazy(() => import('./pages/ObjectCatalog'));
 const ObjectDetail      = lazy(() => import('./pages/ObjectDetail'));
 const ContractWorkbench = lazy(() => import('./pages/ContractWorkbench'));
@@ -31,6 +32,7 @@ export default function App() {
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               <Route path="/"            element={<Cockpit />} />
+              <Route path="/my"          element={<MyWork />} />
               <Route path="/objects"     element={<ObjectCatalog />} />
               <Route path="/objects/:id" element={<ObjectDetail />} />
               <Route path="/contracts"   element={<ContractWorkbench />} />

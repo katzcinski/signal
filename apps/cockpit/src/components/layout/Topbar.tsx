@@ -1,9 +1,51 @@
+import { useNavigate } from 'react-router-dom';
 import { t } from '@/i18n/de';
 import { useUIStore } from '@/store/ui';
+import { useRoleStore, ROLES, ROLE_META, type Role } from '@/store/role';
 
 interface Props {
   onToggleSidebar: () => void;
   onOpenPalette: () => void;
+}
+
+// UX-F1: role switcher. Changing role updates the X-DQ-Role header (api/client.ts)
+// and lands the user on that role's default home (UX-N3). The server stays
+// authoritative; this only changes which write affordances the UI offers.
+function RoleSwitcher() {
+  const role = useRoleStore(s => s.role);
+  const setRole = useRoleStore(s => s.setRole);
+  const navigate = useNavigate();
+
+  const onChange = (next: Role) => {
+    setRole(next);
+    navigate(ROLE_META[next].home);
+  };
+
+  return (
+    <label
+      title={ROLE_META[role].hint}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+    >
+      <span style={{ fontSize: 10, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        {t.role.switchLabel}
+      </span>
+      <select
+        value={role}
+        onChange={e => onChange(e.target.value as Role)}
+        aria-label={t.role.switchLabel}
+        style={{
+          background: 'var(--cont)22', border: '1px solid var(--cont)55', color: 'var(--cont)',
+          borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600,
+        }}
+      >
+        {ROLES.map(r => (
+          <option key={r} value={r} style={{ background: 'var(--bg-2)', color: 'var(--fg)' }}>
+            {ROLE_META[r].label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
@@ -17,7 +59,8 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
     }}>
       <button
         onClick={onToggleSidebar}
-        style={{ background: 'none', border: 'none', color: 'var(--fg-3)', fontSize: 16, padding: 4 }}
+        style={{ background: 'none', border: 'none', color: 'var(--fg-2)', fontSize: 16, padding: 4 }}
+        aria-label="Toggle sidebar"
         title="Toggle sidebar"
       >
         ☰
@@ -26,7 +69,7 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
         onClick={onOpenPalette}
         style={{
           background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-          color: 'var(--fg-3)', borderRadius: 5, padding: '4px 12px',
+          color: 'var(--fg-2)', borderRadius: 5, padding: '4px 12px',
           fontSize: 12, display: 'flex', alignItems: 'center', gap: 8,
         }}
       >
@@ -42,18 +85,13 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
         title={t.density.toggle}
         aria-label={t.density.toggle}
         style={{
-          background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-3)',
+          background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)',
           borderRadius: 5, padding: '4px 10px', fontSize: 12, cursor: 'pointer',
         }}
       >
         ↕ {density === 'compact' ? t.density.compact : t.density.comfortable}
       </button>
-      <span style={{
-        background: 'var(--cont)22', border: '1px solid var(--cont)55',
-        color: 'var(--cont)', borderRadius: 4, padding: '2px 8px', fontSize: 11,
-      }}>
-        steward
-      </span>
+      <RoleSwitcher />
     </header>
   );
 }

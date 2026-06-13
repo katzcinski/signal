@@ -15,6 +15,7 @@ import { BadgeEmbed } from '@/components/BadgeEmbed';
 import { MinedProposalsCallout } from '@/components/MinedProposalsCallout';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { t } from '@/i18n/de';
 import type { CheckResult, ContractOut, RunListItem } from '@/types';
 
@@ -326,6 +327,11 @@ export default function ObjectDetail() {
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <Breadcrumbs items={[
+        { label: t.breadcrumb.home, to: '/' },
+        { label: t.breadcrumb.objects, to: '/objects' },
+        { label: obj.name },
+      ]} />
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => navigate('/objects')} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', cursor: 'pointer' }}>{t.objectDetail.back}</button>
         <div>
