@@ -230,6 +230,7 @@ export const t = {
     investigate: 'In Arbeit nehmen',
     resolve: 'Lösen',
     notePrompt: 'Optionale Notiz:',
+    notePlaceholder: 'Notiz eingeben…',
     openRun: 'Run öffnen',
     rootCause: 'Root Cause in Lineage',
     transitionFailed: 'Statuswechsel fehlgeschlagen',
@@ -414,6 +415,8 @@ export const t = {
     runStarting: 'Run wird gestartet für',
     runStarted: 'Run gestartet für',
     runError: 'Run konnte nicht gestartet werden für',
+    incidentUpdated: 'Incident aktualisiert.',
+    incidentUpdateError: 'Statuswechsel fehlgeschlagen.',
   },
   liveRun: 'Run läuft',
 };

@@ -36,10 +36,24 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
   const transition = useIncidentTransition(id);
   const navigate = useNavigate();
   const [ownerInput, setOwnerInput] = useState('');
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [noteInput, setNoteInput] = useState('');
 
-  const act = (status: string, withNote = true) => {
-    const note = withNote ? window.prompt(t.incidents.notePrompt) ?? undefined : undefined;
-    transition.mutate({ status, note: note || undefined });
+  const requestAct = (status: string) => {
+    setPendingStatus(status);
+    setNoteInput('');
+  };
+
+  const confirmAct = () => {
+    if (!pendingStatus) return;
+    transition.mutate({ status: pendingStatus, note: noteInput.trim() || undefined });
+    setPendingStatus(null);
+    setNoteInput('');
+  };
+
+  const cancelAct = () => {
+    setPendingStatus(null);
+    setNoteInput('');
   };
 
   return (
@@ -77,19 +91,22 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
       {incident && (
         <>
           {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: pendingStatus ? 8 : 16 }}>
             {incident.status === 'open' && (
-              <button style={drawerBtn()} disabled={transition.isPending} onClick={() => act('acknowledged')}>
+              <button style={drawerBtn(pendingStatus === 'acknowledged' ? 'primary' : 'ghost')}
+                      disabled={transition.isPending} onClick={() => requestAct('acknowledged')}>
                 {t.incidents.acknowledge}
               </button>
             )}
             {(incident.status === 'open' || incident.status === 'acknowledged') && (
-              <button style={drawerBtn()} disabled={transition.isPending} onClick={() => act('investigating')}>
+              <button style={drawerBtn(pendingStatus === 'investigating' ? 'primary' : 'ghost')}
+                      disabled={transition.isPending} onClick={() => requestAct('investigating')}>
                 {t.incidents.investigate}
               </button>
             )}
             {incident.status !== 'resolved' && (
-              <button style={drawerBtn()} disabled={transition.isPending} onClick={() => act('resolved')}>
+              <button style={drawerBtn(pendingStatus === 'resolved' ? 'primary' : 'ghost')}
+                      disabled={transition.isPending} onClick={() => requestAct('resolved')}>
                 {t.incidents.resolve}
               </button>
             )}
@@ -100,8 +117,38 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
               {t.incidents.rootCause}
             </button>
           </div>
-          {transition.isError && (
-            <div style={{ color: 'var(--status-fail)', fontSize: 12, marginBottom: 12 }}>{t.incidents.transitionFailed}</div>
+
+          {/* Inline note form — replaces window.prompt */}
+          {pendingStatus && (
+            <div style={{
+              background: 'var(--bg-2)', border: '1px solid var(--line-2)',
+              borderRadius: 6, padding: 12, marginBottom: 16,
+            }}>
+              <div style={{ fontSize: 11, color: 'var(--fg-3)', marginBottom: 6 }}>
+                {t.incidents.notePrompt}
+              </div>
+              <textarea
+                value={noteInput}
+                onChange={e => setNoteInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) confirmAct(); }}
+                placeholder={t.incidents.notePlaceholder}
+                autoFocus
+                rows={2}
+                style={{
+                  width: '100%', background: 'var(--bg-1)', border: '1px solid var(--line-2)',
+                  color: 'var(--fg)', borderRadius: 4, padding: '6px 8px', fontSize: 12,
+                  resize: 'vertical', boxSizing: 'border-box', display: 'block',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button style={drawerBtn()} onClick={confirmAct} disabled={transition.isPending}>
+                  {t.common.confirm}
+                </button>
+                <button style={drawerBtn('ghost')} onClick={cancelAct}>
+                  {t.common.cancel}
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Owner assign */}

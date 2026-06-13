@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from './client';
+import { t } from '@/i18n/de';
 import type { Incident, IncidentDetail, IncidentTransitionBody, FailedCheck } from '@/types';
 
 // Persistent lifecycle incidents (GET /api/incidents?status=&severity=)
@@ -29,6 +31,10 @@ export const useIncidentTransition = (id: number | null) => {
       api.post(`/incidents/${id}/transition`, body).then(r => r.data as Incident),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['incidents'] });
+      toast.success(t.toast.incidentUpdated);
+    },
+    onError: () => {
+      toast.error(t.toast.incidentUpdateError);
     },
   });
 };

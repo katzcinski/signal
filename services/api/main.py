@@ -16,9 +16,14 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from .middleware import ObservabilityMiddleware
 from .settings import get_settings
 from .routers import library, objects, runs, lineage, contracts, incidents, proposals, stream, checks, extract, metrics, data_loads
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
 logger = logging.getLogger("dq_cockpit")
 
 
@@ -77,6 +82,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Pure ASGI middleware — request-ID header propagation + access log + metrics.
+    # Must be added after CORS so CORS runs first (innermost), observability outermost.
+    app.add_middleware(ObservabilityMiddleware)
 
     # RFC-7807 für beide Pfade: HTTPException UND Unbehandeltes.
     @app.exception_handler(HTTPException)
