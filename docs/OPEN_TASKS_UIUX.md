@@ -47,6 +47,8 @@ gesetzt und werden nicht neu verhandelt.
 | UX-F5 | Faceted Search/Filter im Objektkatalog (Volltext + Familie/Status/Owner/Coverage) | Befund | 2 | 2–3 | — |
 | UX-F6 | Token-Disziplin für Spacing/Radius; geteilte Primitives (Card/Button/Field) | Befund | 3 | 3–5 | — |
 | UX-F7 | Restpolitur: Breadcrumbs, Bulk-Aktionen, Governance Loading/Error, Toast-Nutzung | Befund | 3 | 2–4 | UX-F6 |
+| UX-F8 | Button-Interaktionszustände: Hover, Active, Disabled-Kontrast | Befund | 3 | 1–2 | UX-F6 |
+| UX-F9 | CSS-Micro-polish: ::selection, FF-Scrollbar, Table-Header-Shadow, Row-Hover-Transition | Befund | 3 | 0.5–1 | — |
 | UX-N1 | Freshness- & Volume-Zeitreihen (erwartetes Band, Anomalie-Marker) | Neu | 1 | 6–9 | — |
 | UX-N2 | Alerting & Notification-Routing-Screen (Kanäle, Regeln, Mute, Eskalation) | Neu | 1 | 6–9 | — |
 | UX-N3 | Rollen-Landing „My work" (zugewiesene Incidents, eigene Domänen, offene Proposals) | Neu | 1 | 3–5 | UX-F1 |
@@ -132,7 +134,39 @@ Radius-Tokens (`--r/--r-md/--r-lg`) existieren, Code hardkodiert aber `borderRad
 - Bulk-Aktionen für Incidents/Proposals (Mehrfach-Acknowledge/Assign/Accept).
 - Governance ohne Loading/Error-States (`Governance.tsx`) — auf Peer-Niveau bringen.
 - Drawer-Timeline zeigt rohes `ev.at`, Tabelle nutzt Relativzeit — vereinheitlichen.
-- Responsiveness bewusst entscheiden (fixe max-widths, `repeat(4,1fr)`-KPIs, 420px-Drawer).
+- Responsiveness bewusst entscheiden (fixe max-widths, `repeat(4,1fr)`-KPIs, 420px-Drawer,
+  ContractWorkbench-Sidebar hardkodiert 280px — Editor geht auf schmalen Viewports off-screen,
+  SLA-Bars hartkodiert 84px Breite).
+- Konsistente Loading/Empty-States: mehrere Seiten zeigen „Loading…"-Text statt Skeletons
+  (z. B. `ObjectDetail.tsx:291`, `Incidents.tsx:270`); Filter-Null-Ergebnisse ohne Hinweis.
+
+**UX-F8 Button-Interaktionszustände** *(Hover, Active, Disabled-Kontrast)*
+Fast alle Inline-`<button>`-Elemente zeigen keinen Hover-Effekt — die UI wirkt stumm auf
+Mausinteraktion. Disabled-Zustände nutzen nur `opacity: 0.45`, was für sehbeeinträchtigte
+Nutzer zu subtil ist (WCAG 1.4.3). `cursor: not-allowed` fehlt ebenfalls durchgehend.
+- Hover/Active-States einheitlich über das `Button`-Primitive aus UX-F6 lösen, nicht per-Seite
+  patchen: Background-Shift + `transition: background var(--t)`.
+- Disabled: stärkere visuelle Reduktion (Farbton-Shift + `cursor: not-allowed`), kein reines
+  Opazitäts-Patching.
+- Betroffen u. a.: Incidents (Action-Buttons, `Incidents.tsx`), Proposals (`Proposals.tsx:88`),
+  ContractWorkbench (`ContractWorkbench.tsx:1072`), RunDetail CSV-Download (kein Feedback nach
+  Klick).
+*Acceptance:* jeder `<button>` zeigt sichtbaren Hover-Effekt mit Transition; Disabled-Buttons
+erkennbar ohne Tooltip-Hover (Kontrast-Check bestanden); `cursor: not-allowed` gesetzt.
+
+**UX-F9 CSS-Micro-polish** *(::selection, Cross-Browser-Scrollbar, Table-Header-Depth, Row-Hover)*
+Kleine Einzeldefizite, die zusammen den „unfertigen" Eindruck erzeugen:
+- `::selection` nicht gestylt — Browser-Standard-Blau (`#0080FF`) kollidiert visuell mit dem
+  dunklen Theme; sollte `--cont` mit angepasster `color` verwenden.
+- `::-webkit-scrollbar` ist custom, Firefox nutzt aber System-Standard — `scrollbar-color` /
+  `scrollbar-width: thin` in `index.css` ergänzen.
+- Sticky Table-Header (`Table.tsx:66`, `position: sticky; top: 0; zIndex: 1`) hat kein
+  `box-shadow` — Header „verschmilzt" beim Scrollen optisch mit den Body-Zeilen.
+- Row-Hover-Highlight springt ohne Transition (`onMouseEnter/Leave` in `Table.tsx:103`) und
+  fehlt für Tastatur-Fokus; besser: CSS `tr:hover` / `tr:focus-within` + `transition`.
+*Acceptance:* `::selection` mit Accent-Farbe; Firefox-Scrollbar slim + dunkel; Table-Header
+bekommt `box-shadow: 0 1px 0 var(--line-2)` beim Scrollen; Row-Hover hat ≥100 ms CSS-Transition
+und greift per `:focus-within`.
 
 ---
 
