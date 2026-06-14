@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from './client';
-import type { RunSummary, RunListItem, RunEvent, SSEEvent } from '@/types';
+import type { RunSummary, RunListItem, RunEvent, SSEEvent, RunCompare } from '@/types';
 
 export const useRuns = () =>
   useQuery<RunListItem[]>({
     queryKey: ['runs'],
     queryFn: () => api.get('/runs').then(r => r.data),
+  });
+
+// UX-N5: server-computed regression diff of two runs (per-check transitions).
+export const useRunCompare = (base: string, head: string) =>
+  useQuery<RunCompare>({
+    queryKey: ['runs', 'compare', base, head],
+    queryFn: () => api.get('/runs/compare', { params: { base, head } }).then(r => r.data),
+    enabled: !!base && !!head && base !== head,
   });
 
 export const useRun = (id: string) =>

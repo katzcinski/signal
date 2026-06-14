@@ -3,7 +3,8 @@ import { toast } from 'sonner';
 import { api } from './client';
 import { t } from '@/i18n/de';
 import type {
-  Contract, ContractOut, ContractPutBody, DiffReport, InventoryResponse, SlaResponse,
+  Contract, ContractOut, ContractPutBody, ContractVersionDiff, DiffReport,
+  InventoryResponse, SlaResponse,
 } from '@/types';
 
 // List items may carry EMPTY guarantees (served from the index) — always
@@ -50,6 +51,15 @@ export const useDiffContract = (id: string) =>
   useMutation({
     mutationFn: (draft: ContractPutBody) =>
       api.post(`/contracts/${id}/diff`, draft).then(r => r.data as DiffReport),
+  });
+
+// UX-N13: semantic diff of the working contract vs. the last certified version.
+export const useContractVersionDiff = (product: string, enabled = true) =>
+  useQuery<ContractVersionDiff>({
+    queryKey: ['contracts', product, 'version-diff'],
+    queryFn: () => api.get(`/contracts/${product}/version-diff`).then(r => r.data),
+    enabled: !!product && enabled,
+    retry: false,
   });
 
 export const useContractSla = (product: string, enabled = true) =>
