@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useRun } from '@/api/runs';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { CheckStatusCell } from '@/components/ui/StatePill';
@@ -69,6 +69,12 @@ export default function RunDetail() {
           <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.runDetail.triggeredBy}: {run.triggered_by}</span>
           {durationMs !== null && <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{durationMs}ms</span>}
           <div style={{ flex: 1 }} />
+          <Link
+            to={`/runs/compare?head=${encodeURIComponent(run.run_id)}`}
+            style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 5, padding: '6px 14px', fontSize: 12, textDecoration: 'none' }}
+          >
+            {t.compare.compareTo}
+          </Link>
           <button
             onClick={downloadCSV}
             style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 5, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}

@@ -1,6 +1,49 @@
 {
   "components": {
     "schemas": {
+      "ActivityItem": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "action",
+          "actor",
+          "at",
+          "product",
+          "summary",
+          "ref"
+        ],
+        "title": "ActivityItem",
+        "type": "object"
+      },
       "CheckDefOut": {
         "properties": {
           "expect": {
@@ -267,6 +310,107 @@
           "product"
         ],
         "title": "ContractOut",
+        "type": "object"
+      },
+      "DataLoadOut": {
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "load_type": {
+            "title": "Load Type",
+            "type": "string"
+          },
+          "object_id": {
+            "title": "Object Id",
+            "type": "string"
+          },
+          "raw": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Raw",
+            "type": "object"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "triggered_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triggered By"
+          }
+        },
+        "required": [
+          "object_id",
+          "load_type"
+        ],
+        "title": "DataLoadOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -814,6 +958,56 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/activity": {
+      "get": {
+        "description": "Merged, reverse-chronological activity across incidents, proposals and\ncontract approvals.",
+        "operationId": "list_activity_api_activity_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityItem"
+                  },
+                  "title": "Response List Activity Api Activity Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Activity",
+        "tags": [
+          "activity"
+        ]
+      }
+    },
     "/api/badge/{product}": {
       "get": {
         "description": "Read-only Compliance-Badge. format=svg (default) | json.",
@@ -1824,6 +2018,111 @@
         ]
       }
     },
+    "/api/contracts/{product}/version-diff": {
+      "get": {
+        "description": "UX-N13: semantic diff of the working contract against the last certified\nversion (`.active.yml`). Reuses the breaking-change engine so the FE can\nexplain the *meaning* of each change, not just two code spans.",
+        "operationId": "version_diff_contract_api_contracts__product__version_diff_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Version Diff Contract",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/coverage/health": {
+      "get": {
+        "description": "UX-N12: data-health trend for the cockpit gauge \u2014 share of datasets\npassing their latest run vs. one run earlier.",
+        "operationId": "health_trend_api_coverage_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Trend",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/api/coverage/heatmap": {
+      "get": {
+        "description": "UX-N10: object \u00d7 day reliability heatmap (worst run status per day).",
+        "operationId": "status_heatmap_api_coverage_heatmap_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 7,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Status Heatmap",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
     "/api/coverage/summary": {
       "get": {
         "operationId": "coverage_summary_api_coverage_summary_get",
@@ -1840,6 +2139,151 @@
         "summary": "Coverage Summary",
         "tags": [
           "metrics"
+        ]
+      }
+    },
+    "/api/datasphere/data-loads": {
+      "get": {
+        "description": "List recent data loads (task chains + replication flows) across all objects.",
+        "operationId": "list_data_loads_api_datasphere_data_loads_get",
+        "parameters": [
+          {
+            "description": "Datasphere space ID",
+            "in": "query",
+            "name": "space",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Datasphere space ID",
+              "title": "Space"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Top",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DataLoadOut"
+                  },
+                  "title": "Response List Data Loads Api Datasphere Data Loads Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Data Loads",
+        "tags": [
+          "datasphere"
+        ]
+      }
+    },
+    "/api/datasphere/data-loads/{object_id}": {
+      "get": {
+        "description": "List recent data loads for a specific Datasphere object.",
+        "operationId": "get_object_data_loads_api_datasphere_data_loads__object_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Datasphere space ID",
+            "in": "query",
+            "name": "space",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Datasphere space ID",
+              "title": "Space"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Top",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DataLoadOut"
+                  },
+                  "title": "Response Get Object Data Loads Api Datasphere Data Loads  Object Id  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Object Data Loads",
+        "tags": [
+          "datasphere"
         ]
       }
     },
@@ -1865,7 +2309,7 @@
     },
     "/api/extract": {
       "post": {
-        "description": "Reload inventory/lineage snapshots and report counts (analyzer placeholder).",
+        "description": "Reload inventory/lineage snapshots and report counts.\n\nF5: In local mode, touch the snapshot files to reset the staleness clock\n(production deployments would call the real analyzer chain here). Either\nway, the response includes the new extraction timestamp so the frontend\ncan update the staleness indicator immediately.",
         "operationId": "trigger_extract_api_extract_post",
         "parameters": [
           {
@@ -1962,10 +2406,21 @@
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 100,
+              "default": 50,
               "maximum": 500,
               "minimum": 1,
               "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
               "type": "integer"
             }
           }
@@ -2269,6 +2724,26 @@
         ]
       }
     },
+    "/api/metrics/health": {
+      "get": {
+        "description": "Self-observability: request counters, uptime, latency percentiles (JSON).",
+        "operationId": "service_health_metrics_api_metrics_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Service Health Metrics",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
     "/api/objects": {
       "get": {
         "operationId": "list_objects_api_objects_get",
@@ -2553,6 +3028,59 @@
           }
         },
         "summary": "Get Object Runs",
+        "tags": [
+          "objects"
+        ]
+      }
+    },
+    "/api/objects/{object_id}/timeseries": {
+      "get": {
+        "description": "UX-N1: Freshness-/Volume-Zeitreihen je Objekt mit erwartetem Baseline-Band\n(Mean \u00b1 3\u03c3 aus `dq_baselines`) und Anomalie-Markern. Macht aus dem\nStatus-Board ein Monitoring-Tool.",
+        "operationId": "get_object_timeseries_api_objects__object_id__timeseries_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Object Timeseries",
         "tags": [
           "objects"
         ]
@@ -2900,6 +3428,60 @@
           }
         },
         "summary": "List Runs",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/compare": {
+      "get": {
+        "description": "UX-N5: regression diff of two runs \u2014 per-check status transitions\n(newly red vs. recovered). Server-authoritative so the FE only renders.",
+        "operationId": "compare_runs_api_runs_compare_get",
+        "parameters": [
+          {
+            "description": "Baseline run_id (earlier)",
+            "in": "query",
+            "name": "base",
+            "required": true,
+            "schema": {
+              "description": "Baseline run_id (earlier)",
+              "title": "Base",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comparison run_id (later)",
+            "in": "query",
+            "name": "head",
+            "required": true,
+            "schema": {
+              "description": "Comparison run_id (later)",
+              "title": "Head",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compare Runs",
         "tags": [
           "runs"
         ]

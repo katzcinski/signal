@@ -150,6 +150,66 @@ export interface RunListItem {
   triggered_by: string;
 }
 
+// ---- Run comparison / regression diff (GET /api/runs/compare) — UX-N5 ----
+export type CheckCompareStatus = 'pass' | 'fail' | 'warn' | 'error' | 'skipped';
+export type CheckTransition =
+  | 'regressed' | 'recovered' | 'unchanged' | 'changed' | 'added' | 'removed';
+
+export interface RunCompareHeader {
+  run_id: string;
+  dataset: string;
+  started_at: string;
+  finished_at: string;
+  overall_status: OverallStatus;
+  total: number;
+  passed: number;
+  failed: number;
+  warnings: number;
+}
+
+export interface CheckChange {
+  check_name: string;
+  base_status: CheckCompareStatus | null;
+  head_status: CheckCompareStatus | null;
+  transition: CheckTransition;
+}
+
+export interface RunCompare {
+  base: RunCompareHeader;
+  head: RunCompareHeader;
+  summary: Record<CheckTransition, number>;
+  changes: CheckChange[];
+}
+
+// ---- Contract version diff (GET /api/contracts/{product}/version-diff) — UX-N13 ----
+export interface VersionDiffEntry {
+  kind: string;
+  path: string;
+  old?: unknown;
+  new?: unknown;
+  breaking: boolean;
+}
+
+export interface ContractVersionDiff {
+  available: boolean;
+  from_version: string | null;
+  to_version: string;
+  lifecycle?: Lifecycle;
+  breaking: boolean;
+  entries: VersionDiffEntry[];
+}
+
+// ---- Activity / audit feed (GET /api/activity) — UX-N15 ----
+export interface ActivityItem {
+  kind: 'incident' | 'proposal' | 'contract';
+  action: string;
+  actor: string;
+  at: string;
+  product: string;
+  summary: string;
+  ref: string;
+}
+
 // ---- Check history (GET /api/objects/{id}/checks/{name}/history) ----
 export interface CheckHistoryPoint {
   actual_value: string | null;

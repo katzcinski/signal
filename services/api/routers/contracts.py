@@ -258,6 +258,44 @@ def diff_contract(
     }
 
 
+@router.get("/{product}/version-diff")
+def version_diff_contract(product: str):
+    """UX-N13: semantic diff of the working contract against the last certified
+    version (`.active.yml`). Reuses the breaking-change engine so the FE can
+    explain the *meaning* of each change, not just two code spans."""
+    from dq_core.contract.diff import diff_contracts, is_breaking
+
+    _validate_product(product)
+    current = _load_contract(product)
+    if not current:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+
+    snapshot_path = _active_snapshot_path(product)
+    if not snapshot_path.exists():
+        # No certified baseline yet — nothing to diff against.
+        return {
+            "available": False,
+            "from_version": None,
+            "to_version": str(current.get("version", "")),
+            "breaking": False,
+            "entries": [],
+        }
+
+    prior = yaml.safe_load(snapshot_path.read_text(encoding="utf-8")) or {}
+    entries = diff_contracts(prior, current)
+    return {
+        "available": True,
+        "from_version": str(prior.get("version", "")),
+        "to_version": str(current.get("version", "")),
+        "lifecycle": current.get("lifecycle", "draft"),
+        "breaking": is_breaking(entries),
+        "entries": [
+            {"kind": e.kind, "path": e.path, "old": e.old_value, "new": e.new_value, "breaking": e.breaking}
+            for e in entries
+        ],
+    }
+
+
 def _semver_major(version: str) -> int:
     try:
         return int(str(version).split(".")[0])

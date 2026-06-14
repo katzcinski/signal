@@ -10,10 +10,56 @@ import { OnboardingPanel } from '@/components/OnboardingPanel';
 import { StatusHeatmap } from '@/components/StatusHeatmap';
 import { useObjects } from '@/api/objects';
 import { useIncidents } from '@/api/incidents';
+import { useActivity } from '@/api/activity';
 import { useCoverageSummary, useHealthTrend } from '@/api/coverage';
 import { useContracts, useContractSla } from '@/api/contracts';
+import { relativeTime, absoluteTime } from '@/lib/time';
 import { t } from '@/i18n/de';
-import type { Incident, ObjectSummary } from '@/types';
+import type { ActivityItem, Incident, ObjectSummary } from '@/types';
+
+const ACTIVITY_KIND_COLOR: Record<string, string> = {
+  incident: 'var(--status-fail)',
+  proposal: 'var(--status-warn)',
+  contract: 'var(--status-ok)',
+};
+
+// UX-N15: recent audit feed — who approved / resolved / decided what.
+function ActivityFeed() {
+  const { data: items = [], isSuccess } = useActivity(12);
+  if (items.length === 0) {
+    return <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{isSuccess ? t.activity.empty : '—'}</p>;
+  }
+  return (
+    <div>
+      {items.map((it: ActivityItem, i) => {
+        const color = ACTIVITY_KIND_COLOR[it.kind] ?? 'var(--fg-3)';
+        return (
+          <div key={`${it.kind}-${it.ref}-${i}`} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '7px 0', borderBottom: '1px solid var(--line)',
+          }}>
+            <span style={{
+              fontSize: 10, borderRadius: 4, padding: '2px 6px', minWidth: 64, textAlign: 'center',
+              background: `color-mix(in srgb, ${color} 14%, transparent)`,
+              color, border: `1px solid ${color}`,
+            }}>
+              {t.activity.kind[it.kind] ?? it.kind}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--fg)' }}>{it.actor}</span>
+            <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.activity.action[it.action] ?? it.action}</span>
+            {it.product && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }}>{it.product}</span>}
+            <span style={{ flex: 1, fontSize: 11, color: 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {it.summary}
+            </span>
+            <span title={absoluteTime(it.at)} style={{ fontSize: 11, color: 'var(--fg-3)', whiteSpace: 'nowrap' }}>
+              {relativeTime(it.at)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, fail: 1, warn: 2 };
 
@@ -194,6 +240,12 @@ export default function Cockpit() {
           </Panel>
         </div>
       )}
+
+      <div style={{ marginTop: 16 }}>
+        <Panel title={t.activity.title}>
+          <ActivityFeed />
+        </Panel>
+      </div>
 
       <div style={{ marginTop: 16 }}>
         <Panel title={`${t.cockpit.unvalidatedTitle}${unvalidated.length ? ` (${unvalidated.length})` : ''}`}>

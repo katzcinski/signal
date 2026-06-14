@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query';
 import { useObject, useObjectRuns, useTriggerRun, useCheckHistory } from '@/api/objects';
 import { useRun } from '@/api/runs';
-import { useContract } from '@/api/contracts';
+import { useContract, useContractVersionDiff } from '@/api/contracts';
 import { useLineage } from '@/api/lineage';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { CheckStatusCell } from '@/components/ui/StatePill';
@@ -92,6 +92,71 @@ function ContractView({ contract }: { contract: ContractOut }) {
                   {JSON.stringify(value, null, 2)}
                 </pre>
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// UX-N13: semantic version diff — working contract vs. certified version.
+// Explains the *meaning* of each change (kind + old→new), not just a YAML dump.
+// ---------------------------------------------------------------------------
+function fmtVal(v: unknown): string {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+function ContractVersionDiffView({ product, enabled }: { product: string; enabled: boolean }) {
+  const { data: diff, isLoading } = useContractVersionDiff(product, enabled);
+  if (isLoading || !diff) return null;
+
+  return (
+    <div style={{ marginTop: 16, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {t.diff.versionTitle}
+        </span>
+        {diff.available && diff.from_version && (
+          <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>
+            {t.diff.fromTo.replace('{from}', `v${diff.from_version}`).replace('{to}', `v${diff.to_version}`)}
+          </span>
+        )}
+        {diff.available && diff.entries.length > 0 && (
+          <span style={{
+            fontSize: 10, borderRadius: 4, padding: '2px 8px',
+            background: diff.breaking ? 'rgba(196,68,68,0.15)' : 'rgba(45,164,78,0.15)',
+            color: diff.breaking ? 'var(--status-fail)' : 'var(--status-ok)',
+            border: `1px solid ${diff.breaking ? 'var(--status-fail)' : 'var(--status-ok)'}`,
+          }}>
+            {diff.breaking ? t.diff.breaking : t.diff.nonBreaking}
+          </span>
+        )}
+      </div>
+
+      {!diff.available ? (
+        <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.diff.noBaseline}</p>
+      ) : diff.entries.length === 0 ? (
+        <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.diff.noChanges}</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {diff.entries.map((e, i) => (
+            <div key={`${e.path}-${i}`} style={{
+              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              borderLeft: `3px solid ${e.breaking ? 'var(--status-fail)' : 'var(--status-warn)'}`,
+              background: 'var(--bg-2)', borderRadius: 5, padding: '8px 12px',
+            }}>
+              <span style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500 }}>
+                {t.diff.kinds[e.kind] ?? e.kind}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>{e.path}</span>
+              <div style={{ flex: 1 }} />
+              <code style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--fg-3)' }}>{fmtVal(e.old)}</code>
+              <span style={{ color: 'var(--fg-3)' }}>→</span>
+              <code style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: e.breaking ? 'var(--status-fail)' : 'var(--fg-2)' }}>{fmtVal(e.new)}</code>
             </div>
           ))}
         </div>
@@ -382,9 +447,21 @@ export default function ObjectDetail() {
       )}
 
       {tab === 'runs' && (
-        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
-          <Table columns={runColumns} rows={runs} rowKey={r => r.run_id} empty={t.objectDetail.noRuns} />
-        </div>
+        <>
+          {runs.length >= 2 && (
+            <div style={{ marginBottom: 12, textAlign: 'right' }}>
+              <Link
+                to={`/runs/compare?base=${encodeURIComponent(runs[1].run_id)}&head=${encodeURIComponent(runs[0].run_id)}`}
+                style={{ color: 'var(--cont)', fontSize: 12 }}
+              >
+                {t.compare.compareLatest} →
+              </Link>
+            </div>
+          )}
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+            <Table columns={runColumns} rows={runs} rowKey={r => r.run_id} empty={t.objectDetail.noRuns} />
+          </div>
+        </>
       )}
 
       {tab === 'timeseries' && (
@@ -405,6 +482,7 @@ export default function ObjectDetail() {
               </p>
             )}
           </div>
+          {contract && <ContractVersionDiffView product={obj.id} enabled={tab === 'contract'} />}
           <BadgeEmbed product={obj.id} />
         </>
       )}

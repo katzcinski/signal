@@ -2,8 +2,58 @@ import { useProposals, useProposalAction } from '@/api/proposals';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { t } from '@/i18n/de';
+import { diffExpect, OP_SYMBOL } from '@/lib/diff';
 import { useRoleStore, canAcceptProposal } from '@/store/role';
 import type { Proposal } from '@/types';
+
+// UX-N13: explain the *meaning* of current → proposed (loosened/tightened + Δ),
+// then keep the raw spans below for power users.
+function ExpectDiff({ current, proposed }: { current: string; proposed: string }) {
+  const d = diffExpect(current, proposed);
+  const directionLabel = t.diff[d.direction];
+  const dirColor =
+    d.direction === 'loosened' ? 'var(--status-warn)'
+    : d.direction === 'tightened' ? 'var(--status-fail)'
+    : 'var(--fg-3)';
+
+  const opSym = (op: string) => OP_SYMBOL[op] ?? op;
+  const bound = d.proposedVal !== null
+    ? `${opSym(d.currentOp)} ${d.currentVal} → ${opSym(d.proposedOp)} ${d.proposedVal}`
+    : null;
+
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.diff.meaning}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{
+          fontSize: 11, borderRadius: 4, padding: '2px 8px',
+          background: `color-mix(in srgb, ${dirColor} 15%, transparent)`,
+          color: dirColor, border: `1px solid ${dirColor}`,
+        }}>
+          {directionLabel}
+        </span>
+        {bound && (
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)' }}>{bound}</span>
+        )}
+        {d.deltaPct !== null && d.deltaPct !== 0 && (
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+            ({d.deltaPct > 0 ? '+' : ''}{d.deltaPct}%)
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+        <div>
+          <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.proposals.current}</div>
+          <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)' }}>{current || '—'}</code>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.proposals.proposed}</div>
+          <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--status-ok)' }}>{proposed}</code>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ConfidenceBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
@@ -45,20 +95,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.proposals.current}</div>
-          <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)' }}>
-            {proposal.current_expect || '—'}
-          </code>
-        </div>
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.proposals.proposed}</div>
-          <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--status-ok)' }}>
-            {proposal.proposed_expect}
-          </code>
-        </div>
-      </div>
+      <ExpectDiff current={proposal.current_expect} proposed={proposal.proposed_expect} />
 
       <div>
         <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 6 }}>{t.proposals.confidence}</div>
