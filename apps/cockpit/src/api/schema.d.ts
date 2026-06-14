@@ -4,6 +4,27 @@
  */
 
 export interface paths {
+    "/api/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Activity
+         * @description Merged, reverse-chronological activity across incidents, proposals and
+         *     contract approvals.
+         */
+        get: operations["list_activity_api_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/badge/{product}": {
         parameters: {
             query?: never;
@@ -306,6 +327,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/contracts/{product}/version-diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Version Diff Contract
+         * @description UX-N13: semantic diff of the working contract against the last certified
+         *     version (`.active.yml`). Reuses the breaking-change engine so the FE can
+         *     explain the *meaning* of each change, not just two code spans.
+         */
+        get: operations["version_diff_contract_api_contracts__product__version_diff_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coverage/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health Trend
+         * @description UX-N12: data-health trend for the cockpit gauge — share of datasets
+         *     passing their latest run vs. one run earlier.
+         */
+        get: operations["health_trend_api_coverage_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coverage/heatmap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Status Heatmap
+         * @description UX-N10: object × day reliability heatmap (worst run status per day).
+         */
+        get: operations["status_heatmap_api_coverage_heatmap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/coverage/summary": {
         parameters: {
             query?: never;
@@ -315,6 +399,46 @@ export interface paths {
         };
         /** Coverage Summary */
         get: operations["coverage_summary_api_coverage_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/datasphere/data-loads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Data Loads
+         * @description List recent data loads (task chains + replication flows) across all objects.
+         */
+        get: operations["list_data_loads_api_datasphere_data_loads_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/datasphere/data-loads/{object_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Object Data Loads
+         * @description List recent data loads for a specific Datasphere object.
+         */
+        get: operations["get_object_data_loads_api_datasphere_data_loads__object_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -354,7 +478,12 @@ export interface paths {
         put?: never;
         /**
          * Trigger Extract
-         * @description Reload inventory/lineage snapshots and report counts (analyzer placeholder).
+         * @description Reload inventory/lineage snapshots and report counts.
+         *
+         *     F5: In local mode, touch the snapshot files to reset the staleness clock
+         *     (production deployments would call the real analyzer chain here). Either
+         *     way, the response includes the new extraction timestamp so the frontend
+         *     can update the staleness indicator immediately.
          */
         post: operations["trigger_extract_api_extract_post"];
         delete?: never;
@@ -508,6 +637,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/metrics/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Service Health Metrics
+         * @description Self-observability: request counters, uptime, latency percentiles (JSON).
+         */
+        get: operations["service_health_metrics_api_metrics_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/objects": {
         parameters: {
             query?: never;
@@ -603,6 +752,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/objects/{object_id}/timeseries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Object Timeseries
+         * @description UX-N1: Freshness-/Volume-Zeitreihen je Objekt mit erwartetem Baseline-Band
+         *     (Mean ± 3σ aus `dq_baselines`) und Anomalie-Markern. Macht aus dem
+         *     Status-Board ein Monitoring-Tool.
+         */
+        get: operations["get_object_timeseries_api_objects__object_id__timeseries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/proposals": {
         parameters: {
             query?: never;
@@ -686,6 +857,27 @@ export interface paths {
         };
         /** List Runs */
         get: operations["list_runs_api_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Runs
+         * @description UX-N5: regression diff of two runs — per-check status transitions
+         *     (newly red vs. recovered). Server-authoritative so the FE only renders.
+         */
+        get: operations["compare_runs_api_runs_compare_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -800,6 +992,23 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActivityItem */
+        ActivityItem: {
+            /** Action */
+            action: string;
+            /** Actor */
+            actor: string;
+            /** At */
+            at: string;
+            /** Kind */
+            kind: string;
+            /** Product */
+            product: string;
+            /** Ref */
+            ref: string;
+            /** Summary */
+            summary: string;
+        };
         /** CheckDefOut */
         CheckDefOut: {
             /** Expect */
@@ -981,6 +1190,34 @@ export interface components {
              * @default 0.1.0
              */
             version: string;
+        };
+        /** DataLoadOut */
+        DataLoadOut: {
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Error Message */
+            error_message?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Load Type */
+            load_type: string;
+            /** Object Id */
+            object_id: string;
+            /**
+             * Raw
+             * @default {}
+             */
+            raw: {
+                [key: string]: unknown;
+            };
+            /** Run Id */
+            run_id?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Triggered By */
+            triggered_by?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1348,6 +1585,37 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_activity_api_activity_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     status_badge_api_badge__product__get: {
         parameters: {
             query?: {
@@ -1861,6 +2129,88 @@ export interface operations {
             };
         };
     };
+    version_diff_contract_api_contracts__product__version_diff_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    health_trend_api_coverage_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    status_heatmap_api_coverage_heatmap_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     coverage_summary_api_coverage_summary_get: {
         parameters: {
             query?: never;
@@ -1877,6 +2227,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_data_loads_api_datasphere_data_loads_get: {
+        parameters: {
+            query?: {
+                /** @description Datasphere space ID */
+                space?: string | null;
+                top?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataLoadOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_object_data_loads_api_datasphere_data_loads__object_id__get: {
+        parameters: {
+            query?: {
+                /** @description Datasphere space ID */
+                space?: string | null;
+                top?: number;
+            };
+            header?: never;
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataLoadOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1958,6 +2376,7 @@ export interface operations {
                 status?: string | null;
                 severity?: string | null;
                 limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -2157,6 +2576,26 @@ export interface operations {
             };
         };
     };
+    service_health_metrics_api_metrics_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     list_objects_api_objects_get: {
         parameters: {
             query?: {
@@ -2309,6 +2748,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunListItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_object_timeseries_api_objects__object_id__timeseries_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -2475,6 +2947,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunListItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_runs_api_runs_compare_get: {
+        parameters: {
+            query: {
+                /** @description Baseline run_id (earlier) */
+                base: string;
+                /** @description Comparison run_id (later) */
+                head: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
