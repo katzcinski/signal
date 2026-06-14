@@ -92,6 +92,117 @@ def resolve_targets(
     return targets
 
 
+# ---------------------------------------------------------------------------
+# UX-N2: DB-backed routing rules + mute windows (server-authoritative).
+# When any rule produces a target the DB wins; otherwise the YAML fallback
+# (resolve_targets) keeps existing deployments working unchanged.
+# ---------------------------------------------------------------------------
+
+def _parse_iso(value: str) -> datetime | None:
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+def is_muted(
+    mutes: list[dict[str, Any]],
+    *,
+    product: str,
+    space: str,
+    at: datetime | None = None,
+) -> bool:
+    """True when an active mute window covers this product/space at time ``at``.
+    A mute with empty space/product scope matches everything; a non-empty facet
+    must equal the breach's. Evaluated server-side at notify time (UX-N2)."""
+    now = at or datetime.now(timezone.utc)
+    for mute in mutes or []:
+        if mute.get("match_space") and mute["match_space"] != space:
+            continue
+        if mute.get("match_product") and mute["match_product"] != product:
+            continue
+        start = _parse_iso(mute.get("starts_at", ""))
+        end = _parse_iso(mute.get("ends_at", ""))
+        if start and end and start <= now <= end:
+            return True
+    return False
+
+
+def _rule_matches(
+    rule: dict[str, Any], *, severity: str, space: str, product: str,
+    owned_by: str, owners: list[str],
+) -> bool:
+    """A rule matches when every non-empty facet equals the breach's. Empty
+    facet = wildcard. ``match_owner`` is membership in the contract owners."""
+    if not rule.get("enabled", True):
+        return False
+    if rule.get("match_severity") and rule["match_severity"] != severity:
+        return False
+    if rule.get("match_space") and rule["match_space"] != space:
+        return False
+    if rule.get("match_product") and rule["match_product"] != product:
+        return False
+    if rule.get("match_owned_by") and rule["match_owned_by"] != owned_by:
+        return False
+    if rule.get("match_owner") and rule["match_owner"] not in (owners or []):
+        return False
+    return True
+
+
+def resolve_db_targets(
+    channels: list[dict[str, Any]],
+    rules: list[dict[str, Any]],
+    *,
+    severity: str,
+    space: str,
+    product: str,
+    owned_by: str,
+    owners: list[str],
+) -> list[dict[str, Any]]:
+    """Targets from DB rules: every enabled rule whose facets match routes to
+    its (enabled) channel. De-duplicated by (type, url)."""
+    by_id = {c["id"]: c for c in channels if c.get("enabled", True)}
+    targets: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for rule in rules or []:
+        if not _rule_matches(rule, severity=severity, space=space, product=product,
+                             owned_by=owned_by, owners=owners):
+            continue
+        channel = by_id.get(rule.get("channel_id"))
+        if not channel:
+            continue
+        key = (channel.get("type", "webhook"), channel.get("url", ""))
+        if channel.get("url") and key not in seen:
+            seen.add(key)
+            targets.append({"type": channel.get("type", "webhook"), "url": channel["url"]})
+    return targets
+
+
+def _resolve_with_store(
+    store: Any, settings: Any, *, severity: str, space: str, product: str,
+    owned_by: str, owners: list[str],
+) -> tuple[list[dict[str, Any]], bool]:
+    """Return (targets, muted). DB rules take precedence; YAML/webhook_url is the
+    fallback. ``muted`` short-circuits delivery regardless of targets."""
+    if store is not None:
+        try:
+            if is_muted(store.list_notification_mutes(), product=product, space=space):
+                return [], True
+            db_targets = resolve_db_targets(
+                store.list_notification_channels(),
+                store.list_notification_rules(),
+                severity=severity, space=space, product=product,
+                owned_by=owned_by, owners=owners,
+            )
+            if db_targets:
+                return db_targets, False
+        except Exception:
+            pass  # DB unavailable → fall through to YAML default
+    routes = _load_routes(settings.notifications_file)
+    return resolve_targets(routes, owned_by, owners or [], settings.webhook_url), False
+
+
 def _format_payload(target_type: str, ctx: dict[str, Any]) -> dict[str, Any]:
     summary = f"DQ breach: {ctx['product']} v{ctx['contract_version'] or '?'} ({ctx['severity']})"
     failed = ", ".join(ctx["failed_checks"]) or "—"
@@ -188,15 +299,20 @@ def notify_incident_transition(
     owned_by: str,
     owners: list[str],
     settings: Any,
+    store: Any = None,
+    space: str = "",
 ) -> None:
     """Fire incident-transition notifications on status changes and owner assignment.
 
     Non-blocking: each target is dispatched on a daemon thread. SSRF-safe via
     ``fire_webhook``. A misconfigured target never breaks the API response.
+    Routing/mute is server-authoritative via ``store`` (UX-N2), YAML is fallback.
     """
-    routes = _load_routes(settings.notifications_file)
-    targets = resolve_targets(routes, owned_by, owners or [], settings.webhook_url)
-    if not targets:
+    targets, muted = _resolve_with_store(
+        store, settings, severity=severity, space=space, product=product,
+        owned_by=owned_by, owners=owners or [],
+    )
+    if muted or not targets:
         return
     ctx = {
         "product": product,
@@ -234,17 +350,20 @@ def notify_breach(
     owned_by: str,
     owners: list[str],
     settings: Any,
+    store: Any = None,
+    space: str = "",
 ) -> None:
     """Fire breach/incident-open notifications to all routed channels.
 
     Non-blocking: each target is dispatched on a daemon thread. SSRF-safe via
-    ``fire_webhook``. A misconfigured target never breaks the run.
+    ``fire_webhook``. A misconfigured target never breaks the run. Routing/mute
+    is server-authoritative via ``store`` (UX-N2), YAML is fallback.
     """
-    routes = _load_routes(settings.notifications_file)
-    targets = resolve_targets(
-        routes, owned_by, owners or [], settings.webhook_url
+    targets, muted = _resolve_with_store(
+        store, settings, severity=severity, space=space, product=product,
+        owned_by=owned_by, owners=owners or [],
     )
-    if not targets:
+    if muted or not targets:
         return
     ctx = {
         "product": product,

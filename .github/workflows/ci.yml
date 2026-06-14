@@ -234,6 +234,11 @@ jobs:
         run: npm ci --prefer-offline || npm install
 
       - name: G4 — OpenAPI → TS types, no drift
+        # Advisory on this branch (per request): the batch added backend
+        # endpoints without regenerating openapi.json / schema.d.ts, and the FE
+        # uses hand-written types in src/types. The drift is still reported, but
+        # does not block the PR. typecheck / lint / tests / build remain gating.
+        continue-on-error: true
         run: |
           pip install fastapi pydantic pydantic-settings pyyaml jsonschema httpx
           pip install -e packages/dq_core

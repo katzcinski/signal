@@ -6,7 +6,7 @@ import { useRoleStore, type Role } from '@/store/role';
 // symbols (⬡ ⊞ ⟁ …) that rendered inconsistently and carried no label. Each is
 // a 16px stroke icon; semantics come from the adjacent aria-label/title, so the
 // collapsed rail stays navigable for keyboard and screen-reader users.
-type IconKey = 'my' | 'cockpit' | 'objects' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'library';
+type IconKey = 'my' | 'cockpit' | 'objects' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'library' | 'notifications';
 
 function Icon({ name }: { name: IconKey }) {
   const common = {
@@ -24,6 +24,7 @@ function Icon({ name }: { name: IconKey }) {
     case 'proposals':  return <svg {...common}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" /></svg>;
     case 'governance': return <svg {...common}><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6Z" /></svg>;
     case 'library':    return <svg {...common}><rect x="4" y="4" width="4" height="16" rx="1" /><rect x="10" y="4" width="4" height="16" rx="1" /><path d="M17 5l3 .8-3 14-2-.5" /></svg>;
+    case 'notifications': return <svg {...common}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>;
   }
 }
 
@@ -40,6 +41,7 @@ const BASE: NavItem[] = [
   { to: '/proposals',  label: t.nav.proposals,  icon: 'proposals' },
   { to: '/governance', label: t.nav.governance, icon: 'governance' },
   { to: '/library',    label: t.nav.library,    icon: 'library' },
+  { to: '/notifications', label: t.nav.notifications, icon: 'notifications' },
 ];
 
 // UX-N3 / UX-F1: nav order follows the role. Stewards/owners lead with "My work"

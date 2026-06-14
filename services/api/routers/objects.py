@@ -409,6 +409,11 @@ def trigger_run(
                     # channel(s) (Slack/Teams/webhook). SSRF-safe per target.
                     from ..notify import notify_breach
                     owned_by, owners = _active_contract_owner(object_id)
+                    space = next(
+                        (o.get("space", "") for o in inventory
+                         if (o.get("id") or o.get("technicalName") or o.get("name")) == object_id),
+                        "",
+                    )
                     notify_breach(
                         product=object_id,
                         compliance=new_compliance,
@@ -421,6 +426,8 @@ def trigger_run(
                         owned_by=owned_by,
                         owners=owners,
                         settings=settings,
+                        store=store,
+                        space=space,
                     )
                 elif new_compliance == "compliant" and previous and previous.get("compliance") == "breached":
                     store.auto_resolve_incidents(object_id, run_id)

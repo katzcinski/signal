@@ -732,6 +732,154 @@ class ResultStore:
         }
         return {"days": day_axis, "datasets": sorted(matrix), "matrix": matrix}
 
+    # ------------------------------------------------------------------
+    # UX-N2: notification routing (channels / rules / mute windows)
+    # ------------------------------------------------------------------
+
+    def list_notification_channels(self) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM dq_notification_channels ORDER BY id"
+            ).fetchall()
+            return [self._channel_row(r) for r in rows]
+
+    @staticmethod
+    def _channel_row(r: Any) -> dict[str, Any]:
+        d = dict(r)
+        d["enabled"] = bool(d.get("enabled", 1))
+        return d
+
+    def create_notification_channel(
+        self, *, name: str, type: str, url: str, enabled: bool = True, actor: str = ""
+    ) -> dict[str, Any]:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            cur = conn.execute(
+                """INSERT INTO dq_notification_channels(name, type, url, enabled, created_at, created_by)
+                   VALUES (?,?,?,?,?,?)""",
+                (name, type, url, int(enabled), now, actor),
+            )
+            cid = cur.lastrowid
+            row = conn.execute(
+                "SELECT * FROM dq_notification_channels WHERE id=?", (cid,)
+            ).fetchone()
+        return self._channel_row(row)
+
+    def update_notification_channel(
+        self, channel_id: int, *, name: str | None = None, type: str | None = None,
+        url: str | None = None, enabled: bool | None = None,
+    ) -> dict[str, Any] | None:
+        sets, params = [], []
+        for col, val in (("name", name), ("type", type), ("url", url)):
+            if val is not None:
+                sets.append(f"{col}=?")
+                params.append(val)
+        if enabled is not None:
+            sets.append("enabled=?")
+            params.append(int(enabled))
+        if not sets:
+            return self.get_notification_channel(channel_id)
+        params.append(channel_id)
+        with self._conn() as conn:
+            conn.execute(
+                f"UPDATE dq_notification_channels SET {', '.join(sets)} WHERE id=?",
+                params,
+            )
+            row = conn.execute(
+                "SELECT * FROM dq_notification_channels WHERE id=?", (channel_id,)
+            ).fetchone()
+        return self._channel_row(row) if row else None
+
+    def get_notification_channel(self, channel_id: int) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_notification_channels WHERE id=?", (channel_id,)
+            ).fetchone()
+        return self._channel_row(row) if row else None
+
+    def delete_notification_channel(self, channel_id: int) -> bool:
+        with self._conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM dq_notification_channels WHERE id=?", (channel_id,)
+            )
+            # FK ON DELETE CASCADE removes dependent rules.
+            return cur.rowcount > 0
+
+    def list_notification_rules(self) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM dq_notification_rules ORDER BY id"
+            ).fetchall()
+            return [self._rule_row(r) for r in rows]
+
+    @staticmethod
+    def _rule_row(r: Any) -> dict[str, Any]:
+        d = dict(r)
+        d["enabled"] = bool(d.get("enabled", 1))
+        return d
+
+    def create_notification_rule(
+        self, *, name: str, channel_id: int, match_severity: str = "",
+        match_space: str = "", match_product: str = "", match_owned_by: str = "",
+        match_owner: str = "", enabled: bool = True, actor: str = "",
+    ) -> dict[str, Any] | None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            if not conn.execute(
+                "SELECT 1 FROM dq_notification_channels WHERE id=?", (channel_id,)
+            ).fetchone():
+                return None
+            cur = conn.execute(
+                """INSERT INTO dq_notification_rules
+                   (name, channel_id, match_severity, match_space, match_product,
+                    match_owned_by, match_owner, enabled, created_at, created_by)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (name, channel_id, match_severity, match_space, match_product,
+                 match_owned_by, match_owner, int(enabled), now, actor),
+            )
+            row = conn.execute(
+                "SELECT * FROM dq_notification_rules WHERE id=?", (cur.lastrowid,)
+            ).fetchone()
+        return self._rule_row(row)
+
+    def delete_notification_rule(self, rule_id: int) -> bool:
+        with self._conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM dq_notification_rules WHERE id=?", (rule_id,)
+            )
+            return cur.rowcount > 0
+
+    def list_notification_mutes(self) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM dq_notification_mutes ORDER BY id"
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def create_notification_mute(
+        self, *, starts_at: str, ends_at: str, reason: str = "",
+        match_space: str = "", match_product: str = "", actor: str = "",
+    ) -> dict[str, Any]:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            cur = conn.execute(
+                """INSERT INTO dq_notification_mutes
+                   (reason, match_space, match_product, starts_at, ends_at, created_at, created_by)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (reason, match_space, match_product, starts_at, ends_at, now, actor),
+            )
+            row = conn.execute(
+                "SELECT * FROM dq_notification_mutes WHERE id=?", (cur.lastrowid,)
+            ).fetchone()
+        return dict(row)
+
+    def delete_notification_mute(self, mute_id: int) -> bool:
+        with self._conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM dq_notification_mutes WHERE id=?", (mute_id,)
+            )
+            return cur.rowcount > 0
+
     def get_compliance(self, product: str) -> dict[str, Any] | None:
         with self._conn() as conn:
             row = conn.execute(
