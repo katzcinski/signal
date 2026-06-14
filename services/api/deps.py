@@ -61,11 +61,23 @@ def get_lineage() -> dict[str, Any]:
 
 
 def get_environment(name: str) -> dict[str, Any] | None:
-    """[SCHEMA-MAP] Resolve environment name → {host, port, schema, ...} from ENVIRONMENTS_FILE."""
+    """[SCHEMA-MAP] Resolve environment name → {host, port, schema, ...} from ENVIRONMENTS_FILE.
+
+    Secret hardening (Tier-2): when an entry carries a 'password_ref'
+    (e.g. 'env:HANA_PW_PROD') instead of an inline 'password', resolve it via
+    the server-side secret resolver so plaintext credentials stay out of the
+    YAML. Inline 'password' still works for backward compatibility.
+    """
     import yaml
     settings = get_settings()
     path = Path(settings.environments_file)
     if not path.exists() or not name:
         return None
     envs = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    return envs.get(name)
+    env = envs.get(name)
+    if isinstance(env, dict) and not env.get("password") and env.get("password_ref"):
+        from .secrets import get_secret
+        resolved = get_secret(env["password_ref"])
+        if resolved is not None:
+            env = {**env, "password": resolved}
+    return env

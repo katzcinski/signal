@@ -56,3 +56,45 @@ def get_lineage_graph(
         "extract_age": extract_age_days,
         "stale": stale,
     }
+
+
+@router.get("/columns")
+def get_column_lineage(
+    object_id: str = Query(..., alias="object"),
+    column: str | None = Query(default=None),
+    lineage: dict = Depends(get_lineage),
+):
+    """Per-column upstream/downstream lineage for one object (O3).
+
+    Built from the columnEdges produced by the extract chain
+    (build_column_lineage). Returns the per-column index for the object, or a
+    single column's lineage when ``column`` is given.
+    """
+    from dq_core.lineage._column_lineage import (
+        ColumnEdge,
+        ColumnLineageResult,
+        build_column_indexes,
+    )
+
+    edges = [
+        ColumnEdge(
+            source_object=e.get("source", ""),
+            source_column=e.get("sourceColumn", ""),
+            target_object=e.get("target", ""),
+            target_column=e.get("targetColumn", ""),
+            edge_type=e.get("edgeType", "direct"),
+            expression=e.get("expression", ""),
+        )
+        for e in (lineage.get("columnEdges") or [])
+    ]
+    idx = build_column_indexes(
+        ColumnLineageResult(edges=edges, coverage={}, unmapped_objects=[])
+    )
+    obj_idx = idx.get(object_id, {})
+    if column is not None:
+        return {
+            "object": object_id,
+            "column": column,
+            "lineage": obj_idx.get(column, {"upstream": [], "downstream": []}),
+        }
+    return {"object": object_id, "columns": obj_idx}
