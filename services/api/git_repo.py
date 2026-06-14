@@ -1,7 +1,8 @@
 """Serialisiertes Git-Schreibmodell für Contracts (WS2-3 / R2-1).
 
-- Prozess-übergreifendes Datei-Lock (fcntl) — Thread-Locks reichen bei ≥2
-  uvicorn-Workern nicht (S-12).
+- Prozess-übergreifendes Datei-Lock — Thread-Locks reichen bei ≥2
+  uvicorn-Workern nicht (S-12). POSIX nutzt fcntl, Windows msvcrt; fehlt
+  beides, bleibt nur ein Best-Effort-No-Op (siehe `_process_lock`).
 - Commit committet AUSSCHLIESSLICH die Contract-Datei (`git commit --only`),
   nie fremd-gestagtes Material; Author = Principal, Committer via Env —
   keine Mutation der geteilten Repo-Config.
@@ -10,11 +11,25 @@
 """
 from __future__ import annotations
 
-import fcntl
 import hashlib
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
+
+# fcntl ist POSIX-only und existiert auf Windows nicht. Dort fällt das
+# Prozess-Lock auf msvcrt (byte-range lock) zurück. Fehlt auch das, gibt es
+# kein OS-Lock — die Serialisierung über Worker-Prozesse hinweg ist dann
+# nur Best-Effort (Thread-Locks im selben Prozess greifen weiterhin).
+try:
+    import fcntl
+except ModuleNotFoundError:  # Windows
+    fcntl = None
+    try:
+        import msvcrt
+    except ModuleNotFoundError:  # pragma: no cover — exotische Plattform
+        msvcrt = None
+else:
+    msvcrt = None
 
 
 class GitPushRejected(Exception):
@@ -31,11 +46,34 @@ class GitRepo:
     @contextmanager
     def _process_lock(self):
         with open(self._lock_path, "w") as lf:
-            fcntl.flock(lf, fcntl.LOCK_EX)
-            try:
+            if fcntl is not None:
+                # POSIX: blockierendes, exklusives flock (bisheriges Verhalten).
+                fcntl.flock(lf, fcntl.LOCK_EX)
+                try:
+                    yield
+                finally:
+                    fcntl.flock(lf, fcntl.LOCK_UN)
+            elif msvcrt is not None:
+                # Windows: blockierendes byte-range Lock auf 1 Byte. LK_LOCK
+                # gibt nach ~10 s auf — daher Retry-Schleife für echtes Blocken.
+                lf.write("\0")
+                lf.flush()
+                lf.seek(0)
+                while True:
+                    try:
+                        msvcrt.locking(lf.fileno(), msvcrt.LK_LOCK, 1)
+                        break
+                    except OSError:
+                        continue
+                try:
+                    yield
+                finally:
+                    lf.seek(0)
+                    msvcrt.locking(lf.fileno(), msvcrt.LK_UNLCK, 1)
+            else:  # pragma: no cover — kein OS-Lock verfügbar
+                # Best-Effort: nur der prozess-interne Thread-Schutz greift,
+                # Multi-Worker-Serialisierung ist hier nicht garantiert (S-12).
                 yield
-            finally:
-                fcntl.flock(lf, fcntl.LOCK_UN)
 
     def _path(self, product: str) -> Path:
         """Resolve a contract path, tolerating both .yaml and .yml."""

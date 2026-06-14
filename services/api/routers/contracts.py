@@ -12,6 +12,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
 from ..auth.provider import PrincipalDep, can_write_contract_data
 from ..deps import StoreDep, get_inventory
+from ..git_repo import GitPushRejected, GitRepo
 from ..schemas.contract_schemas import CompileOut, ContractIn, ContractOut
 from ..settings import get_settings
 
@@ -366,7 +367,6 @@ def approve_contract(
     # fehlendes Git-Repo (lokaler Modus mit externem CONTRACTS_DIR) ist legal.
     commit_error = None
     try:
-        from ..git_repo import GitPushRejected, GitRepo
         GitRepo(get_settings().contracts_dir, get_settings().git_remote).write_contract(
             product,
             yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
