@@ -342,7 +342,7 @@ export const t = {
   objectDetail: {
     back: '← Objekte',
     notFound: 'Objekt nicht gefunden',
-    tabs: { checks: 'Checks', runs: 'Läufe', contract: 'Contract', lineage: 'Lineage' } as Record<string, string>,
+    tabs: { checks: 'Checks', runs: 'Läufe', timeseries: 'Verlauf', contract: 'Contract', lineage: 'Lineage' } as Record<string, string>,
     run: 'Run starten',
     running: 'Läuft…',
     runDialogTitle: 'Run starten',
@@ -366,6 +366,22 @@ export const t = {
     noContractSuffix: 'einen anlegen.',
     lineageHint: 'Vollständige Lineage auf der',
     lineageLink: 'Lineage Map',
+  },
+  heatmap: {
+    title: 'Verlässlichkeit je Objekt',
+    daysShort: ' Tage',
+    noRun: 'Kein Lauf',
+  },
+  timeseries: {
+    rangeLabel: 'Zeitraum',
+    range: { '7d': '7 T', '30d': '30 T', '90d': '90 T', all: 'Alle' } as Record<string, string>,
+    metric: { freshness: 'Frische', volume: 'Volumen', observability: 'Observability' } as Record<string, string>,
+    band: 'Erwartetes Band',
+    mean: 'Mittel',
+    anomalies: 'Anomalien',
+    tooFew: 'Zu wenige Datenpunkte für einen Verlauf — mehr Läufe nötig.',
+    emptyTitle: 'Noch keine Observability-Zeitreihen',
+    emptyHint: 'Frische- und Volumen-Verläufe erscheinen, sobald Läufe mit Freshness-/Volume-Checks vorliegen.',
   },
   runDetail: {
     notFound: 'Run nicht gefunden',

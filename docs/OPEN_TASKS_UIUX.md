@@ -25,6 +25,17 @@ gesetzt und werden nicht neu verhandelt.
 > **UX-F7** (Breadcrumbs Objekt→Run, Governance Loading/Error, vereinheitlichte Relativzeit).
 > Bereits zuvor erledigt: UX-F2, UX-F3, UX-F5, UX-N4, UX-N8.
 
+> **Umgesetzt 2026-06-13 (Batch 2, Observability-Zeitreihen)** (Branch `claude/next-open-items`):
+> **UX-N1** (Freshness-/Volume-Zeitreihen je Objekt — neuer „Verlauf"-Tab im Objektdetail, gespeist
+> aus `GET /api/objects/{id}/timeseries`: Ist-Wert-Verlauf je Obs-Check mit erwartetem Baseline-Band
+> aus `dq_baselines`, Anomalie-Markern und Run-Verknüpfung), **UX-N11** (echte recharts-Charts mit
+> Threshold-/Anomalie-Band + globalem Zeitraum-Picker 7/30/90/Alle, der für alle Charts gilt),
+> **UX-N12** (Health-Gauge mit Trendrichtung im Cockpit statt statischem % — Richtung aus
+> `GET /api/coverage/health`, Lauf-über-Lauf), **UX-N10** (Status-Heatmap Objekt × Tag im
+> GitHub-Contribution-Stil aus `GET /api/coverage/heatmap`). Backend: `get_metric_series`,
+> `get_health_trend`, `get_status_heatmap` im Store (+ Protocol/HANA-Stub), Tests in
+> `tests/unit/test_metric_series.py` und `tests/api/test_timeseries_health.py`.
+
 ## Übersicht & Priorisierung
 
 | ID | Inhalt | Klasse | Tier | Aufwand (PT) | hängt ab von |

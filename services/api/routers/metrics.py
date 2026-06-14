@@ -70,6 +70,22 @@ def service_health_metrics():
     return get_metrics()
 
 
+@router.get("/coverage/health")
+def health_trend(store: StoreDep = ...):
+    """UX-N12: data-health trend for the cockpit gauge — share of datasets
+    passing their latest run vs. one run earlier."""
+    return store.get_health_trend()
+
+
+@router.get("/coverage/heatmap")
+def status_heatmap(
+    days: int = Query(default=30, ge=7, le=90),
+    store: StoreDep = ...,
+):
+    """UX-N10: object × day reliability heatmap (worst run status per day)."""
+    return store.get_status_heatmap(days=days)
+
+
 @router.get("/coverage/summary")
 def coverage_summary(
     store: StoreDep = ...,

@@ -29,6 +29,15 @@ class HanaStore:
     def get_check_history(self, dataset: str, check_name: str, limit: int = 50) -> list[dict[str, Any]]:
         raise NotImplementedError
 
+    def get_metric_series(self, dataset: str, limit: int = 200) -> dict[str, Any]:
+        raise NotImplementedError
+
+    def get_health_trend(self) -> dict[str, Any]:
+        raise NotImplementedError
+
+    def get_status_heatmap(self, days: int = 30) -> dict[str, Any]:
+        raise NotImplementedError
+
     def set_run_state(self, run_id: str, state: str, finished_at: str | None = None) -> None:
         raise NotImplementedError
 

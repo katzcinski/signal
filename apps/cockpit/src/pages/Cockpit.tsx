@@ -1,14 +1,16 @@
 import { useNavigate } from 'react-router-dom';
 import { Kpi } from '@/components/ui/Kpi';
+import { HealthGauge } from '@/components/ui/HealthGauge';
 import { KpiSkeleton } from '@/components/ui/Skeleton';
 import { Panel } from '@/components/ui/Panel';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { OnboardingPanel } from '@/components/OnboardingPanel';
+import { StatusHeatmap } from '@/components/StatusHeatmap';
 import { useObjects } from '@/api/objects';
 import { useIncidents } from '@/api/incidents';
-import { useCoverageSummary } from '@/api/coverage';
+import { useCoverageSummary, useHealthTrend } from '@/api/coverage';
 import { useContracts, useContractSla } from '@/api/contracts';
 import { t } from '@/i18n/de';
 import type { Incident, ObjectSummary } from '@/types';
@@ -58,6 +60,7 @@ export default function Cockpit() {
   const objectsQuery = useObjects();
   const incidentsQuery = useIncidents();
   const coverageQuery = useCoverageSummary();
+  const { data: healthTrend } = useHealthTrend();
   const contractsQuery = useContracts();
   const { data: objects = [] } = objectsQuery;
   const { data: incidents = [] } = incidentsQuery;
@@ -69,6 +72,11 @@ export default function Cockpit() {
   const totalObjects = objects.length;
   const healthyObjects = objects.filter(o => o.status === 'pass').length;
   const healthPct = totalObjects > 0 ? Math.round((healthyObjects / totalObjects) * 100) : 0;
+  // UX-N12: run-over-run direction for the gauge (data health latest vs. prior run).
+  const healthDelta = healthTrend && healthTrend.current_pct != null && healthTrend.previous_pct != null
+    ? healthTrend.current_pct - healthTrend.previous_pct
+    : null;
+  const healthPrevPct = healthDelta == null ? null : healthPct - healthDelta;
   const unvalidated = coverage?.unvalidated_30d ?? [];
 
   const openIncidents = incidents.filter(i => i.status !== 'resolved');
@@ -110,7 +118,13 @@ export default function Cockpit() {
       {objectsQuery.isLoading ? <KpiSkeleton count={4} /> : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <Kpi label={t.cockpit.kpiObjects} value={totalObjects} accent="var(--cont)" />
-        <Kpi label={t.cockpit.kpiHealth} value={`${healthPct}%`} accent="var(--qual)" />
+        <div style={{
+          background: 'var(--bg-1)', border: '1px solid var(--line)',
+          borderRadius: 8, borderLeft: '3px solid var(--qual)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 12px',
+        }}>
+          <HealthGauge pct={healthPct} prevPct={healthPrevPct} size={96} />
+        </div>
         <Kpi
           label={t.cockpit.kpiCoverage}
           value={`${coverage?.contract_coverage_pct ?? 0}%`}
@@ -139,6 +153,8 @@ export default function Cockpit() {
           empty={t.cockpit.noObjects}
         />
       </div>
+
+      <StatusHeatmap />
 
       <Panel title={t.cockpit.openIncidents}>
         {topIncidents.length === 0 ? (

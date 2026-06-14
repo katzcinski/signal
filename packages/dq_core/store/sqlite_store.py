@@ -561,6 +561,177 @@ class ResultStore:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    # Observability metric families for the time-series view (UX-N1).
+    # row_count → "volume"; freshness/replication-lag → "freshness".
+    _METRIC_FAMILY = {
+        "row_count": "volume",
+        "freshness": "freshness",
+        "sap_replication_lag": "freshness",
+    }
+
+    def get_metric_series(self, dataset: str, limit: int = 200) -> dict[str, Any]:
+        """UX-N1: per observability check, the chronological actual_value series
+        with its rolling baseline band (mean ± 3σ from dq_baselines) and
+        per-point anomaly flags. Source for the Freshness/Volume time-series.
+
+        A point is an anomaly when the check did not pass, or when its numeric
+        value falls outside the baseline band. Non-numeric actuals carry a null
+        value and are excluded from band/anomaly logic.
+        """
+        metric_types = tuple(self._METRIC_FAMILY)
+        placeholders = ",".join("?" for _ in metric_types)
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"""SELECT cr.check_name, cr.check_type, cr.actual_value, cr.passed,
+                           cr.state, r.started_at, r.run_id
+                    FROM dq_check_results cr
+                    JOIN dq_runs r ON cr.run_id = r.run_id
+                    WHERE r.dataset=? AND cr.check_type IN ({placeholders})
+                      AND r.run_state='finished'
+                    ORDER BY cr.check_name, r.started_at DESC""",
+                (dataset, *metric_types),
+            ).fetchall()
+            baseline_rows = conn.execute(
+                "SELECT * FROM dq_baselines WHERE dataset=?", (dataset,)
+            ).fetchall()
+
+        baselines = {b["metric"]: dict(b) for b in baseline_rows}
+
+        def _num(v: Any) -> float | None:
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return None
+
+        grouped: dict[str, list[Any]] = {}
+        order: list[str] = []
+        for r in rows:
+            name = r["check_name"]
+            if name not in grouped:
+                grouped[name] = []
+                order.append(name)
+            if len(grouped[name]) < limit:
+                grouped[name].append(r)
+
+        series: list[dict[str, Any]] = []
+        for name in order:
+            recs = list(reversed(grouped[name]))  # oldest → newest
+            check_type = recs[0]["check_type"]
+            metric = self._METRIC_FAMILY.get(check_type, "observability")
+
+            base = baselines.get(name)
+            band = None
+            if base and not base.get("warmup_remaining"):
+                mean = base.get("mean_v") or 0.0
+                std = base.get("stddev_v") or 0.0
+                band = {
+                    "mean": mean,
+                    "lower": mean - 3 * std,
+                    "upper": mean + 3 * std,
+                    "p01": base.get("p01"),
+                    "p99": base.get("p99"),
+                }
+
+            points = []
+            for rec in recs:
+                value = _num(rec["actual_value"])
+                passed = bool(rec["passed"])
+                out_of_band = (
+                    band is not None
+                    and value is not None
+                    and (value < band["lower"] or value > band["upper"])
+                )
+                points.append({
+                    "at": rec["started_at"],
+                    "value": value,
+                    "raw": rec["actual_value"],
+                    "passed": passed,
+                    "state": rec["state"],
+                    "run_id": rec["run_id"],
+                    "anomaly": bool((not passed) or out_of_band),
+                })
+
+            series.append({
+                "check_name": name,
+                "check_type": check_type,
+                "metric": metric,
+                "baseline": band,
+                "points": points,
+            })
+
+        return {"dataset": dataset, "series": series}
+
+    def get_health_trend(self) -> dict[str, Any]:
+        """UX-N12: data-health trend. Per dataset, compare the latest finished
+        run's status to the run before it; report the share of datasets passing
+        now vs. one run earlier (over datasets that have ≥2 finished runs, so the
+        comparison is apples-to-apples). Direction source for the health gauge."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT dataset, overall_status,
+                          ROW_NUMBER() OVER (
+                            PARTITION BY dataset ORDER BY started_at DESC, run_id DESC
+                          ) AS rn
+                   FROM dq_runs WHERE run_state='finished'"""
+            ).fetchall()
+
+        latest: dict[str, str] = {}
+        prior: dict[str, str] = {}
+        for r in rows:
+            if r["rn"] == 1:
+                latest[r["dataset"]] = r["overall_status"]
+            elif r["rn"] == 2:
+                prior[r["dataset"]] = r["overall_status"]
+
+        def pct(status_map: dict[str, str]) -> float | None:
+            if not status_map:
+                return None
+            passing = sum(1 for v in status_map.values() if v == "pass")
+            return round(100.0 * passing / len(status_map), 1)
+
+        # Trend over the common set (datasets with a prior run).
+        common = {d: latest[d] for d in prior if d in latest}
+        return {
+            "current_pct": pct(common),
+            "previous_pct": pct(prior),
+            "datasets": len(common),
+        }
+
+    # GitHub-contribution-style reliability score per day (higher = worse).
+    _STATUS_SCORE = {"pass": 0, "unknown": 0, "error": 1, "warn": 2, "fail": 3, "critical": 4}
+    _SCORE_STATUS = {0: "pass", 1: "error", 2: "warn", 3: "fail", 4: "critical"}
+
+    def get_status_heatmap(self, days: int = 30) -> dict[str, Any]:
+        """UX-N10: per-object × per-day worst run status over the last N days.
+        At-a-glance reliability — a day with no run is omitted (rendered neutral)."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT dataset, date(started_at) AS day, overall_status
+                   FROM dq_runs
+                   WHERE run_state='finished'
+                     AND date(started_at) >= date('now', ?)""",
+                (f"-{int(days)} days",),
+            ).fetchall()
+
+        worst: dict[str, dict[str, int]] = {}
+        for r in rows:
+            score = self._STATUS_SCORE.get(r["overall_status"], 0)
+            cell = worst.setdefault(r["dataset"], {})
+            day = r["day"]
+            if day not in cell or score > cell[day]:
+                cell[day] = score
+
+        # Dense day axis (today back to days-1), oldest → newest.
+        from datetime import date, timedelta
+        today = date.today()
+        day_axis = [(today - timedelta(days=i)).isoformat() for i in range(days - 1, -1, -1)]
+
+        matrix = {
+            ds: {day: self._SCORE_STATUS[s] for day, s in cells.items()}
+            for ds, cells in worst.items()
+        }
+        return {"days": day_axis, "datasets": sorted(matrix), "matrix": matrix}
+
     def get_compliance(self, product: str) -> dict[str, Any] | None:
         with self._conn() as conn:
             row = conn.execute(

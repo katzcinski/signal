@@ -159,6 +159,40 @@ export interface CheckHistoryPoint {
   run_id: string;
 }
 
+// ---- Metric time-series (GET /api/objects/{id}/timeseries) — UX-N1 ----
+export interface MetricPoint {
+  at: string;
+  value: number | null;
+  raw: string | null;
+  passed: boolean;
+  state: string;
+  run_id: string;
+  anomaly: boolean;
+}
+
+export interface MetricBaseline {
+  mean: number;
+  lower: number;
+  upper: number;
+  p01: number | null;
+  p99: number | null;
+}
+
+export type MetricFamily = 'freshness' | 'volume' | 'observability';
+
+export interface MetricSeries {
+  check_name: string;
+  check_type: string;
+  metric: MetricFamily;
+  baseline: MetricBaseline | null;
+  points: MetricPoint[];
+}
+
+export interface ObjectTimeseries {
+  dataset: string;
+  series: MetricSeries[];
+}
+
 // ---- Contracts: canonical guarantee schema (§1.5) ----
 export interface GuaranteeSchema {
   columns: string[];
@@ -272,6 +306,20 @@ export interface CoverageSummary {
   with_checks: number;
   contract_coverage_pct: number;
   unvalidated_30d: string[];
+}
+
+// ---- Health trend (GET /api/coverage/health) — UX-N12 ----
+export interface HealthTrend {
+  current_pct: number | null;
+  previous_pct: number | null;
+  datasets: number;
+}
+
+// ---- Status heatmap (GET /api/coverage/heatmap) — UX-N10 ----
+export interface StatusHeatmap {
+  days: string[];
+  datasets: string[];
+  matrix: Record<string, Record<string, string>>; // dataset → (day → status)
 }
 
 // ---- Lineage ----
