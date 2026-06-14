@@ -444,7 +444,7 @@ export default function LineageMap() {
   if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
 
   return (
-    <div style={{ maxWidth: '100%', margin: '0 auto' }}>
+    <div style={{ maxWidth: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.lineage.title}</h1>
         {data?.extract_age != null && (
@@ -502,8 +502,8 @@ export default function LineageMap() {
         </div>
       </div>
 
-      {/* Graph container */}
-      <div style={{ position: 'relative', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', height: 560 }}>
+      {/* Graph container — fills remaining viewport height, min 200px for tiny screens */}
+      <div style={{ position: 'relative', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', flex: 1, minHeight: 200 }}>
         <div ref={cyRef} style={{ width: '100%', height: '100%' }} />
         {selectedNode && (
           <SidePanel node={selectedNode} onClose={() => { setSelectedNode(null); setFocus(''); const cy = cyInstance.current; if (cy) applyRootCause(cy, ''); }} />

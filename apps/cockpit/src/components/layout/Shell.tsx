@@ -31,7 +31,7 @@ export function Shell({ children }: Props) {
   }, []);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-0)' }}>
+    <div className="shell-root" style={{ display: 'flex', overflow: 'hidden', background: 'var(--bg-0)' }}>
       <Sidebar collapsed={collapsed} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Topbar onToggleSidebar={() => setCollapsed(c => !c)} onOpenPalette={() => setPaletteOpen(true)} />
