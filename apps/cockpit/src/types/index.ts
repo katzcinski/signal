@@ -382,6 +382,51 @@ export interface StatusHeatmap {
   matrix: Record<string, Record<string, string>>; // dataset → (day → status)
 }
 
+// ---- Notification routing (UX-N2) ----
+export type ChannelType = 'slack' | 'teams' | 'webhook';
+
+export interface NotificationChannel {
+  id: number;
+  name: string;
+  type: ChannelType | string;
+  url: string;
+  enabled: boolean;
+  created_at: string;
+  created_by: string;
+}
+
+export interface NotificationRule {
+  id: number;
+  name: string;
+  channel_id: number;
+  match_severity: string;   // '' | critical | fail | warn
+  match_space: string;
+  match_product: string;
+  match_owned_by: string;   // '' | platform | product
+  match_owner: string;
+  enabled: boolean;
+  created_at: string;
+  created_by: string;
+}
+
+export interface NotificationMute {
+  id: number;
+  reason: string;
+  match_space: string;
+  match_product: string;
+  starts_at: string;
+  ends_at: string;
+  created_at: string;
+  created_by: string;
+}
+
+export interface NotificationConfig {
+  channels: NotificationChannel[];
+  rules: NotificationRule[];
+  mutes: NotificationMute[];
+  can_edit: boolean;
+}
+
 // ---- Lineage ----
 export interface LineageNode {
   id: string;

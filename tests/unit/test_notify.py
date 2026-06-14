@@ -126,6 +126,69 @@ def test_notify_breach_noop_without_targets(tmp_path, monkeypatch):
     assert calls == []
 
 
+# ---- UX-N2: DB-backed routing rules + mute windows ----
+
+def _store(tmp_path):
+    import sys
+    sys.path.insert(0, str(tmp_path))  # noop; ensure import side-effect-free
+    from dq_core.store.sqlite_store import ResultStore
+    return ResultStore(tmp_path / "n.db")
+
+
+def test_is_muted_scoping():
+    mutes = [{"match_space": "SALES", "match_product": "",
+              "starts_at": "2026-01-01T00:00:00+00:00", "ends_at": "2030-01-01T00:00:00+00:00"}]
+    assert notify.is_muted(mutes, product="DS", space="SALES") is True
+    assert notify.is_muted(mutes, product="DS", space="HR") is False
+
+
+def test_resolve_db_targets_matches_facets():
+    channels = [{"id": 1, "type": "slack", "url": "https://s/x", "enabled": True},
+                {"id": 2, "type": "webhook", "url": "https://w/y", "enabled": True}]
+    rules = [{"channel_id": 1, "enabled": True, "match_severity": "critical",
+              "match_space": "SALES", "match_product": "", "match_owned_by": "", "match_owner": ""}]
+    hit = notify.resolve_db_targets(channels, rules, severity="critical", space="SALES",
+                                    product="DS", owned_by="platform", owners=[])
+    assert hit == [{"type": "slack", "url": "https://s/x"}]
+    # facet mismatch → no target
+    miss = notify.resolve_db_targets(channels, rules, severity="warn", space="SALES",
+                                     product="DS", owned_by="platform", owners=[])
+    assert miss == []
+
+
+def test_notify_breach_uses_db_rules_over_yaml(tmp_path, monkeypatch):
+    calls = _capture(monkeypatch)
+    store = _store(tmp_path)
+    ch = store.create_notification_channel(name="ops", type="slack", url="https://db.slack/x")
+    store.create_notification_rule(name="crit-sales", channel_id=ch["id"],
+                                   match_severity="critical", match_space="SALES")
+    # YAML default also present — DB must win.
+    s = _settings(tmp_path, routes={"default": [{"type": "webhook", "url": "https://yaml/x"}]},
+                  allowlist=[r".*"])
+    notify.notify_breach(
+        product="DS_X", compliance="breached", run_id="r1", contract_version="1",
+        failed_checks=["c1"], severity="critical", title="T", incident_id=3,
+        owned_by="platform", owners=[], settings=s, store=store, space="SALES",
+    )
+    assert {c[0] for c in calls} == {"https://db.slack/x"}
+
+
+def test_notify_breach_suppressed_by_active_mute(tmp_path, monkeypatch):
+    calls = _capture(monkeypatch)
+    store = _store(tmp_path)
+    ch = store.create_notification_channel(name="ops", type="slack", url="https://db.slack/x")
+    store.create_notification_rule(name="all", channel_id=ch["id"], match_severity="critical")
+    store.create_notification_mute(starts_at="2026-01-01T00:00:00+00:00",
+                                   ends_at="2030-01-01T00:00:00+00:00", match_space="SALES")
+    s = _settings(tmp_path, routes={}, allowlist=[r".*"])
+    notify.notify_breach(
+        product="DS_X", compliance="breached", run_id="r1", contract_version="1",
+        failed_checks=["c1"], severity="critical", title="T", incident_id=3,
+        owned_by="platform", owners=[], settings=s, store=store, space="SALES",
+    )
+    assert calls == []  # mute window suppressed delivery
+
+
 # ---- notify_incident_transition ----
 
 def _transition_ctx():

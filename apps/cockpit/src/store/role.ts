@@ -58,6 +58,11 @@ export function canActOnIncidents(role: Role): boolean {
   return role !== 'viewer';
 }
 
+/** UX-N2: notification config is platform-wide → platform-owner (admin) only. */
+export function canManageNotifications(role: Role): boolean {
+  return role === 'admin';
+}
+
 /** Accepting a proposal writes a guarantee → same gate as the contract. */
 export function canAcceptProposal(role: Role, ownedBy?: string): boolean {
   return canWriteContract(role, ownedBy);

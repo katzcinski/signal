@@ -25,6 +25,15 @@ gesetzt und werden nicht neu verhandelt.
 > **UX-F7** (Breadcrumbs Objekt→Run, Governance Loading/Error, vereinheitlichte Relativzeit).
 > Bereits zuvor erledigt: UX-F2, UX-F3, UX-F5, UX-N4, UX-N8.
 
+> **Umgesetzt 2026-06-14 (Batch 3, Alerting)** (Branch `claude/next-open-items`): **UX-N2**
+> (Alerting & Notification-Routing) — neuer Screen `/notifications` mit Kanälen (Slack/Teams/Webhook),
+> Routing-Regeln (Treffer auf Severity/Space/Produkt/Owned-by/Owner → Kanal) und Mute-/Wartungs-
+> fenstern. Serverautoritativ: Migration 005 (`dq_notification_channels|rules|mutes`), Store-CRUD,
+> `/api/notifications/*` (Schreiben nur Platform-Owner/Admin), `notify.py` zieht Regeln+Mutes aus dem
+> Store (DB schlägt YAML-Fallback), Mute im aktiven Fenster unterdrückt Zustellung nachweislich.
+> Eskalation/Digest bewusst ausgeklammert (kein Scheduler im Repo). Tests:
+> `tests/api/test_notifications.py`, erweitertes `tests/unit/test_notify.py`.
+
 > **Umgesetzt 2026-06-13 (Batch 2, Observability-Zeitreihen)** (Branch `claude/next-open-items`):
 > **UX-N1** (Freshness-/Volume-Zeitreihen je Objekt — neuer „Verlauf"-Tab im Objektdetail, gespeist
 > aus `GET /api/objects/{id}/timeseries`: Ist-Wert-Verlauf je Obs-Check mit erwartetem Baseline-Band

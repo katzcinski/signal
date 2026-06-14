@@ -11,12 +11,20 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from ..auth.provider import PrincipalDep
-from ..deps import StoreDep
+from ..deps import StoreDep, get_inventory
 from ..settings import get_settings
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 
 VALID_INCIDENT_STATUS = {"open", "acknowledged", "investigating", "resolved"}
+
+
+def _product_space(product: str) -> str:
+    """Space of a product from inventory — drives space-scoped routing/mute (UX-N2)."""
+    for obj in get_inventory():
+        if (obj.get("id") or obj.get("technicalName") or obj.get("name")) == product:
+            return str(obj.get("space", ""))
+    return ""
 
 
 def _contract_owner(product: str) -> tuple[str, list[str]]:
@@ -156,6 +164,8 @@ def transition_incident(
                 owned_by=owned_by,
                 owners=owners,
                 settings=get_settings(),
+                store=store,
+                space=_product_space(incident["product"]),
             )
         except Exception:
             pass  # notifications are best-effort; never fail the API response

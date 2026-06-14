@@ -16,6 +16,7 @@ const RunDetail         = lazy(() => import('./pages/RunDetail'));
 const RunCompare        = lazy(() => import('./pages/RunCompare'));
 const Governance        = lazy(() => import('./pages/Governance'));
 const CheckLibrary      = lazy(() => import('./pages/CheckLibrary'));
+const Notifications     = lazy(() => import('./pages/Notifications'));
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -46,6 +47,7 @@ export default function App() {
               <Route path="/runs/:id"    element={<RunDetail />} />
               <Route path="/governance"  element={<Governance />} />
               <Route path="/library"    element={<CheckLibrary />} />
+              <Route path="/notifications" element={<Notifications />} />
             </Routes>
           </Suspense>
         </Shell>
