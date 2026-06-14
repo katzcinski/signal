@@ -94,6 +94,14 @@
   padding: 0;
 }
 
+/* dvh fallback: on mobile browsers 100vh includes the browser chrome,
+   so 100dvh (dynamic viewport height) gives the true visible area.
+   Two declarations let older browsers fall back to 100vh. */
+.shell-root {
+  height: 100vh;
+  height: 100dvh;
+}
+
 html, body, #root {
   height: 100%;
   background: var(--bg-0);
