@@ -21,23 +21,53 @@ def trigger_extract(
     inventory: list[dict] = Depends(get_inventory),
     lineage: dict = Depends(get_lineage),
 ):
-    """Reload inventory/lineage snapshots and report counts.
+    """Extract inventory/lineage from Datasphere (when configured) and report counts.
 
-    F5: In local mode, touch the snapshot files to reset the staleness clock
-    (production deployments would call the real analyzer chain here). Either
-    way, the response includes the new extraction timestamp so the frontend
-    can update the staleness indicator immediately.
+    Tier-2: when a live source (REST catalog or the @sap/datasphere-cli) is
+    configured, run the real extraction — pull objects with columns + CSN,
+    assemble the inventory, build the object + column lineage, and write the
+    Meridian-shaped snapshots. FastAPI runs this sync handler in a threadpool,
+    so the blocking I/O does not stall the event loop.
+
+    F5 fallback: with no connectivity configured (local mode), touch the
+    snapshot files to reset the mtime-based staleness clock. Either way the
+    response carries the new extraction timestamp for the staleness indicator.
     """
     import os
     from datetime import datetime, timezone
     from pathlib import Path
+    from ..extraction import run_extraction
     from ..settings import get_settings
 
     settings = get_settings()
 
-    # Touch both snapshot files to mark them as freshly extracted.
-    # This resets the mtime-based staleness clock. A production implementation
-    # would call the HANA analyzer chain and write new data here.
+    counts = {
+        "lineage_nodes": len(lineage.get("nodes", [])),
+        "lineage_edges": len(lineage.get("edges", [])),
+        "inventory_items": len(inventory),
+    }
+    source = "local"
+    try:
+        result = run_extraction(settings)
+    except Exception as exc:  # noqa: BLE001 — surface extraction failure, never 500 silently
+        return {
+            "environment": environment,
+            "extracted_at": None,
+            "source": "datasphere",
+            "error": f"Extraction failed: {exc}",
+            **counts,
+        }
+
+    if result is not None:
+        # Real extraction wrote fresh snapshots — report the new counts.
+        source = "datasphere"
+        counts = {
+            "lineage_nodes": result["lineage_nodes"],
+            "lineage_edges": result["lineage_edges"],
+            "inventory_items": result["inventory_items"],
+            "column_edges": result["column_edges"],
+        }
+
     now_ts = datetime.now(timezone.utc).timestamp()
     for fpath in (settings.inventory_file, settings.lineage_file):
         p = Path(fpath)
@@ -48,9 +78,8 @@ def trigger_extract(
     return {
         "environment": environment,
         "extracted_at": extracted_at,
-        "lineage_nodes": len(lineage.get("nodes", [])),
-        "lineage_edges": len(lineage.get("edges", [])),
-        "inventory_items": len(inventory),
+        "source": source,
+        **counts,
     }
 
 

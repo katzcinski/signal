@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     datasphere_client_secret: str = Field(default="")
     datasphere_token_url: str = Field(default="")
     datasphere_space_id: str = Field(default="")
+    # Tier-2 extraction: REST/OAuth catalog is the default source; set true to
+    # also use the local @sap/datasphere-cli when available (richest CSN).
+    datasphere_use_cli: bool = Field(default=False)
 
 
 _settings: Settings | None = None
