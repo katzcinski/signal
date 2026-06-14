@@ -114,7 +114,7 @@ export default function RunCompare() {
   } as const;
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="page-full">
       <Breadcrumbs items={[
         { label: t.breadcrumb.home, to: '/' },
         { label: t.breadcrumb.objects, to: '/objects' },

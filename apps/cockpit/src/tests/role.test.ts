@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canWriteContract, canActOnIncidents, canAcceptProposal, ROLE_META } from '@/store/role';
+import { canWriteContract, canActOnIncidents, canAcceptProposal, canProfileObject, ROLE_META } from '@/store/role';
 
 // FE permission mirror of auth/provider.py:Principal. The server stays
 // authoritative; these guard the affordances the UI offers per role.
@@ -41,6 +41,15 @@ describe('canAcceptProposal', () => {
     expect(canAcceptProposal('viewer')).toBe(false);
     expect(canAcceptProposal('steward', 'platform')).toBe(true);
     expect(canAcceptProposal('steward', 'product')).toBe(false);
+  });
+});
+
+describe('canProfileObject', () => {
+  it('requires steward role or higher', () => {
+    expect(canProfileObject('viewer')).toBe(false);
+    expect(canProfileObject('steward')).toBe(true);
+    expect(canProfileObject('owner')).toBe(true);
+    expect(canProfileObject('admin')).toBe(true);
   });
 });
 

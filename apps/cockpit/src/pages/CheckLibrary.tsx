@@ -74,7 +74,7 @@ export default function CheckLibrary() {
   });
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="page-full">
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.library.title}</h1>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>

@@ -1161,7 +1161,7 @@ export default function ContractWorkbench() {
   const contracts = contractsQuery.data ?? [];
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+    <div className="page-full">
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.workbench.title}</h1>
       {contractsQuery.isError && <ErrorBanner onRetry={() => contractsQuery.refetch()} />}
       <div style={{

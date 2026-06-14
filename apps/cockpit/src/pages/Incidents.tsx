@@ -331,7 +331,7 @@ export default function Incidents() {
   ];
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="page-full">
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.incidents.title}</h1>
 
       {/* Status tabs (URL-synced via ?status=) */}

@@ -35,7 +35,7 @@ export function Shell({ children }: Props) {
       <Sidebar collapsed={collapsed} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Topbar onToggleSidebar={() => setCollapsed(c => !c)} onOpenPalette={() => setPaletteOpen(true)} />
-        <main style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+        <main style={{ flex: 1, overflow: 'auto', padding: 'var(--page-pad)' }}>
           {children}
         </main>
       </div>

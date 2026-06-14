@@ -1,3 +1,5 @@
+import { createElement } from 'react';
+
 // Modern, consistent coverage-status icons (R6-8 / Carbon redundancy).
 // One SVG vocabulary shared by the lineage canvas nodes, the legend and the
 // side panel, so the same mark means the same thing everywhere. Emitted as a
@@ -55,4 +57,14 @@ function svgMarkup(flag: string, color: string, cut: string): string {
 export function coverageIconDataUri(flag: string, color?: string): string {
   const tk = tokens();
   return `data:image/svg+xml,${encodeURIComponent(svgMarkup(flag, color ?? coverageColor(flag), tk.cut))}`;
+}
+
+export function CoverageIcon({ flag, size = 16, label }: { flag: string; size?: number; label?: string }) {
+  return createElement('img', {
+    src: coverageIconDataUri(flag),
+    width: size,
+    height: size,
+    alt: label ?? '',
+    style: { display: 'block' },
+  });
 }
