@@ -14,9 +14,11 @@ import { RunTriggerDialog } from '@/components/RunTriggerDialog';
 import { BadgeEmbed } from '@/components/BadgeEmbed';
 import { MinedProposalsCallout } from '@/components/MinedProposalsCallout';
 import { ObservabilityTimeseries } from '@/components/ObservabilityTimeseries';
+import { ObjectProfilePanel } from '@/components/ObjectProfilePanel';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { useRoleStore, canProfileObject } from '@/store/role';
 import { t } from '@/i18n/de';
 import type { CheckResult, ContractOut, RunListItem } from '@/types';
 
@@ -329,6 +331,8 @@ export default function ObjectDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const role = useRoleStore(s => s.role);
 
   // All hooks run unconditionally — no early return may come before them.
   const { data: obj, isLoading, isError, refetch } = useObject(id);
@@ -341,6 +345,7 @@ export default function ObjectDetail() {
   const results: CheckResult[] = latestRunDetail?.results ?? [];
 
   const isRunning = latestRun?.run_state === 'running' || latestRunDetail?.run_state === 'running';
+  const canProfile = canProfileObject(role);
 
   // When the in-flight run completes, refresh object status + run list.
   const runState = latestRunDetail?.run_state;
@@ -354,7 +359,7 @@ export default function ObjectDetail() {
   }, [runState, id, qc]);
 
   if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
-  if (isError) return <div style={{ maxWidth: 1100, margin: '0 auto' }}><ErrorBanner onRetry={() => refetch()} /></div>;
+  if (isError) return <div className="page-full"><ErrorBanner onRetry={() => refetch()} /></div>;
   if (!obj) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.objectDetail.notFound}</div>;
 
   const TAB_STYLE = (tabKey: Tab) => ({
@@ -392,7 +397,7 @@ export default function ObjectDetail() {
   ];
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="page-full">
       <Breadcrumbs items={[
         { label: t.breadcrumb.home, to: '/' },
         { label: t.breadcrumb.objects, to: '/objects' },
@@ -409,6 +414,19 @@ export default function ObjectDetail() {
           <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{obj.space} · {obj.layer}</p>
         </div>
         <div style={{ flex: 1 }} />
+        <button
+          onClick={() => setProfileOpen(true)}
+          disabled={!canProfile}
+          title={canProfile ? undefined : 'Profiling requires steward role or higher.'}
+          style={{
+            background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)',
+            borderRadius: 5, padding: '7px 16px', fontSize: 13,
+            cursor: canProfile ? 'pointer' : 'not-allowed',
+            opacity: canProfile ? 1 : 0.45,
+          }}
+        >
+          Profiling
+        </button>
         <button
           onClick={() => setDialogOpen(true)}
           disabled={trigger.isPending || isRunning}
@@ -427,6 +445,10 @@ export default function ObjectDetail() {
           onClose={() => setDialogOpen(false)}
           onStart={body => trigger.mutate(body, { onSettled: () => setDialogOpen(false) })}
         />
+      )}
+
+      {profileOpen && (
+        <ObjectProfilePanel objectId={obj.id} onClose={() => setProfileOpen(false)} />
       )}
 
       <div style={{ borderBottom: '1px solid var(--line)', marginBottom: 20 }}>

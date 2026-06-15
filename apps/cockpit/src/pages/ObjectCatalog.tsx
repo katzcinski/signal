@@ -99,7 +99,7 @@ export default function ObjectCatalog() {
   ];
 
   if (isLoading) return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <div className="page-full">
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.objects.title}</h1>
       <TableSkeleton columns={9} />
     </div>
@@ -110,7 +110,7 @@ export default function ObjectCatalog() {
   const hasActiveFilter = !!(textFilter || familyFilter || statusFilter || spaceFilter);
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <div className="page-full">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.objects.title}</h1>
         <input

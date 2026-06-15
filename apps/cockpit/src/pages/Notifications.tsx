@@ -210,7 +210,7 @@ export default function Notifications() {
   const canEdit = data?.can_edit ?? false;
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="page-full">
       <div style={{ marginBottom: 'var(--s5)' }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>{t.notifications.title}</h1>
         <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 'var(--s1)' }}>{t.notifications.subtitle}</p>

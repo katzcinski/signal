@@ -65,7 +65,7 @@ export default function MyWork() {
   const isLoading = objectsQuery.isLoading || incidentsQuery.isLoading || proposalsQuery.isLoading;
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="page-full">
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>{t.myWork.title}</h1>
         <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>

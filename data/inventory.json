@@ -1,160 +1,1532 @@
 {
+  "meta": {
+    "schemaVersion": 6,
+    "sanitized": true,
+    "source": "sanitized-demo-sample",
+    "generatedBy": "codex"
+  },
+  "space": "SIGNAL_DEMO",
   "objects": [
     {
-      "id": "RAW_SALES",
-      "name": "RAW_SALES",
-      "display_name": "Raw Sales Data",
-      "space": "STAGING",
-      "schema": "STAGING",
-      "layer": "source",
+      "objectType": "local-tables",
+      "kind": "LocalTable",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_SRC_01",
+      "name": "DEMO_SRC_01",
+      "technicalName": "DEMO_SRC_01",
+      "display_name": "Demo Source Object 01",
+      "businessName": "Demo Source Object 01",
+      "space": "S_SP1",
+      "schema": "S_SP1",
+      "layer": "Source",
+      "layerCode": "S",
       "family": "observability",
+      "role": "source",
       "lifecycle": "active",
       "owned_by": "platform",
-      "owners": ["data-engineering"],
-      "description": "Landing zone for inbound sales transactions from SAP S/4HANA"
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for S_SP1 sample 1.",
+      "columns": [
+        {
+          "name": "SRC_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 01"
+        },
+        {
+          "name": "SRC_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 02"
+        },
+        {
+          "name": "SRC_COL_03",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 03"
+        },
+        {
+          "name": "SRC_COL_04",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 04"
+        },
+        {
+          "name": "SRC_COL_05",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 05"
+        },
+        {
+          "name": "SRC_COL_06",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 06"
+        },
+        {
+          "name": "SRC_COL_07",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 07"
+        },
+        {
+          "name": "SRC_COL_08",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 08"
+        },
+        {
+          "name": "SRC_COL_09",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 09"
+        },
+        {
+          "name": "SRC_COL_10",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 10"
+        },
+        {
+          "name": "SRC_COL_11",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 11"
+        },
+        {
+          "name": "SRC_COL_12",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 12"
+        }
+      ],
+      "columnCount": 12,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "RAW_CUSTOMERS",
-      "name": "RAW_CUSTOMERS",
-      "display_name": "Raw Customer Master",
-      "space": "STAGING",
-      "schema": "STAGING",
-      "layer": "source",
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_SRC_02",
+      "name": "DEMO_SRC_02",
+      "technicalName": "DEMO_SRC_02",
+      "display_name": "Demo Source Object 02",
+      "businessName": "Demo Source Object 02",
+      "space": "S_SP1",
+      "schema": "S_SP1",
+      "layer": "Source",
+      "layerCode": "S",
       "family": "observability",
+      "role": "source",
+      "lifecycle": "active",
+      "owned_by": "product",
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for S_SP1 sample 2.",
+      "columns": [
+        {
+          "name": "SRC_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 01"
+        },
+        {
+          "name": "SRC_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 02"
+        },
+        {
+          "name": "SRC_COL_03",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 03"
+        },
+        {
+          "name": "SRC_COL_04",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 04"
+        },
+        {
+          "name": "SRC_COL_05",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 05"
+        },
+        {
+          "name": "SRC_COL_06",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 06"
+        }
+      ],
+      "columnCount": 6,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
+    },
+    {
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_SRC_03",
+      "name": "DEMO_SRC_03",
+      "technicalName": "DEMO_SRC_03",
+      "display_name": "Demo Source Object 03",
+      "businessName": "Demo Source Object 03",
+      "space": "S_SP1",
+      "schema": "S_SP1",
+      "layer": "Source",
+      "layerCode": "S",
+      "family": "observability",
+      "role": "source",
       "lifecycle": "active",
       "owned_by": "platform",
-      "owners": ["data-engineering"],
-      "description": "Landing zone for customer master records"
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for S_SP1 sample 3.",
+      "columns": [
+        {
+          "name": "SRC_COL_01",
+          "type": "cds.Decimal",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 01"
+        },
+        {
+          "name": "SRC_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 02"
+        },
+        {
+          "name": "SRC_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 03"
+        },
+        {
+          "name": "SRC_COL_04",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 04"
+        },
+        {
+          "name": "SRC_COL_05",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 05"
+        },
+        {
+          "name": "SRC_COL_06",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 06"
+        }
+      ],
+      "columnCount": 6,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "RAW_PRODUCTS",
-      "name": "RAW_PRODUCTS",
-      "display_name": "Raw Product Master",
-      "space": "STAGING",
-      "schema": "STAGING",
-      "layer": "source",
+      "objectType": "local-tables",
+      "kind": "LocalTable",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_SRC_04",
+      "name": "DEMO_SRC_04",
+      "technicalName": "DEMO_SRC_04",
+      "display_name": "Demo Source Object 04",
+      "businessName": "Demo Source Object 04",
+      "space": "S_SP1",
+      "schema": "S_SP1",
+      "layer": "Source",
+      "layerCode": "S",
       "family": "observability",
+      "role": "source",
+      "lifecycle": "active",
+      "owned_by": "product",
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for S_SP1 sample 4.",
+      "columns": [
+        {
+          "name": "SRC_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 01"
+        },
+        {
+          "name": "SRC_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 02"
+        },
+        {
+          "name": "SRC_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 03"
+        },
+        {
+          "name": "SRC_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 04"
+        },
+        {
+          "name": "SRC_COL_05",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 05"
+        },
+        {
+          "name": "SRC_COL_06",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 06"
+        },
+        {
+          "name": "SRC_COL_07",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 07"
+        }
+      ],
+      "columnCount": 7,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
+    },
+    {
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_SRC_05",
+      "name": "DEMO_SRC_05",
+      "technicalName": "DEMO_SRC_05",
+      "display_name": "Demo Source Object 05",
+      "businessName": "Demo Source Object 05",
+      "space": "S_SP1",
+      "schema": "S_SP1",
+      "layer": "Source",
+      "layerCode": "S",
+      "family": "observability",
+      "role": "source",
       "lifecycle": "active",
       "owned_by": "platform",
-      "owners": ["data-engineering"],
-      "description": "Landing zone for product master data"
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for S_SP1 sample 5.",
+      "columns": [
+        {
+          "name": "SRC_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 01"
+        },
+        {
+          "name": "SRC_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 02"
+        },
+        {
+          "name": "SRC_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 03"
+        },
+        {
+          "name": "SRC_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 04"
+        },
+        {
+          "name": "SRC_COL_05",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 05"
+        },
+        {
+          "name": "SRC_COL_06",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 06"
+        },
+        {
+          "name": "SRC_COL_07",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 07"
+        }
+      ],
+      "columnCount": 7,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "RAW_ORDERS",
-      "name": "RAW_ORDERS",
-      "display_name": "Raw Order Headers",
-      "space": "STAGING",
-      "schema": "STAGING",
-      "layer": "source",
+      "objectType": "local-tables",
+      "kind": "LocalTable",
+      "semanticUsage": "Text",
+      "id": "DEMO_SRC_06",
+      "name": "DEMO_SRC_06",
+      "technicalName": "DEMO_SRC_06",
+      "display_name": "Demo Source Object 06",
+      "businessName": "Demo Source Object 06",
+      "space": "S_SP1",
+      "schema": "S_SP1",
+      "layer": "Source",
+      "layerCode": "S",
       "family": "observability",
+      "role": "source",
       "lifecycle": "active",
-      "owned_by": "platform",
-      "owners": ["data-engineering"],
-      "description": "Landing zone for order header records"
+      "owned_by": "product",
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for S_SP1 sample 6.",
+      "columns": [
+        {
+          "name": "SRC_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 01"
+        },
+        {
+          "name": "SRC_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Source Column 02"
+        },
+        {
+          "name": "SRC_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 03"
+        },
+        {
+          "name": "SRC_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 04"
+        },
+        {
+          "name": "SRC_COL_05",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Source Column 05"
+        }
+      ],
+      "columnCount": 5,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "DS_SALES_ORDERS",
-      "name": "DS_SALES_ORDERS",
-      "display_name": "Sales Orders Fact",
-      "space": "CORE_DWH",
-      "schema": "CORE_DWH",
-      "layer": "transformation",
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_HARM_01",
+      "name": "DEMO_HARM_01",
+      "technicalName": "DEMO_HARM_01",
+      "display_name": "Demo Harmonization Object 01",
+      "businessName": "Demo Harmonization Object 01",
+      "space": "H",
+      "schema": "H",
+      "layer": "Harmonization",
+      "layerCode": "H",
       "family": "quality",
+      "role": "transformation",
       "lifecycle": "active",
-      "owned_by": "product",
-      "owners": ["analytics-team"],
-      "description": "Harmonised sales order fact table with enriched dimensions"
+      "owned_by": "platform",
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for H sample 1.",
+      "columns": [
+        {
+          "name": "HARM_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 01"
+        },
+        {
+          "name": "HARM_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 02"
+        },
+        {
+          "name": "HARM_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 03"
+        },
+        {
+          "name": "HARM_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 04"
+        }
+      ],
+      "columnCount": 4,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "DS_CUSTOMERS",
-      "name": "DS_CUSTOMERS",
-      "display_name": "Customer Dimension",
-      "space": "CORE_DWH",
-      "schema": "CORE_DWH",
-      "layer": "transformation",
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_HARM_02",
+      "name": "DEMO_HARM_02",
+      "technicalName": "DEMO_HARM_02",
+      "display_name": "Demo Harmonization Object 02",
+      "businessName": "Demo Harmonization Object 02",
+      "space": "H",
+      "schema": "H",
+      "layer": "Harmonization",
+      "layerCode": "H",
       "family": "quality",
+      "role": "transformation",
       "lifecycle": "active",
       "owned_by": "product",
-      "owners": ["analytics-team"],
-      "description": "Cleansed and deduplicated customer master dimension"
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for H sample 2.",
+      "columns": [
+        {
+          "name": "HARM_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 01"
+        },
+        {
+          "name": "HARM_COL_02",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 02"
+        },
+        {
+          "name": "HARM_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 03"
+        },
+        {
+          "name": "HARM_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 04"
+        },
+        {
+          "name": "HARM_COL_05",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 05"
+        },
+        {
+          "name": "HARM_COL_06",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 06"
+        }
+      ],
+      "columnCount": 6,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "DS_PRODUCTS",
-      "name": "DS_PRODUCTS",
-      "display_name": "Product Dimension",
-      "space": "CORE_DWH",
-      "schema": "CORE_DWH",
-      "layer": "transformation",
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_HARM_03",
+      "name": "DEMO_HARM_03",
+      "technicalName": "DEMO_HARM_03",
+      "display_name": "Demo Harmonization Object 03",
+      "businessName": "Demo Harmonization Object 03",
+      "space": "H",
+      "schema": "H",
+      "layer": "Harmonization",
+      "layerCode": "H",
       "family": "quality",
+      "role": "transformation",
       "lifecycle": "active",
-      "owned_by": "product",
-      "owners": ["analytics-team"],
-      "description": "Product hierarchy with pricing and classification attributes"
+      "owned_by": "platform",
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for H sample 3.",
+      "columns": [
+        {
+          "name": "HARM_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 01"
+        },
+        {
+          "name": "HARM_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 02"
+        },
+        {
+          "name": "HARM_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 03"
+        },
+        {
+          "name": "HARM_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 04"
+        }
+      ],
+      "columnCount": 4,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "DWH_FINANCIALS",
-      "name": "DWH_FINANCIALS",
-      "display_name": "Financial Aggregates",
-      "space": "CORE_DWH",
-      "schema": "CORE_DWH",
-      "layer": "transformation",
-      "family": "contract",
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_HARM_04",
+      "name": "DEMO_HARM_04",
+      "technicalName": "DEMO_HARM_04",
+      "display_name": "Demo Harmonization Object 04",
+      "businessName": "Demo Harmonization Object 04",
+      "space": "H",
+      "schema": "H",
+      "layer": "Harmonization",
+      "layerCode": "H",
+      "family": "quality",
+      "role": "transformation",
       "lifecycle": "active",
       "owned_by": "product",
-      "owners": ["finance-team"],
-      "description": "Daily financial aggregations with cost-centre splits"
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for H sample 4.",
+      "columns": [
+        {
+          "name": "HARM_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 01"
+        },
+        {
+          "name": "HARM_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 02"
+        },
+        {
+          "name": "HARM_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 03"
+        }
+      ],
+      "columnCount": 3,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "DS_SALES_REPORT",
-      "name": "DS_SALES_REPORT",
-      "display_name": "Sales Report View",
-      "space": "ANALYTICS",
-      "schema": "ANALYTICS",
-      "layer": "consumption",
-      "family": "contract",
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_HARM_05",
+      "name": "DEMO_HARM_05",
+      "technicalName": "DEMO_HARM_05",
+      "display_name": "Demo Harmonization Object 05",
+      "businessName": "Demo Harmonization Object 05",
+      "space": "H",
+      "schema": "H",
+      "layer": "Harmonization",
+      "layerCode": "H",
+      "family": "quality",
+      "role": "transformation",
+      "lifecycle": "active",
+      "owned_by": "platform",
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for H sample 5.",
+      "columns": [
+        {
+          "name": "HARM_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 01"
+        },
+        {
+          "name": "HARM_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 02"
+        },
+        {
+          "name": "HARM_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 03"
+        },
+        {
+          "name": "HARM_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 04"
+        },
+        {
+          "name": "HARM_COL_05",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 05"
+        }
+      ],
+      "columnCount": 5,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
+    },
+    {
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "RelationalDataset",
+      "id": "DEMO_HARM_06",
+      "name": "DEMO_HARM_06",
+      "technicalName": "DEMO_HARM_06",
+      "display_name": "Demo Harmonization Object 06",
+      "businessName": "Demo Harmonization Object 06",
+      "space": "H",
+      "schema": "H",
+      "layer": "Harmonization",
+      "layerCode": "H",
+      "family": "quality",
+      "role": "transformation",
       "lifecycle": "active",
       "owned_by": "product",
-      "owners": ["business-intelligence"],
-      "description": "Consumer-facing sales report view for SAP Analytics Cloud"
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for H sample 6.",
+      "columns": [
+        {
+          "name": "HARM_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 01"
+        },
+        {
+          "name": "HARM_COL_02",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 02"
+        },
+        {
+          "name": "HARM_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 03"
+        },
+        {
+          "name": "HARM_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 04"
+        },
+        {
+          "name": "HARM_COL_05",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 05"
+        },
+        {
+          "name": "HARM_COL_06",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 06"
+        },
+        {
+          "name": "HARM_COL_07",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 07"
+        },
+        {
+          "name": "HARM_COL_08",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Harmonization Column 08"
+        }
+      ],
+      "columnCount": 8,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "DS_CUSTOMER_SEGMENTS",
-      "name": "DS_CUSTOMER_SEGMENTS",
-      "display_name": "Customer Segments",
-      "space": "ANALYTICS",
-      "schema": "ANALYTICS",
-      "layer": "consumption",
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "Dimension",
+      "id": "DEMO_BUS_01",
+      "name": "DEMO_BUS_01",
+      "technicalName": "DEMO_BUS_01",
+      "display_name": "Demo Business Object 01",
+      "businessName": "Demo Business Object 01",
+      "space": "B",
+      "schema": "B",
+      "layer": "Business",
+      "layerCode": "B",
       "family": "contract",
-      "lifecycle": "draft",
-      "owned_by": "product",
-      "owners": ["business-intelligence"],
-      "description": "RFM-based customer segmentation output"
+      "role": "consumption",
+      "lifecycle": "active",
+      "owned_by": "platform",
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for B sample 1.",
+      "columns": [
+        {
+          "name": "BUS_COL_01",
+          "type": "cds.Date",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Business Column 01"
+        },
+        {
+          "name": "BUS_COL_02",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 02"
+        },
+        {
+          "name": "BUS_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 03"
+        },
+        {
+          "name": "BUS_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 04"
+        },
+        {
+          "name": "BUS_COL_05",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 05"
+        },
+        {
+          "name": "BUS_COL_06",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 06"
+        },
+        {
+          "name": "BUS_COL_07",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 07"
+        },
+        {
+          "name": "BUS_COL_08",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 08"
+        },
+        {
+          "name": "BUS_COL_09",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 09"
+        },
+        {
+          "name": "BUS_COL_10",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 10"
+        },
+        {
+          "name": "BUS_COL_11",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 11"
+        },
+        {
+          "name": "BUS_COL_12",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 12"
+        }
+      ],
+      "columnCount": 12,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "DS_REVENUE_SUMMARY",
-      "name": "DS_REVENUE_SUMMARY",
-      "display_name": "Revenue Summary",
-      "space": "ANALYTICS",
-      "schema": "ANALYTICS",
-      "layer": "consumption",
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "Fact",
+      "id": "DEMO_BUS_02",
+      "name": "DEMO_BUS_02",
+      "technicalName": "DEMO_BUS_02",
+      "display_name": "Demo Business Object 02",
+      "businessName": "Demo Business Object 02",
+      "space": "B",
+      "schema": "B",
+      "layer": "Business",
+      "layerCode": "B",
       "family": "contract",
+      "role": "consumption",
       "lifecycle": "active",
       "owned_by": "product",
-      "owners": ["finance-team"],
-      "description": "Monthly revenue summary with YoY and MoM deltas"
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for B sample 2.",
+      "columns": [
+        {
+          "name": "BUS_COL_01",
+          "type": "cds.Date",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Business Column 01"
+        },
+        {
+          "name": "BUS_COL_02",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Business Column 02"
+        },
+        {
+          "name": "BUS_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 03"
+        },
+        {
+          "name": "BUS_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 04"
+        },
+        {
+          "name": "BUS_COL_05",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 05"
+        },
+        {
+          "name": "BUS_COL_06",
+          "type": "cds.Decimal",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 06"
+        },
+        {
+          "name": "BUS_COL_07",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 07"
+        },
+        {
+          "name": "BUS_COL_08",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 08"
+        },
+        {
+          "name": "BUS_COL_09",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 09"
+        },
+        {
+          "name": "BUS_COL_10",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 10"
+        },
+        {
+          "name": "BUS_COL_11",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 11"
+        }
+      ],
+      "columnCount": 11,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     },
     {
-      "id": "DS_KPI_DASHBOARD",
-      "name": "DS_KPI_DASHBOARD",
-      "display_name": "KPI Dashboard Feed",
-      "space": "ANALYTICS",
-      "schema": "ANALYTICS",
-      "layer": "consumption",
+      "objectType": "local-tables",
+      "kind": "LocalTable",
+      "semanticUsage": "Text",
+      "id": "DEMO_BUS_03",
+      "name": "DEMO_BUS_03",
+      "technicalName": "DEMO_BUS_03",
+      "display_name": "Demo Business Object 03",
+      "businessName": "Demo Business Object 03",
+      "space": "B",
+      "schema": "B",
+      "layer": "Business",
+      "layerCode": "B",
       "family": "contract",
+      "role": "consumption",
+      "lifecycle": "active",
+      "owned_by": "platform",
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for B sample 3.",
+      "columns": [
+        {
+          "name": "BUS_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Business Column 01"
+        },
+        {
+          "name": "BUS_COL_02",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 02"
+        },
+        {
+          "name": "BUS_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 03"
+        }
+      ],
+      "columnCount": 3,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
+    },
+    {
+      "objectType": "local-tables",
+      "kind": "LocalTable",
+      "semanticUsage": "Text",
+      "id": "DEMO_BUS_04",
+      "name": "DEMO_BUS_04",
+      "technicalName": "DEMO_BUS_04",
+      "display_name": "Demo Business Object 04",
+      "businessName": "Demo Business Object 04",
+      "space": "B",
+      "schema": "B",
+      "layer": "Business",
+      "layerCode": "B",
+      "family": "contract",
+      "role": "consumption",
       "lifecycle": "active",
       "owned_by": "product",
-      "owners": ["business-intelligence", "finance-team"],
-      "description": "Executive KPI feed consumed by the global dashboard"
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for B sample 4.",
+      "columns": [
+        {
+          "name": "BUS_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Business Column 01"
+        },
+        {
+          "name": "BUS_COL_02",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 02"
+        },
+        {
+          "name": "BUS_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 03"
+        }
+      ],
+      "columnCount": 3,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
+    },
+    {
+      "objectType": "local-tables",
+      "kind": "LocalTable",
+      "semanticUsage": "Text",
+      "id": "DEMO_BUS_05",
+      "name": "DEMO_BUS_05",
+      "technicalName": "DEMO_BUS_05",
+      "display_name": "Demo Business Object 05",
+      "businessName": "Demo Business Object 05",
+      "space": "B",
+      "schema": "B",
+      "layer": "Business",
+      "layerCode": "B",
+      "family": "contract",
+      "role": "consumption",
+      "lifecycle": "active",
+      "owned_by": "platform",
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for B sample 5.",
+      "columns": [
+        {
+          "name": "BUS_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Business Column 01"
+        },
+        {
+          "name": "BUS_COL_02",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 02"
+        },
+        {
+          "name": "BUS_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 03"
+        }
+      ],
+      "columnCount": 3,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
+    },
+    {
+      "objectType": "views",
+      "kind": "View",
+      "semanticUsage": "Dimension",
+      "id": "DEMO_BUS_06",
+      "name": "DEMO_BUS_06",
+      "technicalName": "DEMO_BUS_06",
+      "display_name": "Demo Business Object 06",
+      "businessName": "Demo Business Object 06",
+      "space": "B",
+      "schema": "B",
+      "layer": "Business",
+      "layerCode": "B",
+      "family": "contract",
+      "role": "consumption",
+      "lifecycle": "active",
+      "owned_by": "product",
+      "owners": [
+        "demo-data-team"
+      ],
+      "status": "Deployed",
+      "description": "Sanitized demo object for B sample 6.",
+      "columns": [
+        {
+          "name": "BUS_COL_01",
+          "type": "cds.String",
+          "key": "True",
+          "nullable": "",
+          "businessName": "Demo Business Column 01"
+        },
+        {
+          "name": "BUS_COL_02",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 02"
+        },
+        {
+          "name": "BUS_COL_03",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 03"
+        },
+        {
+          "name": "BUS_COL_04",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 04"
+        },
+        {
+          "name": "BUS_COL_05",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 05"
+        },
+        {
+          "name": "BUS_COL_06",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 06"
+        },
+        {
+          "name": "BUS_COL_07",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 07"
+        },
+        {
+          "name": "BUS_COL_08",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 08"
+        },
+        {
+          "name": "BUS_COL_09",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 09"
+        },
+        {
+          "name": "BUS_COL_10",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 10"
+        },
+        {
+          "name": "BUS_COL_11",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 11"
+        },
+        {
+          "name": "BUS_COL_12",
+          "type": "cds.String",
+          "key": "",
+          "nullable": "",
+          "businessName": "Demo Business Column 12"
+        }
+      ],
+      "columnCount": 12,
+      "sqlFound": false,
+      "sqlPath": "",
+      "sql": "",
+      "sqlReconstruction": {
+        "available": false,
+        "status": "sanitized",
+        "sql": "",
+        "warnings": [],
+        "source": "sanitized-demo"
+      },
+      "sqlReconstructionAvailable": false,
+      "sqlReconstructionStatus": "sanitized",
+      "sqlReconstructionWarningCount": 0
     }
   ]
 }

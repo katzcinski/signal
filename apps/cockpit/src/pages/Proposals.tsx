@@ -146,7 +146,7 @@ export default function Proposals() {
   if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="page-full">
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.proposals.title}</h1>
       {!canAcceptProposal(role) && <ReadOnlyBanner />}
       {isError && <ErrorBanner onRetry={() => refetch()} />}

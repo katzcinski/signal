@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
   ObjectSummary, RunListItem, CheckHistoryPoint, EnvironmentsResponse,
+  ObjectProfileResult,
   ObjectTimeseries,
 } from '@/types';
 
@@ -68,6 +69,17 @@ export const useEnvironments = () =>
     queryKey: ['environments'],
     queryFn: () => api.get('/environments').then(r => r.data),
     staleTime: 5 * 60_000,
+  });
+
+export interface ObjectProfileRequest {
+  environment?: string;
+  include_composite?: boolean;
+}
+
+export const useObjectProfile = (id: string) =>
+  useMutation<ObjectProfileResult, Error, ObjectProfileRequest>({
+    mutationFn: (body: ObjectProfileRequest) =>
+      api.post(`/objects/${id}/profile`, body).then(r => r.data),
   });
 
 // Analyzer chain: refresh inventory/lineage (onboarding step 1).

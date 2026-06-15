@@ -22,7 +22,7 @@ export default function RunDetail() {
   const navigate = useNavigate();
 
   if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
-  if (isError) return <div style={{ maxWidth: 1100, margin: '0 auto' }}><ErrorBanner onRetry={() => refetch()} /></div>;
+  if (isError) return <div className="page-full"><ErrorBanner onRetry={() => refetch()} /></div>;
   if (!run) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.runDetail.notFound}</div>;
 
   const durationMs = run.started_at && run.finished_at
@@ -53,7 +53,7 @@ export default function RunDetail() {
   };
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="page-full">
       <Breadcrumbs items={[
         { label: t.breadcrumb.home, to: '/' },
         { label: t.breadcrumb.objects, to: '/objects' },

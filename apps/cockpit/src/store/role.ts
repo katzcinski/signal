@@ -67,3 +67,8 @@ export function canManageNotifications(role: Role): boolean {
 export function canAcceptProposal(role: Role, ownedBy?: string): boolean {
   return canWriteContract(role, ownedBy);
 }
+
+/** Profiling hits live HANA and requires steward role or higher. */
+export function canProfileObject(role: Role): boolean {
+  return role !== 'viewer';
+}

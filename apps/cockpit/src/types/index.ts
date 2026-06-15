@@ -428,12 +428,24 @@ export interface NotificationConfig {
 }
 
 // ---- Lineage ----
+export interface LineageColumn {
+  name?: string;
+  label?: string;
+  data_type?: string;
+  type?: string;
+  [key: string]: unknown;
+}
+
 export interface LineageNode {
   id: string;
-  label: string;
-  layer: number;
-  family: Family;
-  space: string;
+  label?: string;
+  layer: string;
+  layerCode?: string;
+  role?: string;
+  confidence?: number;
+  columns?: LineageColumn[];
+  family?: Family | string;
+  space?: string;
   // Coverage annotation fields (from /api/lineage)
   coverage_flag?: '●' | '◐' | '▲' | '○';
   dq_status?: string;
@@ -445,7 +457,10 @@ export interface LineageEdge {
   id: string;
   source: string;
   target: string;
-  type: string;
+  type?: string;
+  edgeType?: string;
+  confidence?: number;
+  expression?: string;
 }
 
 export interface LineageGraph {
@@ -454,6 +469,135 @@ export interface LineageGraph {
   extract_age?: number | null;
   extracted_at?: string | null;
   stale?: boolean;
+}
+
+export type ColumnEdgeType = 'direct' | 'computed' | 'passthrough' | string;
+
+export interface ColumnLineageStep {
+  object: string;
+  column: string;
+  edgeType: ColumnEdgeType;
+  expression?: string;
+}
+
+export interface ColumnLineageEntry {
+  upstream: ColumnLineageStep[];
+  downstream: ColumnLineageStep[];
+}
+
+export interface ColumnLineageObjectResponse {
+  object: string;
+  columns: Record<string, ColumnLineageEntry>;
+}
+
+export interface ColumnLineageColumnResponse {
+  object: string;
+  column: string;
+  lineage: ColumnLineageEntry;
+}
+
+export type ColumnLineageResponse = ColumnLineageObjectResponse | ColumnLineageColumnResponse;
+
+// ---- Object profiling (POST /api/objects/{id}/profile) ----
+export interface ObjectProfileColumn {
+  column: string;
+  data_type: string;
+  total: number;
+  nulls: number;
+  null_pct: number;
+  distinct: number;
+  uniqueness_pct: number;
+  pk_candidate: boolean;
+  text_like?: boolean;
+  numeric_like?: boolean;
+  decimal_like?: boolean;
+  empty_count?: number | null;
+  empty_pct?: number | null;
+  min?: number | string | null;
+  max?: number | string | null;
+  avg?: number | string | null;
+  median?: number | string | null;
+}
+
+export interface ProfileSingleCandidate {
+  column: string;
+  data_type?: string;
+  exact?: boolean;
+  nulls?: number;
+  null_pct?: number;
+  empty_count?: number | null;
+  empty_pct?: number | null;
+  distinct?: number;
+  uniqueness_pct?: number;
+  rank_reason?: string;
+  technical_score?: number;
+  business_score?: number;
+  final_score?: number;
+  reasons?: string[];
+}
+
+export interface ProfileCompositeCandidate {
+  columns: string[];
+  width?: number;
+  exact?: boolean;
+  distinct?: number;
+  uniqueness_pct?: number;
+  rank_reason?: string;
+  technical_score?: number;
+  business_score?: number;
+  final_score?: number;
+  reasons?: string[];
+}
+
+export interface ProfileSearchMeta {
+  max_width?: number;
+  eligible_columns?: number;
+  eligible_column_names?: string[];
+  full_search_skipped?: boolean;
+  skip_reason?: string;
+  heuristic_combo_count?: number;
+}
+
+export interface ProfileKeyCandidates {
+  single?: string[];
+  composite?: string[][];
+  ranked_single?: ProfileSingleCandidate[];
+  ranked_composite?: ProfileCompositeCandidate[];
+  search_meta?: ProfileSearchMeta;
+}
+
+export interface ProfileScores {
+  overall_key_confidence?: number;
+  uniqueness?: number;
+  completeness?: number;
+  business_fit?: number;
+  compound_viability?: number;
+  weights?: Record<string, number>;
+}
+
+export interface ProfileIssue {
+  column: string;
+  type: string;
+  detail: string;
+}
+
+export interface ProfileDerivedStats {
+  empty_string_columns?: { column: string; empty_count: number; empty_pct: number }[];
+  numeric_stats?: { column: string; min?: unknown; max?: unknown; avg?: unknown; median?: unknown }[];
+}
+
+export interface ObjectProfileResult {
+  schema: string;
+  table: string;
+  view?: string;
+  row_count: number;
+  column_count: number;
+  columns: ObjectProfileColumn[];
+  pk_candidates: ProfileKeyCandidates;
+  profiling?: ProfileDerivedStats;
+  issues?: ProfileIssue[];
+  scores?: ProfileScores;
+  heuristics?: Record<string, unknown>;
 }
 
 // ---- Incidents: persistent lifecycle objects ----
