@@ -36,22 +36,7 @@ Signal verwandelt **semantische Garantien** über Datasphere-Objekte in **determ
 
 ## 2 — Architektur
 
-```
-┌─────────────────────────────┐      ┌──────────────────────────────┐
-│  apps/cockpit (React 18/TS)  │ ───▶ │  services/api (FastAPI)      │
-│  Status · Coverage · Workbench│  HTTP │  Router · Auth · SSE · Git   │
-└─────────────────────────────┘      └───────────────┬──────────────┘
-                                                      │ importiert
-                                       ┌──────────────▼──────────────┐
-                                       │  packages/dq_core (frameworkfrei)│
-                                       │  engine · contract · store · obs │
-                                       └───┬──────────────┬───────────┬──┘
-                                           │              │           │
-                            ┌──────────────▼──┐  ┌────────▼──────┐  ┌─▼────────────┐
-                            │ Git (Contracts +│  │ Result-Store  │  │ HANA / Datasphere│
-                            │ kompilierte YAML)│  │ SQLite/HANA   │  │  (nur lesend)    │
-                            └─────────────────┘  └───────────────┘  └──────────────┘
-```
+![Signal — Architekturdiagramm](assets/architektur.svg)
 
 **Drei getrennte Persistenzorte (HANDOVER §0):**
 

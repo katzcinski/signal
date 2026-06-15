@@ -6,6 +6,8 @@ Aus semantischen Garantien (Schema, Schlüssel, Freshness, Volumen, Vollständig
 
 > **Kein SQL in Contracts.** Garantien sind rein semantisch; der Server validiert verbindlich (Gate G1). Rohzeilen verlassen HANA nie ohne explizite Freigabe (PII-Gate).
 
+![Signal — Architekturdiagramm](docs/assets/architektur.svg)
+
 ---
 
 ## Auf einen Blick
