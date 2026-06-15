@@ -39,6 +39,23 @@ export const usePutContract = (id: string) => {
   });
 };
 
+// Lite-Modus: save → certify (active) → compile in one server round-trip, so
+// guarantees light up the cockpit (status, compliance, coverage) without the
+// full-mode version/approval ceremony.
+export const useCertifyContract = (id: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ContractPutBody) => api.post(`/contracts/${id}/certify`, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contracts', id] });
+      qc.invalidateQueries({ queryKey: ['contracts'] });
+      qc.invalidateQueries({ queryKey: ['objects'] });
+      toast.success(t.toast.contractCertified);
+    },
+    onError: () => toast.error(t.toast.contractSaveError),
+  });
+};
+
 export const useSeedContract = () => {
   const qc = useQueryClient();
   return useMutation({
