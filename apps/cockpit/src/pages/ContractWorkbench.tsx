@@ -4,7 +4,7 @@ import type { AxiosError } from 'axios';
 import {
   useContracts, useContract, usePutContract, useApproveContract, useDeprecateContract,
   useCompileContractDryRun, useDryRunChecks, useRevertChecks, useExportBdc,
-  useSeedContract, useDiffContract, useContractSla, useInventory,
+  useSeedContract, useDiffContract, useContractSla, useInventory, useCertifyContract,
 } from '@/api/contracts';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { StatePill } from '@/components/ui/StatePill';
@@ -919,6 +919,7 @@ function EditorPane({ product, lite, onToggleLite }: {
 }) {
   const { data: contract, isLoading, isError, refetch } = useContract(product);
   const put = usePutContract(product);
+  const certify = useCertifyContract(product);
   const approve = useApproveContract(product);
   const deprecate = useDeprecateContract(product);
   const diff = useDiffContract(product);
@@ -1031,8 +1032,11 @@ function EditorPane({ product, lite, onToggleLite }: {
     </div>
   );
 
-  // ── Lite-Modus: toggles + severity + one save button, nothing else ──
+  // ── Lite-Modus: toggles + severity + one "save & activate" button ──
+  // Save certifies in one step (active + compile) so guarantees become live
+  // cockpit checks immediately — no draft/version/approval ceremony.
   if (lite) {
+    const certifyErrors = certify.isError ? extractValidationErrors(certify.error) : [];
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 20, gap: 14, overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1043,12 +1047,25 @@ function EditorPane({ product, lite, onToggleLite }: {
         </div>
         {!canWrite && <ReadOnlyBanner hint={t.role.noWriteContract} />}
         <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.noSql}</div>
+        <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.liteHint}</div>
         {guaranteeEditor}
-        {errorsBlock}
+        {certifyErrors.length > 0 && (
+          <div style={{ background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 5, padding: '8px 12px' }}>
+            <div style={{ color: 'var(--status-fail)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t.workbench.validationErrors}</div>
+            {certifyErrors.map((e, i) => <div key={i} style={{ color: 'var(--status-fail)', fontSize: 12 }}>• {e}</div>)}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {saveButton}
-          {put.isSuccess && <span style={{ color: 'var(--status-ok)', fontSize: 12 }}>{t.workbench.saved}</span>}
-          {put.isError && validationErrors.length === 0 && <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{t.workbench.saveError}</span>}
+          <button
+            onClick={() => certify.mutate(JSON.parse(draftJson) as ContractPutBody)}
+            disabled={!canWrite || certify.isPending}
+            title={writeTitle}
+            style={{ ...btnStyle(), opacity: canWrite ? 1 : 0.5, cursor: canWrite ? 'pointer' : 'not-allowed' }}
+          >
+            {certify.isPending ? t.workbench.certifying : t.workbench.certify}
+          </button>
+          {certify.isSuccess && <span style={{ color: 'var(--status-ok)', fontSize: 12 }}>{t.workbench.certified}</span>}
+          {certify.isError && certifyErrors.length === 0 && <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{t.workbench.saveError}</span>}
         </div>
       </div>
     );

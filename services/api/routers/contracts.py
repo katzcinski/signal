@@ -304,6 +304,82 @@ def _semver_major(version: str) -> int:
         return 0
 
 
+def _compile_contract_data(product: str, data: dict[str, Any], inventory: list[dict]):
+    """Compile a (G1-validated) contract dict → (yaml_out, conflicts, det_hash, config).
+
+    Single source of truth for the contract→checks pipeline, shared by the
+    full-mode `/compile` endpoint and the Lite `/certify` one-step path. Performs
+    the existing-wins merge against any `checks/<product>/checks.yml` on disk but
+    writes nothing — the caller owns persistence. May raise CompileError.
+    """
+    from dq_core.contract.compiler import compile_contract as _compile, compiler_hash
+    from dq_core.engine.check_engine import dataset_config_to_yaml
+    from dq_core.engine.models import CheckDef
+    from dq_core.library.check_library import load_library
+
+    # S2 Stufe 2: Spalten-Existenzprüfung gegen das Inventar, falls vorhanden.
+    inventory_columns: set[str] | None = None
+    dataset_name = data.get("dataset") or product
+    obj = next(
+        (o for o in inventory if (o.get("id") or o.get("technicalName") or o.get("name")) == dataset_name),
+        None,
+    )
+    if obj:
+        cols = {
+            c.get("name") or c.get("technicalName")
+            for c in (obj.get("columns") or obj.get("properties") or [])
+        }
+        inventory_columns = {c for c in cols if c} or None
+
+    config = _compile(data, inventory_columns=inventory_columns)
+
+    contract_hash = hashlib.sha256(
+        yaml.safe_dump(data, sort_keys=True).encode()
+    ).hexdigest()[:16]
+    library_version = str(load_library().get("version", "1"))
+    det_hash = compiler_hash(data)
+
+    # Existing-wins merge: keep handwritten checks when names collide.
+    checks_dir = Path(get_settings().checks_dir) / product
+    existing_checks_path = checks_dir / "checks.yml"
+    conflicts: list[str] = []
+    if existing_checks_path.exists():
+        try:
+            existing_data = yaml.safe_load(existing_checks_path.read_text(encoding="utf-8")) or {}
+            existing_by_name = {c["name"]: c for c in (existing_data.get("checks") or [])}
+            merged = []
+            for c in config.checks:
+                if c.name in existing_by_name:
+                    conflicts.append(c.name)
+                    ec = existing_by_name[c.name]
+                    merged.append(CheckDef(
+                        name=ec["name"], sql=ec.get("sql", c.sql),
+                        expect=ec.get("expect", c.expect), severity=ec.get("severity", c.severity),
+                        type=ec.get("type", c.type), unit=ec.get("unit", c.unit),
+                        owned_by=ec.get("owned_by", c.owned_by),
+                    ))
+                else:
+                    merged.append(c)
+            config.checks = merged
+        except Exception:
+            pass  # if existing file is malformed, use compiled checks as-is
+
+    # [DETERMINISM] A4: Hashes stehen IM Artefakt, nicht nur in der Response.
+    header = (
+        f"# contract_hash: {contract_hash}\n"
+        f"# library_version: {library_version}\n"
+        f"# compiler_hash: {det_hash}\n"
+    )
+    yaml_out = header + dataset_config_to_yaml(config)
+    return yaml_out, conflicts, det_hash, config
+
+
+def _write_checks(product: str, yaml_out: str) -> None:
+    checks_dir = Path(get_settings().checks_dir) / product
+    checks_dir.mkdir(parents=True, exist_ok=True)
+    (checks_dir / "checks.yml").write_text(yaml_out, encoding="utf-8")
+
+
 @router.post("/{product}/approve", response_model=ContractOut)
 def approve_contract(
     product: str,
@@ -437,12 +513,8 @@ def compile_contract(
     PUT vorbei). G2: '{schema}' bleibt als Platzhalter im Output. Non-dry-run
     erfordert lifecycle=active (WS3-2) und Schreibrecht.
     """
-    from dq_core.contract.compiler import compile_contract as _compile
-    from dq_core.contract.compiler import compiler_hash, CompileError
+    from dq_core.contract.compiler import CompileError
     from dq_core.contract.validator import validate_contract
-    from dq_core.engine.check_engine import dataset_config_to_yaml
-    from dq_core.engine.models import CheckDef
-    from dq_core.library.check_library import load_library
 
     _validate_product(product)
     data = _load_contract(product)
@@ -465,22 +537,8 @@ def compile_contract(
                 detail=f"Compile (persist) requires lifecycle=active, got {data.get('lifecycle')!r}. Use dry_run=true.",
             )
 
-    # S2 Stufe 2: Spalten-Existenzprüfung gegen das Inventar, falls vorhanden.
-    inventory_columns: set[str] | None = None
-    dataset_name = data.get("dataset") or product
-    obj = next(
-        (o for o in inventory if (o.get("id") or o.get("technicalName") or o.get("name")) == dataset_name),
-        None,
-    )
-    if obj:
-        cols = {
-            c.get("name") or c.get("technicalName")
-            for c in (obj.get("columns") or obj.get("properties") or [])
-        }
-        inventory_columns = {c for c in cols if c} or None
-
     try:
-        config = _compile(data, inventory_columns=inventory_columns)
+        yaml_out, conflicts, det_hash, config = _compile_contract_data(product, data, inventory)
     except CompileError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
@@ -490,49 +548,8 @@ def compile_contract(
             detail="Contract compiles to zero checks — add at least one guarantee.",
         )
 
-    contract_hash = hashlib.sha256(
-        yaml.safe_dump(data, sort_keys=True).encode()
-    ).hexdigest()[:16]
-    library_version = str(load_library().get("version", "1"))
-    det_hash = compiler_hash(data)
-
-    # Existing-wins merge: keep handwritten checks when names collide
-    settings_obj = get_settings()
-    checks_dir = Path(settings_obj.checks_dir) / product
-    existing_checks_path = checks_dir / "checks.yml"
-    conflicts: list[str] = []
-    if existing_checks_path.exists():
-        try:
-            existing_data = yaml.safe_load(existing_checks_path.read_text(encoding="utf-8")) or {}
-            existing_by_name = {c["name"]: c for c in (existing_data.get("checks") or [])}
-            merged = []
-            for c in config.checks:
-                if c.name in existing_by_name:
-                    conflicts.append(c.name)
-                    ec = existing_by_name[c.name]
-                    merged.append(CheckDef(
-                        name=ec["name"], sql=ec.get("sql", c.sql),
-                        expect=ec.get("expect", c.expect), severity=ec.get("severity", c.severity),
-                        type=ec.get("type", c.type), unit=ec.get("unit", c.unit),
-                        owned_by=ec.get("owned_by", c.owned_by),
-                    ))
-                else:
-                    merged.append(c)
-            config.checks = merged
-        except Exception:
-            pass  # if existing file is malformed, use compiled checks as-is
-
-    # [DETERMINISM] A4: Hashes stehen IM Artefakt, nicht nur in der Response.
-    header = (
-        f"# contract_hash: {contract_hash}\n"
-        f"# library_version: {library_version}\n"
-        f"# compiler_hash: {det_hash}\n"
-    )
-    yaml_out = header + dataset_config_to_yaml(config)
-
     if not dry_run:
-        checks_dir.mkdir(parents=True, exist_ok=True)
-        existing_checks_path.write_text(yaml_out, encoding="utf-8")
+        _write_checks(product, yaml_out)
 
     return CompileOut(
         product=product,
@@ -553,6 +570,118 @@ def compile_contract(
         conflicts=conflicts,
         determinism_hash=det_hash,
     )
+
+
+@router.post("/{product}/certify", response_model=ContractOut)
+def certify_contract(
+    product: str,
+    principal: PrincipalDep,
+    body: ContractIn = Body(...),
+    store: StoreDep = ...,
+    inventory: list[dict] = Depends(get_inventory),
+):
+    """[AUTHZ] [CONTRACT-SQL-FREE] Lite-Modus: save → active → compile in einem Schritt.
+
+    Der Lite-Modus (HANDOVER N1/D8) trägt bewusst KEINE SemVer-/Approval-Zeremonie:
+    es gibt keinen Draft-Zwischenschritt und keine Versions-Promotion von Hand.
+    Damit Garantien sofort als persistente Checks + Compliance-Ampel im Cockpit
+    erscheinen, zertifiziert dieser Pfad direkt und kompiliert die Check-Suite.
+
+    Was unverändert gilt:
+      - G1 (kein SQL im Contract) — jeder Ingestion-Pfad validiert.
+      - G3 (Breaking ⇒ Major) bleibt für bereits zertifizierte Produkte scharf:
+        Lite darf ein Produkt von Null aufsetzen, aber keinen *breaking* Change an
+        einer bestehenden aktiven Version am Gate vorbeischmuggeln — der muss über
+        den Voll-Modus (/approve) laufen.
+    """
+    from dq_core.contract.compiler import CompileError
+    from dq_core.contract.diff import diff_contracts, is_breaking
+    from dq_core.contract.validator import validate_contract
+
+    _validate_product(product)
+    existing = _load_contract(product)
+
+    # [AUTHZ] — S-2: gegen den bestehenden Contract entscheiden, nicht den Body.
+    _require_write(principal, existing)
+
+    data = body.model_dump()
+    data["lifecycle"] = "active"
+
+    # [CONTRACT-SQL-FREE] Gate G1
+    errors = validate_contract(data)
+    if errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Contract validation failed (Gate G1)", "errors": errors},
+        )
+
+    # G3 bleibt für zertifizierte Produkte scharf — kein Breaking-Bypass via Lite.
+    snapshot_path = _active_snapshot_path(product)
+    if snapshot_path.exists():
+        prior = yaml.safe_load(snapshot_path.read_text(encoding="utf-8")) or {}
+        entries = diff_contracts(prior, data)
+        if is_breaking(entries) and _semver_major(data.get("version", "0")) <= _semver_major(prior.get("version", "0")):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Breaking change on a certified contract — use the full-mode approval flow (Gate G3).",
+                    "from_version": prior.get("version"),
+                    "to_version": data.get("version"),
+                    "breaking": [
+                        {"kind": e.kind, "path": e.path, "old": e.old_value, "new": e.new_value}
+                        for e in entries if e.breaking
+                    ],
+                },
+            )
+
+    # Compile BEFORE persisting anything: a contract that yields no checks must
+    # not certify — nothing would be measured, the ampel would stay meaningless.
+    try:
+        yaml_out, _conflicts, _det_hash, config = _compile_contract_data(product, data, inventory)
+    except CompileError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not config.checks:
+        raise HTTPException(
+            status_code=422,
+            detail="Contract compiles to zero checks — add at least one guarantee before certifying.",
+        )
+
+    # Persist: contract + certified snapshot (G3-Diff-Basis) + index + checks.
+    _save_contract(product, data)
+    snapshot_path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    _update_index(store, product, data)
+    _write_checks(product, yaml_out)
+
+    # One commit per certify. Fehlendes Git-Repo (lokaler Modus) ist legal (S-12).
+    commit_error = None
+    try:
+        GitRepo(get_settings().contracts_dir, get_settings().git_remote).write_contract(
+            product,
+            yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+            principal.name,
+            f"{principal.sub}@dq-cockpit",
+            f"Certify (lite) contract {product} v{data.get('version')}",
+        )
+    except GitPushRejected as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except Exception as exc:  # noqa: BLE001
+        commit_error = str(exc)
+
+    # Compliance starts 'unknown' until the first run of the certified version.
+    if not store.get_compliance(product):
+        store.set_compliance(product, str(data.get("version", "")), "unknown", "")
+
+    out = _contract_out(store, product, data)
+    if commit_error:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "Contract certified, but the Git commit failed — repository intervention required.",
+                "git_error": commit_error,
+                "contract": out.model_dump(),
+            },
+        )
+    return out
 
 
 @router.get("/{product}/sla")
