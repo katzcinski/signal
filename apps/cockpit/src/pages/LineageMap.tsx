@@ -280,6 +280,7 @@ function ObjectLineageGraph({
   const cyInstance = useRef<Cytoscape.Core | null>(null);
   const [selectedNode, setSelectedNode] = useState<LineageNode | null>(null);
   const [graphReady, setGraphReady] = useState(0);
+  const [graphError, setGraphError] = useState<string | null>(null);
   const navigate = useNavigate();
   const nodes = data.nodes;
   const edges = data.edges;
@@ -329,6 +330,7 @@ function ObjectLineageGraph({
 
   useEffect(() => {
     if (!data || !cyRef.current) return;
+    setGraphError(null);
     const theme = resolveTheme();
     const key = cacheKey(nodes);
 
@@ -343,124 +345,130 @@ function ObjectLineageGraph({
       // ignore cache issues
     }
 
-    const cy = Cytoscape({
-      container: cyRef.current,
-      elements: {
-        nodes: [
-          ...lanes.map(lane => ({
-            data: {
-              id: `lane-${lane.key}`,
-              label: lane.code ? `${lane.label} (${lane.code})` : lane.label,
-              isLane: true,
-              laneKey: lane.key,
-            },
-            selectable: false,
-            grabbable: false,
-          })),
-          ...nodes.map(n => {
-            const lane = deriveLane(n);
-            return {
+    let cy: Cytoscape.Core;
+    try {
+      cy = Cytoscape({
+        container: cyRef.current,
+        elements: {
+          nodes: [
+            ...lanes.map(lane => ({
               data: {
-                id: n.id,
-                label: lineageNodeLabel(n),
+                id: `lane-${lane.key}`,
+                label: lane.code ? `${lane.label} (${lane.code})` : lane.label,
+                isLane: true,
                 laneKey: lane.key,
-                layer: n.layer,
-                layerCode: n.layerCode ?? '',
-                role: n.role ?? '',
-                confidence: n.confidence ?? null,
-                parent: `lane-${lane.key}`,
-                family: n.family ?? '',
-                coverage_flag: n.coverage_flag ?? FLAG_OUT,
-                dq_status: n.dq_status ?? 'unknown',
-                has_contract: n.has_contract ?? false,
-                last_run: n.last_run ?? '',
               },
-            };
-          }),
-        ],
-        edges: edges.map(e => ({
-          data: {
-            id: e.id,
-            source: e.source,
-            target: e.target,
-            type: edgeKind(e),
-            color: objectEdgeColor(edgeKind(e)),
+              selectable: false,
+              grabbable: false,
+            })),
+            ...nodes.map(n => {
+              const lane = deriveLane(n);
+              return {
+                data: {
+                  id: n.id,
+                  label: lineageNodeLabel(n),
+                  laneKey: lane.key,
+                  layer: n.layer,
+                  layerCode: n.layerCode ?? '',
+                  role: n.role ?? '',
+                  confidence: n.confidence ?? null,
+                  parent: `lane-${lane.key}`,
+                  family: n.family ?? '',
+                  coverage_flag: n.coverage_flag ?? FLAG_OUT,
+                  dq_status: n.dq_status ?? 'unknown',
+                  has_contract: n.has_contract ?? false,
+                  last_run: n.last_run ?? '',
+                },
+              };
+            }),
+          ],
+          edges: edges.map(e => ({
+            data: {
+              id: e.id,
+              source: e.source,
+              target: e.target,
+              type: edgeKind(e),
+              color: objectEdgeColor(edgeKind(e)),
+            },
+          })),
+        },
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'background-color': theme.bg2,
+              'background-image': (el: Cytoscape.NodeSingular) =>
+                coverageIconDataUri(String(el.data('coverage_flag'))),
+              'background-fit': 'none',
+              'background-width': '18px',
+              'background-height': '18px',
+              'background-position-x': '50%',
+              'background-position-y': '50%',
+              'border-width': 2,
+              'border-color': (el: Cytoscape.NodeSingular) =>
+                coverageColor(String(el.data('coverage_flag'))),
+              'label': 'data(label)',
+              'font-size': 10,
+              'font-family': theme.fontMono,
+              'color': theme.fg,
+              'text-valign': 'center',
+              'text-halign': 'right',
+              'text-margin-x': 8,
+              'width': 28,
+              'height': 28,
+              'shape': 'roundrectangle',
+            } as Record<string, unknown>,
           },
-        })),
-      },
-      style: [
-        {
-          selector: 'node',
-          style: {
-            'background-color': theme.bg2,
-            'background-image': (el: Cytoscape.NodeSingular) =>
-              coverageIconDataUri(String(el.data('coverage_flag'))),
-            'background-fit': 'none',
-            'background-width': '18px',
-            'background-height': '18px',
-            'background-position-x': '50%',
-            'background-position-y': '50%',
-            'border-width': 2,
-            'border-color': (el: Cytoscape.NodeSingular) =>
-              coverageColor(String(el.data('coverage_flag'))),
-            'label': 'data(label)',
-            'font-size': 10,
-            'font-family': theme.fontMono,
-            'color': theme.fg,
-            'text-valign': 'center',
-            'text-halign': 'right',
-            'text-margin-x': 8,
-            'width': 28,
-            'height': 28,
-            'shape': 'roundrectangle',
-          } as Record<string, unknown>,
-        },
-        {
-          selector: 'edge',
-          style: {
-            'width': 1.5,
-            'line-color': 'data(color)',
-            'target-arrow-color': 'data(color)',
-            'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier',
-          } as Record<string, unknown>,
-        },
-        {
-          selector: 'edge[type="computed"]',
-          style: { 'line-style': 'dashed' } as Record<string, unknown>,
-        },
-        {
-          selector: 'node[?isLane]',
-          style: {
-            'background-color': theme.bg2,
-            'background-opacity': 0.35,
-            'background-image': 'none',
-            'border-width': 1,
-            'border-color': theme.line2,
-            'border-style': 'dashed',
-            'shape': 'roundrectangle',
-            'label': 'data(label)',
-            'text-valign': 'top',
-            'text-halign': 'center',
-            'text-margin-y': -6,
-            'text-margin-x': 0,
-            'font-size': 11,
-            'font-family': theme.fontMono,
-            'color': theme.fg3,
-            'padding': 24,
-          } as Record<string, unknown>,
-        },
-        { selector: 'node:selected', style: { 'border-width': 3 } as Record<string, unknown> },
-        { selector: '.rc-path', style: { 'opacity': 1, 'border-width': 3 } as Record<string, unknown> },
-        { selector: 'edge.rc-path', style: { 'line-color': theme.cont, 'target-arrow-color': theme.cont, 'width': 2.5 } as Record<string, unknown> },
-        { selector: '.rc-dim', style: { 'opacity': 0.18 } as Record<string, unknown> },
-      ],
-      layout: restoredPositions
-        ? { name: 'preset' }
-        : { name: 'dagre', rankDir: 'LR', nodeSep: 60, rankSep: 120, padding: 40 } as unknown as { name: string },
-      userZoomingEnabled: true,
-      userPanningEnabled: true,
-    });
+          {
+            selector: 'edge',
+            style: {
+              'width': 1.5,
+              'line-color': 'data(color)',
+              'target-arrow-color': 'data(color)',
+              'target-arrow-shape': 'triangle',
+              'curve-style': 'bezier',
+            } as Record<string, unknown>,
+          },
+          {
+            selector: 'edge[type="computed"]',
+            style: { 'line-style': 'dashed' } as Record<string, unknown>,
+          },
+          {
+            selector: 'node[?isLane]',
+            style: {
+              'background-color': theme.bg2,
+              'background-opacity': 0.35,
+              'background-image': 'none',
+              'border-width': 1,
+              'border-color': theme.line2,
+              'border-style': 'dashed',
+              'shape': 'roundrectangle',
+              'label': 'data(label)',
+              'text-valign': 'top',
+              'text-halign': 'center',
+              'text-margin-y': -6,
+              'text-margin-x': 0,
+              'font-size': 11,
+              'font-family': theme.fontMono,
+              'color': theme.fg3,
+              'padding': 24,
+            } as Record<string, unknown>,
+          },
+          { selector: 'node:selected', style: { 'border-width': 3 } as Record<string, unknown> },
+          { selector: '.rc-path', style: { 'opacity': 1, 'border-width': 3 } as Record<string, unknown> },
+          { selector: 'edge.rc-path', style: { 'line-color': theme.cont, 'target-arrow-color': theme.cont, 'width': 2.5 } as Record<string, unknown> },
+          { selector: '.rc-dim', style: { 'opacity': 0.18 } as Record<string, unknown> },
+        ],
+        layout: restoredPositions
+          ? { name: 'preset' }
+          : { name: 'dagre', rankDir: 'LR', nodeSep: 60, rankSep: 120, padding: 40 } as unknown as { name: string },
+        userZoomingEnabled: true,
+        userPanningEnabled: true,
+      });
+    } catch (err) {
+      setGraphError(String(err));
+      return;
+    }
 
     if (restoredPositions) {
       for (const [nodeId, pos] of Object.entries(restoredPositions)) cy.getElementById(nodeId).position(pos);
@@ -515,6 +523,13 @@ function ObjectLineageGraph({
       if (cyInstance.current === cy) cyInstance.current = null;
     };
   }, [data, edges, lanes, navigate, nodes, setFocus]);
+
+  if (graphError) return (
+    <div style={{ color: 'var(--status-fail)', padding: 24 }}>
+      Graph-Fehler: {graphError}<br />
+      <button onClick={() => setGraphError(null)} style={{ marginTop: 8, cursor: 'pointer' }}>Erneut versuchen</button>
+    </div>
+  );
 
   return (
     <>
@@ -1084,7 +1099,7 @@ function ColumnLineageGraph({
 }
 
 export default function LineageMap() {
-  const { data, isLoading } = useLineage();
+  const { data, isLoading, isError } = useLineage();
   const [layerFilter, setLayerFilter] = useSearchParamState('layer');
   const [flagFilter, setFlagFilter] = useSearchParamState('status');
   const [search, setSearch] = useSearchParamState('search');
@@ -1106,6 +1121,7 @@ export default function LineageMap() {
     );
   }
 
+  if (isError) return <div style={{ color: 'var(--status-fail)', padding: 24 }}>Backend nicht erreichbar — bitte Backend starten und Seite neu laden.</div>;
   if (isLoading || !data) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
 
   const tabButton = (key: 'objects' | 'columns'): CSSProperties => ({
