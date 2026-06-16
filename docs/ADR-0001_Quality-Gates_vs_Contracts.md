@@ -236,3 +236,136 @@ Konkrete, begründete Empfehlungen. Effortschätzung in PT (Personentagen), Stil
 | — | O6 `HanaResultStore` | (O6-Scope) | unabhängig |
 
 *Nicht in dieser ADR:* Garantie-Override (OP-2, Phase 2) und das UI-Rendering der Badges — beides nachgelagert nach Schritt 1–2.
+
+---
+
+## 10 — Komposition & Contract-Richtung über Produktgrenzen
+
+Dieser Abschnitt klärt, wie sich `boundary` auf **mehrschichtige Datenmodelle** und **produktübergreifende Wiederverwendung** anwendet — die häufigste Verständnislücke. Drei Leitsätze, danach durchgespielt.
+
+> **L1 — Layer ≠ Grenze.** Die DWH-Schicht (Staging/Core/Consumption) ist eine *technische* Tatsache; sie erzeugt keinen Contract. Nur eine **Ownership-/Konsumgrenze** tut das.
+>
+> **L2 — Objekt ≠ Produkt.** Eine konforme Dimension wird nicht dadurch zum Data Product, dass sie im Core liegt — sondern dadurch, dass ein *anderer* Owner sie als zugesagte Lieferung konsumiert.
+>
+> **L3 — Eine Grenze, ein Vertrag, ein Owner (der Produzent).** „Inbound des einen = Outbound des anderen" ist *ein* Artefakt aus zwei Blickrichtungen, nicht zwei zu synchronisierende Verträge.
+
+### 10.1 — Data Product vs. Contract: zwei Achsen
+
+| Frage | Antwort | Umfang |
+|---|---|---|
+| „Was besitzen & liefern wir als Einheit?" | **Data Product** | das ganze Pipeline-Stück in *einer* Ownership (Inbound-Raw, Core-Transformation, Views, Output) |
+| „Was versprechen wir über eine Grenze?" | **Contract** | nur die Ränder (Output-Port, ggf. Inbound) |
+
+Das Data Product ist das **Ganze**; der Contract beschreibt nur die **Grenzflächen**. Die Raw-Tabelle gehört zur **Inbound**-Seite (nicht zur Outbound-Seite).
+
+### 10.2 — Wann ist eine Dimension ein Foundation Data Product?
+
+Beispiel: 3-Layer-DWH, Dimension `Kunde` im Business Core. Entscheidungstest:
+
+| Test | „nein" | „ja" |
+|---|---|---|
+| Eigener rechenschaftspflichtiger Owner als *Liefergegenstand*? | interner Baustein | Produkt-Kandidat |
+| Konsum über eine **Ownership-Grenze** (anderes Team/Domäne)? | interne konforme Dimension | **Foundation Data Product** |
+| Zugestimmtes Versprechen (Schema/SLA) an Konsumenten? | nur internes Quality Gate | Outbound-Contract |
+| Eigenständig auffindbar/adressierbar (Katalog, SLA)? | nein | ja |
+
+→ `Kunde` im Core, nur vom eigenen Team genutzt = **interne konforme Dimension**, kein Produkt. Erst die bewusste Veröffentlichung über eine Parteigrenze macht es zum Foundation Product. Diese Erhebung ist eine **organisatorische Entscheidung** (lohnt der Governance-Aufwand?), keine technische Zwangsläufigkeit.
+
+### 10.3 — Fall A: `Kunde` und `sales_overview` im selben Team
+
+Der Join ist eine **interne Komposition** — **kein** neuer Contract.
+
+```mermaid
+flowchart LR
+    subgraph DP["Data Product: sales_overview · EINE Ownership (Team S)"]
+        direction LR
+        K["Dim Kunde<br/>(intern)"]
+        F["Fact sales_overview"]
+        V["Exponierte View /<br/>Analytic Model"]
+        K -- "Join (intern)" --> F
+        F --> V
+    end
+    V -->|Outbound-Contract| C["Consumer"]
+
+    classDef gate fill:#eef,stroke:#88a,stroke-width:1px;
+    classDef contract fill:#fde,stroke:#c39,stroke-width:2px;
+    class K,F gate;
+    class V contract;
+```
+
+- `Kunde` bleibt interne Dimension → `boundary: internal`.
+- Ref-Integrität Fact→Dim = internes Quality Gate.
+- Kunden-Attribute, die in der exponierten View landen, werden Teil von **`sales_overview`s eigenem Outbound-Contract** — kein „Re-Export" eines Kunde-Contracts.
+
+### 10.4 — Fall B: `Kunde` ist ein Foundation Product eines anderen Teams
+
+Der Join **kreuzt eine Ownership-Grenze** → **gekettete Contracts**. Ein Produkt ist gleichzeitig Consumer (stromaufwärts) und Producer (stromabwärts).
+
+```mermaid
+flowchart LR
+    subgraph TK["Team K"]
+        KP["Data Product: kunde"]
+    end
+    subgraph TS["Team S"]
+        SP["Data Product: sales_overview"]
+    end
+    KP -->|"Contract @v1.2"| SP
+    SP -->|"Outbound-Contract"| C["Consumer"]
+
+    classDef contract fill:#fde,stroke:#c39,stroke-width:2px;
+    class KP,SP,C contract;
+```
+
+Contracts **vererben/mergen nicht**. Bricht `kunde` sein Versprechen, *kann* `sales_overview` dadurch seinen eigenen brechen — aber es bleiben **zwei getrennte Verträge** mit getrennten Ampeln und Ownern (transitive Abhängigkeit).
+
+### 10.5 — „Inbound des einen = Outbound des anderen"
+
+Eine Kante = **eine Grenze = ein Contract**, aus zwei Blickrichtungen. Es ist **nicht** ein Paar zu synchronisierender Verträge.
+
+```mermaid
+flowchart LR
+    KP["kunde · Team K<br/><i>Sicht Produzent:</i><br/><b>OUTBOUND</b><br/>Deklaration (owned)"]
+    B(("EINE Grenze<br/>EIN Contract<br/>@v1.2"))
+    SP["sales_overview · Team S<br/><i>Sicht Konsument:</i><br/><b>INBOUND</b><br/>Enforcement-Test"]
+    KP ==> B ==> SP
+
+    classDef boundary fill:#fde,stroke:#c39,stroke-width:2px;
+    class B boundary;
+```
+
+Auflösung über Konzept §5 (*Deklaration ≠ Enforcement*) — diesmal **über die Produktgrenze**:
+
+| | Wohnort | Owner |
+|---|---|---|
+| **Deklaration** (Versprechen) | `kunde`s Outbound-Contract-YAML | Produzent (Team K) |
+| **Enforcement** (Test) | Inbound-Contract-*Test* an `sales_overview`s Einlesepunkt | Konsument (Team S) |
+
+Regeln:
+
+1. **Eine kanonische Deklaration, owned vom Produzenten.** Der Konsument *baut nichts nach* (Konzept §3: „nichts nachzubauen").
+2. **Inbound = Enforcement, nicht Kopie.** Der Konsument verifiziert die **gepinnte Version** des Produzenten-Contracts am Übergabepunkt.
+3. **Mehr-Bedarf ⇒ Verhandlung.** Braucht der Konsument mehr als versprochen, fordert er eine **Erweiterung** des Outbound-Contracts an; der Produzent nimmt sie auf und re-versioniert (SemVer). Eine unilateral strengere „Inbound-Zusage" ohne Zustimmung des Produzenten ist **kein Contract**, sondern nur ein interner Check (Konzept §2).
+4. **SemVer lebt beim Produzenten.** Der Konsument **pinnt** (`kunde@1.2`); Breaking Change = Pflicht des Produzenten (Major + Migration) → Andockpunkt für O1/Breaking-Diff.
+
+### 10.6 — Abbildung in Signal
+
+| Szenario | Produkte | Sets |
+|---|---|---|
+| **Fall A** (ein Team) | 1 Produkt `sales_overview` | `kunde`-Checks `boundary: internal`; Ref-Integrität `internal`; exponierte View `outbound` |
+| **Fall B** (zwei Teams) | 2 Produkte `kunde`, `sales_overview` | `kunde`: `boundary: outbound` (owned Team K, Git-versioniert). `sales_overview`: `boundary: inbound`-Set, das auf `kunde@<version>` **referenziert** (Enforcement) **+** eigenes `boundary: outbound`-Set |
+
+Konkret für Fall B:
+
+- **Ein** Contract-Artefakt `kunde` — kein zweites auf der Konsumentenseite.
+- `sales_overview`s `inbound`-Set ist ein **Verweis + Enforcement-Checks**, keine Deklaration.
+- **Idealfall (kein Doppel-Prüfen):** primär `kunde`s vorhandene Outbound-Runs/Compliance als Single Source of Truth nutzen; einen *dünnen* Konsum-Punkt-Test nur dort ergänzen, wo Transport/Join selbst Schaden anrichten kann (Join-Fanout, Spätlieferung). Was der Produzent bereits garantiert, doppelt zu prüfen, ist Verschwendung.
+
+> **Implikation für `boundary: inbound`:** Das Feld trägt sinnvoll eine Referenz auf das Upstream-Produkt **und** dessen gepinnte Contract-Version (z. B. `depends_on: { product: kunde, version: "1.2.0" }`), damit Signal die Kette auflösen, Compliance transitiv anzeigen und Breaking-Changes upstream sichtbar machen kann. (Schema-Detail für die Umsetzung von Schritt 1/2 der Sequenz in §9.)
+
+### 10.7 — Anti-Pattern
+
+- ❌ **Zwei Verträge je Kante** (Inbound *und* Outbound separat deklarieren) und „synchron halten" → garantierter Drift. Es gibt **einen** Owner und **eine** Deklaration je Grenze.
+- ❌ **Layer als Produktgrenze** behandeln → jede Core-Tabelle würde zum „Produkt" mit Vertrags-Zeremonie. Produkt-Status nur bei echter Konsum-Grenze.
+- ❌ **Konsumenten-seitige strengere „Inbound-Contracts"** ohne Zustimmung des Produzenten → das sind interne Checks, keine Verträge.
+
+> **Faustregel:** Eine Grenze, ein Vertrag, ein Owner (der Produzent). „Inbound" ist die Enforcement-Sicht auf das Outbound-Versprechen, nicht dessen Kopie. Schicht und Objekttyp erzeugen keine Verträge — nur Grenzen.
