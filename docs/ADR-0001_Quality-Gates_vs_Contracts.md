@@ -369,3 +369,46 @@ Konkret für Fall B:
 - ❌ **Konsumenten-seitige strengere „Inbound-Contracts"** ohne Zustimmung des Produzenten → das sind interne Checks, keine Verträge.
 
 > **Faustregel:** Eine Grenze, ein Vertrag, ein Owner (der Produzent). „Inbound" ist die Enforcement-Sicht auf das Outbound-Versprechen, nicht dessen Kopie. Schicht und Objekttyp erzeugen keine Verträge — nur Grenzen.
+
+---
+
+## 11 — Umgang mit bestehender DSP-Produkt-Taxonomie (Kunden-Realität)
+
+Praxisproblem: Der Kunde katalogisiert in Datasphere/BDC bereits **alle Dimensionen als „Foundation (Data) Product"**. Das kollidiert scheinbar mit §10 (Produkt-Status entsteht an einer Konsum-Grenze, nicht durch Objekttyp/Schicht). Auflösung: **nicht das Label bekämpfen — Produkt-Status und Contract-Aufwand entkoppeln.**
+
+### 11.1 — Zwei Dinge, die hier vermischt werden
+
+| Begriff | Frage | In DSP/BDC |
+|---|---|---|
+| **Katalog-Produkt** | „Ist es auffindbar & teilbar?" | Marketplace-Eintrag, ORD-Descriptor — *tool-getrieben*, entsteht quasi automatisch |
+| **Governter Contract** | „Hat eine Gegenpartei einem Versprechen zugestimmt?" | nur bei echtem, grenzüberschreitendem Konsum |
+
+Dass BDC für jedes Objekt einen ORD-Descriptor erzeugt, macht „alles ist ein Produkt" zur **Werkzeug-Konvention** — nicht zur Aussage „alles braucht einen versionierten Outbound-Contract mit SemVer/Approval". (Vgl. `Zusatz_ContractLifecycle_ORDBDCIntegration.md`: ORD/Catalog *beschreibt & discovered*, erzwingt aber keine Qualität.)
+
+### 11.2 — Lösung: Contract-Aufwand *tiern*, Produkt-Label belassen
+
+Die Katalog-Taxonomie des Kunden bleibt; darüber legt sich eine **proportionale Governance-Stufung** — operationalisiert durch `boundary` (diese ADR) **und** Lite/Full (`Betriebsmodi_Lite_und_Full.md`):
+
+| Tier | Realität | `boundary` | Modus | Aufwand |
+|---|---|---|---|---|
+| **0** | Katalogisiert, aber nur intern genutzt (kein externer Consumer) | `internal` | — | internes Quality Gate, **keine** Contract-Zeremonie |
+| **1** | Veröffentlicht, vereinzelte Konsumenten, geringe Kritikalität | `outbound` | **Lite** | Verbindlichkeit ohne SemVer/Approval |
+| **2** | Echtes Cross-Domain-Foundation, mehrere abhängige Produkte | `outbound` | **Full** | SemVer, Approval, Breaking-Schutz |
+
+→ „Foundation Product" im Katalog bleibt; der *governance-relevante* Contract wird auf die wenigen Tier-2-Assets fokussiert.
+
+### 11.3 — Tier-Zuordnung datengetrieben, nicht label-getrieben
+
+Nicht das DSP-Label, sondern der **tatsächliche Konsum** entscheidet über die Stufe (Test aus §10.2): „Gibt es mindestens einen Konsumenten **außerhalb des produzierenden Teams**, der sich auf ein Versprechen verlässt?" Signals **Lineage-/Coverage-Map** liefert die Evidenz, welche „Produkte" real grenzüberschreitend konsumiert werden. Erfahrungswert: von vielen hundert katalogisierten Dimensionen sind es oft nur 10–20.
+
+### 11.4 — Die eigentliche Falle: Over-Governance
+
+Nähme man das Label wörtlich und gäbe **jeder** Dimension einen Full-Contract, entstünde SemVer-/Approval-Overhead für Assets, die niemand extern konsumiert — die Governance erstickt und verwaist. **Over-Governance schadet mehr als ein fehlendes Label.** Tier 0/1 ist keine Degradierung, sondern Richtigdimensionierung.
+
+### 11.5 — Kunden-Framing (wertschätzend, nicht korrigierend)
+
+> „Wir behalten eure Foundation Products im Katalog — alle bleiben auffindbar und teilbar. Wir vergeben die **vertragliche Verbindlichkeit nur dort, wo sie jemand braucht**: governt (Full) für die wenigen Cross-Domain-Assets, schlank (Lite) für vereinzelt genutzte, intern abgesichert für den Rest. So sinkt der Pflegeaufwand, und Governance wirkt da, wo sie zählt."
+
+Das ist der überzeugende Hebel: Du nimmst dem Kunden Arbeit ab, statt sein Produktverständnis zu widerlegen.
+
+> **Faustregel:** Katalog-Produkt ≠ governter Contract. Jedes DSP-„Foundation Product" darf Produkt bleiben — aber nur die grenzüberschreitend konsumierten bekommen einen vollen Contract. Den Tier bestimmt die Lineage, nicht das Label.
