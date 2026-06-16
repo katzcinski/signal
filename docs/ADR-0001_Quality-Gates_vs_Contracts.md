@@ -70,6 +70,8 @@ Daraus abgeleitet die kategorienspezifischen Regeln:
 
 ## 3 — Konkreter Schema-Vorschlag
 
+> **Hinweis (nach OP-1, §9):** Der Diskriminator wird voraussichtlich **`boundary`** heißen (Werte `internal | inbound | outbound`) — `kind` kollidiert mit dem ODCS-Feld `kind: "DataContract"`. Die Beispiele unten zeigen noch die ursprüngliche `kind`-Benennung; die Mechanik bleibt identisch.
+
 `kind` wird optionales Feld am Contract-/Set-File. Default = `internal_gate` (siehe §4, ehrlicher Default). `counterparty` ist nur bei `*_contract` zulässig und für die Grenz-Semantik erforderlich.
 
 ```yaml
@@ -164,9 +166,73 @@ Die „Beförderung" `internal_gate → *_contract` ist damit der explizite Mome
 
 Diese ADR ist ein **Vorschlag**. Vor Umsetzung zu klären:
 
-1. Begriff im UI: „Quality Gate" vs. „Internal Check" vs. „Expectation Set" — Wording festlegen.
-2. Soll `kind` am Contract-File (ganzes Set) oder feingranular je Garantie liegen? (Empfehlung: Set-Ebene; feingranular nur falls ein Dataset zugleich Boundary- und Internal-Garantien trägt.)
-3. ODCS-Export-Policy (`odcs_export.py`): nur `*_contract` exportieren — bestätigen.
-4. Reihenfolge ggü. den offenen Workstreams (O1 Breaking-Diff, O6 HanaStore) priorisieren.
+1. Begriff im UI: „Quality Gate" vs. „Internal Check" vs. „Expectation Set" — Wording festlegen. → **Vorschlag OP-1 (§9)**
+2. Soll der Diskriminator am Contract-File (ganzes Set) oder feingranular je Garantie liegen? → **Vorschlag OP-2 (§9)**
+3. ODCS-Export-Policy (`odcs_export.py`): nur `*_contract` exportieren — bestätigen. → **Vorschlag OP-3 (§9)**
+4. Reihenfolge ggü. den offenen Workstreams (O1 Breaking-Diff, O6 HanaStore) priorisieren. → **Vorschlag OP-4 (§9)**
 
 > Faustregel (Konzept §8, übertragen auf Signal): **Checks überall, Contracts nur an den zwei Grenzen. Default ist intern; ein Contract entsteht erst durch Zustimmung einer Gegenpartei.**
+
+---
+
+## 9 — Vorschläge zu den offenen Punkten (§8)
+
+Konkrete, begründete Empfehlungen. Effortschätzung in PT (Personentagen), Stil `HANDOVER.md`. Jeder Punkt hat eine **Empfehlung** (wofür ich votiere) und die **Alternative(n)** mit Begründung.
+
+### OP-1 — Wording **und** Feldname
+
+**Empfehlung Feldname:** Diskriminator **`boundary`** statt `kind`. Werte: **`internal` | `inbound` | `outbound`** (statt `internal_gate`/`inbound_contract`/`outbound_contract`).
+
+*Begründung:* `odcs_export.py:108` belegt `kind` bereits ODCS-seitig (`"kind": "DataContract"`). Ein eigenes Top-Level-`kind` im Contract-YAML kollidiert begrifflich und beim Lesen des Exports. `boundary` trifft zudem die Konzept-Sprache („Parteigrenze", §2) präzise und ist kürzer als das `_gate`/`_contract`-Suffix. Die Kategorie (Gate vs. Contract) ergibt sich eindeutig: `internal` ⇒ Gate, `inbound`/`outbound` ⇒ Contract.
+
+**Empfehlung UI-Begriff:**
+
+| `boundary` | UI-Label (de) | Badge | Kategorie |
+|---|---|---|---|
+| `internal` | „Internes Quality Gate" | `GATE` | Quality Gate |
+| `inbound` | „Inbound-Contract (Source)" | `IN` | Contract |
+| `outbound` | „Outbound-Contract (Consumer)" | `OUT` | Contract |
+
+*Verworfen:* **„Expectation Set"** — zu abstrakt, trägt Great-Expectations-Jargon herein und transportiert die Grenz-Aussage nicht; ein Nutzer erkennt nicht, ob eine Gegenpartei beteiligt ist. **„Internal Check"** als Hauptbegriff ist schwächer als „Quality Gate", weil „Check" in Signal bereits die ausführbare Einheit (`CheckDef`) bezeichnet — „Gate" grenzt die *Klassifikation* sauber von der *Ausführungseinheit* ab.
+
+*Aufwand:* trivial (Doku/Schema-Benennung), 0,25 PT.
+
+### OP-2 — Set-Ebene vs. je Garantie
+
+**Empfehlung:** `boundary` **am Set/File-Level** als primärer, verpflichtender Ort. Feingranulare Override **je Garantie** nur als *späteres Opt-in* für den dokumentierten Sonderfall (ein Dataset trägt zugleich konsumentensichtbare und rein interne Garantien — z. B. eine Fact View, die exponiert wird **und** interne Ref-Integritäts-Gates hat).
+
+*Begründung:* Set-Level ist die 80%-Realität und hält Compliance-Auswertung einfach (eine Ampel-Semantik je Set). Feingranular ist strukturell machbar — `Guarantee` trägt bereits `owned_by` je Garantie (`model.py:13`), ein analoges `boundary`-Feld fügt sich ein — erzeugt aber Folgekosten: `compliance.py` müsste je Set die Garantien nach `boundary` gruppieren und **zwei** Compliance-Zustände je Dataset führen (intern vs. governance). Das ist die teure 20%.
+
+*Migrationsregel:* Garantie erbt `boundary` vom Set; fehlt der Override, gilt der Set-Wert. Implementierungsreihenfolge: **Set-Level zuerst** (deckt alle heutigen Contracts), Garantie-Override als nachgelagerter Workstream nur bei realem Bedarf.
+
+*Aufwand:* Set-Level 1–1,5 PT (Modell + Validator + Compile-Durchreichung); Garantie-Override später +1,5 PT (Compliance-Gruppierung).
+
+### OP-3 — ODCS-Export-Policy
+
+**Empfehlung:** **Bestätigt — nur `boundary ∈ {inbound, outbound}` exportieren; `internal` nie.** Guard in `odcs_export.py`: bei `internal` → `ValueError`/Skip statt stiller Leer-Export.
+
+*Begründung:* ODCS ist laut Docstring (`odcs_export.py:1-7`) **Einweg-Interop** für externe Kataloge (Collibra, OpenMetadata, `datacontract-cli`). Ein interner Gate hat **keine Gegenpartei** (Konzept §2) und gehört damit per Definition nicht in eine externe Contract-Registry — ihn zu exportieren wäre dieselbe Kategorienverwechslung, die diese ADR beseitigt.
+
+*Zusatz:* Richtung (`inbound`/`outbound`) in `customProperties` mit aufnehmen (`{"property": "boundary", "value": ...}`), da ODCS selbst beide nur als `kind: DataContract` führt und die Richtung sonst verloren ginge. Das nutzt den im Docstring genannten „lossless escape hatch".
+
+*Aufwand:* 0,25 PT (Guard + customProperty), inkl. Test.
+
+### OP-4 — Reihenfolge ggü. O1 / O6
+
+**Empfehlung:** `boundary`-Klassifikation **vor** O1 (Breaking-Diff Stufe 2); **O6 (HanaStore) orthogonal/parallel** ohne Reihenfolge-Abhängigkeit.
+
+*Begründung O1:* SemVer/Breaking-Schutz ist überhaupt nur für `*_contract` sinnvoll (eine Gegenpartei, die vor Breaking geschützt werden muss). Wird die Klassifikation **zuerst** eingeführt, ist die Diff-Engine (`diff.py`, Stufe 1 existiert, O1=Stufe 2) von Anfang an korrekt **`boundary`-gegated** — Breaking-Diff greift nur bei Contracts, nicht bei internen Gates. Ohne die Klassifikation würde O1 sonst Aufwand auf Sets verschwenden, die gar keine Versionierung brauchen.
+
+*Begründung O6:* Die Klassifikation ist reines **Contract-Metadatum** (Git = Wahrheit); der Result-Store-Schema bleibt unverändert (ADR §4.3). `HanaResultStore` (O6) folgt dem Deployment und ist davon entkoppelt — kann parallel laufen.
+
+**Empfohlene Sequenz:**
+
+| Schritt | Inhalt | Aufwand | Abhängig von |
+|---|---|---|---|
+| 1 | `boundary`-Diskriminator + Validator + Default-Migration (`internal`) | 1–1,5 PT | — |
+| 2 | Compliance-/Incident-Split (`compliance.py` `boundary`-aware, Routing) | 1,5–2 PT | 1 |
+| 3 | O1/Breaking-Diff auf `boundary` gegated (nur Contracts) | (O1-Scope) | 1 |
+| 4 | ODCS-Export-Guard (OP-3) | 0,25 PT | 1 |
+| — | O6 `HanaResultStore` | (O6-Scope) | unabhängig |
+
+*Nicht in dieser ADR:* Garantie-Override (OP-2, Phase 2) und das UI-Rendering der Badges — beides nachgelagert nach Schritt 1–2.
