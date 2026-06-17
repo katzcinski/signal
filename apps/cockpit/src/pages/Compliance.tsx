@@ -6,7 +6,7 @@ import { TableSkeleton } from '@/components/ui/Skeleton';
 import { t } from '@/i18n/de';
 import type { Lifecycle } from '@/types';
 
-export default function Governance() {
+export default function Compliance() {
   const { data: objects = [], isLoading, isError, refetch } = useObjects();
 
   return (

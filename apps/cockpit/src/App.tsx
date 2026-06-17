@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { Shell } from './components/layout/Shell';
@@ -14,7 +14,7 @@ const Incidents         = lazy(() => import('./pages/Incidents'));
 const Proposals         = lazy(() => import('./pages/Proposals'));
 const RunDetail         = lazy(() => import('./pages/RunDetail'));
 const RunCompare        = lazy(() => import('./pages/RunCompare'));
-const Governance        = lazy(() => import('./pages/Governance'));
+const Compliance        = lazy(() => import('./pages/Compliance'));
 const CheckLibrary      = lazy(() => import('./pages/CheckLibrary'));
 const Notifications     = lazy(() => import('./pages/Notifications'));
 
@@ -45,7 +45,8 @@ export default function App() {
               <Route path="/proposals"   element={<Proposals />} />
               <Route path="/runs/compare" element={<RunCompare />} />
               <Route path="/runs/:id"    element={<RunDetail />} />
-              <Route path="/governance"  element={<Governance />} />
+              <Route path="/compliance"  element={<Compliance />} />
+              <Route path="/governance"  element={<Navigate to="/compliance" replace />} />
               <Route path="/library"    element={<CheckLibrary />} />
               <Route path="/notifications" element={<Notifications />} />
             </Routes>
