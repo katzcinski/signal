@@ -8,6 +8,8 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { OnboardingPanel } from '@/components/OnboardingPanel';
 import { StatusHeatmap } from '@/components/StatusHeatmap';
+import { DqHealthTrend } from '@/components/DqHealthTrend';
+import { FamilyHealthCards } from '@/components/FamilyHealthCards';
 import { useObjects } from '@/api/objects';
 import { useIncidents } from '@/api/incidents';
 import { useActivity } from '@/api/activity';
@@ -152,42 +154,67 @@ export default function Cockpit() {
   ];
 
   return (
-    <div className="page-full">
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>{t.cockpit.title}</h1>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{t.cockpit.subtitle}</p>
+    <div className="page-full" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>{t.cockpit.title}</h1>
+          <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{t.cockpit.subtitle}</p>
+        </div>
+        <span style={{
+          fontSize: 11, color: 'var(--fg-2)', padding: '4px 12px', borderRadius: 999,
+          border: '1px solid var(--line-2)', background: 'var(--bg-1)',
+          display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap',
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--qual)' }} />
+          {t.cockpit.dqFirst}
+        </span>
       </div>
 
       {objectsQuery.isError && <ErrorBanner onRetry={() => objectsQuery.refetch()} />}
       {incidentsQuery.isError && <ErrorBanner onRetry={() => incidentsQuery.refetch()} />}
 
-      {objectsQuery.isLoading ? <KpiSkeleton count={4} /> : (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        <Kpi label={t.cockpit.kpiObjects} value={totalObjects} accent="var(--cont)" />
-        <div style={{
-          background: 'var(--bg-1)', border: '1px solid var(--line)',
-          borderRadius: 8, borderLeft: '3px solid var(--qual)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 12px',
-        }}>
-          <HealthGauge pct={healthPct} prevPct={healthPrevPct} size={96} />
+      {/* Hero: DQ-health trend (left) + gauge & per-family rollup (right). */}
+      <div className="dash-hero">
+        <DqHealthTrend />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{
+            background: 'var(--bg-1)', border: '1px solid var(--line)',
+            borderLeft: '3px solid var(--qual)', borderRadius: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 0', flex: 1,
+          }}>
+            <HealthGauge pct={healthPct} prevPct={healthPrevPct} size={104} />
+          </div>
+          <FamilyHealthCards objects={objects} />
         </div>
+      </div>
+
+      {/* KPI strip — the at-a-glance numbers. */}
+      {objectsQuery.isLoading ? <KpiSkeleton count={4} /> : (
+      <div className="dash-kpis">
+        <Kpi label={t.cockpit.kpiObjects} value={totalObjects} accent="var(--cont)" />
         <Kpi
           label={t.cockpit.kpiCoverage}
           value={`${coverage?.contract_coverage_pct ?? 0}%`}
           delta={coverage ? `${coverage.with_active_contract}/${coverage.objects_total} ${t.cockpit.coverageOf}` : undefined}
-          accent="var(--cont)"
+          accent="var(--qual)"
         />
         <Kpi
           label={t.cockpit.kpiOpenIncidents}
           value={openIncidents.length}
           delta={criticalIncidents > 0 ? `${criticalIncidents} ${t.cockpit.critical}` : undefined}
           deltaPositive={false}
-          accent="var(--cont)"
+          accent={openIncidents.length > 0 ? 'var(--status-fail)' : 'var(--qual)'}
+        />
+        <Kpi
+          label={t.cockpit.kpiUnvalidated}
+          value={unvalidated.length}
+          accent={unvalidated.length > 0 ? 'var(--status-warn)' : 'var(--qual)'}
         />
       </div>
       )}
 
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
+      {/* Primary drill-down: object × family status grid → object detail. */}
+      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
         <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--line)', fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {t.cockpit.statusGrid}
         </div>
@@ -202,32 +229,33 @@ export default function Cockpit() {
 
       <StatusHeatmap />
 
-      <Panel title={t.cockpit.openIncidents}>
-        {topIncidents.length === 0 ? (
-          <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
-            {incidentsQuery.isSuccess ? t.cockpit.noIncidents : '—'}
-          </p>
-        ) : topIncidents.map((i: Incident) => (
-          <button
-            key={i.id}
-            onClick={() => navigate(`/incidents?status=${i.status}`)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
-              padding: '6px 0', background: 'none', border: 'none',
-              borderBottom: '1px solid var(--line)', borderRadius: 0,
-              color: 'var(--fg)', cursor: 'pointer',
-            }}
-          >
-            <StatusDot status={i.severity} />
-            <span style={{ fontSize: 12, flex: 1 }}>{i.title}</span>
-            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', fontSize: 11 }}>{i.product}</span>
-            <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{t.incidents.statusLabel[i.status] ?? i.status}</span>
-          </button>
-        ))}
-      </Panel>
+      {/* Operational pair: open incidents + SLA compliance. */}
+      <div className="dash-2col">
+        <Panel title={t.cockpit.openIncidents}>
+          {topIncidents.length === 0 ? (
+            <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
+              {incidentsQuery.isSuccess ? t.cockpit.noIncidents : '—'}
+            </p>
+          ) : topIncidents.map((i: Incident) => (
+            <button
+              key={i.id}
+              onClick={() => navigate(`/incidents?status=${i.status}`)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
+                padding: '6px 0', background: 'none', border: 'none',
+                borderBottom: '1px solid var(--line)', borderRadius: 0,
+                color: 'var(--fg)', cursor: 'pointer',
+              }}
+            >
+              <StatusDot status={i.severity} />
+              <span style={{ fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.title}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', fontSize: 11 }}>{i.product}</span>
+              <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{t.incidents.statusLabel[i.status] ?? i.status}</span>
+            </button>
+          ))}
+        </Panel>
 
-      {activeContracts.length > 0 && (
-        <div style={{ marginTop: 16 }}>
+        {activeContracts.length > 0 ? (
           <Panel title={t.cockpit.slaTitle}>
             <div style={{ display: 'flex', gap: 16, padding: '0 0 6px 0', borderBottom: '1px solid var(--line)', marginBottom: 4 }}>
               <span style={{ fontSize: 10, color: 'var(--fg-3)', flex: 1 }}>{t.cockpit.slaProduct}</span>
@@ -238,16 +266,19 @@ export default function Cockpit() {
             </div>
             {activeContracts.map(c => <SlaRow key={c.product} product={c.product} />)}
           </Panel>
-        </div>
-      )}
+        ) : (
+          <Panel title={t.cockpit.slaTitle}>
+            <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.cockpit.slaEmpty}</p>
+          </Panel>
+        )}
+      </div>
 
-      <div style={{ marginTop: 16 }}>
+      {/* Audit + neglected objects. */}
+      <div className="dash-2col">
         <Panel title={t.activity.title}>
           <ActivityFeed />
         </Panel>
-      </div>
 
-      <div style={{ marginTop: 16 }}>
         <Panel title={`${t.cockpit.unvalidatedTitle}${unvalidated.length ? ` (${unvalidated.length})` : ''}`}>
           {unvalidated.length === 0 ? (
             <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
@@ -268,7 +299,7 @@ export default function Cockpit() {
                   }}
                 >
                   <StatusDot status="unknown" />
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1 }}>{objId}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{objId}</span>
                   <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{t.common.open} →</span>
                 </button>
               ))}
