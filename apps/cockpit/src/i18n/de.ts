@@ -108,6 +108,8 @@ export const t = {
     dqFirst: 'DQ-First — Quality & Observability im Fokus',
     familyPassing: 'bestanden',
     familyAttention: 'kritisch/fehlerhaft',
+    attentionTitle: 'Brennpunkte',
+    attentionEmpty: 'Keine Auffälligkeiten — alle Objekte im grünen Bereich.',
     statusGrid: 'Status je Objekt und Familie',
     colObject: 'Objekt',
     colObservability: 'Observability',

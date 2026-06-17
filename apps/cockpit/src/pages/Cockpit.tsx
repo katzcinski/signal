@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { Kpi } from '@/components/ui/Kpi';
-import { HealthGauge } from '@/components/ui/HealthGauge';
 import { KpiSkeleton } from '@/components/ui/Skeleton';
 import { Panel } from '@/components/ui/Panel';
 import { StatusDot } from '@/components/ui/StatusDot';
@@ -10,10 +9,11 @@ import { OnboardingPanel } from '@/components/OnboardingPanel';
 import { StatusHeatmap } from '@/components/StatusHeatmap';
 import { DqHealthTrend } from '@/components/DqHealthTrend';
 import { FamilyHealthCards } from '@/components/FamilyHealthCards';
+import { AttentionPanel } from '@/components/AttentionPanel';
 import { useObjects } from '@/api/objects';
 import { useIncidents } from '@/api/incidents';
 import { useActivity } from '@/api/activity';
-import { useCoverageSummary, useHealthTrend } from '@/api/coverage';
+import { useCoverageSummary } from '@/api/coverage';
 import { useContracts, useContractSla } from '@/api/contracts';
 import { relativeTime, absoluteTime } from '@/lib/time';
 import { t } from '@/i18n/de';
@@ -108,7 +108,6 @@ export default function Cockpit() {
   const objectsQuery = useObjects();
   const incidentsQuery = useIncidents();
   const coverageQuery = useCoverageSummary();
-  const { data: healthTrend } = useHealthTrend();
   const contractsQuery = useContracts();
   const { data: objects = [] } = objectsQuery;
   const { data: incidents = [] } = incidentsQuery;
@@ -118,13 +117,6 @@ export default function Cockpit() {
   const navigate = useNavigate();
 
   const totalObjects = objects.length;
-  const healthyObjects = objects.filter(o => o.status === 'pass').length;
-  const healthPct = totalObjects > 0 ? Math.round((healthyObjects / totalObjects) * 100) : 0;
-  // UX-N12: run-over-run direction for the gauge (data health latest vs. prior run).
-  const healthDelta = healthTrend && healthTrend.current_pct != null && healthTrend.previous_pct != null
-    ? healthTrend.current_pct - healthTrend.previous_pct
-    : null;
-  const healthPrevPct = healthDelta == null ? null : healthPct - healthDelta;
   const unvalidated = coverage?.unvalidated_30d ?? [];
 
   const openIncidents = incidents.filter(i => i.status !== 'resolved');
@@ -173,18 +165,12 @@ export default function Cockpit() {
       {objectsQuery.isError && <ErrorBanner onRetry={() => objectsQuery.refetch()} />}
       {incidentsQuery.isError && <ErrorBanner onRetry={() => incidentsQuery.refetch()} />}
 
-      {/* Hero: DQ-health trend (left) + gauge & per-family rollup (right). */}
+      {/* Hero: DQ-health trend (left) + per-family rollup & hotspots (right). */}
       <div className="dash-hero">
         <DqHealthTrend />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{
-            background: 'var(--bg-1)', border: '1px solid var(--line)',
-            borderLeft: '3px solid var(--qual)', borderRadius: 8,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 0', flex: 1,
-          }}>
-            <HealthGauge pct={healthPct} prevPct={healthPrevPct} size={104} />
-          </div>
           <FamilyHealthCards objects={objects} />
+          <AttentionPanel objects={objects} />
         </div>
       </div>
 
