@@ -153,7 +153,7 @@ Schema, Keys, Referential, Measures. **Kein SQL.** Inline-Hinweis macht das expl
 (`warn → block`) als Toggle pro Garantie. **Vorgeschlagene Erweiterungen** (aus Feedback-Loop) mit
 Übernehmen/Ablehnen. Compile-Bar: Check Builder · Compile-Vorschau · Kompilieren & Zertifizieren.
 **Check Builder (Drawer):** Check-Typ aus der Library (Kategorien Vollständigkeit · Konsistenz ·
-Verteilung & Aggregate · Aktualität · SAP/BDC), Parameter (Spalte, Erwartung), Severity, **Platzierung
+Verteilung & Aggregate · Aktualität & Sonstiges), Parameter (Spalte, Erwartung), Severity, **Platzierung
 via Lineage-Auto-Scope §4.3a** (Layer-Pfad), und read-only **kompilierte SQL-Vorschau**. Der Check
 Builder ist der **einzige Compiler** von semantischer Garantie → ausführbarem `checks/*.yml`.
 

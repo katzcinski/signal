@@ -117,10 +117,10 @@ def dataset_config_to_yaml(config: DatasetConfig) -> str:
 # ob teure Konsistenz-Checks überhaupt sinnvoll sind — stale Daten erzeugen
 # sonst Phantom-Failures. Übersprungene Checks erscheinen IMMER als explizites
 # Ergebnis mit state='skipped_stale' (G6), nie als stilles Auslassen.
-GATE_TYPES: frozenset[str] = frozenset({"freshness", "sap_replication_lag"})
+GATE_TYPES: frozenset[str] = frozenset({"freshness"})
 EXPENSIVE_TYPES: frozenset[str] = frozenset({
     "reference_integrity", "aggregate_range", "duplicate", "duplicate_composite",
-    "sap_bseg_balance", "sap_bkpf_orphan", "sap_fiscal_completeness",
+    "row_count_match",
 })
 
 

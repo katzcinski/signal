@@ -187,10 +187,11 @@ Seeding-Regeln aus der Metadatenlage:
 - **Rolle Dimension/Fact/Text** → Uniqueness ist Pflicht (Datasphere vertraut deklarierten,
   aber nicht erzwungenen Keys — ein deklarierter, nicht-eindeutiger Key ist schlimmer als keiner).
 - **Fact → Dimension-Bezug** → `reference_integrity`-Check (FK-Waisen).
-- **Measure/Kennzahl** → `value_range` / `aggregate_range`.
-- **SAP-Strukturen** (BSEG/BKPF/Perioden) → die `SAP / BDC`-Templates der Library.
+- **Measure/Kennzahl** → `value_range` / `aggregate_range` / `distinct_count`.
+- **Spaltenbeziehung / Zeitlogik** → `cross_column_compare` / `future_dates`.
+- **Quelle ↔ Ziel** → `row_count_match` (Reconciliation).
 
-Die `check_library.json` (20 Templates, 5 Kategorien) bleibt die einzige Quelle der
+Die `check_library.json` (21 Templates, 4 Kategorien) bleibt die einzige Quelle der
 Check-Typen für Engine **und** UI. Der Builder füllt `{schema}`/`{dataset}` und die
 `<PARAM>`-Tokens.
 

@@ -4,8 +4,7 @@
     "Vollständigkeit",
     "Konsistenz",
     "Verteilung & Aggregate",
-    "Aktualität & Sonstiges",
-    "SAP / BDC"
+    "Aktualität & Sonstiges"
   ],
   "checks": [
     {
@@ -46,6 +45,19 @@
       "default_expect": "< 2.0",
       "default_severity": "warn",
       "unit": "%"
+    },
+    {
+      "id": "empty_string",
+      "label": "Empty / Blank Values",
+      "category": "Vollständigkeit",
+      "short": "Leere Strings zählen",
+      "help": "Zählt Zeilen, in denen eine Textspalte leer oder nur aus Leerzeichen besteht — über den reinen NULL-Check hinaus. In Soda/GX ein häufiger Zusatz, weil leere Strings fehlende Werte maskieren.",
+      "example": "Erwartung \"= 0\" → keine leeren Texte erlaubt.",
+      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE TRIM(\"<SPALTE>\") = ''",
+      "params": [{ "token": "<SPALTE>", "label": "Spalte", "hint": "Textspalte, die nicht leer sein darf" }],
+      "default_expect": "= 0",
+      "default_severity": "warn",
+      "unit": ""
     },
     {
       "id": "duplicate",
@@ -183,6 +195,35 @@
       "unit": ""
     },
     {
+      "id": "cross_column_compare",
+      "label": "Column Comparison",
+      "category": "Konsistenz",
+      "short": "Beziehung zwischen zwei Spalten",
+      "help": "Zählt Zeilen, in denen eine erwartete Beziehung zwischen zwei Spalten verletzt ist (z.B. END_DATE < START_DATE oder NET > GROSS). Entspricht GX expect_column_pair_values_a_to_be_greater_than_b bzw. Soda Cross-Column-Checks. Passe die WHERE-Bedingung an die Regel an.",
+      "example": "z.B. Startdatum ≤ Enddatum: WHERE \"START_DATE\" > \"END_DATE\", Erwartung \"= 0\".",
+      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE_A>\" > \"<SPALTE_B>\"",
+      "params": [
+        { "token": "<SPALTE_A>", "label": "Spalte A", "hint": "Linke Spalte der Vergleichsregel" },
+        { "token": "<SPALTE_B>", "label": "Spalte B", "hint": "Rechte Spalte der Vergleichsregel" }
+      ],
+      "default_expect": "= 0",
+      "default_severity": "fail",
+      "unit": ""
+    },
+    {
+      "id": "future_dates",
+      "label": "No Future Dates",
+      "category": "Konsistenz",
+      "short": "Keine Datumswerte in der Zukunft",
+      "help": "Zählt Zeilen mit einem Datum/Zeitstempel in der Zukunft. Häufiger Plausibilitäts-Check in Soda/GX (Datum innerhalb eines erlaubten Fensters) — z.B. dürfen Buchungs- oder Lieferdaten nicht nach 'heute' liegen.",
+      "example": "Erwartung \"= 0\" → kein Datum nach dem aktuellen Zeitpunkt.",
+      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" > CURRENT_TIMESTAMP",
+      "params": [{ "token": "<SPALTE>", "label": "Datumsspalte", "hint": "Datum/Zeitstempel, der nicht in der Zukunft liegen darf" }],
+      "default_expect": "= 0",
+      "default_severity": "warn",
+      "unit": ""
+    },
+    {
       "id": "aggregate_range",
       "label": "Aggregate in Range",
       "category": "Verteilung & Aggregate",
@@ -193,6 +234,32 @@
       "params": [{ "token": "<SPALTE>", "label": "Kennzahl", "hint": "Numerische Spalte für die Aggregation" }],
       "default_expect": "BETWEEN 0 AND 1000000",
       "default_severity": "warn",
+      "unit": ""
+    },
+    {
+      "id": "distinct_count",
+      "label": "Distinct Count",
+      "category": "Verteilung & Aggregate",
+      "short": "Anzahl eindeutiger Werte",
+      "help": "Zählt die eindeutigen Ausprägungen einer Spalte (Kardinalität). Prüft, ob eine Dimension die erwartete Anzahl Werte hat und nie unter ein Minimum fällt. Entspricht Soda 'distinct_count' bzw. GX expect_column_unique_value_count_to_be_between.",
+      "example": "Erwartung \"BETWEEN 1 AND 50\" → zwischen 1 und 50 verschiedene Regionen.",
+      "sql_template": "SELECT COUNT(DISTINCT \"<SPALTE>\") FROM \"{schema}\".\"{dataset}\"",
+      "params": [{ "token": "<SPALTE>", "label": "Spalte", "hint": "Spalte, deren eindeutige Ausprägungen gezählt werden" }],
+      "default_expect": "> 0",
+      "default_severity": "warn",
+      "unit": ""
+    },
+    {
+      "id": "row_count_match",
+      "label": "Row Count Reconciliation",
+      "category": "Verteilung & Aggregate",
+      "short": "Zeilenzahl-Abgleich mit Referenz",
+      "help": "Differenz der Zeilenzahl zwischen dieser Tabelle und einer Referenztabelle (z.B. Quelle vs. Ziel nach dem Laden). Entspricht Soda 'reconciliation' / Cross-Checks und ist in ELT-Pipelines einer der häufigsten Abgleiche.",
+      "example": "Erwartung \"= 0\" → Quelle und Ziel haben gleich viele Zeilen.",
+      "sql_template": "SELECT (SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\") - (SELECT COUNT(*) FROM \"{schema}\".\"<REFERENZ>\")",
+      "params": [{ "token": "<REFERENZ>", "label": "Referenztabelle", "hint": "Vergleichstabelle (z.B. Quellobjekt im selben Schema)" }],
+      "default_expect": "= 0",
+      "default_severity": "fail",
       "unit": ""
     },
     {
@@ -230,80 +297,6 @@
       "example": "z.B. SELECT MAX(\"AMOUNT\") … mit Erwartung \"< 1000000\".",
       "sql_template": "",
       "params": [],
-      "default_expect": "= 0",
-      "default_severity": "fail",
-      "unit": ""
-    },
-    {
-      "id": "sap_bseg_balance",
-      "label": "BSEG Balance",
-      "category": "SAP / BDC",
-      "short": "Soll = Haben (HSL)",
-      "help": "Prüft die Soll/Haben-Balance je Buchungskreis und Geschäftsjahr. Die Summe muss (bis auf Rundung) 0 sein.",
-      "example": "Erwartung \"< 0.01\" → Beleg ist ausgeglichen.",
-      "sql_template": "SELECT ABS(SUM(CASE WHEN SHKZG='S' THEN HSL ELSE -HSL END))\nFROM \"{schema}\".\"{dataset}\"\nWHERE RYEAR = :<YEAR> AND RBUKRS = :<BUKRS>",
-      "params": [
-        { "token": ":<YEAR>", "label": "Geschäftsjahr", "hint": "Input-Parameter Geschäftsjahr" },
-        { "token": ":<BUKRS>", "label": "Buchungskreis", "hint": "Input-Parameter Buchungskreis" }
-      ],
-      "default_expect": "< 0.01",
-      "default_severity": "critical",
-      "unit": ""
-    },
-    {
-      "id": "sap_bkpf_orphan",
-      "label": "BKPF Orphan",
-      "category": "SAP / BDC",
-      "short": "BSEG ohne BKPF-Kopfsatz",
-      "help": "Zählt Belegpositionen (BSEG) ohne zugehörigen Belegkopf (BKPF). Erkennt unvollständige Replikation.",
-      "example": "Erwartung \"= 0\" → kein Positionssatz ohne Kopf.",
-      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"<BSEG>\" b\nLEFT JOIN \"{schema}\".\"<BKPF>\" h ON b.MANDT=h.MANDT AND b.BUKRS=h.BUKRS AND b.BELNR=h.BELNR AND b.GJAHR=h.GJAHR\nWHERE h.BELNR IS NULL",
-      "params": [
-        { "token": "<BSEG>", "label": "BSEG-Tabelle", "hint": "Positionstabelle" },
-        { "token": "<BKPF>", "label": "BKPF-Tabelle", "hint": "Belegkopftabelle" }
-      ],
-      "default_expect": "= 0",
-      "default_severity": "critical",
-      "unit": ""
-    },
-    {
-      "id": "sap_fiscal_completeness",
-      "label": "Fiscal Completeness",
-      "category": "SAP / BDC",
-      "short": "Keine Periodensprünge",
-      "help": "Zählt die vorhandenen Buchungsperioden je Jahr/Buchungskreis. Erkennt fehlende Perioden.",
-      "example": "Erwartung \">= 12\" → alle 12 Perioden vorhanden.",
-      "sql_template": "SELECT COUNT(DISTINCT POPER) FROM \"{schema}\".\"{dataset}\"\nWHERE RYEAR = :<YEAR> AND RBUKRS = :<BUKRS>",
-      "params": [
-        { "token": ":<YEAR>", "label": "Geschäftsjahr", "hint": "Input-Parameter Geschäftsjahr" },
-        { "token": ":<BUKRS>", "label": "Buchungskreis", "hint": "Input-Parameter Buchungskreis" }
-      ],
-      "default_expect": ">= 12",
-      "default_severity": "warn",
-      "unit": ""
-    },
-    {
-      "id": "sap_replication_lag",
-      "label": "Replication Lag",
-      "category": "SAP / BDC",
-      "short": "Replikationsalter in Sekunden",
-      "help": "Sekunden seit dem jüngsten replizierten Satz. Überwacht die Aktualität von Replication Flows.",
-      "example": "Erwartung \"< 3600\" → Replikation nicht älter als 1 Stunde.",
-      "sql_template": "SELECT SECONDS_BETWEEN(MAX(\"<TIMESTAMP_COL>\"), CURRENT_TIMESTAMP)\nFROM \"{schema}\".\"{dataset}\"",
-      "params": [{ "token": "<TIMESTAMP_COL>", "label": "Zeitstempelspalte", "hint": "Technischer Replikationszeitstempel" }],
-      "default_expect": "< 3600",
-      "default_severity": "warn",
-      "unit": "s"
-    },
-    {
-      "id": "sap_key_plausibility",
-      "label": "Key Figure Sign",
-      "category": "SAP / BDC",
-      "short": "Kennzahl nicht negativ",
-      "help": "Zählt Zeilen mit unplausibel negativer Kennzahl. Passe die Spalte/Regel an den fachlichen Kontext an.",
-      "example": "Erwartung \"= 0\" → keine negativen Kennzahlen.",
-      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<KENNZAHL>\" < 0",
-      "params": [{ "token": "<KENNZAHL>", "label": "Kennzahl", "hint": "Spalte mit Mengen-/Wertkennzahl" }],
       "default_expect": "= 0",
       "default_severity": "fail",
       "unit": ""
