@@ -289,6 +289,48 @@
       "unit": ""
     },
     {
+      "id": "column_count",
+      "label": "Column Count Stability",
+      "category": "Aktualität & Sonstiges",
+      "short": "Spaltenzahl stabil",
+      "help": "Anzahl der Spalten laut HANA-Systemsicht. Mit der Erwartung 'DELTA = 0%' bleibt die Struktur lauf-über-lauf konstant — erkennt stilles Hinzufügen/Droppen von Spalten, das der reine Existenz-Check (schema) verpasst. Observability-Säule Schema. Entspricht GX expect_table_column_count_to_equal / Soda schema checks.",
+      "example": "Erwartung \"DELTA = 0%\" → Spaltenzahl ändert sich nicht; alternativ \"= 12\" für eine fixe Anzahl.",
+      "sql_template": "SELECT COUNT(*) FROM \"SYS\".\"TABLE_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}'",
+      "params": [],
+      "default_expect": "DELTA = 0%",
+      "default_severity": "warn",
+      "unit": ""
+    },
+    {
+      "id": "volume_delta",
+      "label": "Volume Change",
+      "category": "Aktualität & Sonstiges",
+      "short": "Zeilenzahl-Änderung ggü. Vorlauf",
+      "help": "Prozentuale Änderung der Zeilenzahl gegenüber dem vorherigen Lauf (run-over-run). Fängt plötzliche Einbrüche oder Spikes, die feste Min/Max-Grenzen nicht sehen. Beim ersten Lauf ohne Baseline gilt der Check als bestanden (Warm-up). Observability-Säule Volume. Entspricht Soda 'change for row_count' bzw. Bigeye/Monte-Carlo Volume-Anomalien.",
+      "example": "Erwartung \"DELTA <= 50%\" → Zeilenzahl schwankt um höchstens 50 % pro Lauf.",
+      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\"",
+      "params": [],
+      "default_expect": "DELTA <= 50%",
+      "default_severity": "warn",
+      "unit": ""
+    },
+    {
+      "id": "recent_volume",
+      "label": "Recent Load Volume",
+      "category": "Aktualität & Sonstiges",
+      "short": "Frische Zeilen im Zeitfenster",
+      "help": "Zählt Zeilen, deren Lade-Zeitstempel innerhalb des letzten Fensters (Sekunden) liegt. Beantwortet die operative Frage vor allen Inhaltschecks: 'Sind beim letzten Lauf überhaupt frische Daten angekommen?'. Ergänzt Freshness (Alter des jüngsten Satzes) um die Menge. Observability-Säulen Freshness/Volume.",
+      "example": "Erwartung \"> 0\" → im letzten Fenster sind neue Zeilen eingetroffen (Fenster z.B. 86400 s = 24 h).",
+      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" >= ADD_SECONDS(CURRENT_TIMESTAMP, -<FENSTER>)",
+      "params": [
+        { "token": "<SPALTE>", "label": "Lade-Zeitstempel", "hint": "Spalte mit dem technischen Lade-/Änderungszeitpunkt" },
+        { "token": "<FENSTER>", "label": "Fenster (Sekunden)", "hint": "Größe des Beobachtungsfensters in Sekunden, z.B. 86400 für 24 h" }
+      ],
+      "default_expect": "> 0",
+      "default_severity": "warn",
+      "unit": ""
+    },
+    {
       "id": "custom_sql",
       "label": "Custom SQL",
       "category": "Aktualität & Sonstiges",

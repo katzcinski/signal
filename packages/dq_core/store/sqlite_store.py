@@ -454,7 +454,10 @@ class ResultStore:
     # Familien-Status (R3-2) — Objekt × Familie statt Entweder-oder
     # ------------------------------------------------------------------
 
-    _OBS_TYPES = ("freshness", "row_count", "schema")
+    _OBS_TYPES = (
+        "freshness", "row_count", "schema",
+        "volume_delta", "column_count", "recent_volume",
+    )
 
     def get_object_family_status(self) -> dict[str, dict[str, str]]:
         """Je Dataset der schlechteste Status getrennt nach Familie
@@ -562,9 +565,10 @@ class ResultStore:
             return [dict(r) for r in rows]
 
     # Observability metric families for the time-series view (UX-N1).
-    # row_count → "volume"; freshness → "freshness".
+    # row_count/recent_volume → "volume"; freshness → "freshness".
     _METRIC_FAMILY = {
         "row_count": "volume",
+        "recent_volume": "volume",
         "freshness": "freshness",
     }
 

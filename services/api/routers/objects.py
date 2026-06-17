@@ -360,7 +360,7 @@ def trigger_run(
                 from dq_core.obs.baselines import BaselineManager
                 manager = BaselineManager(store)
                 for result in summary.results:
-                    if result.type not in ("row_count", "freshness"):
+                    if result.type not in ("row_count", "freshness", "recent_volume"):
                         continue
                     history = store.get_check_history(object_id, result.name, limit=50)
                     values = []
