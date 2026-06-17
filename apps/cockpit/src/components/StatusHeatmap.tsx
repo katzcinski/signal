@@ -37,7 +37,7 @@ export function StatusHeatmap() {
   const tickIdx = new Set([0, Math.floor(days.length / 2), days.length - 1]);
 
   return (
-    <div style={{ marginTop: 16 }}>
+    <div>
       <Panel title={`${t.heatmap.title} (${days.length}${t.heatmap.daysShort})`}>
         <div style={{ overflowX: 'auto' }}>
           <div style={{ display: 'inline-block', minWidth: 'min-content' }}>

@@ -122,6 +122,30 @@
   min-width: 0;
 }
 
+/* DQ-first cockpit: responsive dashboard grids. Inline styles stay the house
+   idiom elsewhere, but media-query reflow needs real CSS, so the cockpit's
+   column layouts live here and collapse to a single column on narrow screens. */
+.dash-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--s4);
+}
+.dash-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+  gap: var(--s4);
+  align-items: stretch;
+}
+.dash-2col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s4);
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .dash-hero, .dash-2col { grid-template-columns: minmax(0, 1fr); }
+}
+
 html, body, #root {
   height: 100%;
   background: var(--bg-0);
