@@ -20,6 +20,7 @@ SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 VALID_LIFECYCLES = {"draft", "active", "deprecated"}
 VALID_OWNED_BY = {"platform", "product"}
 VALID_SEVERITIES = {"critical", "fail", "warn"}
+VALID_KINDS = {"internal_gate", "consumer_contract", "provider_contract"}
 
 _IDENT = {"type": "string", "pattern": SAFE_IDENTIFIER.pattern}
 _IDENT_LIST = {"type": "array", "items": _IDENT, "minItems": 1}
@@ -35,6 +36,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
         "product": _IDENT,
         "dataset": _IDENT,
         "owned_by": {"enum": sorted(VALID_OWNED_BY)},
+        "kind": {"enum": sorted(VALID_KINDS)},
         "owners": {"type": "array", "items": {"type": "string"}},
         "version": {"type": "string", "pattern": SEMVER.pattern},
         "lifecycle": {"enum": sorted(VALID_LIFECYCLES)},

@@ -12,6 +12,7 @@ class ContractIn(BaseModel):
     owned_by: str = "platform"
     owners: list[str] = []
     version: str = "0.1.0"
+    kind: str = "internal_gate"
     description: str = ""
     guarantees: dict[str, Any] = {}
 
@@ -22,6 +23,7 @@ class ContractOut(BaseModel):
     owned_by: str = "platform"
     owners: list[str] = []
     version: str = "0.1.0"
+    kind: str = "internal_gate"
     lifecycle: str = "draft"
     description: str = ""
     guarantees: dict[str, Any] = {}
@@ -36,6 +38,7 @@ class CheckDefOut(BaseModel):
     type: str = ""
     unit: str = ""
     owned_by: str = "platform"
+    kind: str = "internal_gate"
 
 
 class CompileOut(BaseModel):

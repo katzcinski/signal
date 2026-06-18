@@ -19,6 +19,22 @@ def test_extract_reports_counts(api_client):
     data = resp.json()
     assert data["inventory_items"] == 1
     assert data["lineage_nodes"] == 1
+    assert data["status"] == "succeeded"
+    assert data["counts"]["inventory_items"] == 1
+
+
+def test_extract_status_reports_latest_snapshot(api_client):
+    resp = api_client.get("/api/extract/status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["can_trigger"] is True
+    assert data["counts"]["inventory_items"] == 1
+    assert data["runtime_artifact_paths"]["inventory"]
+
+
+def test_extract_trigger_requires_admin(api_client):
+    resp = api_client.post("/api/extract", headers={"X-DQ-Role": "viewer"})
+    assert resp.status_code == 403
 
 
 def test_extract_updates_file_mtime(api_client, tmp_path, monkeypatch):

@@ -46,6 +46,15 @@ def test_save_and_get_run(tmp_path):
     assert fetched["run_id"] == "r1"
     assert fetched["dataset"] == "DS"
     assert len(fetched["results"]) == 1
+    assert fetched["results"][0]["kind"] == "internal_gate"
+
+
+def test_migration_006_adds_kind_column(tmp_path):
+    store = make_store(tmp_path)
+    with store._conn() as conn:
+        cursor = conn.execute("PRAGMA table_info(dq_check_results)")
+        columns = {row[1] for row in cursor.fetchall()}
+    assert "kind" in columns
 
 
 def test_get_runs_ordering(tmp_path):

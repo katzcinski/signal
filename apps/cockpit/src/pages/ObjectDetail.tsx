@@ -23,6 +23,7 @@ import { t } from '@/i18n/de';
 import type { CheckResult, ContractOut, RunListItem } from '@/types';
 
 type Tab = 'checks' | 'runs' | 'timeseries' | 'contract' | 'lineage';
+type KindFilter = 'internal' | 'contract' | 'all';
 
 // ---------------------------------------------------------------------------
 // Structured contract view — replaces raw JSON.stringify
@@ -323,6 +324,41 @@ function HistorySpark({ objectId, checkName, enabled }: {
   return <Spark data={values} color="var(--cont)" />;
 }
 
+function SegmentControl<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { key: T; label: string }[];
+}) {
+  return (
+    <div style={{
+      display: 'inline-flex', gap: 0,
+      background: 'var(--bg-2)', borderRadius: 6,
+      border: '1px solid var(--line)', padding: 2,
+    }}>
+      {options.map(o => (
+        <button
+          key={o.key}
+          onClick={() => onChange(o.key)}
+          style={{
+            padding: '4px 12px', fontSize: 11, borderRadius: 4,
+            border: 'none', cursor: 'pointer',
+            background: value === o.key ? 'var(--cont)' : 'transparent',
+            color: value === o.key ? '#fff' : 'var(--fg-3)',
+            fontWeight: value === o.key ? 600 : 400,
+            transition: 'all var(--t)',
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function ObjectDetail() {
   const { id = '' } = useParams();
   const [sp, setSp] = useSearchParams();
@@ -332,6 +368,7 @@ export default function ObjectDetail() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const role = useRoleStore(s => s.role);
 
   // All hooks run unconditionally — no early return may come before them.
@@ -383,6 +420,16 @@ export default function ObjectDetail() {
 
   // E: trend sparkline — fetch history for the first ~20 checks of the latest run.
   const sparkBudget = new Set(results.slice(0, 20).map(c => c.name));
+  const kindOptions = [
+    { key: 'all' as const, label: t.cockpit.segmentControl.all },
+    { key: 'internal' as const, label: t.cockpit.segmentControl.internal },
+    { key: 'contract' as const, label: t.cockpit.segmentControl.contract },
+  ];
+  const filteredResults = results.filter(r => {
+    if (kindFilter === 'all') return true;
+    if (kindFilter === 'internal') return r.kind === 'internal_gate';
+    return r.kind === 'consumer_contract' || r.kind === 'provider_contract';
+  });
 
   const checkColumns: ColDef<CheckResult>[] = [
     { key: 'name', header: t.objectDetail.colCheck, mono: true, render: c => c.name },
@@ -392,6 +439,24 @@ export default function ObjectDetail() {
     {
       key: 'trend', header: t.objectDetail.colTrend, width: 80,
       render: c => <HistorySpark objectId={id} checkName={c.name} enabled={sparkBudget.has(c.name)} />,
+    },
+    {
+      key: 'kind',
+      header: 'Typ',
+      render: c => {
+        const isInternal = c.kind === 'internal_gate';
+        const color = isInternal ? 'var(--qual)' : 'var(--cont)';
+        return (
+          <span style={{
+            fontSize: 10, borderRadius: 3, padding: '1px 6px',
+            background: `color-mix(in srgb, ${color} 14%, transparent)`,
+            color,
+            border: `1px solid ${color}`,
+          }}>
+            {isInternal ? t.cockpit.kind.internal_gate : t.cockpit.kind.consumer_contract}
+          </span>
+        );
+      },
     },
     { key: 'ms', header: t.objectDetail.colMs, mono: true, render: c => String(c.duration_ms) },
   ];
@@ -462,8 +527,11 @@ export default function ObjectDetail() {
       {tab === 'checks' && (
         <>
           {results.length === 0 && <MinedProposalsCallout productId={obj.id} />}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <SegmentControl value={kindFilter} onChange={setKindFilter} options={kindOptions} />
+          </div>
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
-            <Table columns={checkColumns} rows={results} rowKey={c => c.name} empty={t.objectDetail.noResults} />
+            <Table columns={checkColumns} rows={filteredResults} rowKey={c => c.name} empty={t.objectDetail.noResults} />
           </div>
         </>
       )}

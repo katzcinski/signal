@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canWriteContract, canActOnIncidents, canAcceptProposal, canProfileObject, ROLE_META } from '@/store/role';
+import { canWriteContract, canActOnIncidents, canAcceptProposal, canManageInventory, canProfileObject, ROLE_META } from '@/store/role';
 import { navForRole } from '@/components/layout/Sidebar';
 
 // FE permission mirror of auth/provider.py:Principal. The server stays
@@ -54,6 +54,15 @@ describe('canProfileObject', () => {
   });
 });
 
+describe('canManageInventory', () => {
+  it('requires admin role', () => {
+    expect(canManageInventory('viewer')).toBe(false);
+    expect(canManageInventory('steward')).toBe(false);
+    expect(canManageInventory('owner')).toBe(false);
+    expect(canManageInventory('admin')).toBe(true);
+  });
+});
+
 describe('ROLE_META', () => {
   it('routes writer roles to the My-work landing', () => {
     expect(ROLE_META.steward.home).toBe('/my');
@@ -62,7 +71,6 @@ describe('ROLE_META', () => {
     expect(ROLE_META.admin.home).toBe('/');
   });
 });
-
 
 describe('ROLE_META homes', () => {
   it('viewer lands on Health (/)', () => {

@@ -128,6 +128,7 @@ def dry_run_checks(
                 "expect": r.expect,
                 "severity": r.severity,
                 "state": r.state,
+                "kind": r.kind,
                 "error": r.error,
                 "duration_ms": r.duration_ms,
             }

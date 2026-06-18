@@ -17,6 +17,7 @@ class CheckResultOut(BaseModel):
     duration_ms: int = 0
     state: str = "executed"
     type: str = ""
+    kind: str = "internal_gate"
 
 
 class RunSummaryOut(BaseModel):

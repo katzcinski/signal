@@ -132,3 +132,39 @@ def test_parse_iso_duration():
     assert parse_iso_duration("PT30M") == 1800
     with pytest.raises(CompileError):
         parse_iso_duration("26h")
+
+
+def test_compile_contract_propagates_kind():
+    contract = {
+        "product": "test_ds",
+        "dataset": "test_ds",
+        "kind": "consumer_contract",
+        "guarantees": {
+            "volume": {"min_rows": 1},
+        },
+    }
+    config = compile_contract(contract)
+    assert all(c.kind == "consumer_contract" for c in config.checks)
+
+
+def test_compile_contract_defaults_to_internal_gate():
+    contract = {
+        "product": "test_ds",
+        "dataset": "test_ds",
+        "guarantees": {
+            "volume": {"min_rows": 1},
+        },
+    }
+    config = compile_contract(contract)
+    assert all(c.kind == "internal_gate" for c in config.checks)
+
+
+def test_compile_contract_rejects_invalid_kind():
+    contract = {
+        "product": "test_ds",
+        "dataset": "test_ds",
+        "kind": "invalid",
+        "guarantees": {"volume": {"min_rows": 1}},
+    }
+    with pytest.raises(CompileError):
+        compile_contract(contract)

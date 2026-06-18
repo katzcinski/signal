@@ -64,6 +64,10 @@ export function canManageNotifications(role: Role): boolean {
 }
 
 /** Accepting a proposal writes a guarantee → same gate as the contract. */
+export function canManageInventory(role: Role): boolean {
+  return role === 'admin';
+}
+
 export function canAcceptProposal(role: Role, ownedBy?: string): boolean {
   return canWriteContract(role, ownedBy);
 }

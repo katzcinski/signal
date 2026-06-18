@@ -63,6 +63,29 @@ def _active_products(contracts_dir: Path) -> set[str]:
     return active
 
 
+def _kind_products(contracts_dir: Path) -> tuple[set[str], set[str]]:
+    """Return (internal-gate products, contract-check products) from contract YAML."""
+    if not contracts_dir.exists():
+        return set(), set()
+
+    gate_products: set[str] = set()
+    contract_products: set[str] = set()
+    for path in contracts_dir.glob("*.y*ml"):
+        if path.name.endswith(".active.yml"):
+            continue
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            continue
+        product = data.get("product") or path.stem
+        kind = data.get("kind", "internal_gate")
+        if kind == "internal_gate":
+            gate_products.add(product)
+        else:
+            contract_products.add(product)
+    return gate_products, contract_products
+
+
 @router.get("/metrics/health")
 def service_health_metrics():
     """Self-observability: request counters, uptime, latency percentiles (JSON)."""
@@ -99,7 +122,9 @@ def coverage_summary(
     object_ids = [o for o in object_ids if o]
 
     # Aktive Contracts je Produkt (Identitäts-Join: product == technicalName)
-    active_products = _active_products(Path(settings.contracts_dir))
+    contracts_dir = Path(settings.contracts_dir)
+    active_products = _active_products(contracts_dir)
+    gate_products, contract_products = _kind_products(contracts_dir)
 
     checks_dir = Path(settings.checks_dir)
     with_checks = {
@@ -124,6 +149,8 @@ def coverage_summary(
         "objects_total": total,
         "with_active_contract": with_active,
         "with_checks": len(with_checks),
+        "with_internal_gate": len([o for o in object_ids if o in gate_products]),
+        "with_contract_checks": len([o for o in object_ids if o in contract_products]),
         "contract_coverage_pct": round(100.0 * with_active / total, 1) if total else 0.0,
         "unvalidated_30d": unvalidated,
     }

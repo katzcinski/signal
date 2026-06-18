@@ -20,6 +20,7 @@ export type RunState = 'running' | 'finished' | 'error';
 export type CovFlag = 'covered' | 'partial' | 'gap' | 'out_of_scope';
 // G6 gating states: anything other than 'executed' must NOT render as pass/fail.
 export type CheckState = 'executed' | 'skipped_stale' | 'skipped_dependency' | 'downgraded' | 'error';
+export type ArtifactKind = 'internal_gate' | 'consumer_contract' | 'provider_contract';
 
 // ---- Inventory ----
 export interface InventoryObject {
@@ -116,6 +117,7 @@ export interface CheckResult {
   error?: string;
   duration_ms: number;
   state: CheckState;
+  kind: ArtifactKind;
 }
 
 export interface RunSummary {
@@ -313,6 +315,7 @@ export interface Contract {
   dataset: string;
   schema?: string;
   owned_by: string;
+  kind: ArtifactKind;
   owners?: string[];
   lifecycle: Lifecycle;
   version: string;
@@ -330,6 +333,7 @@ export interface ContractPutBody {
   product: string;
   dataset: string;
   owned_by: string;
+  kind: ArtifactKind;
   owners?: string[];
   version: string;
   description?: string;
@@ -364,6 +368,8 @@ export interface CoverageSummary {
   objects_total: number;
   with_active_contract: number;
   with_checks: number;
+  with_internal_gate: number;
+  with_contract_checks: number;
   contract_coverage_pct: number;
   unvalidated_30d: string[];
 }

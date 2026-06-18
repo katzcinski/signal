@@ -17,6 +17,7 @@ const RunCompare        = lazy(() => import('./pages/RunCompare'));
 const Compliance        = lazy(() => import('./pages/Compliance'));
 const CheckLibrary      = lazy(() => import('./pages/CheckLibrary'));
 const Notifications     = lazy(() => import('./pages/Notifications'));
+const InventoryAdmin    = lazy(() => import('./pages/InventoryAdmin'));
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -49,6 +50,7 @@ export default function App() {
               <Route path="/governance"  element={<Navigate to="/compliance" replace />} />
               <Route path="/library"    element={<CheckLibrary />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/inventory-admin" element={<InventoryAdmin />} />
             </Routes>
           </Suspense>
         </Shell>

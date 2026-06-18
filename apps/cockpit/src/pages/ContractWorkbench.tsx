@@ -73,6 +73,7 @@ const toPutBody = (c: Contract | ContractPutBody): ContractPutBody => ({
   product: c.product,
   dataset: c.dataset,
   owned_by: c.owned_by,
+  kind: c.kind ?? 'internal_gate',
   owners: c.owners,
   version: c.version,
   description: c.description,

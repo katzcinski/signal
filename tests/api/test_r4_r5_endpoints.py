@@ -46,6 +46,8 @@ def test_coverage_summary(api_client):
     body = resp.json()
     assert body["objects_total"] >= 1
     assert "contract_coverage_pct" in body
+    assert "with_internal_gate" in body
+    assert "with_contract_checks" in body
     assert isinstance(body["unvalidated_30d"], list)
 
 
@@ -111,6 +113,7 @@ def test_contract_list_served_from_index(api_client):
     assert entry["guarantees"] == {}
     detail = api_client.get("/api/contracts/IDX1").json()
     assert detail["guarantees"]["keys"]
+    assert detail["kind"] == "internal_gate"
 
 
 # ---- Pagination ----

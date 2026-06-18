@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).parents[2] / "packages"))
 
 from dq_core.engine.models import (
     CheckDef, CheckResult, DatasetConfig, RunSummary,
-    VALID_OWNERS, VALID_SEVERITIES,
+    VALID_OWNERS, VALID_SEVERITIES, VALID_KINDS,
 )
 
 
@@ -18,12 +18,17 @@ def test_valid_severities_set():
     assert {"critical", "fail", "warn"} == VALID_SEVERITIES
 
 
+def test_valid_kinds_set():
+    assert {"internal_gate", "consumer_contract", "provider_contract"} == VALID_KINDS
+
+
 def test_check_def_defaults():
     cd = CheckDef(name="test", sql="SELECT 1", expect="= 1")
     assert cd.severity == "fail"
     assert cd.enabled is True
     assert cd.timeout_s == 60
     assert cd.owned_by == "platform"
+    assert cd.kind == "internal_gate"
 
 
 def test_check_result_defaults():
@@ -31,6 +36,7 @@ def test_check_result_defaults():
     assert cr.actual_value is None
     assert cr.error is None
     assert cr.state == "executed"
+    assert cr.kind == "internal_gate"
     assert cr.diagnostic_rows == []
 
 

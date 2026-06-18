@@ -67,6 +67,7 @@ def seed_from_inventory(obj: dict[str, Any]) -> dict[str, Any]:
         "product": name,
         "dataset": name,
         "owned_by": owned_by,
+        "kind": "internal_gate",
         "owners": [],
         "version": "0.1.0",
         "lifecycle": "draft",
