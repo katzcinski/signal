@@ -5,6 +5,7 @@ import { t } from '@/i18n/de';
 import { diffExpect, OP_SYMBOL } from '@/lib/diff';
 import { useRoleStore, canAcceptProposal } from '@/store/role';
 import type { Proposal } from '@/types';
+import { useNavigate } from 'react-router-dom';
 
 // UX-N13: explain the *meaning* of current → proposed (loosened/tightened + Δ),
 // then keep the raw spans below for power users.
@@ -70,6 +71,7 @@ function ConfidenceBar({ value }: { value: number }) {
 
 function ProposalCard({ proposal }: { proposal: Proposal }) {
   const action = useProposalAction();
+  const navigate = useNavigate();
   const role = useRoleStore(s => s.role);
   // FE mirror only — the server re-checks role × ownership on accept (S-2).
   const canWrite = canAcceptProposal(role);
@@ -85,7 +87,19 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg)', fontWeight: 500 }}>
             {proposal.check_name}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 2 }}>{proposal.product}</div>
+          <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 2 }}>
+            {proposal.product}
+            <span style={{
+              fontSize: 9, borderRadius: 3, padding: '1px 5px', marginLeft: 4,
+              background: proposal.kind === 'internal_gate'
+                ? 'color-mix(in srgb, var(--qual) 14%, transparent)'
+                : 'color-mix(in srgb, var(--cont) 14%, transparent)',
+              color: proposal.kind === 'internal_gate' ? 'var(--qual)' : 'var(--cont)',
+              border: `1px solid ${proposal.kind === 'internal_gate' ? 'var(--qual)' : 'var(--cont)'}`,
+            }}>
+              {proposal.kind === 'internal_gate' ? 'Gate' : 'Contract'}
+            </span>
+          </div>
         </div>
         <span style={{
           background: 'var(--bg-3)', border: '1px solid var(--line-2)',
@@ -121,10 +135,16 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       <div style={{ fontSize: 11, color: 'var(--fg-3)', fontStyle: 'italic' }}>{proposal.rationale}</div>
 
       {proposal.status === 'open' && (
-        <div style={{ display: 'flex', gap: 8 }} title={canWrite ? undefined : t.role.noWriteAction}>
-          <button onClick={() => act('accept')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
-            {t.proposals.accept}
-          </button>
+        <div style={{ display: 'flex', gap: 8 }} title={proposal.kind === 'internal_gate' && !canWrite ? t.role.noWriteAction : undefined}>
+          {proposal.kind !== 'internal_gate' ? (
+            <button onClick={() => navigate(`/contracts?product=${encodeURIComponent(proposal.product)}`)} style={{ flex: 1, background: 'var(--cont)22', border: '1px solid var(--cont)', color: 'var(--cont)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
+              Im Contract pruefen {'->'}
+            </button>
+          ) : (
+            <button onClick={() => act('accept')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
+              {t.proposals.accept}
+            </button>
+          )}
           <button onClick={() => act('snooze')} disabled={!canWrite} style={{ flex: 1, background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
             {t.proposals.snooze}
           </button>

@@ -1,11 +1,12 @@
 """Contract lifecycle endpoints — approve / deprecate + breaking guard (WS2-6 / M2)."""
 
 
-def _put_draft(client, product, version, key_columns):
+def _put_draft(client, product, version, key_columns, kind="internal_gate"):
     return client.put(
         f"/api/contracts/{product}",
         json={
             "product": product,
+            "kind": kind,
             "dataset": product,
             "owned_by": "product",
             "lifecycle": "draft",
@@ -69,6 +70,41 @@ def test_deprecate_rejects_non_active(api_client):
 
 def test_approve_missing_contract_404(api_client):
     assert api_client.post("/api/contracts/NOPE/approve").status_code == 404
+
+
+def test_promote_creates_consumer_contract(api_client):
+    assert _put_draft(api_client, "P_PROMOTE", "1.0.0", ["ORDER_ID"]).status_code == 200
+
+    resp = api_client.post("/api/contracts/P_PROMOTE/promote")
+
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["kind"] == "consumer_contract"
+    assert data["product"] == "P_PROMOTE_contract"
+    assert data["lifecycle"] == "draft"
+
+
+def test_promote_rejects_non_gate(api_client):
+    assert _put_draft(
+        api_client,
+        "P_BOUNDARY",
+        "1.0.0",
+        ["ORDER_ID"],
+        kind="consumer_contract",
+    ).status_code == 200
+
+    resp = api_client.post("/api/contracts/P_BOUNDARY/promote")
+
+    assert resp.status_code == 409
+
+
+def test_promote_rejects_duplicate(api_client):
+    assert _put_draft(api_client, "P_DUP", "1.0.0", ["ORDER_ID"]).status_code == 200
+    assert api_client.post("/api/contracts/P_DUP/promote").status_code == 200
+
+    resp = api_client.post("/api/contracts/P_DUP/promote")
+
+    assert resp.status_code == 409
 
 
 def test_approve_returns_409_on_push_rejection(api_client, monkeypatch):

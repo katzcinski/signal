@@ -54,8 +54,25 @@ def _mine_all(store, dataset: str | None = None):
     miner = ProposalMiner(store)
     out = []
     for ds in datasets:
-        out.extend(miner.mine(ds))
+        out.extend(miner.mine(ds, kind=_contract_kind(ds)))
     return out
+
+
+def _contract_kind(product: str) -> str:
+    from pathlib import Path
+    from ..settings import get_settings
+
+    contracts_dir = Path(get_settings().contracts_dir)
+    for ext in (".yaml", ".yml"):
+        path = contracts_dir / f"{product}{ext}"
+        if not path.exists():
+            continue
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            return "internal_gate"
+        return str(data.get("kind", "internal_gate"))
+    return "internal_gate"
 
 
 def _find_proposal(store, proposal_id: str):
@@ -90,6 +107,7 @@ def list_proposals(
                 stats=p.stats,
                 status=effective_status,
                 created_at=p.created_at,
+                kind=p.kind,
             )
         )
     return result

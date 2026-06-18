@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { dump } from 'js-yaml';
 import type { AxiosError } from 'axios';
+import { toast } from 'sonner';
 import {
   useContracts, useContract, usePutContract, useApproveContract, useDeprecateContract,
   useCompileContractDryRun, useDryRunChecks, useRevertChecks, useExportBdc,
   useSeedContract, useDiffContract, useContractSla, useInventory, useCertifyContract,
+  usePromoteContract,
 } from '@/api/contracts';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { StatePill } from '@/components/ui/StatePill';
@@ -71,6 +74,7 @@ const hoursToMaxAge = (hours: number): string => `PT${Math.max(1, Math.round(hou
 // PUT body has NO lifecycle field — the server forces draft.
 const toPutBody = (c: Contract | ContractPutBody): ContractPutBody => ({
   product: c.product,
+  kind: c.kind ?? 'internal_gate',
   dataset: c.dataset,
   owned_by: c.owned_by,
   owners: c.owners,
@@ -1167,15 +1171,40 @@ function EditorPane({ product, lite, onToggleLite }: {
 export default function ContractWorkbench() {
   const contractsQuery = useContracts();
   const inventory = useInventory();
+  const navigate = useNavigate();
   const [productParam, setProduct] = useSearchParamState('product');
+  const [promoteProduct, setPromoteProduct] = useSearchParamState('promote');
   const [compileParam] = useSearchParamState('compile');
   const [liteParam, setLite] = useSearchParamState('lite');
+  const promote = usePromoteContract();
+  const handledPromoteRef = useRef('');
 
   // Honor the legacy /contracts?compile={id} deep link.
   const product = productParam || compileParam;
   const lite = liteParam === '1';
 
   const contracts = contractsQuery.data ?? [];
+  const hasContracts = contracts.some(
+    c => c.kind === 'consumer_contract' || c.kind === 'provider_contract',
+  );
+
+  useEffect(() => {
+    if (!promoteProduct || handledPromoteRef.current === promoteProduct) return;
+    handledPromoteRef.current = promoteProduct;
+    promote.mutate(promoteProduct, {
+      onSuccess: promoted => {
+        toast.success(t.lineage.promotionSuccess);
+        setProduct(promoted.product);
+        setPromoteProduct('');
+      },
+      onError: err => {
+        const detail = (err as AxiosError<{ detail?: unknown }>)?.response?.data?.detail;
+        toast.error(typeof detail === 'string' ? detail : 'Promotion fehlgeschlagen.');
+        setPromoteProduct('');
+        handledPromoteRef.current = '';
+      },
+    });
+  }, [promoteProduct, promote, setProduct, setPromoteProduct]);
 
   return (
     <div className="page-full">
@@ -1198,6 +1227,29 @@ export default function ContractWorkbench() {
             lite={lite}
             onToggleLite={() => setLite(lite ? '' : '1')}
           />
+        ) : !contractsQuery.isLoading && !hasContracts ? (
+          <div style={{ flex: 1, padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{
+              background: 'var(--bg-1)', border: '1px dashed var(--line-2)',
+              borderRadius: 8, padding: 32, textAlign: 'center', maxWidth: 560,
+            }}>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--fg)', marginBottom: 8 }}>
+                {t.contracts.onboardingTitle}
+              </h2>
+              <p style={{ fontSize: 13, color: 'var(--fg-3)', maxWidth: 480, margin: '0 auto 16px' }}>
+                {t.contracts.onboardingDesc}
+              </p>
+              <button
+                onClick={() => navigate('/lineage')}
+                style={{
+                  background: 'var(--cont)', color: '#fff', border: 'none',
+                  borderRadius: 5, padding: '8px 20px', fontSize: 13, cursor: 'pointer',
+                }}
+              >
+                {t.contracts.onboardingCta}
+              </button>
+            </div>
+          </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-3)' }}>
             {t.workbench.selectPrompt}

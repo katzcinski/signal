@@ -8,6 +8,7 @@ class ContractIn(BaseModel):
     """Lifecycle ist bewusst KEIN Eingabefeld — Übergänge laufen nur über
     approve/deprecate; PUT erzwingt draft (S-2)."""
     product: str
+    kind: str = "internal_gate"
     dataset: str = ""
     owned_by: str = "platform"
     owners: list[str] = []
@@ -18,6 +19,7 @@ class ContractIn(BaseModel):
 
 class ContractOut(BaseModel):
     product: str
+    kind: str = "internal_gate"
     dataset: str = ""
     owned_by: str = "platform"
     owners: list[str] = []

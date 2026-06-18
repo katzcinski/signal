@@ -99,7 +99,24 @@ def coverage_summary(
     object_ids = [o for o in object_ids if o]
 
     # Aktive Contracts je Produkt (Identitäts-Join: product == technicalName)
-    active_products = _active_products(Path(settings.contracts_dir))
+    contracts_dir = Path(settings.contracts_dir)
+    active_products = _active_products(contracts_dir)
+    internal_gate_products: set[str] = set()
+    boundary_contract_products: set[str] = set()
+    if contracts_dir.exists():
+        for path in contracts_dir.glob("*.y*ml"):
+            if path.name.endswith(".active.yml"):
+                continue
+            try:
+                data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            except Exception:
+                internal_gate_products.add(path.stem)
+                continue
+            product = data.get("product") or path.stem
+            if data.get("kind", "internal_gate") == "internal_gate":
+                internal_gate_products.add(product)
+            else:
+                boundary_contract_products.add(product)
 
     checks_dir = Path(settings.checks_dir)
     with_checks = {
@@ -123,6 +140,8 @@ def coverage_summary(
     return {
         "objects_total": total,
         "with_active_contract": with_active,
+        "with_internal_gate": len([o for o in object_ids if o in internal_gate_products]),
+        "with_contract_checks": len([o for o in object_ids if o in boundary_contract_products]),
         "with_checks": len(with_checks),
         "contract_coverage_pct": round(100.0 * with_active / total, 1) if total else 0.0,
         "unvalidated_30d": unvalidated,

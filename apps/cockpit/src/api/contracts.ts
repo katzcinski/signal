@@ -64,6 +64,20 @@ export const useSeedContract = () => {
   });
 };
 
+export const usePromoteContract = () => {
+  const qc = useQueryClient();
+  return useMutation<ContractOut, unknown, string>({
+    mutationFn: (product: string) =>
+      api.post(`/contracts/${product}/promote`).then(r => r.data),
+    onSuccess: data => {
+      qc.invalidateQueries({ queryKey: ['contracts'] });
+      qc.invalidateQueries({ queryKey: ['contracts', data.product] });
+      qc.invalidateQueries({ queryKey: ['coverage', 'summary'] });
+      qc.invalidateQueries({ queryKey: ['lineage'] });
+    },
+  });
+};
+
 export const useDiffContract = (id: string) =>
   useMutation({
     mutationFn: (draft: ContractPutBody) =>

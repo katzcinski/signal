@@ -15,3 +15,4 @@ class ProposalOut(BaseModel):
     stats: dict[str, Any] = {}
     status: str = "open"
     created_at: str = ""
+    kind: str = "internal_gate"

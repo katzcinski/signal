@@ -28,14 +28,36 @@ def get_lineage_graph(
 
     # Annotate with live DQ status and coverage flags
     object_statuses = store.get_object_status()
+    import yaml as _yaml
     contracts_dir = Path(settings.contracts_dir)
-    contracted = (
-        [p.stem for p in contracts_dir.glob("*.y*ml") if not p.name.endswith(".active.yml")]
-        if contracts_dir.exists()
-        else []
-    )
+    contracted: list[str] = []
+    gate_products: set[str] = set()
+    contract_products: set[str] = set()
 
-    annotated_nodes = get_coverage(nodes, object_statuses, contracted)
+    if contracts_dir.exists():
+        for path in contracts_dir.glob("*.y*ml"):
+            if path.name.endswith(".active.yml"):
+                continue
+            product = path.stem
+            contracted.append(product)
+            try:
+                data = _yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            except Exception:
+                gate_products.add(product)
+                continue
+            kind = data.get("kind", "internal_gate")
+            if kind == "internal_gate":
+                gate_products.add(product)
+            else:
+                contract_products.add(product)
+
+    annotated_nodes = get_coverage(
+        nodes,
+        object_statuses,
+        contracted,
+        gate_products=gate_products,
+        contract_products=contract_products,
+    )
 
     # F5: Extrakt-Alter — FE zeigt eine Staleness-Warnung darauf an.
     extract_age_days = None

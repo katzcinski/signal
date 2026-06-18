@@ -79,6 +79,43 @@ function cacheKey(nodes: LineageNode[]) {
 }
 
 type PositionMap = Record<string, { x: number; y: number }>;
+type CoverageDimension = 'all' | 'internal' | 'contract';
+
+function SegmentControl<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: { key: T; label: string }[];
+}) {
+  return (
+    <div style={{
+      display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 6,
+      overflow: 'hidden', background: 'var(--bg-2)',
+    }}>
+      {options.map(option => {
+        const active = option.key === value;
+        return (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => onChange(option.key)}
+            style={{
+              border: 'none', borderRight: option.key === options[options.length - 1].key ? 'none' : '1px solid var(--line)',
+              padding: '5px 10px', fontSize: 12, cursor: 'pointer',
+              background: active ? 'var(--cont)' : 'transparent',
+              color: active ? '#fff' : 'var(--fg-2)',
+            }}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function applyRootCause(cy: Cytoscape.Core, focusId: string) {
   cy.elements().removeClass('rc-dim rc-path');
@@ -108,7 +145,7 @@ function layerLanes(nodes: LineageNode[]): LaneInfo[] {
   return [...byKey.values()].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
 }
 
-function CoverageKpis() {
+function CoverageKpis({ dimension }: { dimension: CoverageDimension }) {
   const { data } = useCoverageSummary();
   const [listOpen, setListOpen] = useState(false);
   if (!data) return null;
@@ -121,7 +158,12 @@ function CoverageKpis() {
   return (
     <div style={{ position: 'relative', display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
       <span style={chip}><span style={num}>{data.objects_total}</span> {t.lineage.kpiObjects}</span>
-      <span style={chip}><span style={num}>{data.with_active_contract}</span> {t.lineage.kpiWithContract}</span>
+      {dimension !== 'contract' && (
+        <span style={chip}><span style={num}>{data.with_internal_gate ?? 0}</span> Internal Gates</span>
+      )}
+      {dimension !== 'internal' && (
+        <span style={chip}><span style={num}>{data.with_contract_checks ?? 0}</span> Contracts</span>
+      )}
       <span style={chip}><span style={num}>{data.with_checks}</span> {t.lineage.kpiWithChecks}</span>
       <span style={chip}><span style={num}>{Math.round(data.contract_coverage_pct)}%</span> {t.lineage.kpiCoverage}</span>
       <button
@@ -244,6 +286,18 @@ function ObjectSidePanel({
         >
           {t.lineage.compile}
         </button>
+        {node.has_internal_gate && !node.has_boundary_contract && canProfile && (
+          <button
+            onClick={() => navigate(`/contracts?promote=${encodeURIComponent(node.id)}`)}
+            title={t.lineage.promoteHint}
+            style={{
+              background: 'var(--cont)', color: '#fff', border: 'none',
+              borderRadius: 5, padding: '7px 14px', fontSize: 13, cursor: 'pointer',
+            }}
+          >
+            {t.lineage.promoteCta}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -255,6 +309,8 @@ function ObjectLineageGraph({
   setLayerFilter,
   flagFilter,
   setFlagFilter,
+  dimension,
+  setDimension,
   search,
   setSearch,
   focus,
@@ -268,6 +324,8 @@ function ObjectLineageGraph({
   setLayerFilter: (value: string) => void;
   flagFilter: string;
   setFlagFilter: (value: string) => void;
+  dimension: CoverageDimension;
+  setDimension: (value: CoverageDimension) => void;
   search: string;
   setSearch: (value: string) => void;
   focus: string;
@@ -291,6 +349,7 @@ function ObjectLineageGraph({
     const cy = cyInstance.current;
     if (!cy) return;
     cy.nodes().style('display', 'element');
+    cy.nodes().removeClass('dimension-dim');
     if (layerFilter) {
       cy.nodes().filter(n => n.data('laneKey') !== layerFilter && !n.data('isLane')).style('display', 'none');
       cy.nodes().filter(n => n.data('isLane') && n.data('laneKey') !== layerFilter).style('display', 'none');
@@ -306,7 +365,17 @@ function ObjectLineageGraph({
         !String(n.data('id')).toLowerCase().includes(q)
       ).style('display', 'none');
     }
-  }, [layerFilter, flagFilter, search]);
+    if (dimension === 'internal') {
+      cy.nodes().filter(n =>
+        !n.data('isLane') && !n.data('has_internal_gate')
+      ).addClass('dimension-dim');
+    }
+    if (dimension === 'contract') {
+      cy.nodes().filter(n =>
+        !n.data('isLane') && !n.data('has_boundary_contract')
+      ).addClass('dimension-dim');
+    }
+  }, [layerFilter, flagFilter, search, dimension]);
 
   useEffect(() => {
     applyFilters();
@@ -377,6 +446,8 @@ function ObjectLineageGraph({
                   coverage_flag: n.coverage_flag ?? FLAG_OUT,
                   dq_status: n.dq_status ?? 'unknown',
                   has_contract: n.has_contract ?? false,
+                  has_internal_gate: n.has_internal_gate ?? false,
+                  has_boundary_contract: n.has_boundary_contract ?? false,
                   last_run: n.last_run ?? '',
                 },
               };
@@ -457,6 +528,7 @@ function ObjectLineageGraph({
           { selector: 'node:selected', style: { 'border-width': 3 } as Record<string, unknown> },
           { selector: '.rc-path', style: { 'opacity': 1, 'border-width': 3 } as Record<string, unknown> },
           { selector: 'edge.rc-path', style: { 'line-color': theme.cont, 'target-arrow-color': theme.cont, 'width': 2.5 } as Record<string, unknown> },
+          { selector: '.dimension-dim', style: { 'opacity': 0.15 } as Record<string, unknown> },
           { selector: '.rc-dim', style: { 'opacity': 0.18 } as Record<string, unknown> },
         ],
         layout: restoredPositions
@@ -533,7 +605,7 @@ function ObjectLineageGraph({
 
   return (
     <>
-      <CoverageKpis />
+      <CoverageKpis dimension={dimension} />
       <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <select
           value={layerFilter}
@@ -558,6 +630,15 @@ function ObjectLineageGraph({
           <option value={FLAG_GAP}>gap</option>
           <option value={FLAG_OUT}>out of scope</option>
         </select>
+        <SegmentControl
+          value={dimension}
+          onChange={setDimension}
+          options={[
+            { key: 'all', label: t.lineage.dimensionAll },
+            { key: 'internal', label: t.lineage.dimensionInternal },
+            { key: 'contract', label: t.lineage.dimensionContract },
+          ]}
+        />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -1105,6 +1186,7 @@ export default function LineageMap() {
   const [search, setSearch] = useSearchParamState('search');
   const [focus, setFocus] = useSearchParamState('focus');
   const [view, setView] = useSearchParamState('view', 'objects');
+  const [dimension, setDimension] = useState<CoverageDimension>('all');
   const [profileObject, setProfileObject] = useState('');
   const role = useRoleStore(s => s.role);
   const canProfile = canProfileObject(role);
@@ -1157,6 +1239,8 @@ export default function LineageMap() {
           setLayerFilter={setLayerFilter}
           flagFilter={flagFilter}
           setFlagFilter={setFlagFilter}
+          dimension={dimension}
+          setDimension={setDimension}
           search={search}
           setSearch={setSearch}
           focus={focus}

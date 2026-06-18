@@ -1,4 +1,5 @@
 export type Family = 'observability' | 'quality' | 'contract';
+export type ArtifactKind = 'internal_gate' | 'consumer_contract' | 'provider_contract';
 
 // ---- Datasphere data loads ----
 export interface DataLoad {
@@ -310,6 +311,7 @@ export interface ContractGuarantees {
 
 export interface Contract {
   product: string;
+  kind: ArtifactKind;
   dataset: string;
   schema?: string;
   owned_by: string;
@@ -328,6 +330,7 @@ export interface ContractOut extends Contract {
 // PUT body has NO lifecycle field (server forces draft).
 export interface ContractPutBody {
   product: string;
+  kind: ArtifactKind;
   dataset: string;
   owned_by: string;
   owners?: string[];
@@ -363,6 +366,8 @@ export interface SlaResponse {
 export interface CoverageSummary {
   objects_total: number;
   with_active_contract: number;
+  with_internal_gate: number;
+  with_contract_checks: number;
   with_checks: number;
   contract_coverage_pct: number;
   unvalidated_30d: string[];
@@ -450,6 +455,8 @@ export interface LineageNode {
   coverage_flag?: '●' | '◐' | '▲' | '○';
   dq_status?: string;
   has_contract?: boolean;
+  has_internal_gate?: boolean;
+  has_boundary_contract?: boolean;
   last_run?: string;
 }
 
@@ -670,6 +677,7 @@ export interface Proposal {
   rationale: string;
   confidence: number;
   status: 'open' | 'accepted' | 'rejected' | 'snoozed';
+  kind: ArtifactKind;
   stats?: ProposalStats;
 }
 

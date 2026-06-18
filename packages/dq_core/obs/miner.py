@@ -27,13 +27,20 @@ class Proposal:
     stats: dict[str, Any] = field(default_factory=dict)
     status: str = "open"
     created_at: str = ""
+    kind: str = "internal_gate"
 
 
 class ProposalMiner:
     def __init__(self, store: "ResultStore") -> None:
         self._store = store
 
-    def mine(self, dataset: str, current_expects: dict[str, str] | None = None) -> list[Proposal]:
+    def mine(
+        self,
+        dataset: str,
+        current_expects: dict[str, str] | None = None,
+        *,
+        kind: str = "internal_gate",
+    ) -> list[Proposal]:
         """Analyse history and generate proposals for tighter expectations."""
         proposals: list[Proposal] = []
         current_expects = current_expects or {}
@@ -88,6 +95,7 @@ class ProposalMiner:
                     confidence=confidence,
                     stats=stats,
                     created_at=datetime.now(timezone.utc).isoformat(),
+                    kind=kind,
                 )
             )
 

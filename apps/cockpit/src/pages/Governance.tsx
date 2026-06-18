@@ -8,6 +8,7 @@ import type { Lifecycle } from '@/types';
 
 export default function Governance() {
   const { data: objects = [], isLoading, isError, refetch } = useObjects();
+  const activeContracts = objects.filter(o => o.contract_status === 'active');
 
   return (
     <div className="page-full">
@@ -28,6 +29,18 @@ export default function Governance() {
           <LifecycleStepper current="active" />
         </Panel>
       </div>
+
+      {!isLoading && activeContracts.length === 0 && (
+        <div style={{
+          background: 'color-mix(in srgb, var(--cont) 8%, transparent)',
+          border: '1px solid var(--cont)',
+          borderRadius: 8, padding: '12px 16px', marginBottom: 16,
+          fontSize: 12, color: 'var(--fg-2)',
+        }}>
+          Noch keine aktiven Contracts - Compliance-Daten erscheinen nach der ersten
+          Contract-Aktivierung. Internal Gates laufen unabhaengig unter <strong>Health</strong>.
+        </div>
+      )}
 
       <Panel title={t.governance.objectStatusTitle}>
         {isError ? (

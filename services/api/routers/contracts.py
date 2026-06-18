@@ -77,6 +77,7 @@ def _contract_out(store, product: str, data: dict[str, Any]) -> ContractOut:
     compliance_row = store.get_compliance(product)
     return ContractOut(
         product=data.get("product") or product,
+        kind=data.get("kind", "internal_gate"),
         dataset=data.get("dataset", ""),
         owned_by=data.get("owned_by", "platform"),
         owners=data.get("owners") or [],
@@ -135,8 +136,10 @@ def list_contracts(
     result = []
     for row in rows:
         compliance_row = store.get_compliance(row["product"])
+        data = _load_contract(row["product"]) or {}
         result.append(ContractOut(
             product=row["product"],
+            kind=data.get("kind", "internal_gate"),
             dataset=row["product"],
             owned_by=row["owned_by"] or "platform",
             owners=[],
@@ -234,6 +237,54 @@ def seed_contract(
     _save_contract(product, data)
     _update_index(store, product, data)
     return _contract_out(store, product, data)
+
+
+@router.post("/{product}/promote", response_model=ContractOut)
+def promote_to_contract(
+    product: str,
+    principal: PrincipalDep,
+    store: StoreDep = ...,
+):
+    """ADR-0001: copy guarantees from an internal gate into a new contract draft."""
+    from dq_core.contract.validator import validate_contract
+
+    _validate_product(product)
+    data = _load_contract(product)
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+
+    kind = data.get("kind", "internal_gate")
+    if kind != "internal_gate":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only internal_gate artifacts can be promoted (got {kind!r}).",
+        )
+
+    _require_write(principal, data)
+
+    contract_product = f"{product}_contract"
+    if _load_contract(contract_product):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Contract {contract_product!r} already exists. Edit it directly in the workbench.",
+        )
+
+    promoted = dict(data)
+    promoted["product"] = contract_product
+    promoted["kind"] = "consumer_contract"
+    promoted["lifecycle"] = "draft"
+    promoted["version"] = "1.0.0"
+
+    errors = validate_contract(promoted)
+    if errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Promoted contract validation failed (Gate G1)", "errors": errors},
+        )
+
+    _save_contract(contract_product, promoted)
+    _update_index(store, contract_product, promoted)
+    return _contract_out(store, contract_product, promoted)
 
 
 @router.post("/{product}/diff")
