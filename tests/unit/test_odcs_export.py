@@ -16,6 +16,7 @@ FIXTURE = Path(__file__).parents[1] / "fixtures" / "odcs-json-schema-v3.1.0.json
 def _full_contract() -> dict:
     return {
         "product": "DS_SALES_ORDERS",
+        "kind": "consumer_contract",
         "dataset": "DS_SALES_ORDERS",
         "owned_by": "product",
         "owners": ["grp:data-platform"],
@@ -49,6 +50,8 @@ def test_structural_mapping():
     assert odcs["apiVersion"] == "v3.1.0"
     assert odcs["kind"] == "DataContract"
     assert odcs["status"] == "active"
+    custom = {p["property"]: p["value"] for p in odcs["customProperties"]}
+    assert custom["signal_kind"] == "consumer_contract"
 
     obj = odcs["schema"][0]
     props = {p["name"]: p for p in obj["properties"]}
@@ -76,11 +79,23 @@ def test_shipped_contracts_export_cleanly():
     for path in contracts_dir.glob("*.y*ml"):
         if path.name.endswith(".active.yml"):
             continue
-        odcs = to_odcs(yaml.safe_load(path.read_text(encoding="utf-8")))
+        contract = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if contract.get("kind", "internal_gate") == "internal_gate":
+            with pytest.raises(ValueError):
+                to_odcs(contract)
+            continue
+        odcs = to_odcs(contract)
         assert odcs["schema"][0]["properties"], path.name
         if FIXTURE.exists():
             import jsonschema
             jsonschema.Draft201909Validator(json.loads(FIXTURE.read_text())).validate(odcs)
+
+
+def test_internal_gate_rejected():
+    contract = _full_contract()
+    contract["kind"] = "internal_gate"
+    with pytest.raises(ValueError):
+        to_odcs(contract)
 
 
 def test_deterministic():

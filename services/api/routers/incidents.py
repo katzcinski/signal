@@ -17,6 +17,7 @@ from ..settings import get_settings
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 
 VALID_INCIDENT_STATUS = {"open", "acknowledged", "investigating", "resolved"}
+VALID_INCIDENT_KIND = {"internal_gate", "consumer_contract", "provider_contract"}
 
 
 def _product_space(product: str) -> str:
@@ -54,13 +55,16 @@ class IncidentTransitionIn(BaseModel):
 def list_incidents(
     status: str | None = Query(default=None),
     severity: str | None = Query(default=None),
+    kind: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     store: StoreDep = ...,
 ):
     if status and status not in VALID_INCIDENT_STATUS:
         raise HTTPException(status_code=422, detail=f"Unknown status {status!r}")
-    return store.list_incidents(status=status, severity=severity, limit=limit, offset=offset)
+    if kind and kind not in VALID_INCIDENT_KIND:
+        raise HTTPException(status_code=422, detail=f"Unknown kind {kind!r}")
+    return store.list_incidents(status=status, severity=severity, kind=kind, limit=limit, offset=offset)
 
 
 @router.get("/checks")
@@ -166,6 +170,7 @@ def transition_incident(
                 settings=get_settings(),
                 store=store,
                 space=_product_space(incident["product"]),
+                kind=incident.get("kind", "consumer_contract"),
             )
         except Exception:
             pass  # notifications are best-effort; never fail the API response

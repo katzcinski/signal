@@ -1,4 +1,5 @@
 product: DS_REVENUE_SUMMARY
+kind: consumer_contract
 dataset: DS_REVENUE_SUMMARY
 owned_by: product
 lifecycle: active

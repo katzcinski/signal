@@ -235,6 +235,11 @@ function ObjectSidePanel({
         <img src={coverageIconDataUri(flag)} width={16} height={16} alt={COVERAGE_LABEL[flag]} style={{ display: 'block' }} />
         <span style={{ fontSize: 12 }}>{COVERAGE_LABEL[flag]}</span>
       </div>
+      {node.kind && (
+        <div style={{ fontSize: 12, color: 'var(--fg-3)', marginBottom: 8 }}>
+          {t.incidents.filterKind}: <strong style={{ color: 'var(--fg)' }}>{node.kind === 'internal_gate' ? t.gateSignal : t.governanceBreach}</strong>
+        </div>
+      )}
       {node.dq_status && (
         <div style={{ fontSize: 12, color: 'var(--fg-3)', marginBottom: 8 }}>
           {t.lineage.dqStatus}: <strong style={{ color: 'var(--fg)' }}>{node.dq_status}</strong>
@@ -448,6 +453,7 @@ function ObjectLineageGraph({
                   has_contract: n.has_contract ?? false,
                   has_internal_gate: n.has_internal_gate ?? false,
                   has_boundary_contract: n.has_boundary_contract ?? false,
+                  artifact_kind: n.kind ?? '',
                   last_run: n.last_run ?? '',
                 },
               };
@@ -503,6 +509,10 @@ function ObjectLineageGraph({
           {
             selector: 'edge[type="computed"]',
             style: { 'line-style': 'dashed' } as Record<string, unknown>,
+          },
+          {
+            selector: 'node[artifact_kind="internal_gate"]',
+            style: { 'border-style': 'dashed' } as Record<string, unknown>,
           },
           {
             selector: 'node[?isLane]',
@@ -655,6 +665,14 @@ function ObjectLineageGraph({
               <img src={coverageIconDataUri(flag)} width={14} height={14} alt="" style={{ display: 'block' }} /> {label}
             </span>
           ))}
+          <span style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 18, height: 12, border: '1px dashed var(--line-2)', borderRadius: 3, display: 'inline-block' }} />
+            {t.gateSignal}
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 18, height: 12, border: '1px solid var(--line-2)', borderRadius: 3, display: 'inline-block' }} />
+            {t.governanceBreach}
+          </span>
           {edgeKinds.map(kind => (
             <span key={kind} style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 18, height: 3, borderRadius: 2, background: objectEdgeColor(kind), display: 'inline-block' }} />

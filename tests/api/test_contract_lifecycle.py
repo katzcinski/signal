@@ -37,20 +37,81 @@ def test_approve_rejects_non_draft(api_client):
 
 def test_breaking_change_requires_major_bump(api_client):
     # Certify v1.
-    _put_draft(api_client, "P3", "1.0.0", ["ORDER_ID"])
+    _put_draft(api_client, "P3", "1.0.0", ["ORDER_ID"], kind="consumer_contract")
     assert api_client.post("/api/contracts/P3/approve").status_code == 200
 
     # Breaking change (key change) without a major bump → blocked (Gate G3).
-    _put_draft(api_client, "P3", "1.1.0", ["ORDER_ID", "ITEM_NO"])
+    _put_draft(api_client, "P3", "1.1.0", ["ORDER_ID", "ITEM_NO"], kind="consumer_contract")
     resp = api_client.post("/api/contracts/P3/approve")
     assert resp.status_code == 409, resp.text
     assert "major" in str(resp.json()["detail"]).lower()
 
     # Same breaking change WITH a major bump → allowed.
-    _put_draft(api_client, "P3", "2.0.0", ["ORDER_ID", "ITEM_NO"])
+    _put_draft(api_client, "P3", "2.0.0", ["ORDER_ID", "ITEM_NO"], kind="consumer_contract")
     resp = api_client.post("/api/contracts/P3/approve")
     assert resp.status_code == 200, resp.text
     assert resp.json()["lifecycle"] == "active"
+
+
+def test_internal_gate_breaking_change_approves_without_major_bump(api_client):
+    _put_draft(api_client, "P3_GATE", "1.0.0", ["ORDER_ID"])
+    assert api_client.post("/api/contracts/P3_GATE/approve").status_code == 200
+
+    _put_draft(api_client, "P3_GATE", "1.1.0", ["ORDER_ID", "ITEM_NO"])
+    resp = api_client.post("/api/contracts/P3_GATE/approve")
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["lifecycle"] == "active"
+
+
+def test_approve_internal_gate_seeds_no_compliance(api_client):
+    from services.api.deps import get_store
+
+    _put_draft(api_client, "P_GATE_COMPLIANCE", "1.0.0", ["ORDER_ID"])
+    resp = api_client.post("/api/contracts/P_GATE_COMPLIANCE/approve")
+
+    assert resp.status_code == 200, resp.text
+    assert get_store().get_compliance("P_GATE_COMPLIANCE") is None
+
+
+def test_approve_contract_seeds_unknown_compliance(api_client):
+    from services.api.deps import get_store
+
+    _put_draft(api_client, "P_CONTRACT_COMPLIANCE", "1.0.0", ["ORDER_ID"], kind="consumer_contract")
+    resp = api_client.post("/api/contracts/P_CONTRACT_COMPLIANCE/approve")
+
+    assert resp.status_code == 200, resp.text
+    assert get_store().get_compliance("P_CONTRACT_COMPLIANCE")["compliance"] == "unknown"
+
+
+def test_diff_reports_ceremony_required(api_client):
+    _put_draft(api_client, "P_DIFF_GATE", "1.0.0", ["ORDER_ID"])
+    gate_body = {
+        "product": "P_DIFF_GATE",
+        "kind": "internal_gate",
+        "dataset": "P_DIFF_GATE",
+        "owned_by": "product",
+        "version": "1.1.0",
+        "guarantees": {"keys": [{"columns": ["ORDER_ID", "ITEM_NO"], "unique": True}]},
+    }
+    gate_resp = api_client.post("/api/contracts/P_DIFF_GATE/diff", json=gate_body)
+    assert gate_resp.status_code == 200, gate_resp.text
+    assert gate_resp.json()["ceremony_required"] is False
+    assert gate_resp.json()["breaking"] is True
+    assert gate_resp.json()["blocking"] is False
+
+    _put_draft(api_client, "P_DIFF_CONTRACT", "1.0.0", ["ORDER_ID"], kind="consumer_contract")
+    contract_body = {
+        **gate_body,
+        "product": "P_DIFF_CONTRACT",
+        "kind": "consumer_contract",
+        "dataset": "P_DIFF_CONTRACT",
+    }
+    contract_resp = api_client.post("/api/contracts/P_DIFF_CONTRACT/diff", json=contract_body)
+    assert contract_resp.status_code == 200, contract_resp.text
+    assert contract_resp.json()["ceremony_required"] is True
+    assert contract_resp.json()["breaking"] is True
+    assert contract_resp.json()["blocking"] is True
 
 
 def test_deprecate_active_contract(api_client):

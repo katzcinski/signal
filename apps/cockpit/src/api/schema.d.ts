@@ -178,6 +178,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/contracts/{product}/certify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Certify Contract
+         * @description [AUTHZ] [CONTRACT-SQL-FREE] Lite-Modus: save → active → compile in einem Schritt.
+         *
+         *     Der Lite-Modus (HANDOVER N1/D8) trägt bewusst KEINE SemVer-/Approval-Zeremonie:
+         *     es gibt keinen Draft-Zwischenschritt und keine Versions-Promotion von Hand.
+         *     Damit Garantien sofort als persistente Checks + Compliance-Ampel im Cockpit
+         *     erscheinen, zertifiziert dieser Pfad direkt und kompiliert die Check-Suite.
+         *
+         *     Was unverändert gilt:
+         *       - G1 (kein SQL im Contract) — jeder Ingestion-Pfad validiert.
+         *       - G3 (Breaking ⇒ Major) bleibt für bereits zertifizierte Produkte scharf:
+         *         Lite darf ein Produkt von Null aufsetzen, aber keinen *breaking* Change an
+         *         einer bestehenden aktiven Version am Gate vorbeischmuggeln — der muss über
+         *         den Voll-Modus (/approve) laufen.
+         */
+        post: operations["certify_contract_api_contracts__product__certify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/contracts/{product}/compile": {
         parameters: {
             query?: never;
@@ -242,6 +274,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/contracts/{product}/diff/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Version Diff Contract
+         * @description UX-N13: semantic diff of the working contract against the last certified
+         *     version (`.active.yml`). Reuses the breaking-change engine so the FE can
+         *     explain the *meaning* of each change, not just two code spans.
+         */
+        get: operations["version_diff_contract_api_contracts__product__diff_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/contracts/{product}/export/bdc": {
         parameters: {
             query?: never;
@@ -280,6 +334,26 @@ export interface paths {
         get: operations["export_odcs_api_contracts__product__export_odcs_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contracts/{product}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote To Contract
+         * @description ADR-0001: copy guarantees from an internal gate into a new contract draft.
+         */
+        post: operations["promote_to_contract_api_contracts__product__promote_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -478,12 +552,17 @@ export interface paths {
         put?: never;
         /**
          * Trigger Extract
-         * @description Reload inventory/lineage snapshots and report counts.
+         * @description Extract inventory/lineage from Datasphere (when configured) and report counts.
          *
-         *     F5: In local mode, touch the snapshot files to reset the staleness clock
-         *     (production deployments would call the real analyzer chain here). Either
-         *     way, the response includes the new extraction timestamp so the frontend
-         *     can update the staleness indicator immediately.
+         *     Tier-2: when a live source (REST catalog or the @sap/datasphere-cli) is
+         *     configured, run the real extraction — pull objects with columns + CSN,
+         *     assemble the inventory, build the object + column lineage, and write the
+         *     Meridian-shaped snapshots. FastAPI runs this sync handler in a threadpool,
+         *     so the blocking I/O does not stall the event loop.
+         *
+         *     F5 fallback: with no connectivity configured (local mode), touch the
+         *     snapshot files to reset the mtime-based staleness clock. Either way the
+         *     response carries the new extraction timestamp for the staleness indicator.
          */
         post: operations["trigger_extract_api_extract_post"];
         delete?: never;
@@ -637,6 +716,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lineage/columns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Column Lineage
+         * @description Per-column upstream/downstream lineage for one object (O3).
+         *
+         *     Built from the columnEdges produced by the extract chain
+         *     (build_column_lineage). Returns the per-column index for the object, or a
+         *     single column's lineage when ``column`` is given.
+         */
+        get: operations["get_column_lineage_api_lineage_columns_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/metrics/health": {
         parameters: {
             query?: never;
@@ -652,6 +755,129 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Channel */
+        post: operations["create_channel_api_notifications_channels_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/channels/{channel_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Channel */
+        delete: operations["delete_channel_api_notifications_channels__channel_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Channel */
+        patch: operations["patch_channel_api_notifications_channels__channel_id__patch"];
+        trace?: never;
+    };
+    "/api/notifications/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Config
+         * @description Channels, rules and mute windows. ``can_edit`` mirrors the server gate.
+         */
+        get: operations["get_config_api_notifications_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/mutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Mute */
+        post: operations["create_mute_api_notifications_mutes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/mutes/{mute_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Mute */
+        delete: operations["delete_mute_api_notifications_mutes__mute_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Rule */
+        post: operations["create_rule_api_notifications_rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/rules/{rule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Rule */
+        delete: operations["delete_rule_api_notifications_rules__rule_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -705,6 +931,30 @@ export interface paths {
         get: operations["get_check_history_api_objects__object_id__checks__check_name__history_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/objects/{object_id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Profile Object
+         * @description Profile one object's columns over a live HANA connection.
+         *
+         *     Returns per-column stats, PK candidates (single + composite), and
+         *     heuristic key scores. Requires steward role or higher and a configured
+         *     environment with a real HANA connection.
+         */
+        post: operations["profile_object_api_objects__object_id__profile_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1009,6 +1259,31 @@ export interface components {
             /** Summary */
             summary: string;
         };
+        /** ChannelIn */
+        ChannelIn: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Name */
+            name: string;
+            /** Type */
+            type: string;
+            /** Url */
+            url: string;
+        };
+        /** ChannelPatch */
+        ChannelPatch: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Name */
+            name?: string | null;
+            /** Type */
+            type?: string | null;
+            /** Url */
+            url?: string | null;
+        };
         /** CheckDefOut */
         CheckDefOut: {
             /** Expect */
@@ -1130,6 +1405,11 @@ export interface components {
                 [key: string]: unknown;
             };
             /**
+             * Kind
+             * @default internal_gate
+             */
+            kind: string;
+            /**
              * Owned By
              * @default platform
              */
@@ -1168,6 +1448,11 @@ export interface components {
             guarantees: {
                 [key: string]: unknown;
             };
+            /**
+             * Kind
+             * @default internal_gate
+             */
+            kind: string;
             /**
              * Lifecycle
              * @default draft
@@ -1235,6 +1520,28 @@ export interface components {
             owner?: string | null;
             /** Status */
             status?: string | null;
+        };
+        /** MuteIn */
+        MuteIn: {
+            /** Ends At */
+            ends_at: string;
+            /**
+             * Match Product
+             * @default
+             */
+            match_product: string;
+            /**
+             * Match Space
+             * @default
+             */
+            match_space: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Starts At */
+            starts_at: string;
         };
         /** ObjectDetailOut */
         ObjectDetailOut: {
@@ -1378,6 +1685,16 @@ export interface components {
              */
             status: string;
         };
+        /** ProfileRequest */
+        ProfileRequest: {
+            /** Environment */
+            environment?: string | null;
+            /**
+             * Include Composite
+             * @default true
+             */
+            include_composite: boolean;
+        };
         /** ProposalOut */
         ProposalOut: {
             /** Check Name */
@@ -1399,6 +1716,11 @@ export interface components {
             current_expect: string;
             /** Id */
             id: string;
+            /**
+             * Kind
+             * @default internal_gate
+             */
+            kind: string;
             /** Product */
             product: string;
             /** Proposed Expect */
@@ -1420,6 +1742,48 @@ export interface components {
              * @default open
              */
             status: string;
+        };
+        /** RuleIn */
+        RuleIn: {
+            /** Channel Id */
+            channel_id: number;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Match Kind
+             * @default
+             */
+            match_kind: string;
+            /**
+             * Match Owned By
+             * @default
+             */
+            match_owned_by: string;
+            /**
+             * Match Owner
+             * @default
+             */
+            match_owner: string;
+            /**
+             * Match Product
+             * @default
+             */
+            match_product: string;
+            /**
+             * Match Severity
+             * @default
+             */
+            match_severity: string;
+            /**
+             * Match Space
+             * @default
+             */
+            match_space: string;
+            /** Name */
+            name: string;
         };
         /** RunListItem */
         RunListItem: {
@@ -1889,6 +2253,44 @@ export interface operations {
             };
         };
     };
+    certify_contract_api_contracts__product__certify_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     compile_contract_api_contracts__product__compile_post: {
         parameters: {
             query?: {
@@ -1994,6 +2396,37 @@ export interface operations {
             };
         };
     };
+    version_diff_contract_api_contracts__product__diff_active_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     export_bdc_api_contracts__product__export_bdc_post: {
         parameters: {
             query?: never;
@@ -2051,6 +2484,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    promote_to_contract_api_contracts__product__promote_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractOut"];
                 };
             };
             /** @description Validation Error */
@@ -2375,6 +2842,7 @@ export interface operations {
             query?: {
                 status?: string | null;
                 severity?: string | null;
+                kind?: string | null;
                 limit?: number;
                 offset?: number;
             };
@@ -2576,6 +3044,38 @@ export interface operations {
             };
         };
     };
+    get_column_lineage_api_lineage_columns_get: {
+        parameters: {
+            query: {
+                object: string;
+                column?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     service_health_metrics_api_metrics_health_get: {
         parameters: {
             query?: never;
@@ -2592,6 +3092,280 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    create_channel_api_notifications_channels_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_channel_api_notifications_channels__channel_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                channel_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_channel_api_notifications_channels__channel_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                channel_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_config_api_notifications_config_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_mute_api_notifications_mutes_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MuteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_mute_api_notifications_mutes__mute_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                mute_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_rule_api_notifications_rules_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_rule_api_notifications_rules__rule_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                rule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2671,6 +3445,44 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    profile_object_api_objects__object_id__profile_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ProfileRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

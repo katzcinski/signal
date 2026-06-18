@@ -249,6 +249,7 @@ class ResultStore:
         title: str,
         failed_checks: list[str],
         contract_version: str = "",
+        kind: str = "consumer_contract",
         actor: str = "",
     ) -> int | None:
         """Eröffnet ein Incident — höchstens EINES je product+Breach-Episode:
@@ -272,10 +273,10 @@ class ResultStore:
             cur = conn.execute(
                 """INSERT INTO dq_incidents
                    (product, run_id, severity, status, title, failed_checks,
-                    opened_at, contract_version)
-                   VALUES (?,?,?,?,?,?,?,?)""",
+                    opened_at, contract_version, kind)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
                 (product, run_id, severity, "open", title,
-                 json.dumps(failed_checks), now, contract_version),
+                 json.dumps(failed_checks), now, contract_version, kind),
             )
             incident_id = cur.lastrowid
             conn.execute(
@@ -309,6 +310,7 @@ class ResultStore:
         self,
         status: str | None = None,
         severity: str | None = None,
+        kind: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
@@ -319,6 +321,9 @@ class ResultStore:
         if severity:
             where.append("severity=?")
             params.append(severity)
+        if kind:
+            where.append("kind=?")
+            params.append(kind)
         clause = ("WHERE " + " AND ".join(where)) if where else ""
         with self._conn() as conn:
             rows = conn.execute(
@@ -390,11 +395,20 @@ class ResultStore:
     @staticmethod
     def _incident_row(row) -> dict[str, Any]:
         d = dict(row)
+        d["kind"] = d.get("kind") or "consumer_contract"
         try:
             d["failed_checks"] = json.loads(d.get("failed_checks") or "[]")
         except (TypeError, ValueError):
             d["failed_checks"] = []
         return d
+
+    def count_open_incidents(self, kind: str) -> int:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM dq_incidents WHERE status != 'resolved' AND kind=?",
+                (kind,),
+            ).fetchone()
+            return int(row["n"] if row else 0)
 
     # ------------------------------------------------------------------
     # SLA über Zeitfenster (R4-3) — aus dem Compliance-Event-Log
@@ -821,7 +835,7 @@ class ResultStore:
     def create_notification_rule(
         self, *, name: str, channel_id: int, match_severity: str = "",
         match_space: str = "", match_product: str = "", match_owned_by: str = "",
-        match_owner: str = "", enabled: bool = True, actor: str = "",
+        match_owner: str = "", match_kind: str = "", enabled: bool = True, actor: str = "",
     ) -> dict[str, Any] | None:
         now = datetime.now(timezone.utc).isoformat()
         with self._conn() as conn:
@@ -832,10 +846,10 @@ class ResultStore:
             cur = conn.execute(
                 """INSERT INTO dq_notification_rules
                    (name, channel_id, match_severity, match_space, match_product,
-                    match_owned_by, match_owner, enabled, created_at, created_by)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                    match_owned_by, match_owner, match_kind, enabled, created_at, created_by)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                 (name, channel_id, match_severity, match_space, match_product,
-                 match_owned_by, match_owner, int(enabled), now, actor),
+                 match_owned_by, match_owner, match_kind, int(enabled), now, actor),
             )
             row = conn.execute(
                 "SELECT * FROM dq_notification_rules WHERE id=?", (cur.lastrowid,)

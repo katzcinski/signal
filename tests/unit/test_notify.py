@@ -156,12 +156,28 @@ def test_resolve_db_targets_matches_facets():
     assert miss == []
 
 
+def test_resolve_db_targets_matches_kind():
+    channels = [{"id": 1, "type": "slack", "url": "https://s/x", "enabled": True}]
+    rules = [{"channel_id": 1, "enabled": True, "match_kind": "internal_gate"}]
+    hit = notify.resolve_db_targets(
+        channels, rules, severity="critical", space="", product="DS",
+        owned_by="platform", owners=[], kind="internal_gate",
+    )
+    miss = notify.resolve_db_targets(
+        channels, rules, severity="critical", space="", product="DS",
+        owned_by="platform", owners=[], kind="consumer_contract",
+    )
+    assert hit == [{"type": "slack", "url": "https://s/x"}]
+    assert miss == []
+
+
 def test_notify_breach_uses_db_rules_over_yaml(tmp_path, monkeypatch):
     calls = _capture(monkeypatch)
     store = _store(tmp_path)
     ch = store.create_notification_channel(name="ops", type="slack", url="https://db.slack/x")
     store.create_notification_rule(name="crit-sales", channel_id=ch["id"],
-                                   match_severity="critical", match_space="SALES")
+                                   match_severity="critical", match_space="SALES",
+                                   match_kind="consumer_contract")
     # YAML default also present — DB must win.
     s = _settings(tmp_path, routes={"default": [{"type": "webhook", "url": "https://yaml/x"}]},
                   allowlist=[r".*"])
@@ -169,6 +185,7 @@ def test_notify_breach_uses_db_rules_over_yaml(tmp_path, monkeypatch):
         product="DS_X", compliance="breached", run_id="r1", contract_version="1",
         failed_checks=["c1"], severity="critical", title="T", incident_id=3,
         owned_by="platform", owners=[], settings=s, store=store, space="SALES",
+        kind="consumer_contract",
     )
     assert {c[0] for c in calls} == {"https://db.slack/x"}
 

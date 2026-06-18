@@ -21,6 +21,7 @@ def get_coverage(
     *,
     gate_products: set[str] | None = None,
     contract_products: set[str] | None = None,
+    contract_kinds: dict[str, str] | None = None,
 ) -> list[dict]:
     """Annotate lineage nodes with coverage flags.
 
@@ -34,6 +35,7 @@ def get_coverage(
     contracted = set(contracts)
     gates = gate_products or set()
     contracts_set = contract_products or set()
+    kinds = contract_kinds or {}
 
     result = []
     for node in nodes:
@@ -42,6 +44,11 @@ def get_coverage(
         has_any_contract = node_id in contracted
         has_gate = node_id in gates
         has_boundary_contract = node_id in contracts_set
+        node_kind = ""
+        if has_gate:
+            node_kind = "internal_gate"
+        elif has_boundary_contract:
+            node_kind = kinds.get(node_id, "consumer_contract")
 
         if node.get("objectType") in ("external_raw", "unknown") or not node_id:
             flag = "○"
@@ -62,5 +69,6 @@ def get_coverage(
             "has_contract": has_any_contract,
             "has_internal_gate": has_gate,
             "has_boundary_contract": has_boundary_contract,
+            "kind": node_kind,
         })
     return result

@@ -24,6 +24,20 @@ const drawerBtn = (variant: 'primary' | 'ghost' = 'primary'): React.CSSPropertie
   borderRadius: 5, padding: '6px 12px', fontSize: 12, cursor: 'pointer',
 });
 
+function IncidentKindBadge({ kind }: { kind?: Incident['kind'] }) {
+  const isGate = kind === 'internal_gate';
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 8px',
+      borderRadius: 999, border: `1px solid ${isGate ? 'var(--qual)' : 'var(--cont)'}`,
+      color: isGate ? 'var(--qual)' : 'var(--cont)', fontSize: 11, fontWeight: 650,
+      whiteSpace: 'nowrap',
+    }}>
+      {isGate ? t.incidents.kindGate : t.incidents.kindContract}
+    </span>
+  );
+}
+
 function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
   const { data: incident, isLoading } = useIncident(id);
   const transition = useIncidentTransition(id);
@@ -87,6 +101,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <StatusPill status={incident.severity} size="sm" />
                 <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{t.incidents.statusLabel[incident.status] ?? incident.status}</span>
+                <IncidentKindBadge kind={incident.kind} />
                 <IncidentSla incident={incident} />
               </div>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{incident.title}</div>
@@ -303,16 +318,30 @@ function FailedChecksTab() {
 
 export default function Incidents() {
   const [status, setStatus] = useSearchParamState('status', 'open');
+  const [kindFilter, setKindFilter] = useSearchParamState('kind', 'all');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const isChecksTab = status === 'checks';
+  const serverKind = kindFilter === 'internal_gate' ? 'internal_gate' : undefined;
 
   const { data: incidents = [], isLoading, isError, refetch } =
-    useIncidents(isChecksTab ? undefined : status);
+    useIncidents(isChecksTab ? undefined : status, undefined, serverKind);
+
+  const filteredIncidents = incidents
+    .filter(i => i.status === (status as IncidentStatus))
+    .filter(i => {
+      if (kindFilter === 'internal_gate') return i.kind === 'internal_gate';
+      if (kindFilter === 'contract') return i.kind !== 'internal_gate';
+      return true;
+    });
 
   const columns: ColDef<Incident>[] = [
     {
       key: 'sev', header: t.common.severity, width: 110,
       render: i => <StatusPill status={i.severity} size="sm" />,
+    },
+    {
+      key: 'kind', header: t.incidents.filterKind, width: 120,
+      render: i => <IncidentKindBadge kind={i.kind} />,
     },
     { key: 'title', header: t.incidents.colTitle, render: i => i.title },
     { key: 'product', header: t.incidents.colProduct, mono: true, render: i => i.product },
@@ -357,13 +386,36 @@ export default function Incidents() {
         <FailedChecksTab />
       ) : (
         <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {t.incidents.filterKind}
+            </span>
+            {[
+              ['all', t.incidents.filterAll],
+              ['contract', t.incidents.kindContract],
+              ['internal_gate', t.incidents.kindGate],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() => setKindFilter(value)}
+                style={{
+                  border: '1px solid var(--line-2)', borderRadius: 999,
+                  padding: '4px 10px', fontSize: 12, cursor: 'pointer',
+                  background: kindFilter === value ? 'var(--cont)' : 'var(--bg-2)',
+                  color: kindFilter === value ? '#fff' : 'var(--fg-2)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {isError && <ErrorBanner onRetry={() => refetch()} />}
-          {isLoading && <TableSkeleton columns={6} />}
+          {isLoading && <TableSkeleton columns={7} />}
           {!isError && !isLoading && (
             <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
               <Table
                 columns={columns}
-                rows={incidents.filter(i => i.status === (status as IncidentStatus))}
+                rows={filteredIncidents}
                 rowKey={i => String(i.id)}
                 onRowClick={i => setSelectedId(i.id)}
                 empty={t.incidents.empty}

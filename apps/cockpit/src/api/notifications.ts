@@ -56,7 +56,7 @@ export const useDeleteChannel = () => {
 export interface RuleInput {
   name: string; channel_id: number;
   match_severity?: string; match_space?: string; match_product?: string;
-  match_owned_by?: string; match_owner?: string; enabled?: boolean;
+  match_owned_by?: string; match_owner?: string; match_kind?: string; enabled?: boolean;
 }
 
 export const useCreateRule = () => {

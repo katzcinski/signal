@@ -1,7 +1,7 @@
 # ADR-0001 — Trennung interner Quality Gates von Contracts
 
 **Adressat:** Beratung, Plattform-Team, Governance, Entwicklung · **Stand:** 2026-06-16
-**Status:** *Vorschlag* (proposed) — noch nicht angenommen, noch nicht umgesetzt.
+**Status:** *Umgesetzt* (implemented) — über Batch 1–5 ausgeliefert (Kurzfassung siehe §12).
 **Zweck:** Festhalten der Architektur-Entscheidung, ob und wie Signal **interne Data-Quality-Checks** von der **Contract-/Governance-Ebene** getrennt modelliert — als Reaktion auf das Konzeptpapier *„Data Contracts für ein Fact-View-Datenprodukt in SAP Datasphere / BDC"*.
 
 > Verwandte Dokumente: `Betriebsmodi_Lite_und_Full.md` (Lite/Full auf einem Unterbau) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam) · `HANDOVER.md` (Workstreams, Gates) · `Konzept_DQ_Observability_Cockpit.md` (fachliches Konzept).
@@ -412,3 +412,19 @@ Nähme man das Label wörtlich und gäbe **jeder** Dimension einen Full-Contract
 Das ist der überzeugende Hebel: Du nimmst dem Kunden Arbeit ab, statt sein Produktverständnis zu widerlegen.
 
 > **Faustregel:** Katalog-Produkt ≠ governter Contract. Jedes DSP-„Foundation Product" darf Produkt bleiben — aber nur die grenzüberschreitend konsumierten bekommen einen vollen Contract. Den Tier bestimmt die Lineage, nicht das Label.
+
+---
+
+## 12 — Umsetzung: Batch 1–5 (Kurzfassung)
+
+**Die Entscheidung:** Ein `kind`-Diskriminator (`internal_gate | consumer_contract | provider_contract`) trennt den **Governance-Mantel**, nicht die Enforcement-Substanz. Engine, Compiler und Store bleiben kategorie-agnostisch — „gleiche Regel, zwei Artefakte". Die *Konsequenz* eines fehlgeschlagenen Checks folgt dem `kind`.
+
+| Batch | Was umgesetzt wurde |
+|---|---|
+| **1** | Navigations-Restrukturierung (Vorarbeit). |
+| **2** | `kind`-Diskriminator auf Model/Validator/Compiler/Store; Segment-Control im Objektdetail. |
+| **3** | Coverage-Dimension-Switcher (Internal \| Contract \| All), Promotion-Flow (Gate → Contract-Entwurf), Govern-Onboarding. |
+| **4** | **Compliance/Incident-Split:** nur `*_contract` färbt die Governance-Ampel & SLA; `internal_gate`-Fehler werden zu Engineering-Signalen (Team-Routing, keine Ampel); ODCS-Export nur für Contracts. |
+| **5** | **Kind-gegateter Lifecycle:** SemVer/Approval/Breaking-Schutz (G3) nur für `*_contract`; `internal_gate` bleibt frei änderbar & zeremonielos. |
+
+**Ergebnis:** Checks laufen überall, Contracts existieren nur an den Parteigrenzen. Eine rote Governance-Ampel heißt jetzt eindeutig *gebrochene Zusage an einen Consumer* — nicht *intern angezogene Schraube*.

@@ -36,6 +36,19 @@ function RowButton({ onClick, children }: { onClick: () => void; children: React
   );
 }
 
+function IncidentKindBadge({ incident }: { incident: Incident }) {
+  const isGate = incident.kind === 'internal_gate';
+  return (
+    <span style={{
+      border: `1px solid ${isGate ? 'var(--qual)' : 'var(--cont)'}`,
+      borderRadius: 999, color: isGate ? 'var(--qual)' : 'var(--cont)',
+      fontSize: 11, fontWeight: 650, padding: '2px 7px', whiteSpace: 'nowrap',
+    }}>
+      {isGate ? t.incidents.kindGate : t.incidents.kindContract}
+    </span>
+  );
+}
+
 export default function MyWork() {
   const role = useRoleStore(s => s.role);
   const navigate = useNavigate();
@@ -51,6 +64,8 @@ export default function MyWork() {
   const openIncidents = incidents
     .filter(i => i.status !== 'resolved')
     .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9));
+  const contractBreaches = openIncidents.filter(i => i.kind !== 'internal_gate');
+  const engineeringSignals = openIncidents.filter(i => i.kind === 'internal_gate');
   const assigned = openIncidents.filter(i => i.owner);
   const openProposals = proposals.filter(p => p.status === 'open');
 
@@ -89,8 +104,9 @@ export default function MyWork() {
         {assigned.length === 0 ? (
           <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.myWork.noAssigned}</p>
         ) : assigned.map((i: Incident) => (
-          <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}`)}>
+          <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}&kind=${i.kind === 'internal_gate' ? 'internal_gate' : 'contract'}`)}>
             <StatusDot status={i.severity} />
+            <IncidentKindBadge incident={i} />
             <span style={{ fontSize: 12, flex: 1 }}>{i.title}</span>
             <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', fontSize: 11 }}>{i.owner}</span>
             <IncidentSla incident={i} />
@@ -99,11 +115,26 @@ export default function MyWork() {
       </Panel>
 
       <div style={{ marginTop: 16 }}>
-        <Panel title={t.myWork.openIncidents}>
-          {openIncidents.length === 0 ? (
+        <Panel title={t.myWork.contractBreaches}>
+          {contractBreaches.length === 0 ? (
             <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.myWork.noOpenIncidents}</p>
-          ) : openIncidents.slice(0, 8).map((i: Incident) => (
-            <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}`)}>
+          ) : contractBreaches.slice(0, 8).map((i: Incident) => (
+            <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}&kind=contract`)}>
+              <StatusPill status={i.severity} size="sm" />
+              <span style={{ fontSize: 12, flex: 1 }}>{i.title}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', fontSize: 11 }}>{i.product}</span>
+              <span style={{ color: 'var(--fg-3)', fontSize: 11 }} title={absoluteTime(i.opened_at)}>{relativeTime(i.opened_at)}</span>
+            </RowButton>
+          ))}
+        </Panel>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <Panel title={t.myWork.engineeringSignals}>
+          {engineeringSignals.length === 0 ? (
+            <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.myWork.noOpenIncidents}</p>
+          ) : engineeringSignals.slice(0, 8).map((i: Incident) => (
+            <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}&kind=internal_gate`)}>
               <StatusPill status={i.severity} size="sm" />
               <span style={{ fontSize: 12, flex: 1 }}>{i.title}</span>
               <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', fontSize: 11 }}>{i.product}</span>

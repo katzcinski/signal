@@ -20,7 +20,7 @@ import Notifications from '@/pages/Notifications';
 
 const baseConfig = (overrides: Partial<NotificationConfig> = {}): NotificationConfig => ({
   channels: [{ id: 1, name: 'Ops Slack', type: 'slack', url: 'https://hooks.slack.example.com/x', enabled: true, created_at: '', created_by: '' }],
-  rules: [{ id: 1, name: 'Critical SALES', channel_id: 1, match_severity: 'critical', match_space: 'SALES', match_product: '', match_owned_by: '', match_owner: '', enabled: true, created_at: '', created_by: '' }],
+  rules: [{ id: 1, name: 'Critical SALES', channel_id: 1, match_severity: 'critical', match_space: 'SALES', match_product: '', match_owned_by: '', match_owner: '', match_kind: '', enabled: true, created_at: '', created_by: '' }],
   mutes: [],
   can_edit: true,
   ...overrides,

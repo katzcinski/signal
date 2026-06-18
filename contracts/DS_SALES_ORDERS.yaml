@@ -1,4 +1,5 @@
 product: DS_SALES_ORDERS
+kind: consumer_contract
 dataset: DS_SALES_ORDERS
 owned_by: product
 lifecycle: active

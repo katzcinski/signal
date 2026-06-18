@@ -46,6 +46,26 @@ def _contract_lifecycle_map() -> dict[str, str]:
     return out
 
 
+def _contract_kind_map() -> dict[str, str]:
+    """Map product -> kind from on-disk contracts (default internal_gate)."""
+    import yaml
+    from pathlib import Path
+    out: dict[str, str] = {}
+    base = Path(get_settings().contracts_dir)
+    if not base.exists():
+        return out
+    for path in base.glob("*.y*ml"):
+        if path.name.endswith(".active.yml"):
+            continue
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            continue
+        product = data.get("product") or path.stem
+        out[product] = data.get("kind", "internal_gate")
+    return out
+
+
 def _coverage_flag(object_id: str, lifecycle: str, settings) -> str:
     """Coverage status for the catalog/coverage map (WS4)."""
     if not lifecycle:
@@ -376,7 +396,9 @@ def trigger_run(
 
             # WS2-5: compliance transition — breached on fail/critical, auto-recovery on green.
             # Only objects under an active contract carry a compliance state.
-            if _contract_lifecycle_map().get(object_id) == "active":
+            lifecycle = _contract_lifecycle_map().get(object_id)
+            kind = _contract_kind_map().get(object_id, "internal_gate")
+            if lifecycle == "active" and kind in ("consumer_contract", "provider_contract"):
                 from dq_core.contract.compliance import compute_compliance
                 previous = store.get_compliance(object_id)
                 new_compliance = compute_compliance(summary.results)
@@ -403,6 +425,7 @@ def trigger_run(
                         title=title,
                         failed_checks=failed,
                         contract_version=contract_version,
+                        kind=kind,
                         actor="system",
                     )
                     # R4-2: route the breach/incident-open to the owner's
@@ -428,8 +451,63 @@ def trigger_run(
                         settings=settings,
                         store=store,
                         space=space,
+                        kind=kind,
                     )
                 elif new_compliance == "compliant" and previous and previous.get("compliance") == "breached":
+                    store.auto_resolve_incidents(object_id, run_id)
+            elif lifecycle == "active" and kind == "internal_gate":
+                from dq_core.contract.compliance import compute_compliance
+                new_compliance = compute_compliance(summary.results)
+                if new_compliance == "breached":
+                    had_active_signal = any(
+                        i.get("product") == object_id and i.get("status") != "resolved"
+                        for i in store.list_incidents(kind="internal_gate", limit=500)
+                    )
+                    failed = [
+                        r.name for r in summary.results
+                        if not r.passed and r.state == "executed"
+                        and r.severity in ("fail", "critical")
+                    ]
+                    worst = "critical" if any(
+                        r.severity == "critical" and not r.passed and r.state == "executed"
+                        for r in summary.results
+                    ) else "fail"
+                    title = f"Engineering-Signal: {object_id} (Gate)"
+                    incident_id = store.open_incident(
+                        product=object_id,
+                        run_id=run_id,
+                        severity=worst,
+                        title=title,
+                        failed_checks=failed,
+                        contract_version=contract_version,
+                        kind="internal_gate",
+                        actor="system",
+                    )
+                    from ..notify import notify_breach
+                    owned_by, owners = _active_contract_owner(object_id)
+                    space = next(
+                        (o.get("space", "") for o in inventory
+                         if (o.get("id") or o.get("technicalName") or o.get("name")) == object_id),
+                        "",
+                    )
+                    if not had_active_signal:
+                        notify_breach(
+                            product=object_id,
+                            compliance="signal",
+                            run_id=run_id,
+                            contract_version=contract_version,
+                            failed_checks=failed,
+                            severity=worst,
+                            title=title,
+                            incident_id=incident_id,
+                            owned_by=owned_by,
+                            owners=owners,
+                            settings=settings,
+                            store=store,
+                            space=space,
+                            kind="internal_gate",
+                        )
+                else:
                     store.auto_resolve_incidents(object_id, run_id)
         except Exception:
             store.set_run_state(run_id, "error", datetime.now(timezone.utc).isoformat())

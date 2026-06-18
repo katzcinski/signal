@@ -542,16 +542,28 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
 
 // ─── BreakingDiffPanel ───────────────────────────────────────────────────────
 
-function BreakingDiffPanel({ entries, pending, isError, blocking }: {
+function BreakingDiffPanel({ entries, pending, isError, blocking, ceremonyRequired }: {
   entries: DiffEntry[];
   pending: boolean;
   isError: boolean;
   blocking: boolean;
+  ceremonyRequired: boolean;
 }) {
   const isBreaking = (e: DiffEntry) => e.breaking === true || /breaking/i.test(e.kind);
+  const hasBreaking = entries.some(isBreaking);
   return (
     <div style={cardStyle}>
       <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{t.workbench.diffTitle}</div>
+      {!ceremonyRequired && (
+        <div style={{
+          marginBottom: 10, padding: '8px 12px', borderRadius: 5,
+          background: 'var(--bg-2)', border: '1px solid var(--line)',
+          color: 'var(--fg-2)', fontSize: 12,
+        }}>
+          <div style={{ fontWeight: 600 }}>{t.workbench.gateNoCeremony}</div>
+          <div style={{ marginTop: 3, color: 'var(--fg-3)' }}>{t.workbench.gateChangeHint}</div>
+        </div>
+      )}
       {pending && <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.diffPending}</div>}
       {isError && <div style={{ fontSize: 12, color: 'var(--status-fail)' }}>{t.workbench.diffError}</div>}
       {!pending && !isError && entries.length === 0 && (
@@ -578,13 +590,22 @@ function BreakingDiffPanel({ entries, pending, isError, blocking }: {
           )}
         </div>
       ))}
+      {!ceremonyRequired && hasBreaking && (
+        <div style={{
+          marginTop: 10, padding: '8px 12px', borderRadius: 5,
+          background: 'var(--status-warn)22', border: '1px solid var(--status-warn)',
+          color: 'var(--fg-2)', fontSize: 12, fontWeight: 600,
+        }}>
+          {t.workbench.breakingInfoGate}
+        </div>
+      )}
       {blocking && (
         <div style={{
           marginTop: 10, padding: '8px 12px', borderRadius: 5,
           background: 'var(--status-crit)22', border: '1px solid var(--status-crit)',
           color: 'var(--status-crit)', fontSize: 12, fontWeight: 600,
         }}>
-          {t.workbench.breakingHint}
+          {t.workbench.breakingBlocked}
         </div>
       )}
     </div>
@@ -990,7 +1011,13 @@ function EditorPane({ product, lite, onToggleLite }: {
   const hasBreaking = entries.some(e => e.breaking === true || /breaking/i.test(e.kind))
     || (!!report && !Array.isArray(report) && report.breaking === true);
   const activeVersion = (report && !Array.isArray(report) && report.active_version) || contract?.version;
-  const breakingBlocked = hasBreaking && majorOf(draft.version) <= majorOf(String(activeVersion));
+  const ceremonyRequired = report && !Array.isArray(report) && typeof report.ceremony_required === 'boolean'
+    ? report.ceremony_required
+    : draft.kind !== 'internal_gate';
+  const ceremonyBreaking = report && !Array.isArray(report) && typeof report.blocking === 'boolean'
+    ? report.blocking
+    : ceremonyRequired && hasBreaking;
+  const breakingBlocked = ceremonyBreaking && majorOf(draft.version) <= majorOf(String(activeVersion));
 
   const validationErrors = put.isError ? extractValidationErrors(put.error) : [];
 
@@ -1092,7 +1119,7 @@ function EditorPane({ product, lite, onToggleLite }: {
             <button
               style={{ ...btnStyle(), opacity: !canWrite || breakingBlocked || approve.isPending ? 0.5 : 1, cursor: canWrite ? 'pointer' : 'not-allowed' }}
               disabled={!canWrite || breakingBlocked || approve.isPending}
-              title={!canWrite ? writeTitle : breakingBlocked ? t.workbench.breakingHint : undefined}
+              title={!canWrite ? writeTitle : breakingBlocked ? t.workbench.breakingBlocked : undefined}
               onClick={() => setConfirmApprove(true)}
             >
               {approve.isPending ? t.workbench.approving : t.workbench.approve}
@@ -1156,6 +1183,7 @@ function EditorPane({ product, lite, onToggleLite }: {
             pending={diff.isPending}
             isError={diff.isError}
             blocking={breakingBlocked}
+            ceremonyRequired={ceremonyRequired}
           />
         </div>
       </div>

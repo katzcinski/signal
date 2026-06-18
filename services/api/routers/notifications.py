@@ -22,6 +22,7 @@ require_admin = require_roles("admin")
 _CHANNEL_TYPES = {"slack", "teams", "webhook"}
 _SEVERITIES = {"", "critical", "fail", "warn"}
 _OWNED_BY = {"", "platform", "product"}
+_KINDS = {"", "internal_gate", "consumer_contract", "provider_contract"}
 
 
 def _validate_url(url: str) -> None:
@@ -106,6 +107,7 @@ class RuleIn(BaseModel):
     match_product: str = ""
     match_owned_by: str = ""
     match_owner: str = ""
+    match_kind: str = ""
     enabled: bool = True
 
 
@@ -115,11 +117,14 @@ def create_rule(body: RuleIn, principal: Principal = require_admin, store: Store
         raise HTTPException(422, detail=f"match_severity must be one of {sorted(_SEVERITIES)}")
     if body.match_owned_by not in _OWNED_BY:
         raise HTTPException(422, detail=f"match_owned_by must be one of {sorted(_OWNED_BY)}")
+    if body.match_kind not in _KINDS:
+        raise HTTPException(422, detail=f"match_kind must be one of {sorted(_KINDS)}")
     rule = store.create_notification_rule(
         name=body.name, channel_id=body.channel_id,
         match_severity=body.match_severity, match_space=body.match_space,
         match_product=body.match_product, match_owned_by=body.match_owned_by,
-        match_owner=body.match_owner, enabled=body.enabled, actor=principal.sub,
+        match_owner=body.match_owner, match_kind=body.match_kind,
+        enabled=body.enabled, actor=principal.sub,
     )
     if rule is None:
         raise HTTPException(422, detail=f"Channel {body.channel_id} does not exist")

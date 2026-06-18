@@ -26,6 +26,9 @@ ODCS_API_VERSION = "v3.1.0"
 
 
 def to_odcs(contract: dict[str, Any]) -> dict[str, Any]:
+    if contract.get("kind", "internal_gate") == "internal_gate":
+        raise ValueError("Internal gates cannot be exported as ODCS data contracts.")
+
     g = contract.get("guarantees") or {}
     product = str(contract.get("product") or "")
     dataset = str(contract.get("dataset") or product)
@@ -130,6 +133,7 @@ def to_odcs(contract: dict[str, Any]) -> dict[str, Any]:
 
     custom = [
         {"property": "owned_by", "value": str(contract.get("owned_by", "platform"))},
+        {"property": "signal_kind", "value": str(contract.get("kind", ""))},
         {"property": "sourceSpec", "value": "dq-cockpit/contract-v1"},
     ]
     if (g.get("schema") or {}).get("mode"):

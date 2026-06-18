@@ -193,10 +193,13 @@ export interface VersionDiffEntry {
 
 export interface ContractVersionDiff {
   available: boolean;
+  kind?: ArtifactKind;
+  ceremony_required?: boolean;
   from_version: string | null;
   to_version: string;
   lifecycle?: Lifecycle;
   breaking: boolean;
+  blocking?: boolean;
   entries: VersionDiffEntry[];
 }
 
@@ -349,7 +352,10 @@ export interface DiffEntry {
 }
 
 export interface DiffReport {
+  kind?: ArtifactKind;
+  ceremony_required?: boolean;
   breaking?: boolean;
+  blocking?: boolean;
   entries?: DiffEntry[];
   active_version?: string;
   [key: string]: unknown;
@@ -358,6 +364,7 @@ export interface DiffReport {
 // ---- SLA (GET /api/contracts/{product}/sla) ----
 export interface SlaResponse {
   product: string;
+  kind: ArtifactKind;
   current: string;
   windows: { '7d': number | null; '30d': number | null; '90d': number | null };
 }
@@ -368,6 +375,8 @@ export interface CoverageSummary {
   with_active_contract: number;
   with_internal_gate: number;
   with_contract_checks: number;
+  contracts_breached: number;
+  gates_failing: number;
   with_checks: number;
   contract_coverage_pct: number;
   unvalidated_30d: string[];
@@ -409,6 +418,7 @@ export interface NotificationRule {
   match_product: string;
   match_owned_by: string;   // '' | platform | product
   match_owner: string;
+  match_kind: string;
   enabled: boolean;
   created_at: string;
   created_by: string;
@@ -457,6 +467,7 @@ export interface LineageNode {
   has_contract?: boolean;
   has_internal_gate?: boolean;
   has_boundary_contract?: boolean;
+  kind?: ArtifactKind | '';
   last_run?: string;
 }
 
@@ -622,6 +633,7 @@ export interface Incident {
   opened_at: string;
   resolved_at: string | null;
   contract_version: string;
+  kind: ArtifactKind;
 }
 
 export interface IncidentEvent {

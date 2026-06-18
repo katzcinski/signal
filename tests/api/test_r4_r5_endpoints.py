@@ -6,6 +6,7 @@ def _activate_contract(client, product="DS_SALES_ORDERS"):
         f"/api/contracts/{product}",
         json={
             "product": product, "dataset": product, "owned_by": "platform",
+            "kind": "consumer_contract",
             "version": "1.0.0",
             "guarantees": {"keys": [{"columns": ["ORDER_ID"], "unique": True}]},
         },
@@ -36,6 +37,7 @@ def test_sla_endpoint(api_client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["current"] in ("unknown", "compliant", "breached")
+    assert body["kind"] == "consumer_contract"
     assert set(body["windows"].keys()) == {"7d", "30d", "90d"}
     assert api_client.get("/api/contracts/NOPE/sla").status_code == 404
 
@@ -46,6 +48,8 @@ def test_coverage_summary(api_client):
     body = resp.json()
     assert body["objects_total"] >= 1
     assert "contract_coverage_pct" in body
+    assert "contracts_breached" in body
+    assert "gates_failing" in body
     assert isinstance(body["unvalidated_30d"], list)
 
 
@@ -92,6 +96,22 @@ def test_odcs_export_endpoint(api_client):
     yml = api_client.get("/api/contracts/DS_SALES_ORDERS/export/odcs?format=yaml")
     assert yml.status_code == 200
     assert "DataContract" in yml.text
+
+
+def test_odcs_export_rejects_internal_gate(api_client):
+    api_client.put(
+        "/api/contracts/DS_SALES_ORDERS",
+        json={
+            "product": "DS_SALES_ORDERS",
+            "kind": "internal_gate",
+            "dataset": "DS_SALES_ORDERS",
+            "owned_by": "platform",
+            "version": "1.0.0",
+            "guarantees": {"keys": [{"columns": ["ORDER_ID"], "unique": True}]},
+        },
+    )
+    resp = api_client.get("/api/contracts/DS_SALES_ORDERS/export/odcs")
+    assert resp.status_code == 409
 
 
 def test_family_status_in_objects(api_client):

@@ -1,4 +1,6 @@
 import { useObjects } from '@/api/objects';
+import { useContracts } from '@/api/contracts';
+import { useCoverageSummary } from '@/api/coverage';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { Panel } from '@/components/ui/Panel';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -8,7 +10,13 @@ import type { Lifecycle } from '@/types';
 
 export default function Governance() {
   const { data: objects = [], isLoading, isError, refetch } = useObjects();
-  const activeContracts = objects.filter(o => o.contract_status === 'active');
+  const contractsQuery = useContracts();
+  const coverageQuery = useCoverageSummary();
+  const boundaryContracts = (contractsQuery.data ?? []).filter(c => c.kind !== 'internal_gate');
+  const contractByProduct = new Map(boundaryContracts.map(c => [c.product, c]));
+  const activeContracts = boundaryContracts.filter(c => c.lifecycle === 'active');
+  const loading = isLoading || contractsQuery.isLoading;
+  const error = isError || contractsQuery.isError;
 
   return (
     <div className="page-full">
@@ -30,7 +38,16 @@ export default function Governance() {
         </Panel>
       </div>
 
-      {!isLoading && activeContracts.length === 0 && (
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <span style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--fg-2)' }}>
+          {t.cockpit.slaTitle}: <strong style={{ color: 'var(--fg)' }}>{activeContracts.length}</strong>
+        </span>
+        <span style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--fg-2)' }}>
+          {t.governance.contractsBreached}: <strong style={{ color: 'var(--fg)' }}>{coverageQuery.data?.contracts_breached ?? 0}</strong>
+        </span>
+      </div>
+
+      {!loading && activeContracts.length === 0 && (
         <div style={{
           background: 'color-mix(in srgb, var(--cont) 8%, transparent)',
           border: '1px solid var(--cont)',
@@ -43,9 +60,9 @@ export default function Governance() {
       )}
 
       <Panel title={t.governance.objectStatusTitle}>
-        {isError ? (
-          <ErrorBanner onRetry={() => refetch()} />
-        ) : isLoading ? (
+        {error ? (
+          <ErrorBanner onRetry={() => { refetch(); contractsQuery.refetch(); }} />
+        ) : loading ? (
           <TableSkeleton columns={4} />
         ) : objects.length === 0 ? (
           <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.governance.noObjects}</p>
@@ -60,18 +77,21 @@ export default function Governance() {
                 </tr>
               </thead>
               <tbody>
-                {objects.map(o => (
-                  <tr key={o.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                    <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</td>
-                    <td style={{ padding: '8px 12px', color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</td>
-                    <td style={{ padding: '8px 12px' }}>
-                      <LifecycleStepper current={(o.contract_status || 'draft') as Lifecycle} />
-                    </td>
-                    <td style={{ padding: '8px 12px', fontSize: 12, color: o.contract_status ? 'var(--status-ok)' : 'var(--status-fail)' }}>
-                      {o.contract_status ? t.governance.yes : t.governance.no}
-                    </td>
-                  </tr>
-                ))}
+                {objects.map(o => {
+                  const contract = contractByProduct.get(o.id);
+                  return (
+                    <tr key={o.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                      <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</td>
+                      <td style={{ padding: '8px 12px', color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</td>
+                      <td style={{ padding: '8px 12px' }}>
+                        <LifecycleStepper current={(contract?.lifecycle || 'draft') as Lifecycle} />
+                      </td>
+                      <td style={{ padding: '8px 12px', fontSize: 12, color: contract ? 'var(--status-ok)' : 'var(--status-fail)' }}>
+                        {contract ? t.governance.yes : t.governance.no}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

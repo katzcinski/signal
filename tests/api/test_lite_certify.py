@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parents[2]))
 def _lite_body(**overrides):
     body = {
         "product": "DS_SALES_ORDERS",
+        "kind": "consumer_contract",
         "dataset": "DS_SALES_ORDERS",
         "owned_by": "product",
         "version": "1.0.0",
@@ -48,6 +49,27 @@ def test_certify_lights_up_persistent_substrate(api_client):
     objects = {o["id"]: o for o in api_client.get("/api/objects").json()}
     assert objects["DS_SALES_ORDERS"]["cov_flag"] == "covered", objects["DS_SALES_ORDERS"]
     assert objects["DS_SALES_ORDERS"]["contract_status"] == "active"
+
+
+def test_certify_internal_gate_stays_out_of_compliance(api_client):
+    """Batch 4: active gates compile checks, but never seed governance compliance/SLA."""
+    resp = api_client.post(
+        "/api/contracts/DS_SALES_ORDERS/certify",
+        json=_lite_body(kind="internal_gate"),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["kind"] == "internal_gate"
+    assert body["compliance"] is None
+
+    sla = api_client.get("/api/contracts/DS_SALES_ORDERS/sla").json()
+    assert sla["kind"] == "internal_gate"
+    assert sla["current"] == "unknown"
+    assert sla["windows"] == {"7d": None, "30d": None, "90d": None}
+
+    badge = api_client.get("/api/badge/DS_SALES_ORDERS?format=json").json()
+    assert badge["compliance"] == "unknown"
+    assert badge["contract_version"] == ""
 
 
 def test_certify_rejects_zero_check_contract(api_client):
@@ -87,6 +109,26 @@ def test_certify_keeps_breaking_gate_for_certified_contract_g3(api_client):
     resp = api_client.post("/api/contracts/DS_SALES_ORDERS/certify", json=breaking)
     assert resp.status_code == 409, resp.text
     assert "G3" in resp.json()["detail"]["message"]
+
+
+def test_certify_internal_gate_breaking_change_without_major_bump(api_client):
+    first = api_client.post(
+        "/api/contracts/DS_SALES_ORDERS/certify",
+        json=_lite_body(kind="internal_gate"),
+    )
+    assert first.status_code == 200, first.text
+
+    breaking = _lite_body(
+        kind="internal_gate",
+        version="1.1.0",
+        guarantees={
+            "keys": [{"columns": ["CUSTOMER_ID"], "unique": True, "severity": "critical"}],
+        },
+    )
+    resp = api_client.post("/api/contracts/DS_SALES_ORDERS/certify", json=breaking)
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["lifecycle"] == "active"
 
 
 def test_certify_allows_non_breaking_amendment(api_client):

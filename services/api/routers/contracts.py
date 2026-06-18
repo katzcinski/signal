@@ -56,6 +56,10 @@ def _load_contract(product: str) -> dict[str, Any] | None:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
+def _is_governance_contract(data: dict[str, Any]) -> bool:
+    return data.get("kind", "internal_gate") in {"consumer_contract", "provider_contract"}
+
+
 def _save_contract(product: str, data: dict[str, Any]) -> None:
     _contracts_dir().mkdir(parents=True, exist_ok=True)
     path = _contract_path(product)
@@ -74,7 +78,7 @@ def _require_write(principal, existing: dict[str, Any] | None) -> None:
 
 
 def _contract_out(store, product: str, data: dict[str, Any]) -> ContractOut:
-    compliance_row = store.get_compliance(product)
+    compliance_row = store.get_compliance(product) if _is_governance_contract(data) else None
     return ContractOut(
         product=data.get("product") or product,
         kind=data.get("kind", "internal_gate"),
@@ -135,8 +139,8 @@ def list_contracts(
 
     result = []
     for row in rows:
-        compliance_row = store.get_compliance(row["product"])
         data = _load_contract(row["product"]) or {}
+        compliance_row = store.get_compliance(row["product"]) if _is_governance_contract(data) else None
         result.append(ContractOut(
             product=row["product"],
             kind=data.get("kind", "internal_gate"),
@@ -298,18 +302,34 @@ def diff_contract(
     _validate_product(product)
     current = _load_contract(product)
     if not current:
-        return {"breaking": False, "entries": [], "message": "No existing contract"}
+        kind = body.kind or "internal_gate"
+        ceremony_required = kind in ("consumer_contract", "provider_contract")
+        return {
+            "kind": kind,
+            "ceremony_required": ceremony_required,
+            "breaking": False,
+            "blocking": False,
+            "entries": [],
+            "message": "No existing contract",
+        }
 
     entries = diff_contracts(current, body.model_dump())
+    kind = current.get("kind", "internal_gate")
+    ceremony_required = kind in ("consumer_contract", "provider_contract")
+    breaking = is_breaking(entries)
     return {
-        "breaking": is_breaking(entries),
+        "kind": kind,
+        "ceremony_required": ceremony_required,
+        "breaking": breaking,
+        "blocking": ceremony_required and breaking,
         "entries": [
-            {"kind": e.kind, "path": e.path, "old": e.old_value, "new": e.new_value}
+            {"kind": e.kind, "path": e.path, "old": e.old_value, "new": e.new_value, "breaking": e.breaking}
             for e in entries
         ],
     }
 
 
+@router.get("/{product}/diff/active")
 @router.get("/{product}/version-diff")
 def version_diff_contract(product: str):
     """UX-N13: semantic diff of the working contract against the last certified
@@ -322,25 +342,34 @@ def version_diff_contract(product: str):
     if not current:
         raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
 
+    kind = current.get("kind", "internal_gate")
+    ceremony_required = kind in ("consumer_contract", "provider_contract")
     snapshot_path = _active_snapshot_path(product)
     if not snapshot_path.exists():
         # No certified baseline yet — nothing to diff against.
         return {
             "available": False,
+            "kind": kind,
+            "ceremony_required": ceremony_required,
             "from_version": None,
             "to_version": str(current.get("version", "")),
             "breaking": False,
+            "blocking": False,
             "entries": [],
         }
 
     prior = yaml.safe_load(snapshot_path.read_text(encoding="utf-8")) or {}
     entries = diff_contracts(prior, current)
+    breaking = is_breaking(entries)
     return {
         "available": True,
+        "kind": kind,
+        "ceremony_required": ceremony_required,
         "from_version": str(prior.get("version", "")),
         "to_version": str(current.get("version", "")),
         "lifecycle": current.get("lifecycle", "draft"),
-        "breaking": is_breaking(entries),
+        "breaking": breaking,
+        "blocking": ceremony_required and breaking,
         "entries": [
             {"kind": e.kind, "path": e.path, "old": e.old_value, "new": e.new_value, "breaking": e.breaking}
             for e in entries
@@ -467,8 +496,10 @@ def approve_contract(
         )
 
     # G3 — breaking change must carry a major version bump.
+    kind = data.get("kind", "internal_gate")
+    is_contract = kind in ("consumer_contract", "provider_contract")
     snapshot_path = _active_snapshot_path(product)
-    if snapshot_path.exists():
+    if is_contract and snapshot_path.exists():
         prior = yaml.safe_load(snapshot_path.read_text(encoding="utf-8")) or {}
         entries = diff_contracts(prior, data)
         if is_breaking(entries) and _semver_major(data.get("version", "0")) <= _semver_major(prior.get("version", "0")):
@@ -507,8 +538,9 @@ def approve_contract(
     except Exception as exc:  # noqa: BLE001
         commit_error = str(exc)
 
-    # Compliance starts 'unknown' until the first run of the active version.
-    if not store.get_compliance(product):
+    # Governance contracts start 'unknown' until the first run of the active version.
+    # Internal gates never write dq_compliance/dq_compliance_events.
+    if is_contract and not store.get_compliance(product):
         store.set_compliance(product, str(data.get("version", "")), "unknown", "")
 
     out = _contract_out(store, product, data)
@@ -657,6 +689,8 @@ def certify_contract(
 
     data = body.model_dump()
     data["lifecycle"] = "active"
+    kind = data.get("kind", "internal_gate")
+    is_contract = kind in ("consumer_contract", "provider_contract")
 
     # [CONTRACT-SQL-FREE] Gate G1
     errors = validate_contract(data)
@@ -668,7 +702,7 @@ def certify_contract(
 
     # G3 bleibt für zertifizierte Produkte scharf — kein Breaking-Bypass via Lite.
     snapshot_path = _active_snapshot_path(product)
-    if snapshot_path.exists():
+    if is_contract and snapshot_path.exists():
         prior = yaml.safe_load(snapshot_path.read_text(encoding="utf-8")) or {}
         entries = diff_contracts(prior, data)
         if is_breaking(entries) and _semver_major(data.get("version", "0")) <= _semver_major(prior.get("version", "0")):
@@ -718,8 +752,9 @@ def certify_contract(
     except Exception as exc:  # noqa: BLE001
         commit_error = str(exc)
 
-    # Compliance starts 'unknown' until the first run of the certified version.
-    if not store.get_compliance(product):
+    # Governance contracts start 'unknown' until the first run of the certified version.
+    # Internal gates never write dq_compliance/dq_compliance_events.
+    if is_contract and not store.get_compliance(product):
         store.set_compliance(product, str(data.get("version", "")), "unknown", "")
 
     out = _contract_out(store, product, data)
@@ -740,11 +775,21 @@ def get_contract_sla(product: str, store: StoreDep = ...):
     """R4-3: SLA-Compliance über Zeitfenster — %-compliant aus dem
     Compliance-Event-Log, nicht nur Letzter-Lauf-Zustand."""
     _validate_product(product)
-    if not _load_contract(product):
+    data = _load_contract(product)
+    if not data:
         raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+    kind = data.get("kind", "internal_gate")
+    if kind == "internal_gate":
+        return {
+            "product": product,
+            "kind": kind,
+            "current": "unknown",
+            "windows": {"7d": None, "30d": None, "90d": None},
+        }
     compliance_row = store.get_compliance(product)
     return {
         "product": product,
+        "kind": kind,
         "current": compliance_row["compliance"] if compliance_row else "unknown",
         "windows": {
             "7d": store.get_sla(product, 7),
@@ -789,6 +834,11 @@ def export_odcs(product: str, principal: PrincipalDep, format: str = Query(defau
     data = _load_contract(product)
     if not data:
         raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+    if data.get("kind", "internal_gate") == "internal_gate":
+        raise HTTPException(
+            status_code=409,
+            detail="Internal gates cannot be exported as ODCS data contracts.",
+        )
     odcs = to_odcs(data)
     if format == "yaml":
         from fastapi.responses import Response

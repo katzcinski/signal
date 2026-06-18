@@ -25,6 +25,7 @@ def test_incident_lifecycle(tmp_path):
     assert iid2 == iid
     incident = store.get_incident(iid)
     assert incident["status"] == "open"
+    assert incident["kind"] == "consumer_contract"
     assert incident["failed_checks"] == ["key_unique", "amount_not_null"]
     assert len(incident["events"]) == 2  # opened + note
 
@@ -51,10 +52,12 @@ def test_incident_lifecycle(tmp_path):
 def test_incident_filters(tmp_path):
     store = ResultStore(tmp_path / "t.db")
     store.open_incident("A", "r1", "critical", "t", [], "")
-    store.open_incident("B", "r2", "fail", "t", [], "")
+    store.open_incident("B", "r2", "fail", "t", [], "", kind="internal_gate")
     assert len(store.list_incidents()) == 2
     assert len(store.list_incidents(status="open")) == 2
     assert len(store.list_incidents(severity="critical")) == 1
+    assert len(store.list_incidents(kind="internal_gate")) == 1
+    assert store.count_open_incidents(kind="internal_gate") == 1
     assert store.list_incidents(status="resolved") == []
 
 

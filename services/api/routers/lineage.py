@@ -33,6 +33,7 @@ def get_lineage_graph(
     contracted: list[str] = []
     gate_products: set[str] = set()
     contract_products: set[str] = set()
+    contract_kinds: dict[str, str] = {}
 
     if contracts_dir.exists():
         for path in contracts_dir.glob("*.y*ml"):
@@ -50,6 +51,7 @@ def get_lineage_graph(
                 gate_products.add(product)
             else:
                 contract_products.add(product)
+                contract_kinds[product] = kind
 
     annotated_nodes = get_coverage(
         nodes,
@@ -57,6 +59,7 @@ def get_lineage_graph(
         contracted,
         gate_products=gate_products,
         contract_products=contract_products,
+        contract_kinds=contract_kinds,
     )
 
     # F5: Extrakt-Alter — FE zeigt eine Staleness-Warnung darauf an.

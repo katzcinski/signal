@@ -4,14 +4,15 @@ import { api } from './client';
 import { t } from '@/i18n/de';
 import type { Incident, IncidentDetail, IncidentTransitionBody, FailedCheck } from '@/types';
 
-// Persistent lifecycle incidents (GET /api/incidents?status=&severity=)
-export const useIncidents = (status?: string, severity?: string) =>
+// Persistent lifecycle incidents (GET /api/incidents?status=&severity=&kind=)
+export const useIncidents = (status?: string, severity?: string, kind?: string) =>
   useQuery<Incident[]>({
-    queryKey: ['incidents', { status: status ?? '', severity: severity ?? '' }],
+    queryKey: ['incidents', { status: status ?? '', severity: severity ?? '', kind: kind ?? '' }],
     queryFn: () => api.get('/incidents', {
       params: {
         ...(status ? { status } : {}),
         ...(severity ? { severity } : {}),
+        ...(kind ? { kind } : {}),
       },
     }).then(r => r.data),
     refetchInterval: 60_000,

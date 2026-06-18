@@ -131,7 +131,7 @@ def is_muted(
 
 def _rule_matches(
     rule: dict[str, Any], *, severity: str, space: str, product: str,
-    owned_by: str, owners: list[str],
+    owned_by: str, owners: list[str], kind: str = "consumer_contract",
 ) -> bool:
     """A rule matches when every non-empty facet equals the breach's. Empty
     facet = wildcard. ``match_owner`` is membership in the contract owners."""
@@ -147,6 +147,8 @@ def _rule_matches(
         return False
     if rule.get("match_owner") and rule["match_owner"] not in (owners or []):
         return False
+    if rule.get("match_kind") and rule["match_kind"] != kind:
+        return False
     return True
 
 
@@ -159,6 +161,7 @@ def resolve_db_targets(
     product: str,
     owned_by: str,
     owners: list[str],
+    kind: str = "consumer_contract",
 ) -> list[dict[str, Any]]:
     """Targets from DB rules: every enabled rule whose facets match routes to
     its (enabled) channel. De-duplicated by (type, url)."""
@@ -167,7 +170,7 @@ def resolve_db_targets(
     seen: set[tuple[str, str]] = set()
     for rule in rules or []:
         if not _rule_matches(rule, severity=severity, space=space, product=product,
-                             owned_by=owned_by, owners=owners):
+                             owned_by=owned_by, owners=owners, kind=kind):
             continue
         channel = by_id.get(rule.get("channel_id"))
         if not channel:
@@ -181,7 +184,7 @@ def resolve_db_targets(
 
 def _resolve_with_store(
     store: Any, settings: Any, *, severity: str, space: str, product: str,
-    owned_by: str, owners: list[str],
+    owned_by: str, owners: list[str], kind: str = "consumer_contract",
 ) -> tuple[list[dict[str, Any]], bool]:
     """Return (targets, muted). DB rules take precedence; YAML/webhook_url is the
     fallback. ``muted`` short-circuits delivery regardless of targets."""
@@ -193,7 +196,7 @@ def _resolve_with_store(
                 store.list_notification_channels(),
                 store.list_notification_rules(),
                 severity=severity, space=space, product=product,
-                owned_by=owned_by, owners=owners,
+                owned_by=owned_by, owners=owners, kind=kind,
             )
             if db_targets:
                 return db_targets, False
@@ -236,10 +239,10 @@ def _format_payload(target_type: str, ctx: dict[str, Any]) -> dict[str, Any]:
         }
     # Generic webhook — full structured context (machine-routable downstream).
     return {
-        k: ctx[k]
+        k: ctx.get(k)
         for k in (
             "product", "compliance", "run_id", "contract_version",
-            "failed_checks", "severity", "title", "incident_id", "link", "ts",
+            "failed_checks", "severity", "title", "incident_id", "kind", "link", "ts",
         )
     }
 
@@ -277,10 +280,10 @@ def _format_transition_payload(target_type: str, ctx: dict[str, Any]) -> dict[st
         }
     # Generic webhook — structured context.
     return {
-        k: ctx[k]
+        k: ctx.get(k)
         for k in (
             "product", "incident_id", "severity", "title",
-            "action", "actor", "note", "new_status", "new_owner", "link", "ts",
+            "action", "actor", "note", "new_status", "new_owner", "kind", "link", "ts",
         )
     }
 
@@ -301,6 +304,7 @@ def notify_incident_transition(
     settings: Any,
     store: Any = None,
     space: str = "",
+    kind: str = "consumer_contract",
 ) -> None:
     """Fire incident-transition notifications on status changes and owner assignment.
 
@@ -310,7 +314,7 @@ def notify_incident_transition(
     """
     targets, muted = _resolve_with_store(
         store, settings, severity=severity, space=space, product=product,
-        owned_by=owned_by, owners=owners or [],
+        owned_by=owned_by, owners=owners or [], kind=kind,
     )
     if muted or not targets:
         return
@@ -324,6 +328,7 @@ def notify_incident_transition(
         "note": note,
         "new_status": new_status,
         "new_owner": new_owner,
+        "kind": kind,
         "link": f"/incidents/{incident_id}",
         "ts": datetime.now(timezone.utc).isoformat(),
     }
@@ -352,6 +357,7 @@ def notify_breach(
     settings: Any,
     store: Any = None,
     space: str = "",
+    kind: str = "consumer_contract",
 ) -> None:
     """Fire breach/incident-open notifications to all routed channels.
 
@@ -361,7 +367,7 @@ def notify_breach(
     """
     targets, muted = _resolve_with_store(
         store, settings, severity=severity, space=space, product=product,
-        owned_by=owned_by, owners=owners or [],
+        owned_by=owned_by, owners=owners or [], kind=kind,
     )
     if muted or not targets:
         return
@@ -374,6 +380,7 @@ def notify_breach(
         "severity": severity,
         "title": title,
         "incident_id": incident_id,
+        "kind": kind,
         "link": f"/objects/{product}?run={run_id}",
         "ts": datetime.now(timezone.utc).isoformat(),
     }

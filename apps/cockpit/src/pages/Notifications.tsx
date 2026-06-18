@@ -96,6 +96,7 @@ function RulesSection({ rules, channels, canEdit }: { rules: NotificationRule[];
   const [name, setName] = useState('');
   const [channelId, setChannelId] = useState<number | ''>(channels[0]?.id ?? '');
   const [severity, setSeverity] = useState('');
+  const [kind, setKind] = useState('');
   const [space, setSpace] = useState('');
   const [product, setProduct] = useState('');
 
@@ -105,6 +106,7 @@ function RulesSection({ rules, channels, canEdit }: { rules: NotificationRule[];
       r.match_severity && `${t.notifications.severity}=${r.match_severity}`,
       r.match_space && `${t.notifications.space}=${r.match_space}`,
       r.match_product && `${t.notifications.product}=${r.match_product}`,
+      r.match_kind && `${t.notifications.kind}=${r.match_kind}`,
       r.match_owned_by && `${t.notifications.ownedBy}=${r.match_owned_by}`,
       r.match_owner && `${t.notifications.owner}=${r.match_owner}`,
     ].filter(Boolean);
@@ -114,8 +116,11 @@ function RulesSection({ rules, channels, canEdit }: { rules: NotificationRule[];
   const submit = () => {
     if (!name.trim() || channelId === '') return;
     create.mutate(
-      { name: name.trim(), channel_id: Number(channelId), match_severity: severity, match_space: space.trim(), match_product: product.trim() },
-      { onSuccess: () => { setName(''); setSpace(''); setProduct(''); setSeverity(''); } },
+      {
+        name: name.trim(), channel_id: Number(channelId), match_severity: severity,
+        match_kind: kind, match_space: space.trim(), match_product: product.trim(),
+      },
+      { onSuccess: () => { setName(''); setSpace(''); setProduct(''); setSeverity(''); setKind(''); } },
     );
   };
 
@@ -141,6 +146,14 @@ function RulesSection({ rules, channels, canEdit }: { rules: NotificationRule[];
               <option value="critical">critical</option>
               <option value="fail">fail</option>
               <option value="warn">warn</option>
+            </Select>
+          </Field>
+          <Field label={t.notifications.kind}>
+            <Select value={kind} onChange={e => setKind(e.target.value)}>
+              <option value="">{t.notifications.any}</option>
+              <option value="internal_gate">internal_gate</option>
+              <option value="consumer_contract">consumer_contract</option>
+              <option value="provider_contract">provider_contract</option>
             </Select>
           </Field>
           <Field label={t.notifications.space}><Input style={{ width: 90 }} value={space} onChange={e => setSpace(e.target.value)} /></Field>

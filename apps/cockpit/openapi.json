@@ -44,6 +44,90 @@
         "title": "ActivityItem",
         "type": "object"
       },
+      "ChannelIn": {
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "url"
+        ],
+        "title": "ChannelIn",
+        "type": "object"
+      },
+      "ChannelPatch": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "ChannelPatch",
+        "type": "object"
+      },
       "CheckDefOut": {
         "properties": {
           "expect": {
@@ -220,6 +304,11 @@
             "title": "Guarantees",
             "type": "object"
           },
+          "kind": {
+            "default": "internal_gate",
+            "title": "Kind",
+            "type": "string"
+          },
           "owned_by": {
             "default": "platform",
             "title": "Owned By",
@@ -277,6 +366,11 @@
             "default": {},
             "title": "Guarantees",
             "type": "object"
+          },
+          "kind": {
+            "default": "internal_gate",
+            "title": "Kind",
+            "type": "string"
           },
           "lifecycle": {
             "default": "draft",
@@ -457,6 +551,40 @@
           }
         },
         "title": "IncidentTransitionIn",
+        "type": "object"
+      },
+      "MuteIn": {
+        "properties": {
+          "ends_at": {
+            "title": "Ends At",
+            "type": "string"
+          },
+          "match_product": {
+            "default": "",
+            "title": "Match Product",
+            "type": "string"
+          },
+          "match_space": {
+            "default": "",
+            "title": "Match Space",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Reason",
+            "type": "string"
+          },
+          "starts_at": {
+            "title": "Starts At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "MuteIn",
         "type": "object"
       },
       "ObjectDetailOut": {
@@ -681,6 +809,28 @@
         "title": "ObjectOut",
         "type": "object"
       },
+      "ProfileRequest": {
+        "properties": {
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
+          },
+          "include_composite": {
+            "default": true,
+            "title": "Include Composite",
+            "type": "boolean"
+          }
+        },
+        "title": "ProfileRequest",
+        "type": "object"
+      },
       "ProposalOut": {
         "properties": {
           "check_name": {
@@ -704,6 +854,11 @@
           },
           "id": {
             "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "default": "internal_gate",
+            "title": "Kind",
             "type": "string"
           },
           "product": {
@@ -738,6 +893,61 @@
           "proposed_expect"
         ],
         "title": "ProposalOut",
+        "type": "object"
+      },
+      "RuleIn": {
+        "properties": {
+          "channel_id": {
+            "title": "Channel Id",
+            "type": "integer"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "match_kind": {
+            "default": "",
+            "title": "Match Kind",
+            "type": "string"
+          },
+          "match_owned_by": {
+            "default": "",
+            "title": "Match Owned By",
+            "type": "string"
+          },
+          "match_owner": {
+            "default": "",
+            "title": "Match Owner",
+            "type": "string"
+          },
+          "match_product": {
+            "default": "",
+            "title": "Match Product",
+            "type": "string"
+          },
+          "match_severity": {
+            "default": "",
+            "title": "Match Severity",
+            "type": "string"
+          },
+          "match_space": {
+            "default": "",
+            "title": "Match Space",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "channel_id"
+        ],
+        "title": "RuleIn",
         "type": "object"
       },
       "RunListItem": {
@@ -1535,6 +1745,91 @@
         ]
       }
     },
+    "/api/contracts/{product}/certify": {
+      "post": {
+        "description": "[AUTHZ] [CONTRACT-SQL-FREE] Lite-Modus: save \u2192 active \u2192 compile in einem Schritt.\n\nDer Lite-Modus (HANDOVER N1/D8) tr\u00e4gt bewusst KEINE SemVer-/Approval-Zeremonie:\nes gibt keinen Draft-Zwischenschritt und keine Versions-Promotion von Hand.\nDamit Garantien sofort als persistente Checks + Compliance-Ampel im Cockpit\nerscheinen, zertifiziert dieser Pfad direkt und kompiliert die Check-Suite.\n\nWas unver\u00e4ndert gilt:\n  - G1 (kein SQL im Contract) \u2014 jeder Ingestion-Pfad validiert.\n  - G3 (Breaking \u21d2 Major) bleibt f\u00fcr bereits zertifizierte Produkte scharf:\n    Lite darf ein Produkt von Null aufsetzen, aber keinen *breaking* Change an\n    einer bestehenden aktiven Version am Gate vorbeischmuggeln \u2014 der muss \u00fcber\n    den Voll-Modus (/approve) laufen.",
+        "operationId": "certify_contract_api_contracts__product__certify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Certify Contract",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
     "/api/contracts/{product}/compile": {
       "post": {
         "description": "[DETERMINISM] [SCHEMA-MAP] Compile contract \u2192 CheckDefs.\n\nG1: der Contract wird auch auf dem Disk-Pfad validiert (kein Schmuggel an\nPUT vorbei). G2: '{schema}' bleibt als Platzhalter im Output. Non-dry-run\nerfordert lifecycle=active (WS3-2) und Schreibrecht.",
@@ -1746,6 +2041,47 @@
         ]
       }
     },
+    "/api/contracts/{product}/diff/active": {
+      "get": {
+        "description": "UX-N13: semantic diff of the working contract against the last certified\nversion (`.active.yml`). Reuses the breaking-change engine so the FE can\nexplain the *meaning* of each change, not just two code spans.",
+        "operationId": "version_diff_contract_api_contracts__product__diff_active_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Version Diff Contract",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
     "/api/contracts/{product}/export/bdc": {
       "post": {
         "description": "Generate CSN + ORD artifact fragments for BDC integration. (WS5-4)\n\nEinseitig (E1): files are returned as JSON for manual deployment.\nNever writes to DB or catalog.",
@@ -1897,6 +2233,81 @@
           }
         },
         "summary": "Export Odcs",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/contracts/{product}/promote": {
+      "post": {
+        "description": "ADR-0001: copy guarantees from an internal gate into a new contract draft.",
+        "operationId": "promote_to_contract_api_contracts__product__promote_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Promote To Contract",
         "tags": [
           "contracts"
         ]
@@ -2309,7 +2720,7 @@
     },
     "/api/extract": {
       "post": {
-        "description": "Reload inventory/lineage snapshots and report counts.\n\nF5: In local mode, touch the snapshot files to reset the staleness clock\n(production deployments would call the real analyzer chain here). Either\nway, the response includes the new extraction timestamp so the frontend\ncan update the staleness indicator immediately.",
+        "description": "Extract inventory/lineage from Datasphere (when configured) and report counts.\n\nTier-2: when a live source (REST catalog or the @sap/datasphere-cli) is\nconfigured, run the real extraction \u2014 pull objects with columns + CSN,\nassemble the inventory, build the object + column lineage, and write the\nMeridian-shaped snapshots. FastAPI runs this sync handler in a threadpool,\nso the blocking I/O does not stall the event loop.\n\nF5 fallback: with no connectivity configured (local mode), touch the\nsnapshot files to reset the mtime-based staleness clock. Either way the\nresponse carries the new extraction timestamp for the staleness indicator.",
         "operationId": "trigger_extract_api_extract_post",
         "parameters": [
           {
@@ -2399,6 +2810,22 @@
                 }
               ],
               "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
             }
           },
           {
@@ -2724,6 +3151,63 @@
         ]
       }
     },
+    "/api/lineage/columns": {
+      "get": {
+        "description": "Per-column upstream/downstream lineage for one object (O3).\n\nBuilt from the columnEdges produced by the extract chain\n(build_column_lineage). Returns the per-column index for the object, or a\nsingle column's lineage when ``column`` is given.",
+        "operationId": "get_column_lineage_api_lineage_columns_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "object",
+            "required": true,
+            "schema": {
+              "title": "Object",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "column",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Column"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Column Lineage",
+        "tags": [
+          "lineage"
+        ]
+      }
+    },
     "/api/metrics/health": {
       "get": {
         "description": "Self-observability: request counters, uptime, latency percentiles (JSON).",
@@ -2741,6 +3225,570 @@
         "summary": "Service Health Metrics",
         "tags": [
           "metrics"
+        ]
+      }
+    },
+    "/api/notifications/channels": {
+      "post": {
+        "operationId": "create_channel_api_notifications_channels_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Channel",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/channels/{channel_id}": {
+      "delete": {
+        "operationId": "delete_channel_api_notifications_channels__channel_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "title": "Channel Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Channel",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_channel_api_notifications_channels__channel_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "title": "Channel Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Channel",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/config": {
+      "get": {
+        "description": "Channels, rules and mute windows. ``can_edit`` mirrors the server gate.",
+        "operationId": "get_config_api_notifications_config_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Config",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/mutes": {
+      "post": {
+        "operationId": "create_mute_api_notifications_mutes_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MuteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Mute",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/mutes/{mute_id}": {
+      "delete": {
+        "operationId": "delete_mute_api_notifications_mutes__mute_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mute_id",
+            "required": true,
+            "schema": {
+              "title": "Mute Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Mute",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/rules": {
+      "post": {
+        "operationId": "create_rule_api_notifications_rules_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Rule",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/rules/{rule_id}": {
+      "delete": {
+        "operationId": "delete_rule_api_notifications_rules__rule_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Rule",
+        "tags": [
+          "notifications"
         ]
       }
     },
@@ -2898,6 +3946,91 @@
         "summary": "Get Check History",
         "tags": [
           "objects"
+        ]
+      }
+    },
+    "/api/objects/{object_id}/profile": {
+      "post": {
+        "description": "Profile one object's columns over a live HANA connection.\n\nReturns per-column stats, PK candidates (single + composite), and\nheuristic key scores. Requires steward role or higher and a configured\nenvironment with a real HANA connection.",
+        "operationId": "profile_object_api_objects__object_id__profile_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileRequest",
+                "default": {
+                  "include_composite": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Profile Object",
+        "tags": [
+          "profile"
         ]
       }
     },

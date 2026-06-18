@@ -8,7 +8,7 @@ function incident(over: Partial<Incident>): Incident {
   return {
     id: 1, product: 'DS_X', run_id: 'r1', severity: 'fail', status: 'open',
     owner: '', title: 'T', failed_checks: [], opened_at: new Date().toISOString(),
-    resolved_at: null, contract_version: '1', ...over,
+    resolved_at: null, contract_version: '1', kind: 'consumer_contract', ...over,
   };
 }
 
