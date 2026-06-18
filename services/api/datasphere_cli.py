@@ -341,6 +341,45 @@ class DatasphereCli:
             )
         return payload
 
+    def deploy_object(
+        self,
+        space: str,
+        technical_name: str,
+        definition: dict[str, Any],
+        *,
+        object_type: str = "views",
+    ) -> str:
+        """Write/deploy an object definition back to a space (the *import* step
+        of export→share→import).
+
+        [VERIFY-VERB] The create/deploy verb and flags vary across
+        ``@sap/datasphere-cli`` versions — confirm with
+        ``datasphere objects <type> --help`` before enabling
+        ``datasphere_allow_share``. The definition is staged to a temp file and
+        passed via ``--file``; nothing here runs unless a caller invokes it.
+        """
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".json", delete=False, encoding="utf-8"
+        ) as fh:
+            json.dump(definition, fh)
+            tmp_path = fh.name
+        try:
+            return self.run_cli_text(
+                [
+                    "objects", object_type, "create",
+                    "--space", space,
+                    "--technical-name", technical_name,
+                    "--file", tmp_path,
+                ]
+            )
+        finally:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
     # ------------------------------------------------------------------
     # Low-level run helpers
     # ------------------------------------------------------------------

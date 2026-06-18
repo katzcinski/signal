@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useObject, useObjectRuns, useTriggerRun, useCheckHistory } from '@/api/objects';
+import { useMonitoringConfig, useMonitoringShares, useShareForMonitoring } from '@/api/monitoring';
 import { useRun } from '@/api/runs';
 import { useContract, useContractVersionDiff } from '@/api/contracts';
 import { useLineage } from '@/api/lineage';
@@ -339,6 +340,10 @@ export default function ObjectDetail() {
   const { data: runs = [] } = useObjectRuns(id);
   const { data: contract } = useContract(id);
   const trigger = useTriggerRun(id);
+  const { data: monCfg } = useMonitoringConfig();
+  const { data: monShares = [] } = useMonitoringShares();
+  const share = useShareForMonitoring();
+  const isShared = monShares.includes(id);
 
   const latestRun: RunListItem | undefined = runs[0];
   const { data: latestRunDetail } = useRun(latestRun?.run_id ?? '');
@@ -414,6 +419,30 @@ export default function ObjectDetail() {
           <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{obj.space} · {obj.layer}</p>
         </div>
         <div style={{ flex: 1 }} />
+        {monCfg?.enabled && (isShared ? (
+          <span
+            title={`Monitoring-Space: ${monCfg.monitoring_space}`}
+            style={{
+              fontSize: 12, color: 'var(--status-ok)', border: '1px solid var(--status-ok)',
+              borderRadius: 5, padding: '6px 12px',
+              background: 'color-mix(in srgb, var(--status-ok) 12%, transparent)',
+            }}
+          >
+            {t.monitoring.inMonitoring}
+          </span>
+        ) : (
+          <button
+            onClick={() => share.mutate(id)}
+            disabled={share.isPending}
+            style={{
+              background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)',
+              borderRadius: 5, padding: '7px 16px', fontSize: 13,
+              cursor: share.isPending ? 'wait' : 'pointer', opacity: share.isPending ? 0.6 : 1,
+            }}
+          >
+            {share.isPending ? t.monitoring.sharing : t.monitoring.makeAvailable}
+          </button>
+        ))}
         <button
           onClick={() => setProfileOpen(true)}
           disabled={!canProfile}

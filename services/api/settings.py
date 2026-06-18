@@ -77,6 +77,12 @@ class Settings(BaseSettings):
     # also use the local @sap/datasphere-cli when available (richest CSN).
     datasphere_use_cli: bool = Field(default=False)
 
+    # "Make available for monitoring" (Schmalspur): share inventory objects into
+    # a dedicated monitoring hub space via the CLI. Writing into Datasphere is
+    # OFF by default — Signal is read-only unless this is explicitly enabled.
+    datasphere_monitoring_space: str = Field(default="")
+    datasphere_allow_share: bool = Field(default=False)
+
 
 _settings: Settings | None = None
 

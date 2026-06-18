@@ -130,6 +130,13 @@ export const t = {
     sla30d: '30 Tage',
     sla90d: '90 Tage',
   },
+  monitoring: {
+    makeAvailable: 'Für Monitoring verfügbar machen',
+    inMonitoring: '✓ im Monitoring',
+    sharing: 'Übernehme…',
+    shared: 'Ins Monitoring übernommen.',
+    shareError: 'Übernahme ins Monitoring fehlgeschlagen.',
+  },
   badge: {
     title: 'Status-Badge einbetten',
     hint: 'Read-only Compliance-Badge für SAC, Confluence oder README.',
