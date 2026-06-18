@@ -44,6 +44,8 @@ Signal nutzt einen **technischen Database User je Space** mit minimalen Grants:
 - **Secrets** aus Secret-Store/Mounted File; **Rotations­zuständigkeit** benannt.
 - **Pro Space getrennte User** (empfohlen) → minimiert Blast Radius, schärft Audit- und Coverage-Linie.
 
+> Dieser User adressiert **Berechtigung**, nicht **Reichweite**: Objekte ohne HANA-relationale Repräsentation (HDLF/Data-Lake) bleiben außerhalb — siehe §6.
+
 ---
 
 ## 3 — Begründung: warum der Database Analysis User ausscheidet
@@ -72,8 +74,25 @@ Der Database Analysis User ist **nur** für **kurze, beaufsichtigte DBA-Diagnose
 
 ---
 
-## 6 — Offene Punkte
+## 6 — Scope-Grenze: HDLF / Data-Lake-Objekte
+
+Der technische Space-User löst **Berechtigung**, nicht **Repräsentation**. Der Open-SQL-Schema-User hängt am relationalen HANA-Cloud-Tenant; **HDLF-Objekte (HANA Data Lake Files — Delta/Parquet im Object Store) haben dort keine SQL-Oberfläche** und sind per `hdbcli`-`SELECT` nicht erreichbar — unabhängig von Grants. Das ist die bereits getroffene Entscheidung **B3/E2** (HANA-only-Executor, `REVIEW_Implementierungsplan.md`) samt **O2**-Risiko (HDLF-CLI-Gap, `HANDOVER.md`).
+
+**Wichtig:** Das ist ein **Protokoll-/Repräsentations-Gap, kein Privilegien-Gap.** Mehr Rechte (bis zum Database Analysis User) **lösen es nicht** — auch der Analysis User gibt Data-Lake-Files keine SQL-Oberfläche, sondern vergrößert nur den Blast Radius. Daher: **nicht über-privilegieren**, um diesem Symptom hinterherzulaufen.
+
+Wege, HDLF-Objekte prüfbar zu machen (SQL-only-Modell bleibt erhalten):
+
+1. **Als HANA-relationale View exponieren (empfohlen):** View/Remote-/Virtual-Table auf das Data-Lake-Objekt modellieren, „Expose for Consumption", dem Space-User SELECT granten — Signal prüft die View.
+2. **HDL Relational Engine (HDLRE):** separater SQL-Endpoint mit eigenem scoped User → zweites Verbindungsprofil (kein Ein-Connection-Modell mehr).
+3. **Reine HDL-Files (HDLFS):** kein SQL → HDLFS-CLI/REST = bewusst gemiedener Engine-Fork (B3); Fallback `LOAD_TS`/Row-Count-Snapshots (O2).
+
+Haken: Data-Lake-/Delta-Views haben oft **keinen Lade-Zeitstempel** → `freshness`/`recent_volume` brauchen eine nutzbare Timestamp-Spalte oder den Lastmetadaten-Pfad (O2); `row_count`/`volume_delta`/`column_count` laufen auf jeder relationalen View.
+
+---
+
+## 7 — Offene Punkte
 
 - **OP-1:** TLS in `db_connection.py` — ist `encrypt=true` + Zertifikatsvalidierung gesetzt? Falls nein: nachrüsten (Pflicht, S4).
 - **OP-2:** Grant-Vorlage je Space als wiederverwendbares Snippet (SELECT-Liste + `dq_results_lt`-Write) in die `Tooldokumentation.md` aufnehmen.
 - **OP-3:** Rotations- und Eigentümer­zuständigkeit für die technischen User benennen.
+- **OP-4:** HDLF-Objekte unter Contract — Mapping „Data-Lake-Objekt → exponierte HANA-View" je Produkt festlegen; Timestamp-/Lastmetadaten-Pfad für Freshness/Volume klären (Anschluss an O2).
