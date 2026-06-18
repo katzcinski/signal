@@ -67,7 +67,7 @@ const SEVERITY_ORDER: Record<string, number> = { critical: 0, fail: 1, warn: 2 }
 
 function SlaBar({ pct }: { pct: number | null }) {
   if (pct === null) return <span style={{ fontSize: 10, color: 'var(--fg-3)' }}>—</span>;
-  const color = pct >= 99 ? 'var(--qual)' : pct >= 90 ? '#e6b000' : '#c44';
+  const color = pct >= 99 ? 'var(--qual)' : pct >= 90 ? 'var(--status-warn)' : 'var(--status-crit)';
   return (
     <div title={`${pct}%`} style={{ display: 'flex', alignItems: 'center', gap: 4, width: 84 }}>
       <div style={{ width: 52, height: 5, background: 'var(--bg-2)', borderRadius: 3, overflow: 'hidden' }}>
@@ -82,7 +82,7 @@ function SlaRow({ product }: { product: string }) {
   const { data: sla } = useContractSla(product);
   const w = sla?.windows;
   const cur = sla?.current ?? 'unknown';
-  const curColor = cur === 'compliant' ? 'var(--qual)' : cur === 'breached' ? '#c44' : 'var(--fg-3)';
+  const curColor = cur === 'compliant' ? 'var(--qual)' : cur === 'breached' ? 'var(--status-crit)' : 'var(--fg-3)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product}</span>
@@ -112,7 +112,9 @@ export default function Cockpit() {
   const { data: objects = [] } = objectsQuery;
   const { data: incidents = [] } = incidentsQuery;
   const { data: contracts = [] } = contractsQuery;
-  const activeContracts = contracts.filter(c => c.lifecycle === 'active');
+  const activeContracts = contracts.filter(c =>
+    c.lifecycle === 'active' && c.kind !== 'internal_gate',
+  );
   const coverage = coverageQuery.data;
   const navigate = useNavigate();
 
@@ -175,7 +177,7 @@ export default function Cockpit() {
       </div>
 
       {/* KPI strip — the at-a-glance numbers. */}
-      {objectsQuery.isLoading ? <KpiSkeleton count={4} /> : (
+      {objectsQuery.isLoading ? <KpiSkeleton count={5} /> : (
       <div className="dash-kpis">
         <Kpi label={t.cockpit.kpiObjects} value={totalObjects} accent="var(--cont)" />
         <Kpi
@@ -190,6 +192,11 @@ export default function Cockpit() {
           delta={criticalIncidents > 0 ? `${criticalIncidents} ${t.cockpit.critical}` : undefined}
           deltaPositive={false}
           accent={openIncidents.length > 0 ? 'var(--status-fail)' : 'var(--qual)'}
+        />
+        <Kpi
+          label={t.cockpit.kpiGateSignals}
+          value={coverage?.gates_failing ?? 0}
+          accent={(coverage?.gates_failing ?? 0) > 0 ? 'var(--status-warn)' : 'var(--qual)'}
         />
         <Kpi
           label={t.cockpit.kpiUnvalidated}
@@ -225,7 +232,7 @@ export default function Cockpit() {
           ) : topIncidents.map((i: Incident) => (
             <button
               key={i.id}
-              onClick={() => navigate(`/incidents?status=${i.status}`)}
+              onClick={() => navigate(`/incidents?status=${i.status}&kind=${i.kind === 'internal_gate' ? 'internal_gate' : 'contract'}`)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
                 padding: '6px 0', background: 'none', border: 'none',

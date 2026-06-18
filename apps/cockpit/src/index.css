@@ -1,13 +1,13 @@
 :root {
-  /* Backgrounds */
-  --bg-0: #0B0D11;
-  --bg-1: #13161C;
-  --bg-2: #1A1F27;
-  --bg-3: #222831;
+  /* Backgrounds — slight blue undertone push for better contrast with indigo cont */
+  --bg-0: #090B0F;
+  --bg-1: #111520;
+  --bg-2: #1B2130;
+  --bg-3: #222C3E;
 
-  /* Borders */
-  --line: #222934;
-  --line-2: #313945;
+  /* Borders — visible enough to define cards without relying on accent bars */
+  --line: #2A3242;
+  --line-2: #36445A;
 
   /* Foregrounds */
   --fg: #E7EBF2;
@@ -16,12 +16,12 @@
      tertiary text that uses it at <18px. Still a clear step below --fg-2. */
   --fg-3: #7C8696;
 
-  /* Family accent colours */
-  --obs: #E8973C;
-  --qual: #3FB07A;
-  --cont: #5E83E6;
+  /* Family accent colours — higher saturation, more distinctive against each other */
+  --obs: #F59E0B;   /* amber: "instrument warning" heat */
+  --qual: #00D4AA;  /* mint-teal: "clean data" read */
+  --cont: #7B6FEE;  /* indigo: "document/agreement" read */
 
-  /* Status */
+  /* Status — ok stays green so it reads as "pass", distinct from qual's teal */
   --status-ok: #3FB07A;
   --status-warn: #E0B23E;
   --status-fail: #E2783C;
@@ -30,7 +30,7 @@
   --status-unknown: #646E7C;
 
   /* Typography */
-  --font-ui: 'DM Sans', system-ui, sans-serif;
+  --font-ui: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   /* Radius */
