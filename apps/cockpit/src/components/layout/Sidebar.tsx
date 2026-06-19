@@ -66,10 +66,24 @@ export function Sidebar({ collapsed }: Props) {
       transition: 'width var(--t)',
       flexShrink: 0, overflow: 'hidden',
     }}>
-      <div style={{ padding: '16px 12px', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
-        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--fg)', whiteSpace: 'nowrap' }}>
-          {collapsed ? 'S' : 'Signal'}
-        </span>
+      <div style={{
+        padding: '14px 14px', borderBottom: '1px solid var(--line)', overflow: 'hidden',
+        display: 'flex', alignItems: 'center', gap: 9,
+      }}>
+        {/* Live "signal" dot — a phosphor pulse that reads as "instrument online". */}
+        <span style={{
+          width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+          background: 'var(--signal)', boxShadow: '0 0 0 3px var(--signal-dim)',
+        }} />
+        {!collapsed && (
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13,
+            letterSpacing: '0.22em', color: 'var(--fg)', whiteSpace: 'nowrap',
+            textTransform: 'uppercase',
+          }}>
+            Signal
+          </span>
+        )}
       </div>
       <nav style={{ flex: 1, padding: '8px 0' }}>
         {nav.map(({ to, label, icon }) => (
@@ -78,17 +92,31 @@ export function Sidebar({ collapsed }: Props) {
             title={label}
             aria-label={label}
             style={({ isActive }) => ({
+              position: 'relative',
               display: 'flex', alignItems: 'center', gap: 10,
-              padding: '8px 12px', margin: '1px 6px', borderRadius: 5,
+              padding: '8px 12px', margin: '1px 6px', borderRadius: 'var(--r-md)',
               justifyContent: collapsed ? 'center' : 'flex-start',
               color: isActive ? 'var(--fg)' : 'var(--fg-2)',
               background: isActive ? 'var(--bg-2)' : 'transparent',
+              // Phosphor signal-bar marks the active route — the brand accent's
+              // one consistent home in the nav.
+              boxShadow: isActive ? 'inset 2px 0 0 var(--signal)' : undefined,
               fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden',
               transition: 'color var(--t), background var(--t)',
             })}
           >
-            <span style={{ display: 'inline-flex', flexShrink: 0 }}><Icon name={icon} /></span>
-            {!collapsed && <span>{label}</span>}
+            {({ isActive }) => (
+              <>
+                <span style={{
+                  display: 'inline-flex', flexShrink: 0,
+                  color: isActive ? 'var(--signal)' : 'inherit',
+                  transition: 'color var(--t)',
+                }}>
+                  <Icon name={icon} />
+                </span>
+                {!collapsed && <span>{label}</span>}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
