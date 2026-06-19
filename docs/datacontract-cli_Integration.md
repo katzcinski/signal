@@ -93,7 +93,7 @@ es bei euch schon existiert.
 | F4 | **`datacontract export`** | Generiert Artefakte aus dem Contract: dbt, JSON Schema, Avro, Protobuf, SQL-DDL, SodaCL, Great-Expectations-Suite, pydantic, SQLAlchemy, RDF, GraphQL … | On-demand, auf `*.odcs.yaml` | Ein Contract → viele Downstream-Formate, ohne Handarbeit | ◻️ ihr exportiert heute nur ODCS selbst |
 | F5 | **`datacontract import`** | **Reverse-Engineering**: erzeugt einen Contract aus bestehendem SQL-DDL, Avro, JSON Schema, dbt, AWS Glue, BigQuery, ODCS … | Onboarding neuer Datasets | Schneller Erst-Entwurf eines Contracts aus vorhandenen Strukturen | ◻️ habt ihr nicht; spart Tipparbeit beim Onboarding |
 | F6 | **`datacontract catalog`** | Statischer **HTML-Katalog** aller Contracts | Build-Artefakt / GitHub Pages | Verteilbarer Katalog „außerhalb" des Cockpits (z. B. für Konsumenten ohne Zugang) | ◻️ Cockpit deckt internen Fall ab |
-| F7 | **`datacontract test`** | Führt Quality-Checks aus — **delegiert an Soda Core / Great Expectations** | — (bewusst **nicht** genutzt) | ⛔ **kein HANA-Backend**; widerspricht G1 (verlangt SQL/SodaCL im Contract). Signals HANA-Runner ist hier überlegen | ⛔ **nicht übernehmen** |
+| F7 | **`datacontract test`** | Führt Quality-Checks aus — **delegiert an Soda Core / Great Expectations**; Backends u. a. Databricks und Delta (`type: databricks` via `[databricks]`, oder Object-Store + `format: delta` via `[duckdb]`) | — für HANA bewusst **nicht** genutzt; tragfähig nur in der BDC/Databricks-Plane | ⛔ **kein HANA-Backend** (kein `type: hana`); widerspricht G1 (verlangt SQL/SodaCL im Contract). Signals HANA-Runner ist hier überlegen. Delta/Databricks ✅ siehe Bewertung §8 | ⛔ **nicht für HANA** · ✅ nur BDC/Delta |
 
 **Legende fürs Bild:** ✅ = bereits aktiv · ◻️ = sinnvoller Ausbau · ⛔ = bewusst ausgeschlossen.
 
@@ -169,7 +169,8 @@ Vorschlag, wie du die Flächen visuell trennst:
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  ZONE 3 — datacontract-cli (extern, CI/Tooling — NICHT in dq_core, G7)       │
 │  ✅ breaking (aktiv)  ◻️ changelog · lint · export · import · catalog         │
-│  ⛔ test  (kein HANA · bricht G1)                                            │
+│  ⛔ test gegen HANA (kein type:hana · bricht G1)                              │
+│  ✅ test nur BDC/Delta: type:databricks ODER object-store + format:delta      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

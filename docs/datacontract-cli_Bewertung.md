@@ -17,8 +17,10 @@
 - Signals Substanz liegt **nicht in der Engine**, sondern in **Governance (G1/G8),
   Runtime-Compliance/SLA, Cockpit, Observability, Lineage und SAP-Semantik** —
   alles Dinge, die ODCS/CLI konzeptionell gar nicht modellieren.
-- **Nativ in Datasphere** geht die CLI nur in der **Databricks-Plane (BDC)**; für
-  HANA-Space-Objekte ist der native In-Chain-Check *kompiliertes SQL* = Signal-Engine
+- **Nativ in Datasphere** geht die CLI nur in der **Databricks-Plane (BDC)** — dort
+  über **zwei Delta-Pfade**: `type: databricks` (Unity/Hive Catalog, SQL-Warehouse)
+  oder Object-Store + `format: delta` (DuckDB, ohne Cluster). Für HANA-Space-Objekte
+  ist der native In-Chain-Check *kompiliertes SQL* = Signal-Engine (kein `type: hana`)
   (§8). Ein **Task-Chain-REST-Call** löst das *Trigger*-, nicht das
   *Ausführungs*-Problem — hinter der URL gehört Signals API, nicht die CLI (§9).
 - Einen **HANA-Connector zu contributen** ist technisch machbar
@@ -204,7 +206,7 @@ Engine-Pfad, nicht die CLI. Es gibt zwei Ebenen, auf denen „nativ" je anderes 
 | | **HANA-Plane** (Objekte im HANA-Space als DP) | **Databricks-Plane** (BDC Data Products) |
 |---|---|---|
 | Daten liegen in | HANA Cloud (Datasphere-Space) | Databricks/Delta (BDC) |
-| `datacontract test` nativ? | ⛔ nein (kein HANA-Backend) | ✅ ja (Databricks-Engine) |
+| `datacontract test` nativ? | ⛔ nein (kein HANA-Backend, kein `type: hana`) | ✅ ja — **zwei Delta-Pfade** (s.u.) |
 | „Check am Ende der Chain" | Transformation Flow / Prozedur mit kompiliertem SQL (**Signal-Engine**) | Databricks-Workflow-Task mit **`datacontract test`** |
 | Orchestrierung | Task Chain nativ, oder Task-Chain-API + `dq_check_runner` | Databricks Workflow / Job |
 | CLI-Rolle | nur statisch: `breaking`/`lint` + Export ODCS/CSN/ORD | Ausführung **+** statisch + Export |
@@ -214,10 +216,27 @@ Engine-Pfad, nicht die CLI. Es gibt zwei Ebenen, auf denen „nativ" je anderes 
 dort der **einzige** Ort, an dem die CLI als *Executor* nativ tragfähig ist —
 ohne G1/G8 in der HANA-Welt zu verletzen.
 
+**Delta-Connector — zwei Pfade (verifiziert gegen die datacontract-specification):**
+Ein als **Delta** materialisiertes Data Product ist auf beiden Wegen testbar:
+
+- **Pfad A — `type: databricks`** (Hive-/Unity-Catalog mit `catalog`/`schema`).
+  Checks laufen als SQL auf einem Databricks **SQL-Warehouse/Compute**.
+  Extra: `pip install datacontract-cli[databricks]` + laufendes Warehouse.
+- **Pfad B — Object-Store + `format: delta`** (`type: s3`/`azure`/`gcs`/`local`).
+  Liest die Delta-Files **direkt über DuckDB, ohne Databricks/Spark-Cluster** —
+  leichtgewichtig. Extra: `pip install datacontract-cli[duckdb]`.
+
+→ Egal ob das BDC-Produkt als Unity-Catalog-Tabelle (A) oder als Delta-Files im
+Lakehouse-Objektspeicher (B) liegt: die CLI deckt beide Fälle ab. **HANA hat
+keinen Connector** (`type: hana` existiert nicht), die HANA-Plane-Aussage oben
+bleibt unberührt.
+
 > Offen (vgl. Zusatz-Doc R2/R7): wie Datasphere/BDC die ORD-Dokumente eines
-> Data Products emittiert, und ob BDC-Produkte immer auf Databricks
-> materialisieren oder teils HANA-nativ bleiben (dann fallen sie auf die
-> HANA-Plane zurück → kein CLI-Executor).
+> Data Products emittiert — und ob BDC-Produkte **überhaupt** als Delta
+> materialisieren (dann greift Pfad A *oder* B) oder teils HANA-nativ bleiben
+> (dann fallen sie auf die HANA-Plane zurück → kein CLI-Executor). Die
+> Unterscheidung Unity-Catalog-Delta vs. Object-Store-Delta ist **kein** Blocker
+> mehr, da beide abgedeckt sind.
 
 ---
 
