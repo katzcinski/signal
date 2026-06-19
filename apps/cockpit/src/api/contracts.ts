@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { api } from './client';
 import { t } from '@/i18n/de';
 import type {
-  Contract, ContractOut, ContractPutBody, ContractVersionDiff, DiffReport,
+  ContractOut, ContractPutBody, ContractVersionDiff, DiffReport,
   InventoryResponse, SlaResponse,
 } from '@/types';
 
@@ -19,7 +19,7 @@ export const useContracts = () =>
   });
 
 export const useContract = (id: string) =>
-  useQuery<Contract>({
+  useQuery<ContractOut>({
     queryKey: ['contracts', id],
     queryFn: () => api.get(`/contracts/${id}`).then(r => r.data),
     enabled: !!id,

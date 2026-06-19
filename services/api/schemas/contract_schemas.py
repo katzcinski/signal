@@ -28,6 +28,7 @@ class ContractOut(BaseModel):
     description: str = ""
     guarantees: dict[str, Any] = {}
     compliance: Optional[str] = None
+    certified: bool = False
 
 
 class CheckDefOut(BaseModel):

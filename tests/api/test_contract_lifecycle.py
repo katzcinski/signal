@@ -64,6 +64,23 @@ def test_internal_gate_breaking_change_approves_without_major_bump(api_client):
     assert resp.json()["lifecycle"] == "active"
 
 
+def test_draft_amendment_of_active_contract_stays_certified(api_client):
+    _put_draft(api_client, "P_CERTIFIED_DRAFT", "1.0.0", ["ORDER_ID"], kind="consumer_contract")
+    approved = api_client.post("/api/contracts/P_CERTIFIED_DRAFT/approve")
+    assert approved.status_code == 200, approved.text
+    assert approved.json()["certified"] is True
+
+    draft = _put_draft(api_client, "P_CERTIFIED_DRAFT", "1.1.0", ["ORDER_ID"], kind="consumer_contract")
+    assert draft.status_code == 200, draft.text
+    assert draft.json()["lifecycle"] == "draft"
+    assert draft.json()["certified"] is True
+
+    got = api_client.get("/api/contracts/P_CERTIFIED_DRAFT")
+    assert got.status_code == 200
+    assert got.json()["lifecycle"] == "draft"
+    assert got.json()["certified"] is True
+
+
 def test_approve_internal_gate_seeds_no_compliance(api_client):
     from services.api.deps import get_store
 

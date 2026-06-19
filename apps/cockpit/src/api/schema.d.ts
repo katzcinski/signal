@@ -1429,6 +1429,11 @@ export interface components {
         };
         /** ContractOut */
         ContractOut: {
+            /**
+             * Certified
+             * @default false
+             */
+            certified: boolean;
             /** Compliance */
             compliance?: string | null;
             /**

@@ -91,14 +91,24 @@ export interface ObjectSummary {
 }
 
 // ---- Check Library ----
+export interface CheckTemplateParam {
+  token: string;
+  label: string;
+  hint?: string;
+}
+
 export interface CheckDef {
   id: string;
-  name: string;
-  description: string;
+  label: string;
+  short: string;
+  help: string;
+  example?: string;
   category: string;
-  family: Family;
-  template_sql?: string;
-  parameters?: Record<string, unknown>;
+  sql_template: string;
+  params: CheckTemplateParam[];
+  default_expect: string;
+  default_severity: Severity;
+  unit: string;
 }
 
 export interface CheckLibrary {
@@ -327,6 +337,7 @@ export interface Contract {
 
 export interface ContractOut extends Contract {
   compliance?: string | null;
+  certified?: boolean;
   updated_at?: string;
 }
 

@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query';
 import { useObject, useObjectRuns, useTriggerRun, useCheckHistory } from '@/api/objects';
 import { useRun } from '@/api/runs';
-import { useContract, useContractVersionDiff } from '@/api/contracts';
+import { useContract, useContractVersionDiff, useSeedContract } from '@/api/contracts';
 import { useLineage } from '@/api/lineage';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { CheckStatusCell } from '@/components/ui/StatePill';
@@ -18,7 +18,7 @@ import { ObjectProfilePanel } from '@/components/ObjectProfilePanel';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
-import { useRoleStore, canProfileObject } from '@/store/role';
+import { useRoleStore, canProfileObject, canWriteContract } from '@/store/role';
 import { t } from '@/i18n/de';
 import type { CheckResult, ContractOut, RunListItem } from '@/types';
 
@@ -339,6 +339,7 @@ export default function ObjectDetail() {
   const { data: runs = [] } = useObjectRuns(id);
   const { data: contract } = useContract(id);
   const trigger = useTriggerRun(id);
+  const seedContract = useSeedContract();
 
   const latestRun: RunListItem | undefined = runs[0];
   const { data: latestRunDetail } = useRun(latestRun?.run_id ?? '');
@@ -361,6 +362,16 @@ export default function ObjectDetail() {
   if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
   if (isError) return <div className="page-full"><ErrorBanner onRetry={() => refetch()} /></div>;
   if (!obj) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.objectDetail.notFound}</div>;
+
+  const canCreateChecks = canWriteContract(role, obj.owned_by);
+  const openChecksWorkbench = () => {
+    const target = `/contracts?product=${encodeURIComponent(id)}`;
+    if (contract) {
+      navigate(target);
+      return;
+    }
+    seedContract.mutate(id, { onSuccess: () => navigate(target) });
+  };
 
   const TAB_STYLE = (tabKey: Tab) => ({
     padding: '8px 16px', border: 'none', background: 'none',
@@ -426,6 +437,19 @@ export default function ObjectDetail() {
           }}
         >
           Profiling
+        </button>
+        <button
+          onClick={openChecksWorkbench}
+          disabled={!canCreateChecks || seedContract.isPending}
+          title={canCreateChecks ? undefined : t.objectDetail.createChecksNoWrite}
+          style={{
+            background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)',
+            borderRadius: 5, padding: '7px 16px', fontSize: 13,
+            cursor: canCreateChecks ? 'pointer' : 'not-allowed',
+            opacity: canCreateChecks ? 1 : 0.45,
+          }}
+        >
+          {seedContract.isPending ? t.objectDetail.creatingChecks : contract ? t.objectDetail.editChecks : t.objectDetail.createChecks}
         </button>
         <button
           onClick={() => setDialogOpen(true)}

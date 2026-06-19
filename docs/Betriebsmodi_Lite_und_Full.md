@@ -3,13 +3,13 @@
 **Adressat:** Beratung, Plattform-Team, Fachbereich, Governance · **Stand:** 2026-06-15
 **Zweck:** Wie das DQ- & Observability-Cockpit zwei Reifegrade von Data-Product-Verbindlichkeit bedient — den **Lite-Einstieg** (Verbindlichkeit ohne Org-Change) und den **Voll-Modus** (governte Data Products mit Versionierung & Approval) — auf demselben technischen Unterbau.
 
-> Verwandte Dokumente: `HANDOVER.md` (technischer Implementierungsplan, Workstreams, Gates) · `Konzept_DQ_Observability_Cockpit.md` (fachliches Konzept).
+> Verwandte Dokumente: `ADR-0002_Editor-Modus_aus_Kind.md` (Modus-Default folgt dem `kind`; Override kontrolliert) · `HANDOVER.md` (technischer Implementierungsplan, Workstreams, Gates) · `Konzept_DQ_Observability_Cockpit.md` (fachliches Konzept).
 
 ---
 
 ## 0 — Kernaussage
 
-Beide Modi teilen **einen** Unterbau: dieselben Garantie-Familien, denselben Compiler, dieselbe Engine, dieselbe Result-Store-/Compliance-Mechanik. Der Unterschied liegt **allein in der Prozess-Zeremonie**:
+Beide Modi teilen **einen** Unterbau: dieselben Garantie-Familien, denselben Compiler, dieselbe Engine, dieselbe Result-Store-/Compliance-Mechanik. Der Unterschied liegt **allein in der Prozess-Zeremonie**. Der Editor-Default folgt dem `kind`: `internal_gate` startet in **Lite**, `consumer_contract`/`provider_contract` starten im **Full**-Workflow. Ein expliziter URL-Override bleibt moeglich, ausser bei bereits zertifizierten Contracts: dort entfaellt der Wechsel zur schnellen Zertifizierung.
 
 | | **Lite** | **Full** |
 |---|---|---|
@@ -147,9 +147,11 @@ Der Wechsel ist **kein Rebuild** — gleicher Unterbau, nur mehr Zeremonie und e
 | Auslöser | Aktion | Persona |
 |---|---|---|
 | Fachbereich erkennt Wert (Ampel zieht Pull) | `owned_by: platform → product` setzen | Governance + Owner |
-| Zusage soll versioniert/verbindlich werden | In der Workbench **Voll-Modus** zuschalten (Toggle), SemVer pflegen | Owner |
+| Zusage soll versioniert/verbindlich werden | In der Workbench **Voll-Modus** zuschalten (Toggle), SemVer pflegen; bei `consumer_contract`/`provider_contract` ist das der Default | Owner |
 | Erste governte Änderung | regulärer `draft → diff → approve`-Pfad | Owner |
 | Breaking-Schutz | Ab jetzt greift G3 bei jeder Änderung blockierend | System |
+
+> **Hinweis (ADR-0002):** Der Editor-**Default**-Modus folgt dem `kind` (Gate → Schnell zertifizieren, Contract → Freigabe-Workflow); der Toggle bleibt als Override. Auf einem **bereits zertifizierten** Contract entfällt der Schnell-Override — jede weitere Änderung läuft über die Freigabe (G3-Schutz bleibt serverautoritativ).
 
 **Empfehlung:** Lite für die 3–5 wichtigsten Konsum-Objekte starten; die sichtbare Coverage-Map als Gesprächsanker nutzen („dieses Objekt, von dem ihr lebt, trägt heute null Garantien"), um Ownership organisch auszulösen.
 
@@ -162,7 +164,7 @@ Der Wechsel ist **kein Rebuild** — gleicher Unterbau, nur mehr Zeremonie und e
 | `/` Cockpit (StatusGrid) | ✅ | ✅ | Status je Objekt × Familie, stale sichtbar (G6) |
 | `/objects`, `/objects/:id` | ✅ | ✅ | Katalog, Detail, Checks, Sparkline, Run-Trigger |
 | `/coverage` (Lineage) | ✅ | ✅ | Coverage `✓/◐/⚠/○` je Objekt, Pfad in die Workbench |
-| `/contracts` Workbench | ✅ Lite-Pane | ✅ Voll-Pane | Garantie-Editor; Toggle zwischen den Modi |
+| `/contracts` Workbench | ✅ Lite-Pane | ✅ Voll-Pane | Garantie-Editor; Default aus `kind`; Toggle zwischen den Modi, solange ein zertifizierter Contract nicht auf Full festliegt |
 | `/runs/:id`, `/runs/compare` | ✅ | ✅ | Lauf-Detail, Versions-/Lauf-Vergleich |
 | `/incidents` | (ab Compliance) | ✅ | Breach-Episoden mit Timeline |
 | `/proposals` | — | ✅ | Datengetriebene Garantie-Vorschläge (Miner) |

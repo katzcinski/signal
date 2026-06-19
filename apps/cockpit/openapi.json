@@ -340,6 +340,11 @@
       },
       "ContractOut": {
         "properties": {
+          "certified": {
+            "default": false,
+            "title": "Certified",
+            "type": "boolean"
+          },
           "compliance": {
             "anyOf": [
               {

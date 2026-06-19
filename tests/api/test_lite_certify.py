@@ -51,6 +51,24 @@ def test_certify_lights_up_persistent_substrate(api_client):
     assert objects["DS_SALES_ORDERS"]["contract_status"] == "active"
 
 
+def test_get_contract_reports_certified_snapshot_flag(api_client):
+    draft = api_client.put("/api/contracts/DS_SALES_ORDERS", json=_lite_body())
+    assert draft.status_code == 200, draft.text
+    assert draft.json()["certified"] is False
+
+    got_draft = api_client.get("/api/contracts/DS_SALES_ORDERS")
+    assert got_draft.status_code == 200
+    assert got_draft.json()["certified"] is False
+
+    resp = api_client.post("/api/contracts/DS_SALES_ORDERS/certify", json=_lite_body())
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["certified"] is True
+
+    got_active = api_client.get("/api/contracts/DS_SALES_ORDERS")
+    assert got_active.status_code == 200
+    assert got_active.json()["certified"] is True
+
+
 def test_certify_internal_gate_stays_out_of_compliance(api_client):
     """Batch 4: active gates compile checks, but never seed governance compliance/SLA."""
     resp = api_client.post(

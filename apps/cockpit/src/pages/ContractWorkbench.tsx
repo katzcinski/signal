@@ -937,10 +937,10 @@ function ContractList({ contracts, inventory, selected, onSelect }: {
 
 // ─── Editor pane ─────────────────────────────────────────────────────────────
 
-function EditorPane({ product, lite, onToggleLite }: {
+function EditorPane({ product, liteOverride, onSetLiteOverride }: {
   product: string;
-  lite: boolean;
-  onToggleLite: () => void;
+  liteOverride: boolean | undefined;
+  onSetLiteOverride: (value: boolean) => void;
 }) {
   const { data: contract, isLoading, isError, refetch } = useContract(product);
   const put = usePutContract(product);
@@ -963,6 +963,15 @@ function EditorPane({ product, lite, onToggleLite }: {
   }, [contract, product]);
 
   const draftJson = useMemo(() => draft ? JSON.stringify(draft) : '', [draft]);
+  const draftKind = draft?.kind ?? contract?.kind ?? 'internal_gate';
+  const kindDefaultLite = contract?.kind === 'internal_gate' || !contract;
+  const lockedToFull = draftKind !== 'internal_gate' && contract?.certified === true;
+  const lite = lockedToFull ? false : liteOverride ?? kindDefaultLite;
+
+  const handleSetLite = (value: boolean) => {
+    if (value && lockedToFull) return;
+    onSetLiteOverride(value);
+  };
 
   // BreakingDiffPanel: re-diff on every draft change, debounced (full mode only).
   const diffMutate = diff.mutate;
@@ -1074,11 +1083,14 @@ function EditorPane({ product, lite, onToggleLite }: {
           <span style={{ ...monoStyle, fontSize: 15, fontWeight: 700 }}>{draft.product}</span>
           <OwnershipTag ownedBy={contract?.owned_by} />
           <div style={{ flex: 1 }} />
-          <button onClick={onToggleLite} style={{ ...btnStyle('ghost'), fontSize: 12 }}>{t.workbench.fullMode}</button>
+          <button onClick={() => handleSetLite(false)} style={{ ...btnStyle('ghost'), fontSize: 12 }}>{t.workbench.fullMode}</button>
         </div>
         {!canWrite && <ReadOnlyBanner hint={t.role.noWriteContract} />}
         <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.noSql}</div>
         <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.liteHint}</div>
+        {draft.kind === 'internal_gate' && (
+          <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.gateChangeHint}</div>
+        )}
         {guaranteeEditor}
         {certifyErrors.length > 0 && (
           <div style={{ background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 5, padding: '8px 12px' }}>
@@ -1111,9 +1123,11 @@ function EditorPane({ product, lite, onToggleLite }: {
         <LifecycleStepper current={lifecycle} />
         <OwnershipTag ownedBy={contract?.owned_by} />
         <div style={{ flex: 1 }} />
-        {lifecycle === 'active' && <SlaBars product={product} />}
+        {lifecycle === 'active' && draft.kind !== 'internal_gate' && <SlaBars product={product} />}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={onToggleLite} style={{ ...btnStyle('ghost'), fontSize: 12 }}>{t.workbench.liteMode}</button>
+          {!lockedToFull && (
+            <button onClick={() => handleSetLite(true)} style={{ ...btnStyle('ghost'), fontSize: 12 }}>{t.workbench.liteMode}</button>
+          )}
           {saveButton}
           {lifecycle === 'draft' && (
             <button
@@ -1209,7 +1223,7 @@ export default function ContractWorkbench() {
 
   // Honor the legacy /contracts?compile={id} deep link.
   const product = productParam || compileParam;
-  const lite = liteParam === '1';
+  const liteOverride = liteParam === '1' ? true : liteParam === '0' ? false : undefined;
 
   const contracts = contractsQuery.data ?? [];
   const hasContracts = contracts.some(
@@ -1252,8 +1266,8 @@ export default function ContractWorkbench() {
           <EditorPane
             key={product}
             product={product}
-            lite={lite}
-            onToggleLite={() => setLite(lite ? '' : '1')}
+            liteOverride={liteOverride}
+            onSetLiteOverride={value => setLite(value ? '1' : '0')}
           />
         ) : !contractsQuery.isLoading && !hasContracts ? (
           <div style={{ flex: 1, padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

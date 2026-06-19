@@ -90,6 +90,7 @@ def _contract_out(store, product: str, data: dict[str, Any]) -> ContractOut:
         description=str(data.get("description") or ""),
         guarantees=data.get("guarantees") or {},
         compliance=compliance_row["compliance"] if compliance_row else None,
+        certified=_active_snapshot_path(product).exists(),
     )
 
 
