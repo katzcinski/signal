@@ -138,6 +138,175 @@
   --selection-fg: var(--signal-bright);
 }
 
+/* ── Blueprint: cyanotype / technical-drawing ─────────────────────────────
+   Deep Prussian navy under a faint construction grid, cyan accent, off-white
+   ink. Reads like an engineering plan / CAD viewport. */
+[data-theme="blueprint"] {
+  --bg-0: #071726;
+  --bg-1: #0B2034;
+  --bg-2: #112B43;
+  --bg-3: #173651;
+
+  --line: #1E3F5C;
+  --line-2: #2C5478;
+
+  --fg: #DCEBF7;
+  --fg-2: #90B4CF;
+  --fg-3: #6189A6;
+
+  --obs: #F2A93B;
+  --qual: #36D6BD;
+  --cont: #6AA8FF;
+
+  --status-ok: #46B98A;
+  --status-warn: #E0B23E;
+  --status-fail: #E2783C;
+  --status-crit: #E5484D;
+  --status-stale: #5A7C97;
+  --status-unknown: #5A7C97;
+
+  --signal: #5BC8F0;
+  --signal-bright: #8FE0FF;
+  --signal-dim: rgba(91, 200, 240, 0.14);
+  --signal-line: rgba(91, 200, 240, 0.34);
+
+  --r: 3px;
+  --r-md: 4px;
+  --r-lg: 6px;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.38);
+  --shadow-2: 0 14px 36px rgba(0, 0, 0, 0.55);
+
+  --focus: var(--signal);
+  --scroll-track: transparent;
+  --scroll-hover: var(--signal-line);
+  --nav-active-bar: var(--signal);
+  --nav-active-icon: var(--signal);
+  --cmdk-active-shadow: inset 2px 0 0 var(--signal);
+  /* Cross-hatch construction grid (two hairline gradients). */
+  --grid-image:
+    linear-gradient(rgba(91, 200, 240, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(91, 200, 240, 0.05) 1px, transparent 1px);
+  --grid-size: 26px;
+  --selection-bg: var(--signal-dim);
+  --selection-fg: var(--signal-bright);
+}
+
+/* ── Daylight: Swiss-editorial / paper & ink ──────────────────────────────
+   The light identity. Warm paper, near-black ink, a single terracotta accent.
+   High-contrast and typographic — the antidote to the dark-neon default. */
+[data-theme="daylight"] {
+  --bg-0: #E9E4DA;  /* paper */
+  --bg-1: #F7F4EE;  /* card */
+  --bg-2: #FFFFFF;  /* raised */
+  --bg-3: #EDE7DB;  /* inset / hover */
+
+  --line: #DBD3C5;
+  --line-2: #C6BCA8;
+
+  --fg: #211D17;
+  --fg-2: #574F44;
+  --fg-3: #857B6D;
+
+  --obs: #B5760F;
+  --qual: #0F8A74;
+  --cont: #3F5BB0;
+
+  --status-ok: #2F7D4F;
+  --status-warn: #B07A14;
+  --status-fail: #C0492B;
+  --status-crit: #A21B1B;
+  --status-stale: #8A8073;
+  --status-unknown: #8A8073;
+
+  --signal: #C0492B;          /* terracotta — the lone accent */
+  --signal-bright: #9C2F18;
+  --signal-dim: rgba(192, 73, 43, 0.10);
+  --signal-line: rgba(192, 73, 43, 0.30);
+
+  --r: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+
+  /* Soft, warm shadows for the light surface. */
+  --shadow-1: 0 1px 2px rgba(40, 30, 20, 0.10);
+  --shadow-2: 0 14px 34px rgba(40, 30, 20, 0.16);
+
+  --focus: var(--signal);
+  --scroll-track: transparent;
+  --scroll-hover: var(--signal-line);
+  --nav-active-bar: var(--signal);
+  --nav-active-icon: var(--signal);
+  --cmdk-active-shadow: inset 2px 0 0 var(--signal);
+  --grid-image: none;
+  --selection-bg: var(--signal-dim);
+  --selection-fg: var(--signal-bright);
+}
+
+/* ── Amber CRT: phosphor terminal ─────────────────────────────────────────
+   Monochrome amber on near-black with faint scanlines. Retro-instrument /
+   oscilloscope. Status keeps just enough hue to stay legible. */
+[data-theme="amber"] {
+  --bg-0: #0A0805;
+  --bg-1: #110C06;
+  --bg-2: #1A1309;
+  --bg-3: #251A0D;
+
+  --line: #3A2A14;
+  --line-2: #553B1B;
+
+  --fg: #F4C77B;
+  --fg-2: #C0913F;
+  --fg-3: #9C7833;
+
+  --obs: #FFB643;
+  --qual: #8FB63A;
+  --cont: #E9A23B;
+
+  --status-ok: #8FB63A;
+  --status-warn: #E9A23B;
+  --status-fail: #E5552E;
+  --status-crit: #E5384D;
+  --status-stale: #7A5E2E;
+  --status-unknown: #7A5E2E;
+
+  --signal: #FFB643;
+  --signal-bright: #FFD884;
+  --signal-dim: rgba(255, 182, 67, 0.14);
+  --signal-line: rgba(255, 182, 67, 0.34);
+
+  --r: 3px;
+  --r-md: 4px;
+  --r-lg: 6px;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 14px 36px rgba(0, 0, 0, 0.60);
+
+  --focus: var(--signal);
+  --scroll-track: transparent;
+  --scroll-hover: var(--signal-line);
+  --nav-active-bar: var(--signal);
+  --nav-active-icon: var(--signal);
+  --cmdk-active-shadow: inset 2px 0 0 var(--signal);
+  --grid-image: radial-gradient(rgba(255, 182, 67, 0.05) 1px, transparent 1px);
+  --grid-size: 22px;
+  --selection-bg: var(--signal-dim);
+  --selection-fg: var(--signal-bright);
+}
+
+/* Amber CRT scanline overlay — a faint static raster across the whole panel.
+   pointer-events:none keeps it purely cosmetic; kept subtle for readability. */
+[data-theme="amber"] .shell-root { position: relative; }
+[data-theme="amber"] .shell-root::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    transparent 0 2px, rgba(0, 0, 0, 0.16) 2px 3px);
+}
+
 /* R6-7 compact density: denser rows, slightly smaller text. */
 [data-density="compact"] {
   --row-pad-y: 3px;

@@ -1,11 +1,45 @@
 import { useNavigate } from 'react-router-dom';
 import { t } from '@/i18n/de';
-import { useUIStore } from '@/store/ui';
+import { useUIStore, THEMES, type Theme } from '@/store/ui';
 import { useRoleStore, ROLES, ROLE_META, type Role } from '@/store/role';
 
 interface Props {
   onToggleSidebar: () => void;
   onOpenPalette: () => void;
+}
+
+// Theme switcher. Each theme is a token set applied via data-theme on <html>
+// (see store/ui.ts + Shell + index.css). The dot previews the active accent.
+function ThemeSwitcher() {
+  const theme = useUIStore(s => s.theme);
+  const setTheme = useUIStore(s => s.setTheme);
+  return (
+    <label
+      title={t.theme.toggle}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
+    >
+      <span style={{
+        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+        background: 'var(--signal)',
+        boxShadow: theme === 'classic' ? undefined : '0 0 0 3px var(--signal-dim)',
+      }} />
+      <select
+        value={theme}
+        onChange={e => setTheme(e.target.value as Theme)}
+        aria-label={t.theme.label}
+        style={{
+          background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)',
+          borderRadius: 'var(--r-md)', padding: '4px 8px', fontSize: 12, cursor: 'pointer',
+        }}
+      >
+        {THEMES.map(th => (
+          <option key={th} value={th} style={{ background: 'var(--bg-2)', color: 'var(--fg)' }}>
+            {t.theme[th]}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 // UX-F1: role switcher. Changing role updates the X-DQ-Role header (api/client.ts)
@@ -51,8 +85,6 @@ function RoleSwitcher() {
 export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
   const density = useUIStore(s => s.density);
   const toggleDensity = useUIStore(s => s.toggleDensity);
-  const theme = useUIStore(s => s.theme);
-  const toggleTheme = useUIStore(s => s.toggleTheme);
   return (
     <header style={{
       height: 44, background: 'var(--bg-1)', borderBottom: '1px solid var(--line)',
@@ -89,23 +121,7 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
         }}>⌘K</kbd>
       </button>
       <div style={{ flex: 1 }} />
-      <button
-        onClick={toggleTheme}
-        title={t.theme.toggle}
-        aria-label={t.theme.toggle}
-        style={{
-          background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)',
-          borderRadius: 'var(--r-md)', padding: '4px 10px', fontSize: 12, cursor: 'pointer',
-          display: 'inline-flex', alignItems: 'center', gap: 7,
-        }}
-      >
-        <span style={{
-          width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-          background: theme === 'signal' ? 'var(--signal)' : 'var(--cont)',
-          boxShadow: theme === 'signal' ? '0 0 0 3px var(--signal-dim)' : undefined,
-        }} />
-        {theme === 'signal' ? t.theme.signal : t.theme.classic}
-      </button>
+      <ThemeSwitcher />
       <button
         onClick={toggleDensity}
         title={t.density.toggle}

@@ -3,10 +3,17 @@ import { persist } from 'zustand/middleware';
 
 export type Density = 'comfortable' | 'compact';
 
-// Visual identity. 'classic' is the original blue-graphite cockpit; 'signal'
-// is the instrument-grade phosphor theme. Both are pure token sets driven by a
-// data-theme attribute on <html> (applied in Shell).
-export type Theme = 'classic' | 'signal';
+// Visual identity. Each theme is a pure token set driven by a data-theme
+// attribute on <html> (applied in Shell):
+//   classic   — the original blue-graphite cockpit
+//   signal    — instrument-grade phosphor lime
+//   blueprint — cyanotype / technical drawing (navy + cyan)
+//   daylight  — Swiss-editorial light theme (paper + terracotta)
+//   amber     — phosphor CRT terminal (monochrome amber + scanlines)
+export type Theme = 'classic' | 'signal' | 'blueprint' | 'daylight' | 'amber';
+
+// Display order — also the cycle order for toggleTheme.
+export const THEMES: Theme[] = ['classic', 'signal', 'blueprint', 'daylight', 'amber'];
 
 interface UIState {
   density: Density;
@@ -28,7 +35,8 @@ export const useUIStore = create<UIState>()(
       toggleDensity: () => set((s) => ({ density: s.density === 'compact' ? 'comfortable' : 'compact' })),
       theme: 'classic',
       setTheme: (theme) => set({ theme }),
-      toggleTheme: () => set((s) => ({ theme: s.theme === 'signal' ? 'classic' : 'signal' })),
+      // Advance to the next theme in the cycle (used by the keyboard-less toggle).
+      toggleTheme: () => set((s) => ({ theme: THEMES[(THEMES.indexOf(s.theme) + 1) % THEMES.length] })),
       recents: [],
       pushRecent: (path) =>
         set((s) => ({ recents: [path, ...s.recents.filter((p) => p !== path)].slice(0, 6) })),

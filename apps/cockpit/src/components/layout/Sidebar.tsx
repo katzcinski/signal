@@ -68,7 +68,7 @@ export function Sidebar({ collapsed }: Props) {
       transition: 'width var(--t)',
       flexShrink: 0, overflow: 'hidden',
     }}>
-      {theme === 'signal' ? (
+      {theme !== 'classic' ? (
         <div style={{
           padding: '14px 14px', borderBottom: '1px solid var(--line)', overflow: 'hidden',
           display: 'flex', alignItems: 'center', gap: 9,

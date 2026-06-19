@@ -528,9 +528,13 @@ export const t = {
     toggle: 'Dichte umschalten',
   },
   theme: {
+    label: 'Theme',
+    toggle: 'Theme umschalten',
     classic: 'Classic',
     signal: 'Signal',
-    toggle: 'Theme umschalten',
+    blueprint: 'Blueprint',
+    daylight: 'Daylight',
+    amber: 'Amber CRT',
   },
   peek: {
     checksLatestRun: 'Checks · letzter Run',
