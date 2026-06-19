@@ -191,7 +191,7 @@ Seeding-Regeln aus der Metadatenlage:
 - **Spaltenbeziehung / Zeitlogik** → `cross_column_compare` / `future_dates`.
 - **Quelle ↔ Ziel** → `row_count_match` (Reconciliation).
 
-Die `check_library.json` (21 Templates, 4 Kategorien) bleibt die einzige Quelle der
+Die `check_library.json` (24 Templates, 4 Kategorien) bleibt die einzige Quelle der
 Check-Typen für Engine **und** UI. Der Builder füllt `{schema}`/`{dataset}` und die
 `<PARAM>`-Tokens.
 

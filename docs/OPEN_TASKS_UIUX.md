@@ -228,7 +228,7 @@ flaggen. *Acceptance:* hinzugefügte/entfernte/typgeänderte Spalten je Objekt �
 
 **UX-N10 Status-Heatmap Objekt × Tag** (GitHub-Contribution-Stil) auf Home/Objektdetail. *(braucht UX-N1)*
 **UX-N11 Echte Charts mit Threshold-/Anomalie-Band + globaler Zeitraum-Picker** (recharts). *(braucht UX-N1)*
-**UX-N12 Health-Gauge mit Trendrichtung** statt statischem % (`Cockpit.tsx:82` gibt kein `sparkData`). *(braucht UX-N11)*
+**UX-N12 Health-Gauge mit Trendrichtung** statt statischem % (`Cockpit.tsx:82` gibt kein `sparkData`). *(braucht UX-N11)* — **abgelöst**: Der DQ-First-Redesign ersetzt die Gauge im Cockpit durch den DQ-Health-Verlauf (Trend-Graph, `DqHealthTrend.tsx`) plus das Brennpunkte-Panel; die `HealthGauge`-Komponente wird im Cockpit nicht mehr verwendet.
 **UX-N13 Diff-Viewer** für Contract-Versionen und Proposals — *Bedeutung* von `current_expect → proposed_expect`, nicht nur zwei Code-Spans (`Proposals.tsx`).
 **UX-N14 Profiling-/Sample-Row-View** mit Spaltenstatistik/Verteilung/Beispielzeilen hinter `[PII-GATE]` (Default off, Allowlist).
 **UX-N15 Activity-/Audit-Feed** — wer hat welchen Contract approved, wer welchen Incident gelöst.

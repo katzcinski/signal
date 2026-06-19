@@ -14,7 +14,7 @@ Aus semantischen Garantien (Schema, Schlüssel, Freshness, Volumen, Vollständig
 
 - **Data Contracts** als SQL-freies YAML mit Garantie-Familien → Compiler → Checks.
 - **Zwei Betriebsmodi** auf einem Unterbau: **Lite** (Verbindlichkeit ohne Versions-/Approval-Zeremonie) und **Full** (SemVer, Approval, Breaking-Schutz). Siehe [`docs/Betriebsmodi_Lite_und_Full.md`](docs/Betriebsmodi_Lite_und_Full.md).
-- **Cockpit** (React 18 + TS): Status-Grid, Lineage-/Coverage-Map, Contract-Workbench, Runs, Incidents, Proposals.
+- **Cockpit** (React 18 + TS): DQ-First-Hero (Health-Verlauf, Familien-Rollups, Brennpunkte), Status-Grid, Lineage-/Coverage-Map, Contract-Workbench, Runs, Incidents, Proposals.
 - **Compliance & SLA**: automatische `compliant/breached`-Transition, SLA-Fenster, Incident-Timeline.
 - **Observability**: Rolling-Baselines + datengetriebene Garantie-Vorschläge (Miner).
 - **Deployment-Doppelziel** aus demselben Code: Berater-lokal (SQLite, NoAuth) **und** Kunde (OIDC, HANA-Store, Multi-Worker).

@@ -117,6 +117,16 @@ guarantees:
 
 Vollständig in [`Betriebsmodi_Lite_und_Full.md`](Betriebsmodi_Lite_und_Full.md).
 
+### 3.6 Check-Bibliothek & Familien-Rollup
+
+`packages/dq_core/library/check_library.json` ist die einzige Quelle für Engine-Defaults **und** UI-Picker: **24 Templates in 4 Kategorien** (Vollständigkeit · Konsistenz · Verteilung & Aggregate · Aktualität & Sonstiges). Der Cockpit-Rollup klassifiziert je **Check-Typ** (`ResultStore._OBS_TYPES`): **Observability** = `freshness, row_count, schema, volume_delta, column_count, recent_volume`; alles andere = **Quality**.
+
+- **Observability** (Pipeline/Form/Menge): `row_count`, `freshness`, `schema` plus die Quick-Wins `volume_delta` (`DELTA <op> %` ggü. Vorlauf), `column_count` (Spaltenzahl-Stabilität, `DELTA = 0%`), `recent_volume` (frische Zeilen im Fenster). `recent_volume` wird wie `row_count` als Volume-Zeitreihe gebaselined.
+- **Quality** (Inhalt): u. a. `missing`, `completeness_pct`, `empty_string`, `duplicate(_composite/_approx)`, `invalid`, `value_range`, `allowed_values`, `pattern_match`, `string_length`, `reference_integrity`, `cross_column_compare`, `future_dates`, `aggregate_range`, `distinct_count`, `row_count_match`, `custom_sql`.
+- SAP/BDC-spezifische Templates wurden zugunsten allgemein gebräuchlicher, Soda-/GX-naher Checks entfernt.
+
+Der **Compiler** (§3.2) bildet Garantie-Familien auf eine feste Template-Teilmenge ab; die übrige Bibliothek steht dem manuellen Check Builder zur Verfügung.
+
 ---
 
 ## 4 — Datenmodell & Persistenz
@@ -201,6 +211,19 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | GET | `/api/notifications/...` · POST/PATCH/DELETE `channels|rules|mutes` | Notification-Routing |
 | GET | `/api/badge/{product}` | einbettbares Status-Badge |
 
+### Monitoring (Hub-Sharing, Hybrid)
+
+„Für Monitoring vormerken" nach dem **Hybrid-Modell** (ADR-0002 §7): Signal hält nur den **Soll-Zustand**, ein externes, privilegiertes Skript reconciled Share + Projektions-View im Monitoring-Hub und meldet Status zurück. **Signal schreibt nie nach Datasphere.**
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/api/monitoring/config` | `enabled` + Hub-Space (steuert UI-Sichtbarkeit) |
+| GET | `/api/monitoring/shares` | Status je vorgemerktem Objekt (`requested → provisioned \| error`) |
+| GET | `/api/monitoring/manifest` | Soll-Zustand fürs Skript: Identität + View-Name (`<SPACE>__<OBJEKT>`) + Spalten + vorgeschlagenes Projektions-SQL (explizite Spaltenliste) |
+| POST | `/api/monitoring/shares/{id}` | Objekt vormerken (nur Registry-Write, kein Datasphere-Zugriff) |
+| PUT | `/api/monitoring/shares/{id}/status` | Skript-Callback: `provisioned` / `error` |
+| DELETE | `/api/monitoring/shares/{id}` | aus Soll-Zustand entfernen → Skript droppt die verwaiste View beim Reconcile |
+
 > Die vollständige, immer aktuelle Liste ist die generierte OpenAPI unter `/api/openapi.json`; das Frontend bezieht daraus seine Typen (`openapi-typescript`, Gate G4).
 
 ---
@@ -228,6 +251,7 @@ Settings über `pydantic-settings` (`services/api/settings.py`). Auszug:
 | `CORS_ORIGINS` | localhost:5173/3000 | erlaubte Frontends |
 | `WEBHOOK_URL` / `WEBHOOK_ALLOWLIST` | — | Breach-Webhook (SSRF-Allowlist) |
 | `DATASPHERE_*` | — | Datasphere-API/CLI-Zugang (Lastmetadaten) |
+| `DATASPHERE_MONITORING_SPACE` | `""` | Hub-Space für „Für Monitoring vormerken" (ADR-0002 §7); leer = Feature aus. Signal schreibt **nicht** in Datasphere — das Provisioning übernimmt ein externes Skript. |
 
 Environments-Datei bindet das `{schema}` zur Laufzeit — Contracts bleiben environment-frei.
 
@@ -258,9 +282,9 @@ Vite + React 18 + TS strict, TanStack Query v5, React Router, Tailwind (Design-T
 
 | Route | Screen | Zweck |
 |---|---|---|
-| `/` | Cockpit | Status-Grid (Objekt × Familie), stale sichtbar (G6) |
+| `/` | Cockpit | DQ-Health-Verlauf (Trend-Graph), Familien-Rollups (Observability/Quality), Brennpunkte, Status-Grid (Objekt × Familie), Reliability-Heatmap; stale sichtbar (G6) |
 | `/my` | MyWork | persönliche Sicht |
-| `/objects`, `/objects/:id` | Katalog/Detail | Checks, Sparkline, Run-Trigger |
+| `/objects`, `/objects/:id` | Katalog/Detail | Checks, Sparkline, Run-Trigger, „Für Monitoring vormerken" (Hybrid, ADR-0002) |
 | `/contracts` | Contract-Workbench | Garantie-Editor (Lite-/Voll-Modus), Compile, Diff |
 | `/lineage`, `/coverage` | Lineage-/Coverage-Map | Cytoscape, Coverage-Status je Node |
 | `/incidents` | Incidents | Breach-Episoden + Timeline |
