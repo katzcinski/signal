@@ -51,6 +51,8 @@ function RoleSwitcher() {
 export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
   const density = useUIStore(s => s.density);
   const toggleDensity = useUIStore(s => s.toggleDensity);
+  const theme = useUIStore(s => s.theme);
+  const toggleTheme = useUIStore(s => s.toggleTheme);
   return (
     <header style={{
       height: 44, background: 'var(--bg-1)', borderBottom: '1px solid var(--line)',
@@ -79,7 +81,7 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
           fontSize: 12, display: 'flex', alignItems: 'center', gap: 10,
         }}
       >
-        <span style={{ fontFamily: 'var(--font-mono)' }}>{t.palette.placeholder}</span>
+        <span>{t.palette.placeholder}</span>
         <kbd style={{
           background: 'var(--bg-0)', border: '1px solid var(--line-2)',
           borderRadius: 3, padding: '1px 5px', fontSize: 10,
@@ -87,6 +89,23 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
         }}>⌘K</kbd>
       </button>
       <div style={{ flex: 1 }} />
+      <button
+        onClick={toggleTheme}
+        title={t.theme.toggle}
+        aria-label={t.theme.toggle}
+        style={{
+          background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)',
+          borderRadius: 'var(--r-md)', padding: '4px 10px', fontSize: 12, cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', gap: 7,
+        }}
+      >
+        <span style={{
+          width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+          background: theme === 'signal' ? 'var(--signal)' : 'var(--cont)',
+          boxShadow: theme === 'signal' ? '0 0 0 3px var(--signal-dim)' : undefined,
+        }} />
+        {theme === 'signal' ? t.theme.signal : t.theme.classic}
+      </button>
       <button
         onClick={toggleDensity}
         title={t.density.toggle}

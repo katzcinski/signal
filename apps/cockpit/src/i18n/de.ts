@@ -527,6 +527,11 @@ export const t = {
     compact: 'Kompakt',
     toggle: 'Dichte umschalten',
   },
+  theme: {
+    classic: 'Classic',
+    signal: 'Signal',
+    toggle: 'Theme umschalten',
+  },
   peek: {
     checksLatestRun: 'Checks · letzter Run',
     noChecks: 'Noch keine Checks — führe dieses Objekt aus, um Ergebnisse zu sehen.',

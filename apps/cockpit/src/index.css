@@ -1,40 +1,33 @@
+/* ────────────────────────────────────────────────────────────────────────
+   THEMES
+   The cockpit ships two visual identities, switched via a data-theme attribute
+   on <html> (see store/ui.ts + Shell). Everything is token-driven, so a theme
+   is just a set of CSS-variable values — components never branch on the theme.
+
+   • :root (default, "classic")  — the original blue-graphite cockpit.
+   • [data-theme="signal"]       — an instrument-grade phosphor identity.
+   ──────────────────────────────────────────────────────────────────────── */
 :root {
-  /* ──────────────────────────────────────────────────────────────────────
-     Signal — instrument-grade identity.
-     A precision-panel aesthetic: cool graphite (not blue slate), hairline
-     structure, a single phosphor-lime "signal" accent that reads like an
-     oscilloscope trace. Deliberately not the generic dark+violet+glass look.
-     ────────────────────────────────────────────────────────────────────── */
+  /* Backgrounds — slight blue undertone for contrast with the indigo cont. */
+  --bg-0: #090B0F;
+  --bg-1: #111520;
+  --bg-2: #1B2130;
+  --bg-3: #222C3E;
 
-  /* Backgrounds — neutral graphite with a faint cool cast, finer steps */
-  --bg-0: #0A0C0F;  /* chassis / app void */
-  --bg-1: #0F1318;  /* primary surface */
-  --bg-2: #161B22;  /* raised surface */
-  --bg-3: #1F262F;  /* hover / inset */
-
-  /* Borders — true hairlines; structure is drawn with lines, not glow */
-  --line: #232A33;
-  --line-2: #333D49;
+  /* Borders */
+  --line: #2A3242;
+  --line-2: #36445A;
 
   /* Foregrounds */
-  --fg: #E9EDF2;
-  --fg-2: #98A2B0;
+  --fg: #E7EBF2;
+  --fg-2: #98A2B2;
   /* UX-F4: kept clear of AA 4.5:1 on --bg-1 for tertiary text at <18px. */
-  --fg-3: #79828F;
-
-  /* ── Signature accent: phosphor "signal" lime ──────────────────────────
-     Used sparingly — wordmark, active nav, focus ring, key interactions.
-     This is the brand colour; the family colours below stay semantic. */
-  --signal: #B5E853;
-  --signal-bright: #CDF06A;
-  --signal-ink: #0A0C0F;          /* text on a signal-filled surface */
-  --signal-dim: rgba(181, 232, 83, 0.12);
-  --signal-line: rgba(181, 232, 83, 0.32);
+  --fg-3: #7C8696;
 
   /* Family accent colours — semantic, distinctive against each other */
-  --obs: #F5A524;   /* amber: "instrument warning" heat */
-  --qual: #2DD4BF;  /* teal: "clean data" read */
-  --cont: #8B7CF6;  /* indigo: "document/agreement" read */
+  --obs: #F59E0B;   /* amber: "instrument warning" heat */
+  --qual: #00D4AA;  /* mint-teal: "clean data" read */
+  --cont: #7B6FEE;  /* indigo: "document/agreement" read */
 
   /* Status — ok stays green so it reads as "pass", distinct from qual's teal */
   --status-ok: #3FB07A;
@@ -48,10 +41,10 @@
   --font-ui: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-  /* Radius — crisp, instrument-panel corners (away from soft rounded-2xl) */
-  --r: 3px;
-  --r-md: 4px;
-  --r-lg: 6px;
+  /* Radius */
+  --r: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
 
   /* Spacing scale (UX-F6): single source for padding/gap — stop hardcoding
      16/20/24 in inline styles. Steps are 4px-based. */
@@ -63,25 +56,86 @@
   --s6: 24px;
   --page-pad: clamp(12px, 1.25vw, 28px);
 
-  /* Elevation — crisp, low-glow; depth comes from a hairline + tight shadow */
-  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.02), 0 1px 2px rgba(0, 0, 0, 0.40);
-  --shadow-2: 0 12px 34px rgba(0, 0, 0, 0.55);
-
-  /* Focus — the phosphor accent doubles as the keyboard-focus signal */
-  --focus: var(--signal);
-
-  /* Blueprint texture — a near-invisible dot grid that reads as "instrument".
-     Applied to the app void so panels sit on a faint engineering surface. */
-  --grid-dot: rgba(150, 180, 210, 0.035);
-  --grid-size: 22px;
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.45);
 
   /* Transitions */
   --t: 150ms ease;
+
+  /* ── Theme-bridge tokens ───────────────────────────────────────────────
+     Shared rules and chrome read these so the signal theme can re-skin them
+     without duplicating selectors. Classic defaults reproduce the old look. */
+  --focus: var(--cont);              /* keyboard-focus ring colour */
+  --scroll-track: var(--bg-1);
+  --scroll-hover: var(--fg-3);
+  --nav-active-bar: transparent;     /* left signal-bar on the active route */
+  --nav-active-icon: var(--fg);      /* active nav icon tint */
+  --cmdk-active-shadow: none;        /* command-palette selected-item accent */
+  --grid-image: none;                /* blueprint texture under the chrome */
+  --grid-size: 22px;
+  --selection-bg: rgba(123, 111, 238, 0.30);
+  --selection-fg: var(--fg);
+  /* Signal family — only the signal theme actually paints with these, but the
+     wordmark dot references them, so give classic a graceful fallback. */
+  --signal: var(--cont);
+  --signal-bright: var(--cont);
+  --signal-dim: transparent;
+  --signal-line: var(--line-2);
 
   /* R6-7 density tokens (comfortable default) */
   --row-pad-y: 7px;
   --row-pad-x: 12px;
   --cell-fs: 13px;
+}
+
+/* ── Signal: instrument-grade identity ────────────────────────────────────
+   A precision-panel aesthetic — cool graphite (not blue slate), hairline
+   structure, a single phosphor-lime "signal" accent that reads like an
+   oscilloscope trace. Deliberately not the generic dark+violet+glass look. */
+[data-theme="signal"] {
+  --bg-0: #0A0C0F;  /* chassis / app void */
+  --bg-1: #0F1318;  /* primary surface */
+  --bg-2: #161B22;  /* raised surface */
+  --bg-3: #1F262F;  /* hover / inset */
+
+  --line: #232A33;  /* true hairlines; structure is drawn with lines, not glow */
+  --line-2: #333D49;
+
+  --fg: #E9EDF2;
+  --fg-2: #98A2B0;
+  --fg-3: #79828F;
+
+  /* Family colours stay semantic but are retuned for the graphite base. */
+  --obs: #F5A524;   /* amber */
+  --qual: #2DD4BF;  /* teal */
+  --cont: #8B7CF6;  /* indigo */
+
+  /* Signature phosphor accent — used sparingly (focus, active nav, selection). */
+  --signal: #B5E853;
+  --signal-bright: #CDF06A;
+  --signal-dim: rgba(181, 232, 83, 0.12);
+  --signal-line: rgba(181, 232, 83, 0.32);
+
+  /* Crisp, instrument-panel corners (away from soft rounded-2xl). */
+  --r: 3px;
+  --r-md: 4px;
+  --r-lg: 6px;
+
+  /* Crisp, low-glow elevation: a hairline highlight + a tight shadow. */
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.02), 0 1px 2px rgba(0, 0, 0, 0.40);
+  --shadow-2: 0 12px 34px rgba(0, 0, 0, 0.55);
+
+  /* Re-skin the bridged chrome. */
+  --focus: var(--signal);
+  --scroll-track: transparent;
+  --scroll-hover: var(--signal-line);
+  --nav-active-bar: var(--signal);
+  --nav-active-icon: var(--signal);
+  --cmdk-active-shadow: inset 2px 0 0 var(--signal);
+  --grid-image: radial-gradient(rgba(150, 180, 210, 0.035) 1px, transparent 1px);
+  --selection-bg: var(--signal-dim);
+  --selection-fg: var(--signal-bright);
 }
 
 /* R6-7 compact density: denser rows, slightly smaller text. */
@@ -123,7 +177,7 @@
 }
 [cmdk-item][data-selected="true"] {
   background: var(--bg-3);
-  box-shadow: inset 2px 0 0 var(--signal);
+  box-shadow: var(--cmdk-active-shadow);
 }
 [cmdk-empty] { padding: 24px; text-align: center; color: var(--fg-3); font-size: 13px; }
 [cmdk-list] { max-height: 360px; overflow-y: auto; padding-bottom: 6px; }
@@ -181,22 +235,23 @@ html, body, #root {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  /* Data-dense cockpit: line up digits in tables, KPIs and charts. */
+}
+
+/* The signal theme leans into a data-instrument feel: line up digits across
+   tables, KPIs and charts. Scoped to the theme so classic stays untouched. */
+[data-theme="signal"], [data-theme="signal"] body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1, 'cv01' 1, 'ss01' 1;
 }
 
 /* Blueprint dot grid — a faint engineering surface under the chrome.
-   It sits only on the app void; panels (var(--bg-1)+) paint over it. */
+   It sits only on the app void; panels (var(--bg-1)+) paint over it. The
+   grid image is a theme-bridge token, so classic resolves it to `none`. */
 .shell-root {
   background-color: var(--bg-0);
-  background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
+  background-image: var(--grid-image);
   background-size: var(--grid-size) var(--grid-size);
   background-position: -1px -1px;
-}
-@media (prefers-reduced-motion: no-preference) {
-  /* The whole panel feels alive without animating anything expensive. */
-  .shell-root { background-attachment: fixed; }
 }
 
 /* Mono "instrument label" — uppercase, tracked, for eyebrows & metadata. */
@@ -209,8 +264,8 @@ html, body, #root {
 }
 
 ::selection {
-  background: var(--signal-dim);
-  color: var(--signal-bright);
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
 a {
@@ -223,7 +278,7 @@ button {
   cursor: pointer;
 }
 
-/* A11y floor: visible keyboard focus everywhere — phosphor signal ring. */
+/* A11y floor: visible keyboard focus everywhere (theme-bridged ring colour). */
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
@@ -233,6 +288,6 @@ button {
   width: 7px;
   height: 7px;
 }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-track { background: var(--scroll-track); }
 ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--signal-line); }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-hover); }
