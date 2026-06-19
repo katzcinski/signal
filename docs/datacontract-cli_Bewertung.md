@@ -17,6 +17,15 @@
 - Signals Substanz liegt **nicht in der Engine**, sondern in **Governance (G1/G8),
   Runtime-Compliance/SLA, Cockpit, Observability, Lineage und SAP-Semantik** —
   alles Dinge, die ODCS/CLI konzeptionell gar nicht modellieren.
+- **Nativ in Datasphere** geht die CLI nur in der **Databricks-Plane (BDC)**; für
+  HANA-Space-Objekte ist der native In-Chain-Check *kompiliertes SQL* = Signal-Engine
+  (§8). Ein **Task-Chain-REST-Call** löst das *Trigger*-, nicht das
+  *Ausführungs*-Problem — hinter der URL gehört Signals API, nicht die CLI (§9).
+- Einen **HANA-Connector zu contributen** ist technisch machbar
+  (`sqlalchemy-hana`), bringt aber Read-only/PII/G1 als Shim zurück und
+  kommoditisiert nur den geringwertigsten Layer. Empfehlung: **Ökosystem-Play
+  (Weg 2)** — contributen + als Advisory-Executor nutzen, Produktion bleibt
+  Signal-Engine (§10).
 
 ---
 
@@ -177,7 +186,126 @@ anpassen, kaum die *Architektur*.
 
 ---
 
-## 8. Anker-Referenzen
+## 8. Native Nutzung in Datasphere — zwei „Planes"
+
+Frage: Kann die CLI nativ in Datasphere laufen, z. B. als Check am Ende von
+Task Chains? Antwort hängt an **zwei** Constraints gleichzeitig:
+
+1. **datacontract-cli hat keine HANA-Engine** (`test`: Snowflake/BigQuery/
+   **Databricks**/Postgres/S3/Kafka — kein HANA).
+2. **Task Chains haben keinen „beliebiges-Python/CLI"-Schritt** — sie
+   orchestrieren nur Datasphere-Artefakte (Replication/Data/Transformation Flow,
+   View-Persistierung, Intelligent Lookup, geschachtelte Chains).
+
+→ „datacontract-cli nativ am Ende einer HANA-Task-Chain" ist im strengen Sinn
+**nicht möglich**. Was nativ in der Chain läuft, ist *kompiliertes SQL* = Signals
+Engine-Pfad, nicht die CLI. Es gibt zwei Ebenen, auf denen „nativ" je anderes heißt:
+
+| | **HANA-Plane** (Objekte im HANA-Space als DP) | **Databricks-Plane** (BDC Data Products) |
+|---|---|---|
+| Daten liegen in | HANA Cloud (Datasphere-Space) | Databricks/Delta (BDC) |
+| `datacontract test` nativ? | ⛔ nein (kein HANA-Backend) | ✅ ja (Databricks-Engine) |
+| „Check am Ende der Chain" | Transformation Flow / Prozedur mit kompiliertem SQL (**Signal-Engine**) | Databricks-Workflow-Task mit **`datacontract test`** |
+| Orchestrierung | Task Chain nativ, oder Task-Chain-API + `dq_check_runner` | Databricks Workflow / Job |
+| CLI-Rolle | nur statisch: `breaking`/`lint` + Export ODCS/CSN/ORD | Ausführung **+** statisch + Export |
+| DQ-Status-Publishing | ORD-Labels/CSN (einseitig); Source of Truth = YAML | identisch |
+
+**BDC-Sonderfall:** Weil BDC-Compute SAP Databricks ist, ist `datacontract test`
+dort der **einzige** Ort, an dem die CLI als *Executor* nativ tragfähig ist —
+ohne G1/G8 in der HANA-Welt zu verletzen.
+
+> Offen (vgl. Zusatz-Doc R2/R7): wie Datasphere/BDC die ORD-Dokumente eines
+> Data Products emittiert, und ob BDC-Produkte immer auf Databricks
+> materialisieren oder teils HANA-nativ bleiben (dann fallen sie auf die
+> HANA-Plane zurück → kein CLI-Executor).
+
+---
+
+## 9. Task Chain → REST → Engine (das saubere Trigger-Muster)
+
+Einwand: Datasphere kann **ausgehende REST-Calls** in Task Chains auslösen — also
+die CLI/Engine hinter einen Server-Endpoint legen. Das ist korrekt und die
+**beste** native Anbindung, aber es trennt **zwei** Probleme, die man nicht
+verwechseln darf:
+
+- **Trigger-Problem** („wie wird der Check aufgerufen?") → vom REST-Call **gelöst**.
+- **Ausführungs-Problem** („womit werden die HANA-Daten gelesen?") → vom REST-Call
+  **nicht** gelöst.
+
+**Was hinter der URL sitzen muss:**
+- **Signals API/Engine** (FastAPI + `hdbcli`, read-only, PII-Gate, Store) → ✅
+  funktioniert. Die Endpunkte existieren bereits: `POST /objects/{object_id}/run`,
+  `POST /checks/{dataset}/dry-run`.
+- **datacontract-cli auf einem Server** → ⛔ liest **trotzdem kein HANA**. Server
+  ändert nichts am fehlenden Connector. (Nur in der Databricks-Plane tragfähig.)
+
+→ Der REST-Trigger ist ein sauberer nativer Weg **für Signals Engine**, kein
+Rettungsweg für die CLI als HANA-Executor.
+
+**Zwei Design-Punkte für den REST-Schritt:**
+1. **Sync vs. Async / Gating:** `/objects/{id}/run` liefert heute `202 Accepted`
+   (fire-and-forget). Zum Gaten braucht die Chain entweder einen synchronen
+   „run-and-wait"-Endpunkt (non-2xx bei `breached`) **oder** Trigger + Poll auf
+   `GET /runs/{run_id}` bis terminal. Klären: kann der HTTP-Schritt auf den
+   Response-Code verzweigen?
+2. **Netz & Auth:** Service muss aus dem Datasphere-Netz erreichbar sein
+   (Egress/BTP), Call braucht Token — passt zum fail-closed OIDC-Modus.
+
+---
+
+## 10. Build vs. Contribute — einen HANA-Connector beisteuern?
+
+Überlegung: einen HANA-Connector + Engine zu datacontract-cli **contributen**.
+
+**Technisch machbar, nicht von null:** Der Connector landet realistisch eine
+Ebene tiefer als ein `soda-core-hana`-Data-Source-Adapter (datacontract `test`
+delegiert SQL-Backends an Soda Core), gebaut auf **`sqlalchemy-hana`
+(SAP-maintained)** / **`hdbcli`**. Überschaubarer Scope.
+
+**Aber die G-Gates kommen als Shim zurück** — ein generischer Connector ist
+general-purpose:
+1. **Read-only & PII-Gate (G8)** garantiert er **nicht** → musst du außenrum
+   erzwingen (read-only Technical User, HANA-Privilegien). Der Teil der Engine,
+   den du löschen wolltest, kehrt als Security-Schicht zurück.
+2. **G1** ist mit der CLI nicht durchsetzbar (`type: sql`/`custom` erlaubt).
+3. **HANA-native SQL & SAP-Checks** (BSEG-Balance, BKPF-Orphan, Fiscal
+   Completeness, `SYS`-Views, Input-Parameter) haben in SodaCL kein Äquivalent →
+   landen als `type: sql custom` → wieder SQL im Contract.
+
+**Was auch dann bestehen bleibt:** ~70 % von Signal (Compliance/SLA-Store,
+Cockpit, Observability, Lineage, Lifecycle, ORD/CSN). Die Contribution greift nur
+den am stärksten kommoditisierten Ausführungs-Layer an.
+
+**Strategischer Rahmen — „Commoditize your complement":** Liegt Signals Wert im
+Produkt-Layer, macht eine OSS-Ausführungsschicht *darunter* den Markt größer —
+gut, *solange du die Schicht darüber verkaufst*. Funktioniert aber nur, wenn du
+Signal **tatsächlich auf die CLI neu aufsetzt** (sonst doppelt gebaut). Kehrseite:
+du verschenkst den heutigen *Marketing*-Differenzierer („einzige mit HANA-Runner")
+an den ganzen Markt — vertretbar, *wenn* der echte Moat das Produkt ist.
+
+**Drei kohärente Wege:**
+
+| Weg | Was du tust | Lohnt sich wenn … |
+|---|---|---|
+| **1 — All-in** | Connector contributen **und** Signal-Executor auf CLI umbauen | du auf den Standard wettest **und** Read-only/PII/G1 als Wrapper akzeptierst |
+| **2 — Ökosystem-Play** | Connector contributen (Credibility, BDC-Reichweite, **Advisory-Executor**), Produktion bleibt Signal-Engine | du Cred + Optionalität willst, ohne Guardrails aufzugeben |
+| **3 — Status quo** | nicht contributen, Differenzierer behalten | du den Aufwand scheust und den (flachen) Moat hältst |
+
+**Empfehlung: Weg 2.** Connector als Ökosystem-/Credibility-Move beisteuern und in
+Signal als **Advisory-Executor** nutzen (unabhängige Gegenprobe, analog zur
+`breaking`-Zweitmeinung — Diskrepanz = Report, kein Produktionspfad).
+Produktions-Checks gegen HANA bleiben auf Signals Engine, wo Read-only + PII-Gate
++ HANA-native SQL + SAP-Checks leben. Weg 1 lohnt nur, wenn ihr bereit seid,
+G1/G8/Read-only als externen Shim zu führen — gemessen am Signal-Pitch ein
+schlechter Tausch.
+
+**Umsetzungshinweis:** Connector von Anfang an auf **read-only Technical User /
+HANA-Read-only-Privilegien** auslegen und dokumentieren — dann für euren
+Advisory-Einsatz brauchbar und für die Community sauber.
+
+---
+
+## 11. Anker-Referenzen
 
 | Thema | Datei |
 |---|---|
