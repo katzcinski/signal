@@ -1,22 +1,20 @@
-"""„Für Monitoring verfügbar machen" — Schmalspur-Pfad (ohne Git/CI-Gate).
+"""„Für Monitoring verfügbar machen" — Hybrid-Modell (ADR-0002, Monitoring-Hub).
 
-Teilt ein Inventar-Objekt in einen dedizierten Monitoring-Hub-Space (ADR-0002,
-Variante Monitoring-Hub). Der eigentliche Schreibzugriff in Datasphere läuft
-über die CLI und ist per ``datasphere_allow_share`` standardmäßig AUS — Signal
-bleibt read-only, bis das bewusst freigeschaltet wird.
+Signal schreibt **nur den Soll-Zustand**: welche Objekte überwacht werden sollen.
+Ein externes, privilegiertes Skript reconciled daraus Share + Projektions-View
+(``Expose for Consumption``) im Monitoring-Hub und meldet den Status zurück.
+Signal selbst schreibt **nie** nach Datasphere (bleibt read-only).
 
-Dieses Modul kapselt:
-  * eine schlanke JSON-Registry (welche Objekte bereits geteilt sind), damit das
-    Cockpit Status/Idempotenz ohne CLI-Roundtrip zeigen kann, und
-  * die reine Patch-Funktion ``add_monitoring_share`` (gut testbar).
-
-Der konkrete CLI-Schreib-Verb (``deploy_object``) ist je CLI-Version zu
-verifizieren — siehe ``[VERIFY-VERB]`` in ``datasphere_cli.py``.
+Dieses Modul kapselt die Soll-Zustands-Registry (JSON) und zwei reine,
+testbare Helfer: den deterministischen View-Namen und das vorgeschlagene
+Projektions-SQL (explizite Spaltenliste).
 """
 from __future__ import annotations
 
 import json
 import logging
+import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -24,19 +22,65 @@ from .settings import get_settings
 
 logger = logging.getLogger("dq_cockpit.monitoring_share")
 
-# Marker-Schlüssel, unter dem die Share-Absicht in die exportierte Definition
-# geschrieben wird. [VERIFY-CSN] gegen das reale CSN-/Sharing-Schema eurer
-# Datasphere-Version prüfen und ggf. auf die echte Annotation umbiegen.
-_SHARE_KEY = "@DataWarehouse.sharing.targets"
+STATUS_REQUESTED = "requested"     # vom Cockpit vorgemerkt
+STATUS_PROVISIONED = "provisioned"  # Skript hat Share + View angelegt
+STATUS_ERROR = "error"             # Skript meldet Fehler
+VALID_STATUS = {STATUS_REQUESTED, STATUS_PROVISIONED, STATUS_ERROR}
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _registry_path() -> Path:
-    settings = get_settings()
-    return Path(settings.data_dir) / "monitoring_shares.json"
+    return Path(get_settings().data_dir) / "monitoring_shares.json"
 
 
-def load_shared_ids() -> list[str]:
-    """IDs der bereits ins Monitoring übernommenen Objekte (sortiert)."""
+# --- pure, testable helpers -------------------------------------------------
+
+def view_name(source_space: str, object_id: str) -> str:
+    """Deterministischer, kollisionsarmer View-Name ``<SPACE>__<OBJECT>`` — der
+    Space-Präfix erlaubt die Auflösung „wo liegt's" im Cockpit."""
+    raw = f"{source_space}__{object_id}"
+    return re.sub(r"[^A-Za-z0-9_]", "_", raw)
+
+
+def normalize_columns(columns: Any) -> list[str]:
+    """Spaltennamen aus heterogenem Inventar-Input ziehen (str oder {name})."""
+    out: list[str] = []
+    for col in columns or []:
+        if isinstance(col, str):
+            name = col
+        elif isinstance(col, dict):
+            name = col.get("name") or col.get("technicalName") or ""
+        else:
+            name = ""
+        if name:
+            out.append(str(name))
+    return out
+
+
+def build_projection_sql(
+    *,
+    monitoring_space: str,
+    view: str,
+    source_space: str,
+    technical_name: str,
+    columns: list[str],
+) -> str:
+    """Vorgeschlagenes Projektions-SQL für die Wrapper-View. Explizite
+    Spaltenliste (schema-drift-sichtbar); ohne bekannte Spalten Fallback auf
+    ``SELECT *`` — das Skript ist autoritativ und darf das überschreiben."""
+    cols = ", ".join(f'"{c}"' for c in columns) if columns else "*"
+    return (
+        f'CREATE VIEW "{monitoring_space}"."{view}" AS '
+        f'SELECT {cols} FROM "{source_space}"."{technical_name}"'
+    )
+
+
+# --- desired-state registry -------------------------------------------------
+
+def load_entries() -> list[dict[str, Any]]:
     path = _registry_path()
     if not path.exists():
         return []
@@ -45,44 +89,82 @@ def load_shared_ids() -> list[str]:
     except (OSError, json.JSONDecodeError):
         logger.warning("monitoring_shares.json unlesbar — behandelt als leer.")
         return []
-    ids = data.get("object_ids", []) if isinstance(data, dict) else []
-    return sorted({str(i) for i in ids})
+    entries = data.get("entries", []) if isinstance(data, dict) else []
+    return sorted(entries, key=lambda e: e.get("object_id", ""))
 
 
-def record_shared_id(object_id: str) -> list[str]:
-    ids = set(load_shared_ids())
-    ids.add(object_id)
-    return _write_ids(ids)
+def get_entry(object_id: str) -> dict[str, Any] | None:
+    return next((e for e in load_entries() if e.get("object_id") == object_id), None)
 
 
-def remove_shared_id(object_id: str) -> list[str]:
-    ids = set(load_shared_ids())
-    ids.discard(object_id)
-    return _write_ids(ids)
-
-
-def _write_ids(ids: set[str]) -> list[str]:
+def _save(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     path = _registry_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    ordered = sorted(ids)
-    path.write_text(json.dumps({"object_ids": ordered}, indent=2), encoding="utf-8")
+    ordered = sorted(entries, key=lambda e: e.get("object_id", ""))
+    path.write_text(json.dumps({"entries": ordered}, indent=2), encoding="utf-8")
     return ordered
 
 
-def add_monitoring_share(definition: dict[str, Any], monitoring_space: str) -> dict[str, Any]:
-    """Ergänzt die Share-Absicht (Ziel = Monitoring-Space) in einer exportierten
-    Objekt-Definition — idempotent. Reine Funktion, keine Seiteneffekte.
+def upsert_request(
+    *,
+    object_id: str,
+    source_space: str,
+    technical_name: str,
+    object_type: str,
+    columns: list[str],
+    view: str,
+) -> dict[str, Any]:
+    """Objekt vormerken. Idempotent: existiert es bereits, werden die
+    Identitätsfelder aktualisiert, der Status aber nicht zurückgesetzt."""
+    entries = load_entries()
+    existing = next((e for e in entries if e.get("object_id") == object_id), None)
+    if existing is not None:
+        existing.update(
+            source_space=source_space, technical_name=technical_name,
+            object_type=object_type, columns=columns, view=view,
+        )
+        _save(entries)
+        return existing
+    entry = {
+        "object_id": object_id,
+        "source_space": source_space,
+        "technical_name": technical_name,
+        "object_type": object_type,
+        "columns": columns,
+        "view": view,
+        "status": STATUS_REQUESTED,
+        "error": None,
+        "requested_at": _now(),
+        "provisioned_at": None,
+    }
+    entries.append(entry)
+    _save(entries)
+    return entry
 
-    Bewusst konservativ: hängt ``monitoring_space`` an eine Ziel-Liste an, ohne
-    bestehende Einträge zu verlieren. Das ``_SHARE_KEY``-Schema ist gegen die
-    reale CSN-Annotation zu verifizieren ([VERIFY-CSN])."""
-    if not monitoring_space:
-        raise ValueError("monitoring_space darf nicht leer sein.")
-    patched = dict(definition)
-    targets = patched.get(_SHARE_KEY)
-    if not isinstance(targets, list):
-        targets = []
-    if monitoring_space not in targets:
-        targets = [*targets, monitoring_space]
-    patched[_SHARE_KEY] = targets
-    return patched
+
+def set_status(
+    object_id: str, status: str, *, view: str | None = None, error: str | None = None
+) -> dict[str, Any] | None:
+    if status not in VALID_STATUS:
+        raise ValueError(f"Ungültiger Status: {status!r}")
+    entries = load_entries()
+    entry = next((e for e in entries if e.get("object_id") == object_id), None)
+    if entry is None:
+        return None
+    entry["status"] = status
+    entry["error"] = error
+    if view:
+        entry["view"] = view
+    if status == STATUS_PROVISIONED:
+        entry["provisioned_at"] = _now()
+    _save(entries)
+    return entry
+
+
+def remove_entry(object_id: str) -> bool:
+    entries = load_entries()
+    remaining = [e for e in entries if e.get("object_id") != object_id]
+    if len(remaining) == len(entries):
+        return False
+    _save(remaining)
+    return True

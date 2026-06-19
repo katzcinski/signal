@@ -1,9 +1,8 @@
-"""„Für Monitoring verfügbar machen" — Schmalspur (ADR-0002).
+"""„Für Monitoring verfügbar machen" — Hybrid (ADR-0002).
 
-Deckt die testbaren Teile ab: die reine Share-Patch-Funktion, die JSON-Registry,
-den Safety-Gate (Schreibzugriff AUS per Default) und den orchestrierten
-Share-Flow mit gemockter CLI. Der echte CLI-Schreib-Verb ist nicht Teil dieser
-Tests (kein Tenant) — er ist in ``datasphere_cli.deploy_object`` isoliert.
+Signal hält nur den Soll-Zustand; ein externes Skript provisioniert Share+View.
+Getestet: die reinen Helfer (View-Name, Projektions-SQL), der Request→Manifest→
+Status-Callback-Fluss und die Reconcile-Semantik beim Entfernen.
 """
 import json
 import sys
@@ -15,30 +14,39 @@ sys.path.insert(0, str(Path(__file__).parents[2]))
 import pytest
 from fastapi.testclient import TestClient
 
-from services.api.monitoring_share import add_monitoring_share
-
-SHARE_KEY = "@DataWarehouse.sharing.targets"
-
-
-# --- pure patch function ---
-
-def test_add_monitoring_share_idempotent():
-    src = {"name": "X"}
-    once = add_monitoring_share(src, "MON")
-    twice = add_monitoring_share(once, "MON")
-    assert once[SHARE_KEY] == ["MON"]
-    assert twice[SHARE_KEY] == ["MON"]
-    assert SHARE_KEY not in src  # original untouched
+from services.api.monitoring_share import (
+    build_projection_sql,
+    normalize_columns,
+    view_name,
+)
 
 
-def test_add_monitoring_share_appends_without_loss():
-    out = add_monitoring_share({SHARE_KEY: ["OTHER"]}, "MON")
-    assert out[SHARE_KEY] == ["OTHER", "MON"]
+# --- pure helpers ---
+
+def test_view_name_prefixes_space_and_sanitizes():
+    assert view_name("SP1", "CUSTOMERS") == "SP1__CUSTOMERS"
+    assert view_name("S-P/1", "A.B") == "S_P_1__A_B"
 
 
-def test_add_monitoring_share_empty_space_raises():
-    with pytest.raises(ValueError):
-        add_monitoring_share({}, "")
+def test_normalize_columns_handles_str_and_dict():
+    assert normalize_columns(["A", {"name": "B"}, {"technicalName": "C"}, {}, 5]) == ["A", "B", "C"]
+    assert normalize_columns(None) == []
+
+
+def test_build_projection_sql_explicit_columns():
+    sql = build_projection_sql(
+        monitoring_space="MON", view="SP1__CUST",
+        source_space="SP1", technical_name="CUST", columns=["A", "B"],
+    )
+    assert sql == 'CREATE VIEW "MON"."SP1__CUST" AS SELECT "A", "B" FROM "SP1"."CUST"'
+
+
+def test_build_projection_sql_falls_back_to_star():
+    sql = build_projection_sql(
+        monitoring_space="MON", view="V", source_space="SP1",
+        technical_name="CUST", columns=[],
+    )
+    assert "SELECT * FROM" in sql
 
 
 # --- endpoints ---
@@ -52,7 +60,8 @@ def client(tmp_path, monkeypatch):
         d.mkdir()
     inv = data_dir / "inventory.json"
     inv.write_text(json.dumps({"objects": [
-        {"id": "OBJ_A", "technicalName": "OBJ_A", "name": "OBJ_A", "space": "SP1"},
+        {"id": "OBJ_A", "technicalName": "OBJ_A", "name": "OBJ_A", "space": "SP1",
+         "columns": [{"name": "C1"}, {"name": "C2"}]},
     ]}))
 
     monkeypatch.setenv("DATA_DIR", str(data_dir))
@@ -73,56 +82,84 @@ def client(tmp_path, monkeypatch):
     deps_mod._store_instance = None
 
 
-def _reset_settings(settings_mod):
+def _enable(mp, settings_mod):
+    mp.setenv("DATASPHERE_MONITORING_SPACE", "MON")
     settings_mod._settings = None
 
 
-def test_disabled_by_default(client):
+def test_disabled_without_monitoring_space(client):
     c, _, _ = client
-    cfg = c.get("/api/monitoring/config").json()
-    assert cfg["enabled"] is False
-    assert c.get("/api/monitoring/shares").json() == {"object_ids": []}
-    # No monitoring space configured → 503.
+    assert c.get("/api/monitoring/config").json()["enabled"] is False
+    assert c.get("/api/monitoring/shares").json() == {"shares": []}
     assert c.post("/api/monitoring/shares/OBJ_A").status_code == 503
+    assert c.get("/api/monitoring/manifest").status_code == 503
 
 
-def test_space_set_but_write_disabled(client):
+def test_request_records_desired_state_no_write(client):
     c, mp, settings_mod = client
-    mp.setenv("DATASPHERE_MONITORING_SPACE", "MON")
-    _reset_settings(settings_mod)
-    r = c.post("/api/monitoring/shares/OBJ_A")
-    assert r.status_code == 503
-    assert "deaktiviert" in r.json()["detail"].lower()
+    _enable(mp, settings_mod)
+
+    assert c.get("/api/monitoring/config").json() == {"enabled": True, "monitoring_space": "MON"}
+
+    entry = c.post("/api/monitoring/shares/OBJ_A").json()
+    assert entry["status"] == "requested"
+    assert entry["view"] == "SP1__OBJ_A"
+    assert entry["columns"] == ["C1", "C2"]
+
+    shares = c.get("/api/monitoring/shares").json()["shares"]
+    assert shares == [{"object_id": "OBJ_A", "status": "requested", "view": "SP1__OBJ_A", "error": None}]
 
 
-def test_share_flow_with_mocked_cli(client):
+def test_manifest_carries_projection_sql_for_the_script(client):
     c, mp, settings_mod = client
-    mp.setenv("DATASPHERE_MONITORING_SPACE", "MON")
-    mp.setenv("DATASPHERE_ALLOW_SHARE", "true")
-    _reset_settings(settings_mod)
+    _enable(mp, settings_mod)
+    c.post("/api/monitoring/shares/OBJ_A")
 
-    import services.api.datasphere_cli as cli_mod
-    mp.setattr(cli_mod.DatasphereCli, "read_object", lambda self, *a, **k: {"name": "OBJ_A"})
-    mp.setattr(cli_mod.DatasphereCli, "deploy_object", lambda self, *a, **k: "ok")
-
-    cfg = c.get("/api/monitoring/config").json()
-    assert cfg == {"enabled": True, "monitoring_space": "MON"}
-
-    r1 = c.post("/api/monitoring/shares/OBJ_A").json()
-    assert r1["status"] == "shared"
-    assert c.get("/api/monitoring/shares").json()["object_ids"] == ["OBJ_A"]
-
-    # Idempotent: second call does not re-deploy.
-    assert c.post("/api/monitoring/shares/OBJ_A").json()["status"] == "already_shared"
-
-    # Unshare removes it from the cockpit registry.
-    c.request("DELETE", "/api/monitoring/shares/OBJ_A")
-    assert c.get("/api/monitoring/shares").json()["object_ids"] == []
+    man = c.get("/api/monitoring/manifest").json()
+    assert man["monitoring_space"] == "MON"
+    e = man["entries"][0]
+    assert e["object_id"] == "OBJ_A"
+    assert e["projection_sql"] == (
+        'CREATE VIEW "MON"."SP1__OBJ_A" AS SELECT "C1", "C2" FROM "SP1"."OBJ_A"'
+    )
 
 
-def test_share_unknown_object_404(client):
+def test_status_callback_roundtrip(client):
     c, mp, settings_mod = client
-    mp.setenv("DATASPHERE_MONITORING_SPACE", "MON")
-    mp.setenv("DATASPHERE_ALLOW_SHARE", "true")
-    _reset_settings(settings_mod)
+    _enable(mp, settings_mod)
+    c.post("/api/monitoring/shares/OBJ_A")
+
+    r = c.put("/api/monitoring/shares/OBJ_A/status", json={"status": "provisioned"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "provisioned"
+    assert r.json()["provisioned_at"] is not None
+
+    # unknown object → 404; invalid status → 422
+    assert c.put("/api/monitoring/shares/NOPE/status", json={"status": "provisioned"}).status_code == 404
+    assert c.put("/api/monitoring/shares/OBJ_A/status", json={"status": "bogus"}).status_code == 422
+
+
+def test_request_is_idempotent_and_keeps_status(client):
+    c, mp, settings_mod = client
+    _enable(mp, settings_mod)
+    c.post("/api/monitoring/shares/OBJ_A")
+    c.put("/api/monitoring/shares/OBJ_A/status", json={"status": "provisioned"})
+    # re-request must not reset a provisioned object back to requested
+    again = c.post("/api/monitoring/shares/OBJ_A").json()
+    assert again["status"] == "provisioned"
+    assert len(c.get("/api/monitoring/shares").json()["shares"]) == 1
+
+
+def test_remove_drops_from_desired_state(client):
+    c, mp, settings_mod = client
+    _enable(mp, settings_mod)
+    c.post("/api/monitoring/shares/OBJ_A")
+    assert c.request("DELETE", "/api/monitoring/shares/OBJ_A").json()["status"] == "removed"
+    assert c.get("/api/monitoring/shares").json()["shares"] == []
+    assert c.request("DELETE", "/api/monitoring/shares/OBJ_A").json()["status"] == "not_found"
+
+
+def test_request_unknown_object_404(client):
+    c, mp, settings_mod = client
+    _enable(mp, settings_mod)
     assert c.post("/api/monitoring/shares/NOPE").status_code == 404

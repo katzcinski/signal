@@ -131,11 +131,13 @@ export const t = {
     sla90d: '90 Tage',
   },
   monitoring: {
-    makeAvailable: 'Für Monitoring verfügbar machen',
+    makeAvailable: 'Für Monitoring vormerken',
+    requesting: 'Merke vor…',
+    requested: 'Angefordert…',
     inMonitoring: '✓ im Monitoring',
-    sharing: 'Übernehme…',
-    shared: 'Ins Monitoring übernommen.',
-    shareError: 'Übernahme ins Monitoring fehlgeschlagen.',
+    failed: 'Provisionierung fehlgeschlagen',
+    requestedToast: 'Fürs Monitoring vorgemerkt — Provisionierung läuft über das Skript.',
+    requestError: 'Vormerken fehlgeschlagen.',
   },
   badge: {
     title: 'Status-Badge einbetten',

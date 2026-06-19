@@ -1,24 +1,33 @@
-"""„Für Monitoring verfügbar machen" — Schmalspur-Endpunkte (ADR-0002).
+"""„Für Monitoring verfügbar machen" — Hybrid (ADR-0002, Monitoring-Hub).
 
-Teilt ein Inventar-Objekt in den Monitoring-Hub-Space. Der Schreibzugriff in
-Datasphere ist per ``datasphere_allow_share`` standardmäßig AUS; ohne
-Freischaltung + konfigurierten ``datasphere_monitoring_space`` antworten die
-Mutationen mit 503 und einer umsetzbaren Meldung. Read-Endpunkte (Config/Status)
-laufen immer.
+Signal hält den Soll-Zustand, ein externes Skript reconciled Share + View:
+
+  Cockpit  --POST /shares/{id}-->  Soll-Zustand (Registry, Status=requested)
+  Skript   --GET  /manifest---->   liest Soll-Zustand (+ View-Name, Spalten, SQL)
+  Skript   --PUT  /shares/{id}/status-->  meldet provisioned|error zurück
+  Cockpit  --GET  /shares------->   zeigt Status je Objekt
+
+Signal schreibt nie nach Datasphere — der Request-Endpunkt mutiert nur Signals
+eigene Registry. Entfernen aus dem Soll-Zustand → das Skript droppt die
+verwaiste View beim nächsten Reconcile.
 """
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 
 from ..deps import get_inventory
 from ..monitoring_share import (
-    add_monitoring_share,
-    load_shared_ids,
-    record_shared_id,
-    remove_shared_id,
+    VALID_STATUS,
+    build_projection_sql,
+    load_entries,
+    normalize_columns,
+    remove_entry,
+    set_status,
+    upsert_request,
+    view_name,
 )
 from ..settings import get_settings
 
@@ -29,17 +38,40 @@ router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 
 @router.get("/config")
 def monitoring_config() -> dict[str, Any]:
-    """Ob der Schmalspur-Share aktiv ist — steuert Sichtbarkeit im Cockpit."""
-    settings = get_settings()
-    return {
-        "enabled": bool(settings.datasphere_allow_share and settings.datasphere_monitoring_space),
-        "monitoring_space": settings.datasphere_monitoring_space,
-    }
+    """``enabled`` = ein Monitoring-Hub ist konfiguriert (steuert UI-Sichtbarkeit)."""
+    space = get_settings().datasphere_monitoring_space
+    return {"enabled": bool(space), "monitoring_space": space}
 
 
 @router.get("/shares")
-def list_shares() -> dict[str, list[str]]:
-    return {"object_ids": load_shared_ids()}
+def list_shares() -> dict[str, list[dict[str, Any]]]:
+    """Status je vorgemerktem Objekt — für das Cockpit."""
+    shares = [
+        {"object_id": e["object_id"], "status": e["status"],
+         "view": e.get("view"), "error": e.get("error")}
+        for e in load_entries()
+    ]
+    return {"shares": shares}
+
+
+@router.get("/manifest")
+def manifest() -> dict[str, Any]:
+    """Soll-Zustand für das Provisioning-Skript: Identität + View-Name + Spalten
+    + vorgeschlagenes (überschreibbares) Projektions-SQL je Objekt."""
+    space = get_settings().datasphere_monitoring_space
+    if not space:
+        raise HTTPException(status_code=503, detail="Kein Monitoring-Space konfiguriert (DATASPHERE_MONITORING_SPACE).")
+    entries = []
+    for e in load_entries():
+        entries.append({
+            **{k: e[k] for k in ("object_id", "source_space", "technical_name", "object_type", "columns", "view", "status")},
+            "projection_sql": build_projection_sql(
+                monitoring_space=space, view=e["view"],
+                source_space=e["source_space"], technical_name=e["technical_name"],
+                columns=e.get("columns") or [],
+            ),
+        })
+    return {"monitoring_space": space, "entries": entries}
 
 
 def _resolve_object(object_id: str, inventory: list[dict]) -> dict:
@@ -50,53 +82,42 @@ def _resolve_object(object_id: str, inventory: list[dict]) -> dict:
 
 
 @router.post("/shares/{object_id}")
-def share_object(object_id: str, inventory: list[dict] = Depends(get_inventory)) -> dict[str, Any]:
-    """Exportiert das Objekt via CLI, ergänzt den Share auf den Monitoring-Space
-    und deployt es zurück. Idempotent: ist es schon registriert, kein erneuter
-    Schreibzugriff."""
+def request_monitoring(object_id: str, inventory: list[dict] = Depends(get_inventory)) -> dict[str, Any]:
+    """Objekt fürs Monitoring vormerken (Soll-Zustand). Kein Datasphere-Write —
+    das Provisioning übernimmt das Skript anhand des Manifests."""
     settings = get_settings()
     if not settings.datasphere_monitoring_space:
-        raise HTTPException(
-            status_code=503,
-            detail="Kein Monitoring-Space konfiguriert (DATASPHERE_MONITORING_SPACE).",
-        )
-    if not settings.datasphere_allow_share:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Schreibzugriff deaktiviert. Zum Aktivieren DATASPHERE_ALLOW_SHARE=true "
-                "setzen und den CLI-Share-Verb gegen die eigene CLI-Version verifizieren."
-            ),
-        )
-
+        raise HTTPException(status_code=503, detail="Kein Monitoring-Space konfiguriert (DATASPHERE_MONITORING_SPACE).")
     obj = _resolve_object(object_id, inventory)
-    if object_id in load_shared_ids():
-        return {"status": "already_shared", "object_id": object_id}
-
-    space = obj.get("space") or obj.get("schema") or ""
+    source_space = obj.get("space") or obj.get("schema") or ""
     technical_name = obj.get("technicalName") or obj.get("id") or object_id
-    object_type = obj.get("object_type") or "views"
+    entry = upsert_request(
+        object_id=object_id,
+        source_space=source_space,
+        technical_name=technical_name,
+        object_type=obj.get("object_type") or "views",
+        columns=normalize_columns(obj.get("columns")),
+        view=view_name(source_space, object_id),
+    )
+    logger.info("Objekt %s fürs Monitoring vorgemerkt (View %s).", object_id, entry["view"])
+    return entry
 
-    from ..datasphere_cli import CliAuthError, CliError, DatasphereCli
 
-    cli = DatasphereCli()
-    try:
-        definition = cli.read_object(space, technical_name, object_type=object_type)
-        patched = add_monitoring_share(definition, settings.datasphere_monitoring_space)
-        cli.deploy_object(space, technical_name, patched, object_type=object_type)
-    except CliAuthError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
-    except CliError as exc:
-        raise HTTPException(status_code=502, detail=f"Datasphere-CLI-Fehler: {exc}") from exc
-
-    record_shared_id(object_id)
-    logger.info("Objekt %s in Monitoring-Space %s geteilt.", object_id, settings.datasphere_monitoring_space)
-    return {"status": "shared", "object_id": object_id, "monitoring_space": settings.datasphere_monitoring_space}
+@router.put("/shares/{object_id}/status")
+def report_status(object_id: str, body: dict = Body(...)) -> dict[str, Any]:
+    """Callback für das Provisioning-Skript: provisioned | error melden."""
+    status = body.get("status")
+    if status not in VALID_STATUS:
+        raise HTTPException(status_code=422, detail=f"status muss eines von {sorted(VALID_STATUS)} sein.")
+    entry = set_status(object_id, status, view=body.get("view"), error=body.get("error"))
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"{object_id} ist nicht im Soll-Zustand.")
+    return entry
 
 
 @router.delete("/shares/{object_id}")
-def unshare_object(object_id: str) -> dict[str, Any]:
-    """Schmalspur: entfernt das Objekt aus der Registry (Cockpit-Status), ohne
-    den Share in Datasphere rückgängig zu machen — bewusst manuell."""
-    remaining = remove_shared_id(object_id)
-    return {"status": "removed", "object_id": object_id, "object_ids": remaining}
+def remove_monitoring(object_id: str) -> dict[str, Any]:
+    """Aus dem Soll-Zustand entfernen. Das Skript droppt die verwaiste View beim
+    nächsten Reconcile (Manifest = Soll; was nicht drinsteht, wird abgeräumt)."""
+    removed = remove_entry(object_id)
+    return {"status": "removed" if removed else "not_found", "object_id": object_id}

@@ -4,13 +4,22 @@ import { AxiosError } from 'axios';
 import { api } from './client';
 import { t } from '@/i18n/de';
 
-// „Für Monitoring verfügbar machen" (Schmalspur, ADR-0002): teilt ein
-// Inventar-Objekt in den Monitoring-Hub-Space. Schreibzugriff ist serverseitig
-// per Default AUS — useMonitoringConfig().enabled steuert die Sichtbarkeit.
+// „Für Monitoring verfügbar machen" — Hybrid (ADR-0002). Das Cockpit merkt ein
+// Objekt nur im Soll-Zustand vor; ein externes Skript provisioniert Share+View
+// und meldet den Status zurück. Signal schreibt selbst nicht nach Datasphere.
+
+export type ShareStatus = 'requested' | 'provisioned' | 'error';
 
 export interface MonitoringConfig {
   enabled: boolean;
   monitoring_space: string;
+}
+
+export interface ShareEntry {
+  object_id: string;
+  status: ShareStatus;
+  view: string | null;
+  error: string | null;
 }
 
 export const useMonitoringConfig = () =>
@@ -21,23 +30,25 @@ export const useMonitoringConfig = () =>
   });
 
 export const useMonitoringShares = () =>
-  useQuery<string[]>({
+  useQuery<ShareEntry[]>({
     queryKey: ['monitoring', 'shares'],
-    queryFn: () => api.get('/monitoring/shares').then(r => r.data.object_ids ?? []),
-    staleTime: 30_000,
+    queryFn: () => api.get('/monitoring/shares').then(r => r.data.shares ?? []),
+    // Poll while anything is still being provisioned by the external script.
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some(s => s.status === 'requested') ? 5000 : false,
   });
 
-export const useShareForMonitoring = () => {
+export const useRequestMonitoring = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (objectId: string) =>
       api.post(`/monitoring/shares/${objectId}`).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['monitoring', 'shares'] });
-      toast.success(t.monitoring.shared);
+      toast.success(t.monitoring.requestedToast);
     },
     onError: (err: AxiosError<{ detail?: string }>) => {
-      toast.error(err.response?.data?.detail ?? t.monitoring.shareError);
+      toast.error(err.response?.data?.detail ?? t.monitoring.requestError);
     },
   });
 };

@@ -90,9 +90,32 @@ Haken: Data-Lake-/Delta-Views haben oft **keinen Lade-Zeitstempel** → `freshne
 
 ---
 
-## 7 — Offene Punkte
+## 7 — Monitoring-Hub-Topologie & Provisionierung (Hybrid)
+
+Statt eines technischen Users **je Space** sammeln wir alle zu überwachenden Objekte in **einem** dedizierten Monitoring-Hub-Space; Signals Lese-User braucht dann nur SELECT auf **ein** Schema (die exponierten Views des Hubs). Die geteilte Menge **ist** der auditierbare Monitoring-Scope.
+
+**Kanonisches Artefakt = die Wrapper-View.** Sowohl HDLF-Objekte als auch HANA-Tabellen brauchen eine View obendrauf — die View ist also der Normalfall, nicht der Sonderfall. Pro überwachtem Objekt entsteht **eine dünne Projektions-View** (`Expose for Consumption`) im Hub; Signal prüft **immer** `<HUB>.<view>`, nie das Rohobjekt. Vorteile: HDLF und Tabelle sind derselbe Pfad, ein Grant-Schema, und der Namenspräfix `<SOURCESPACE>__<OBJECT>` erlaubt die Herkunfts-Auflösung im Cockpit (autoritativ ergänzt durchs Inventar).
+
+**View-Form:** explizite Spaltenprojektion (aus dem CSN/Inventar), kein `SELECT *` — so wird Schema-Drift sichtbar (`schema`/`column_count`). Fallback `SELECT *` nur ohne bekannte Spalten.
+
+**Provisionierung = Hybrid (Signal bleibt read-only).** Signal schreibt **nicht** nach Datasphere. Stattdessen:
+
+| Schritt | Akteur | Mechanik |
+|---|---|---|
+| Vormerken | Cockpit | `POST /api/monitoring/shares/{id}` → Soll-Zustand (Registry), Status `requested` |
+| Manifest lesen | Skript | `GET /api/monitoring/manifest` → Identität + View-Name + Spalten + vorgeschlagenes Projektions-SQL |
+| Reconcile | Skript (privilegiert) | Share + Projektions-View anlegen/`Expose`; verwaiste Views (nicht mehr im Manifest) droppen |
+| Rückmeldung | Skript | `PUT /api/monitoring/shares/{id}/status` → `provisioned` / `error` |
+| Anzeige | Cockpit | `GET /api/monitoring/shares` → Status je Objekt |
+
+So trägt das Skript die starken Rechte (Share/Create/Expose), Signals Laufzeit-User nur SELECT — saubere Privileg-Trennung. Der einzige konfigurationsbedürftige Wert in Signal ist `DATASPHERE_MONITORING_SPACE`.
+
+---
+
+## 8 — Offene Punkte
 
 - **OP-1:** TLS in `db_connection.py` — ist `encrypt=true` + Zertifikatsvalidierung gesetzt? Falls nein: nachrüsten (Pflicht, S4).
 - **OP-2:** Grant-Vorlage je Space als wiederverwendbares Snippet (SELECT-Liste + `dq_results_lt`-Write) in die `Tooldokumentation.md` aufnehmen.
 - **OP-3:** Rotations- und Eigentümer­zuständigkeit für die technischen User benennen.
 - **OP-4:** HDLF-Objekte unter Contract — Mapping „Data-Lake-Objekt → exponierte HANA-View" je Produkt festlegen; Timestamp-/Lastmetadaten-Pfad für Freshness/Volume klären (Anschluss an O2).
+- **OP-5:** Provisioning-Skript implementieren, das `GET /manifest` reconciled (Share + Projektions-View + `Expose`, Drop verwaister Views) und `PUT …/status` zurückmeldet — gegen die reale Datasphere-API/CLI verifizieren.
