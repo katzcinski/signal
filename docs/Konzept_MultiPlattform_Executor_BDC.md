@@ -244,7 +244,103 @@ kompilierten `DatasetConfig` — kein Sonderpfad, nur eine Schleife im Orchestra
 
 ---
 
-## 9 — Querschnitt: was pro Backend neu durchdacht werden muss
+## 9 — Inventory & Lineage über Plattformen
+
+Der Executor prüft Garantien; **Inventory und Lineage** liefern den Kontext (welche Objekte gibt es,
+wer speist wen, Coverage-Map). Auch dieser Pfad ist heute Datasphere-spezifisch — aber er ist genau
+wie die Engine an wenigen, kapselbaren Stellen gekoppelt, und die **nachgelagerten Builder sind
+bereits pur/backend-agnostisch**.
+
+### 9.1 — Wie der Status quo extrahiert (drei Stufen)
+
+`services/api/extraction.py` + `packages/dq_core/lineage/`:
+
+1. **Quellen-Beschaffung** (`_gather_objects`) — getiert: Datasphere-**CLI** (bevorzugt, volle CSN) →
+   **Catalog-REST** (`datasphere_catalog.py`, headless Fallback) → lokaler Snapshot. Ergebnis ist
+   eine **normalisierte Objektliste**: `{technicalName, objectType, status, businessName, sql,
+   definition(CSN)}`.
+2. **Pro-Objekt-Assembly** (`build_inventory_object`) — Spalten aus CSN-`elements`, SQL-
+   Rekonstruktion, **Objekt-Lineage-Kanten** aus CSN-Query (`FROM`/`JOIN`) und CDS-Associations.
+3. **Graph-Bau** (`build_lineage_graph` + `build_column_lineage`) — `{nodes, edges, adjacency,
+   upstream}`; Column-Lineage aus CSN-`projectionLineage` **oder** — Phase-2-Pfad — aus rohem SQL
+   via **sqlglot**.
+
+> **Schlüssel:** Stufen 2+3 sind framework-frei und hängen nur an (a) Spalten und (b) Kanten.
+> *Woher* die kommen, ist austauschbar — exakt wie die vier Executor-Nähte (§3).
+
+### 9.2 — Abbildung auf Databricks (Unity Catalog)
+
+Unity Catalog liefert dieselben Bausteine, an mehreren Stellen sogar reicher als der Datasphere-
+Katalog:
+
+| Signal-Stufe | Datasphere (Status quo) | Databricks-Analog |
+|--------------|-------------------------|-------------------|
+| Objektliste | Catalog-REST `list_objects` / CLI | `system.information_schema.tables` · UC-REST `/api/2.1/unity-catalog/tables` · `SHOW TABLES` |
+| Spalten | CSN `elements` | `information_schema.columns` · `DESCRIBE TABLE EXTENDED` |
+| Objekt-Definition (SQL) | CSN `query` / CLI `read_object` | `information_schema.views.view_definition` · `SHOW CREATE TABLE` |
+| **Objekt-Lineage** | CSN `FROM`/`JOIN`-Parse | **Laufzeit:** `system.access.table_lineage` / Lineage-REST `/api/2.0/lineage-tracking/table-lineage` · **Statisch:** `view_definition` parsen |
+| **Column-Lineage** | `projectionLineage` / sqlglot | **Laufzeit:** `system.access.column_lineage` · **Statisch:** vorhandener sqlglot-Parser (`dialect="databricks"`) |
+| Layer/Role/Confidence | `NamingModel`-Heuristik | **derselbe** `NamingModel` — unverändert wiederverwendbar |
+| Status/Freshness | Catalog `status` | `DESCRIBE DETAIL` (`lastModified`) · `DESCRIBE HISTORY` (Delta-Commits) |
+
+### 9.3 — Der eine echte Unterschied: Lineage-Herkunft (ein Gewinn)
+
+- **Datasphere** = *statische* Lineage aus dem deklarierten CSN-Modell (was modelliert wurde).
+- **Unity Catalog** = *Laufzeit-Lineage*, automatisch aus der Query-History erfasst, table- **und**
+  column-level. Autoritativer (was wirklich lief), deckt aber nur bereits ausgeführte Beziehungen ab.
+
+**Empfehlung:** UC-Laufzeit-Lineage als **Primärquelle**; für Kaltstart/ungenutzte Views den
+**statischen `view_definition`-Parse** als Ergänzung — und der nutzt den **vorhandenen sqlglot-Pfad**
+(`_sql_column_parser`) mit `dialect="databricks"`. Keine zweite Lineage-Engine, nur eine andere Quelle
+für dieselbe.
+
+### 9.4 — Integration: `CatalogSource`-Abstraktion (parallel zur Backend-Registry)
+
+Analog zu `Backend`/`Dialect` (§4) eine Quell-Abstraktion, gekeyt auf `platform`:
+
+```python
+# parallel zu extraction._gather_objects
+class CatalogSource(Protocol):
+    def gather_objects(self, scope) -> list[NormalizedObject]: ...
+    # NormalizedObject = {technicalName, objectType, columns, sql,
+    #                     lineageEdges?, columnEdges?, status}
+
+SOURCES = {
+    "datasphere": DatasphereCatalogSource(),   # heutige CLI+REST-Logik, unverändert
+    "databricks": DatabricksCatalogSource(),   # UC-REST/system-tables + sqlglot
+}
+```
+
+Zwei Andock-Strategien für `DatabricksCatalogSource`, **beide ohne Eingriff in die puren Builder**:
+
+1. **Kanten direkt liefern** (empfohlen): UC hat die Lineage schon berechnet → in das
+   `lineageEdges`/`columnEdges`-Format mappen. `build_lineage_graph` läuft **unverändert** (liest
+   `obj["lineageEdges"]`).
+2. **SQL liefern**: `view_definition` als `sql`-Feld durchreichen → `build_column_lineage` zieht die
+   Column-Kanten via sqlglot selbst.
+
+Tiering bleibt wie heute: UC-REST/system-tables bevorzugt → `INFORMATION_SCHEMA`/`SHOW`-Fallback →
+File-Snapshot zuletzt. Der `space`-Begriff verallgemeinert sich auf `catalog.schema` (3-teiliger
+Namespace, §10 Querschnitt).
+
+### 9.5 — Caveats (ehrlich)
+
+- **Read-only passt perfekt:** `information_schema` und `system.*` sind reine Metadaten — keine
+  Nutzdaten, deckt sich mit Signals Posture.
+- **UC-Lineage muss aktiviert sein** und braucht Grants (`SELECT` auf `system.access`); sonst bleibt
+  nur der statische Parse-Pfad.
+- **SAP- vs. natives Databricks:** identisches UC darunter, Unterschied nur Auth/Endpoint — derselbe
+  `platform`-Subtyp wie beim Executor.
+- **CSN-spezifische Felder** (Associations, `@ObjectModel`-Annotations) haben kein UC-Pendant und
+  entfallen dort sauber — nichts wird erfunden, exakt wie schon beim REST-Fallback heute.
+
+> **Fazit:** Inventory ist über UC quasi geschenkt (reicher als der Datasphere-Katalog), Lineage ist
+> sogar besser (Laufzeit statt nur deklariert), und die puren Builder bleiben unangetastet. Benötigt
+> wird **eine** `DatabricksCatalogSource`, die UC ins normalisierte Objekt-/Kantenformat übersetzt.
+
+---
+
+## 10 — Querschnitt: was pro Backend neu durchdacht werden muss
 
 - **Read-only-Durchsetzung.** Heute Policy + Aggregat-only. Pro Backend zusätzlich technisch
   absichern: HANA Read-Role/`SET TRANSACTION READ ONLY`; Databricks SQL-Warehouse mit
@@ -264,21 +360,23 @@ kompilierten `DatasetConfig` — kein Sonderpfad, nur eine Schleife im Orchestra
 
 ---
 
-## 10 — Phasenplan (inkrementell, jede Phase eigenständig wertvoll)
+## 11 — Phasenplan (inkrementell, jede Phase eigenständig wertvoll)
 
 | Phase | Inhalt | Risiko |
 |------|--------|--------|
 | **P0** | Nähte A–D refaktorieren in `Dialect`/`Backend`-Interface; HANA als Default-Backend registrieren. **Null Verhaltensänderung.** | niedrig — reine Kapselung, durch bestehende Tests abgesichert |
 | **P1** | Databricks-Dialekt + Connector (`databricks-sql-connector`). Deckt **SAP Databricks _und_ natives Databricks** in einem ab. Capability-Matrix + `skipped_unsupported`. | mittel — neuer Treiber, 3-teiliger Namespace |
 | **P2** | HDLF: zunächst **Route A** (SQL-on-Files über HANA Data Lake) = HANA-Dialekt mit kleinen Overrides; **Route B** (Databricks über Delta) fällt aus P1 ab. | mittel — HDLF-Auth/Permission-Gap (Zusatz R7) |
+| **PE** | `CatalogSource`-Abstraktion + `DatabricksCatalogSource` (Inventory & Lineage aus Unity Catalog, §9). Unabhängig von P1 priorisierbar — liefert die Coverage-Map auch ohne Executor. | mittel — UC-Lineage-Grants, sqlglot-Dialekt |
 | **P3** | ODCS-Multi-Server-Export + `datacontract test` als CI-Parität-Gate (Prämisse: HANA-Engine). Liefert zugleich das `breaking`-Gate (Zusatz §5). | abhängig von der Prämisse |
-| **P4** | Cockpit: Coverage-Map & Status-Grid **pro Plattform**; Inventory/Lineage um `platform` erweitert. | niedrig |
+| **P4** | Cockpit: Coverage-Map & Status-Grid **pro Plattform**; Inventory/Lineage um `platform` erweitert (baut auf PE). | niedrig |
 
-P0 ist die einzige Voraussetzung; P1–P4 sind danach unabhängig priorisierbar.
+P0 ist die einzige Voraussetzung für den Executor-Pfad; **PE steht orthogonal** und kann zuerst
+kommen (Discovery vor Enforcement). P1–P4 sind danach unabhängig priorisierbar.
 
 ---
 
-## 11 — Offene Punkte / Risiken
+## 12 — Offene Punkte / Risiken
 
 > **[H]** hoch · **[M]** mittel · **[L]** später
 
@@ -300,7 +398,7 @@ P0 ist die einzige Voraussetzung; P1–P4 sind danach unabhängig priorisierbar.
 
 ---
 
-## 12 — Kernaussage
+## 13 — Kernaussage
 
 Signal muss für Multi-Plattform **nicht** seine Engine aufgeben und auch nicht pro Backend eine neue
 bauen. Es muss **vier klar lokalisierte Nähte** hinter eine `Dialect`/`Backend`-Abstraktion ziehen
