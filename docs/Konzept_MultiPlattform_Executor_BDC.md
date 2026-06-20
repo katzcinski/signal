@@ -398,7 +398,61 @@ kommen (Discovery vor Enforcement). P1–P4 sind danach unabhängig priorisierba
 
 ---
 
-## 13 — Kernaussage
+## 13 — Abgrenzung: Mehrwert gegenüber Databricks-nativer DQ
+
+Ehrliche Selbstprüfung — *wann* ist Signal auf Databricks ein Gewinn und wann nicht? Die Antwort
+hängt an **einer** Frage: **Ist Databricks die ganze Welt oder *ein* Backend von mehreren?**
+
+### 13.1 — Wo Databricks-nativ gewinnt (und Signal **nicht** konkurrieren sollte)
+
+| Native Funktion | Warum nativ überlegen |
+|-----------------|------------------------|
+| **DLT-Expectations** (`expect_or_drop`/`fail`) | **Enforcement zur Schreibzeit** — droppt/quarantänisiert schlechte Zeilen *während* der Ingestion. Signal ist read-only, post-hoc, out-of-band; es **verhindert nicht**, dass schlechte Daten landen. Fundamental andere Posture. |
+| **Lakehouse Monitoring** | Profiling, Drift, statistische Metriken — purpose-built, ausgereifter als Signals Rolling-Baselines/Miner. |
+| **Unity-Catalog-Lineage** | Laufzeit-Lineage (table+column) — reicher als jede Rekonstruktion; Signal *konsumiert* es (§9), baut es nicht nach. |
+| **UC-Constraints** (NOT NULL, CHECK, PK/FK) | In-Engine, teils erzwungen. |
+| Betrieb | Kein zweites Tool, keine externe Orchestrierung. |
+
+Auf der reinen „prüft Bedingung X"-Ebene **überlappt Signal stark mit DLT/Monitoring — und verliert.**
+Daraus folgt die Positionierung: **nicht als konkurrierender Executor danebenstellen.**
+
+### 13.2 — Wo Signal Mehrwert hat (orthogonal, nicht technisch)
+
+1. **Cross-Plattform-Single-Pane** — *das* Kernargument. DLT deckt nur die Databricks-Scheibe ab;
+   **HANA hat kein DLT-Äquivalent, HDLF noch weniger**. Signal vereint HANA + HDLF + Databricks unter
+   *einem* Contract, *einem* Cockpit, *einem* Compliance-Modell. Kein einzelnes natives Tool kann das.
+2. **Contract als verhandeltes Artefakt mit Lifecycle** — DLT-Expectations sind *Code in der
+   Pipeline*. Signals Contract ist eine SQL-freie, Git-versionierte *Vereinbarung* mit
+   Draft/Active/Deprecated, SemVer/Breaking-Governance, Approval, Producer/Consumer-Split, ODCS/ORD-
+   Export. Trennt *Vereinbarung* von *Implementierung*.
+3. **Vendor-Neutralität / kein Lock-in** — derselbe Contract läuft gegen HANA *und* Databricks; bei
+   Migration/Spiegelung bleibt er erhalten, native Checks müsste man neu bauen.
+4. **Konsumenten-gerichtete Compliance-Ampel** — read-only Status mit SLA-Fenstern und Incident-
+   Timeline für *Konsumenten*; Databricks-Monitoring ist primär Producer-/Plattform-gerichtet.
+5. **No-SQL-Authoring + PII-Gate an der Quelle** — Stewards formulieren Garantien ohne SQL.
+
+### 13.3 — Die reife Architektur: *darüber*, nicht *daneben*
+
+> **Databricks-nativ = Ausführungs-Substrat (Enforcement, Monitoring, Lineage).
+> Signal = Governance-/Aggregations-Plane darüber, die das Native *konsumiert* statt dupliziert.**
+
+Konkret: Signal sammelt DLT-Expectation-Ergebnisse, UC-Lineage und Monitoring-Metriken **ein** und
+hebt sie ins plattformübergreifende Contract-/Compliance-Modell — statt eigene Checks danebenzufahren.
+Auf Databricks **delegiert** Signal die Ausführung; auf HANA (wo nichts Vergleichbares existiert)
+**führt es selbst aus**. Das ist §7 konsequent zu Ende gedacht: native Engine als Enforcer dort, wo
+sie stark ist; Signal als invariantentreue Klammer.
+
+### 13.4 — Entscheidungs-Faustregel
+
+| Situation | Empfehlung |
+|-----------|------------|
+| Nur Databricks, keine Cross-Team-Governance-Not | **Signal bringt wenig** — DLT + Lakehouse Monitoring, ggf. OSS `datacontract-cli` fürs CI-Gate. |
+| Nur Databricks, aber echte Datenprodukt-Governance (Versionierung, Consumer-Verträge, Approval) | **Signal bringt die Vertrags-/Lifecycle-Ebene**, die Databricks nicht hat — Wert ohne Plattform-Vielfalt. |
+| BDC heterogen (HANA + HDLF + Databricks) | **Signal differenziert und schwer ersetzbar** — Vereinheitlichung + HANA-Lücke kann kein natives Tool liefern. |
+
+---
+
+## 14 — Kernaussage
 
 Signal muss für Multi-Plattform **nicht** seine Engine aufgeben und auch nicht pro Backend eine neue
 bauen. Es muss **vier klar lokalisierte Nähte** hinter eine `Dialect`/`Backend`-Abstraktion ziehen
