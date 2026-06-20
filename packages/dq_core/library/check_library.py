@@ -31,6 +31,19 @@ def categories() -> list[str]:
     return list(load_library().get("categories", []))
 
 
+def families() -> list[str]:
+    """Functional families (observability | quality) — the obs/quality axis,
+    orthogonal to ``categories`` (the SQL-domain axis)."""
+    return list(load_library().get("families", []))
+
+
+def check_ids_where(field: str, value: str) -> frozenset[str]:
+    """Check ids whose ``field`` equals ``value`` — the single source of truth
+    for functional classification consumed by the engine (gating) and the store
+    (family rollup), so those mappings no longer drift in hardcoded sets."""
+    return frozenset(c["id"] for c in checks() if c.get(field) == value)
+
+
 def check_by_id(check_id: str) -> dict[str, Any] | None:
     for check in checks():
         if check.get("id") == check_id:

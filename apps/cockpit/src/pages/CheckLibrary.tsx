@@ -1,7 +1,8 @@
 import { useState, type CSSProperties } from 'react';
 import { useLibrary } from '@/api/library';
 import { t } from '@/i18n/de';
-import type { CheckDef } from '@/types';
+import { FamilyTag } from '@/components/ui/FamilyTag';
+import type { CheckDef, CheckFamily } from '@/types';
 
 const chipBtn = (active: boolean): CSSProperties => ({
   padding: '4px 10px', borderRadius: 20,
@@ -24,10 +25,16 @@ function CheckCard({ check }: { check: CheckDef }) {
             <div style={{ fontSize: 12, color: 'var(--fg-2)', marginTop: 4, lineHeight: 1.4 }}>{check.short}</div>
           )}
         </div>
-        <span style={{
-          fontSize: 10, padding: '2px 6px', borderRadius: 4, flexShrink: 0,
-          background: 'var(--bg-2)', color: 'var(--fg-3)', border: '1px solid var(--line-2)',
-        }}>{check.category}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+          <FamilyTag family={check.family} />
+          <span style={{
+            fontSize: 10, padding: '2px 6px', borderRadius: 4,
+            background: 'var(--bg-2)', color: 'var(--fg-3)', border: '1px solid var(--line-2)',
+          }}>{check.category}</span>
+        </div>
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--fg-3)' }}>
+        {t.library.gating.label}: <span style={{ color: 'var(--fg-2)' }}>{t.library.gating[check.gating]}</span>
       </div>
       {check.help && (
         <div style={{ fontSize: 12, color: 'var(--fg-3)', lineHeight: 1.45 }}>{check.help}</div>
@@ -65,10 +72,12 @@ export default function CheckLibrary() {
   const { data: library, isLoading } = useLibrary();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const [family, setFamily] = useState<CheckFamily | ''>('');
 
   const q = search.toLowerCase();
   const checks = (library?.checks ?? []).filter(c => {
     if (category && c.category !== category) return false;
+    if (family && c.family !== family) return false;
     const haystack = [c.id, c.label, c.short, c.help, c.example].join(' ').toLowerCase();
     if (q && !haystack.includes(q)) return false;
     return true;
@@ -98,6 +107,19 @@ export default function CheckLibrary() {
             style={chipBtn(category === cat)}
             onClick={() => setCategory(category === cat ? '' : cat)}
           >{cat}</button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button style={chipBtn(family === '')} onClick={() => setFamily('')}>
+          {t.library.allFamilies}
+        </button>
+        {(library?.families ?? []).map(fam => (
+          <button
+            key={fam}
+            style={chipBtn(family === fam)}
+            onClick={() => setFamily(family === fam ? '' : fam)}
+          >{t.library.family[fam]}</button>
         ))}
       </div>
 

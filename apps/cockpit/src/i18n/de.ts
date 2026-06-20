@@ -647,9 +647,17 @@ export const t = {
     title: 'Check-Bibliothek',
     searchPlaceholder: 'Check suchen…',
     allCategories: 'Alle Kategorien',
+    allFamilies: 'Alle Familien',
     noResults: 'Keine Checks gefunden',
     params: 'Parameter',
     templateSql: 'SQL-Vorlage',
+    family: { observability: 'Observability', quality: 'Quality' },
+    gating: {
+      label: 'Gating',
+      gate: 'Gate',
+      expensive: 'Teuer (gegated)',
+      standard: 'Standard',
+    },
   },
   liveRun: 'Run läuft',
 };
