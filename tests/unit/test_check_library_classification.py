@@ -20,16 +20,37 @@ def test_families_listed():
     assert families() == ["observability", "quality"]
 
 
+def test_standard_gap_templates_are_present():
+    ids = {c["id"] for c in checks()}
+
+    assert {
+        "duplicate_composite",
+        "volume_anomaly",
+        "cross_field_consistency",
+        "type_conformance",
+    } <= ids
+
+
+def test_sap_domain_templates_are_not_in_standard_library():
+    ids = {c["id"] for c in checks()}
+
+    assert not {
+        "sap_bseg_balance",
+        "sap_bkpf_orphan",
+        "sap_fiscal_completeness",
+        "sap_key_plausibility",
+    } & ids
+
+
 def test_engine_gating_sets_derive_from_library():
     from dq_core.engine.check_engine import GATE_TYPES, EXPENSIVE_TYPES
 
     assert GATE_TYPES == check_ids_where("gating", "gate")
     assert EXPENSIVE_TYPES == check_ids_where("gating", "expensive")
     # Regression lock: guards against accidental reclassification of a check.
-    assert GATE_TYPES == {"freshness", "sap_replication_lag"}
+    assert GATE_TYPES == {"freshness", "sap_replication_lag", "volume_anomaly"}
     assert EXPENSIVE_TYPES == {
         "reference_integrity", "aggregate_range", "duplicate", "duplicate_composite",
-        "sap_bseg_balance", "sap_bkpf_orphan", "sap_fiscal_completeness",
     }
 
 
@@ -38,7 +59,8 @@ def test_store_obs_types_derive_from_library():
 
     assert set(ResultStore._OBS_TYPES) == check_ids_where("family", "observability")
     assert set(ResultStore._OBS_TYPES) == {
-        "freshness", "sap_replication_lag", "row_count", "schema",
+        "freshness", "row_count", "sap_replication_lag", "schema",
+        "type_conformance", "volume_anomaly",
     }
 
 

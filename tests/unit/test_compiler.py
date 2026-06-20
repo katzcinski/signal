@@ -117,6 +117,22 @@ def test_composite_key_uses_composite_template():
     assert '"ORDER_ID" || \'|\' || "ITEM_NO"' in config.checks[0].sql
 
 
+def test_internal_templates_are_not_compiled_from_contract_v1():
+    contract = {
+        "product": "X", "dataset": "X", "version": "1.0.0",
+        "guarantees": {
+            "schema": {"columns": ["ORDER_DATE"], "mode": "closed"},
+            "volume": {"min_rows": 1, "baseline": "rolling"},
+        },
+    }
+
+    config = compile_contract(contract)
+    types = {check.type for check in config.checks}
+
+    assert types == {"schema", "row_count"}
+    assert not {"volume_anomaly", "cross_field_consistency", "type_conformance"} & types
+
+
 def test_completeness_maps_min_pct_to_null_quote():
     contract = {
         "product": "X", "dataset": "X", "version": "1.0.0",

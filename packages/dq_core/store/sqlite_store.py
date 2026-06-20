@@ -581,9 +581,10 @@ class ResultStore:
             return [dict(r) for r in rows]
 
     # Observability metric families for the time-series view (UX-N1).
-    # row_count → "volume"; freshness/replication-lag → "freshness".
+    # row_count/volume_anomaly → "volume"; freshness/replication-lag → "freshness".
     _METRIC_FAMILY = {
         "row_count": "volume",
+        "volume_anomaly": "volume",
         "freshness": "freshness",
         "sap_replication_lag": "freshness",
     }

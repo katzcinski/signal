@@ -188,7 +188,7 @@ Seeding-Regeln aus der Metadatenlage:
   aber nicht erzwungenen Keys — ein deklarierter, nicht-eindeutiger Key ist schlimmer als keiner).
 - **Fact → Dimension-Bezug** → `reference_integrity`-Check (FK-Waisen).
 - **Measure/Kennzahl** → `value_range` / `aggregate_range`.
-- **SAP-Strukturen** (BSEG/BKPF/Perioden) → die `SAP / BDC`-Templates der Library.
+- **SAP-Strukturen** (BSEG/BKPF/Perioden) → nicht Teil der generischen Standard-Library; bei Bedarf projektspezifisch über `custom_sql` oder eine externe Fachruntime.
 
 Die `check_library.json` (20 Templates, 5 Kategorien) bleibt die einzige Quelle der
 Check-Typen für Engine **und** UI. Der Builder füllt `{schema}`/`{dataset}` und die
