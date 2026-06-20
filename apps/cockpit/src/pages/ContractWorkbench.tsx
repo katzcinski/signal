@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { dump } from 'js-yaml';
 import type { AxiosError } from 'axios';
 import { toast } from 'sonner';
@@ -20,7 +20,7 @@ import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
 import { useRoleStore, canWriteContract } from '@/store/role';
 import type {
-  Contract, ContractGuarantees, ContractOut, ContractPutBody, CheckState, DiffEntry,
+  ArtifactKind, Contract, ContractGuarantees, ContractOut, ContractPutBody, CheckState, DiffEntry,
   GuaranteeCompleteness, GuaranteeKey, GuaranteeNotNull, GuaranteeReferential,
   InventoryDataset, Severity,
 } from '@/types';
@@ -49,6 +49,29 @@ const selectStyle: React.CSSProperties = {
 const fieldLabel: React.CSSProperties = { fontSize: 11, color: 'var(--fg-3)' };
 
 const SEVERITIES: Severity[] = ['warn', 'fail', 'critical'];
+
+// ─── Frame split by kind ─────────────────────────────────────────────────────
+// Two visible frames on one tool: internal DQ gates (no ceremony) and boundary
+// contracts (versioned, governed). `internal_gate` ⇒ internal; everything else
+// is a boundary contract. The editor/compiler engine is shared — only chrome and
+// ceremony differ — so this is an IA split, not two separate workbenches.
+type Section = 'internal' | 'contract';
+const sectionOfKind = (kind: ArtifactKind | undefined): Section =>
+  kind === 'internal_gate' ? 'internal' : 'contract';
+
+function FrameTag({ internal }: { internal: boolean }) {
+  return (
+    <span style={{
+      fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+      background: internal ? 'var(--qual)22' : 'var(--cont)22',
+      border: `1px solid ${internal ? 'var(--qual)' : 'var(--cont)'}`,
+      color: internal ? 'var(--qual)' : 'var(--cont)',
+      whiteSpace: 'nowrap',
+    }}>
+      {internal ? t.workbench.frameInternal : t.workbench.frameContract}
+    </span>
+  );
+}
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 
@@ -833,29 +856,58 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
 const complianceStatus = (c: ContractOut): string =>
   c.compliance === 'compliant' ? 'pass' : c.compliance === 'breached' ? 'fail' : 'unknown';
 
-function ContractList({ contracts, inventory, selected, onSelect }: {
+function SectionTabs({ section, onChange }: { section: Section; onChange: (s: Section) => void }) {
+  const tab = (key: Section, label: string) => (
+    <button
+      onClick={() => onChange(key)}
+      style={{
+        flex: 1, padding: '8px 8px', fontSize: 12, cursor: 'pointer', background: 'none',
+        border: 'none', borderBottom: section === key ? '2px solid var(--cont)' : '2px solid transparent',
+        color: section === key ? 'var(--fg)' : 'var(--fg-3)', fontWeight: section === key ? 600 : 400,
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div style={{ display: 'flex', borderBottom: '1px solid var(--line)' }}>
+      {tab('internal', t.workbench.tabInternal)}
+      {tab('contract', t.workbench.tabContract)}
+    </div>
+  );
+}
+
+function ContractList({ contracts, inventory, selected, onSelect, section, onSectionChange }: {
   contracts: ContractOut[];
   inventory: InventoryDataset[];
   selected: string;
   onSelect: (product: string) => void;
+  section: Section;
+  onSectionChange: (s: Section) => void;
 }) {
   const [search, setSearch] = useState('');
   const seed = useSeedContract();
   const [seedingId, setSeedingId] = useState('');
 
+  const inSection = contracts.filter(c => sectionOfKind(c.kind) === section);
   const q = search.trim().toLowerCase();
   const filtered = q
-    ? contracts.filter(c => c.product.toLowerCase().includes(q) || c.dataset.toLowerCase().includes(q))
-    : contracts;
+    ? inSection.filter(c => c.product.toLowerCase().includes(q) || c.dataset.toLowerCase().includes(q))
+    : inSection;
 
+  // "Neu aus Inventar" seeds an internal gate (the seed default kind), so it only
+  // belongs in the internal frame; the contract frame is reached via promotion.
   const contractKeys = new Set(contracts.flatMap(c => [c.product, c.dataset]));
-  const uncovered = inventory.filter(d => {
-    const id = String(d.id ?? datasetName(d));
-    return id && !contractKeys.has(id) && !contractKeys.has(datasetName(d));
-  });
+  const uncovered = section === 'internal'
+    ? inventory.filter(d => {
+        const id = String(d.id ?? datasetName(d));
+        return id && !contractKeys.has(id) && !contractKeys.has(datasetName(d));
+      })
+    : [];
 
   return (
     <div style={{ width: 280, borderRight: '1px solid var(--line)', overflowY: 'auto', flexShrink: 0 }}>
+      <SectionTabs section={section} onChange={onSectionChange} />
       <div style={{ padding: 10, borderBottom: '1px solid var(--line)' }}>
         <input
           value={search}
@@ -870,7 +922,9 @@ function ContractList({ contracts, inventory, selected, onSelect }: {
       </div>
 
       {filtered.length === 0 && (
-        <div style={{ padding: 14, fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.noContracts}</div>
+        <div style={{ padding: 14, fontSize: 12, color: 'var(--fg-3)' }}>
+          {section === 'internal' ? t.workbench.emptyInternal : t.workbench.emptyContract}
+        </div>
       )}
       {filtered.map(c => (
         <button
@@ -937,10 +991,12 @@ function ContractList({ contracts, inventory, selected, onSelect }: {
 
 // ─── Editor pane ─────────────────────────────────────────────────────────────
 
-function EditorPane({ product, liteOverride, onSetLiteOverride }: {
+function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promotePending }: {
   product: string;
   liteOverride: boolean | undefined;
   onSetLiteOverride: (value: boolean) => void;
+  onPromote: () => void;
+  promotePending: boolean;
 }) {
   const { data: contract, isLoading, isError, refetch } = useContract(product);
   const put = usePutContract(product);
@@ -1027,6 +1083,7 @@ function EditorPane({ product, liteOverride, onSetLiteOverride }: {
     ? report.blocking
     : ceremonyRequired && hasBreaking;
   const breakingBlocked = ceremonyBreaking && majorOf(draft.version) <= majorOf(String(activeVersion));
+  const canApproveDraft = lifecycle === 'draft' && draft.kind !== 'internal_gate';
 
   const validationErrors = put.isError ? extractValidationErrors(put.error) : [];
 
@@ -1065,6 +1122,19 @@ function EditorPane({ product, liteOverride, onSetLiteOverride }: {
     </button>
   );
 
+  // The bridge between frames: promote an internal gate in-place to a versioned
+  // boundary contract (the page flips the frame on success). Only shown for gates.
+  const promoteButton = draftKind === 'internal_gate' && lifecycle !== 'deprecated' ? (
+    <button
+      onClick={onPromote}
+      disabled={!canWrite || promotePending}
+      title={canWrite ? t.workbench.promoteHint : writeTitle}
+      style={{ ...btnStyle('ghost'), fontSize: 12, opacity: canWrite ? 1 : 0.5, cursor: canWrite ? 'pointer' : 'not-allowed' }}
+    >
+      {promotePending ? t.workbench.promoting : t.workbench.promote}
+    </button>
+  ) : null;
+
   const errorsBlock = validationErrors.length > 0 && (
     <div style={{ background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 5, padding: '8px 12px' }}>
       <div style={{ color: 'var(--status-fail)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t.workbench.validationErrors}</div>
@@ -1080,9 +1150,11 @@ function EditorPane({ product, liteOverride, onSetLiteOverride }: {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 20, gap: 14, overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <FrameTag internal={draft.kind === 'internal_gate'} />
           <span style={{ ...monoStyle, fontSize: 15, fontWeight: 700 }}>{draft.product}</span>
           <OwnershipTag ownedBy={contract?.owned_by} />
           <div style={{ flex: 1 }} />
+          {promoteButton}
           <button onClick={() => handleSetLite(false)} style={{ ...btnStyle('ghost'), fontSize: 12 }}>{t.workbench.fullMode}</button>
         </div>
         {!canWrite && <ReadOnlyBanner hint={t.role.noWriteContract} />}
@@ -1121,6 +1193,7 @@ function EditorPane({ product, liteOverride, onSetLiteOverride }: {
       {/* ApprovalBar: visible state machine + actions */}
       <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <LifecycleStepper current={lifecycle} />
+        <FrameTag internal={draft.kind === 'internal_gate'} />
         <OwnershipTag ownedBy={contract?.owned_by} />
         <div style={{ flex: 1 }} />
         {lifecycle === 'active' && draft.kind !== 'internal_gate' && <SlaBars product={product} />}
@@ -1128,8 +1201,9 @@ function EditorPane({ product, liteOverride, onSetLiteOverride }: {
           {!lockedToFull && (
             <button onClick={() => handleSetLite(true)} style={{ ...btnStyle('ghost'), fontSize: 12 }}>{t.workbench.liteMode}</button>
           )}
+          {promoteButton}
           {saveButton}
-          {lifecycle === 'draft' && (
+          {canApproveDraft && (
             <button
               style={{ ...btnStyle(), opacity: !canWrite || breakingBlocked || approve.isPending ? 0.5 : 1, cursor: canWrite ? 'pointer' : 'not-allowed' }}
               disabled={!canWrite || breakingBlocked || approve.isPending}
@@ -1156,7 +1230,7 @@ function EditorPane({ product, liteOverride, onSetLiteOverride }: {
       </div>
 
       {/* Approve confirm dialog — approving is a deliberate action */}
-      {confirmApprove && (
+      {confirmApprove && canApproveDraft && (
         <div style={{ ...cardStyle, border: '1px solid var(--cont)' }}>
           <div style={{ fontSize: 13, marginBottom: 10 }}>{t.workbench.approveConfirm}</div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -1218,8 +1292,24 @@ export default function ContractWorkbench() {
   const [promoteProduct, setPromoteProduct] = useSearchParamState('promote');
   const [compileParam] = useSearchParamState('compile');
   const [liteParam, setLite] = useSearchParamState('lite');
+  const [sectionParam] = useSearchParamState('section');
+  const [, setSearchParams] = useSearchParams();
   const promote = usePromoteContract();
   const handledPromoteRef = useRef('');
+
+  // Frame + selection live in the URL together; update them in a single
+  // navigation. Two separate setSearchParams calls in one tick clobber each other
+  // (react-router does not compose functional updaters), so combine them here.
+  const showInFrame = useCallback((next: Section, productId: string) => {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      params.delete('compile');
+      params.delete('promote');
+      if (productId) params.set('product', productId); else params.delete('product');
+      if (next === 'contract') params.set('section', 'contract'); else params.delete('section');
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // Honor the legacy /contracts?compile={id} deep link.
   const product = productParam || compileParam;
@@ -1230,14 +1320,20 @@ export default function ContractWorkbench() {
     c => c.kind === 'consumer_contract' || c.kind === 'provider_contract',
   );
 
-  useEffect(() => {
-    if (!promoteProduct || handledPromoteRef.current === promoteProduct) return;
-    handledPromoteRef.current = promoteProduct;
-    promote.mutate(promoteProduct, {
+  // The active frame follows the selected item's kind, so jump-ins from an object
+  // and deep links always land in the right frame (a seeded gate → internal). With
+  // nothing selected, the ?section= toggle decides; internal is the common default.
+  const selected = contracts.find(c => c.product === product);
+  const section: Section = selected ? sectionOfKind(selected.kind)
+    : sectionParam === 'contract' ? 'contract' : 'internal';
+
+  const runPromote = useCallback((target: string) => {
+    promote.mutate(target, {
       onSuccess: promoted => {
         toast.success(t.lineage.promotionSuccess);
-        setProduct(promoted.product);
-        setPromoteProduct('');
+        handledPromoteRef.current = '';
+        // Land the promoted contract in the contract frame, in place.
+        showInFrame('contract', promoted.product);
       },
       onError: err => {
         const detail = (err as AxiosError<{ detail?: unknown }>)?.response?.data?.detail;
@@ -1246,7 +1342,17 @@ export default function ContractWorkbench() {
         handledPromoteRef.current = '';
       },
     });
-  }, [promoteProduct, promote, setProduct, setPromoteProduct]);
+  }, [promote, showInFrame, setPromoteProduct]);
+
+  useEffect(() => {
+    if (!promoteProduct || handledPromoteRef.current === promoteProduct) return;
+    handledPromoteRef.current = promoteProduct;
+    runPromote(promoteProduct);
+  }, [promoteProduct, runPromote]);
+
+  // Switching frame clears the selection so the editor never shows an item from
+  // the other frame while the list shows this one.
+  const handleSectionChange = (next: Section) => showInFrame(next, '');
 
   return (
     <div className="page-full">
@@ -1261,6 +1367,8 @@ export default function ContractWorkbench() {
           inventory={inventory.data?.datasets ?? []}
           selected={product}
           onSelect={setProduct}
+          section={section}
+          onSectionChange={handleSectionChange}
         />
         {product ? (
           <EditorPane
@@ -1268,8 +1376,10 @@ export default function ContractWorkbench() {
             product={product}
             liteOverride={liteOverride}
             onSetLiteOverride={value => setLite(value ? '1' : '0')}
+            onPromote={() => runPromote(product)}
+            promotePending={promote.isPending}
           />
-        ) : !contractsQuery.isLoading && !hasContracts ? (
+        ) : section === 'contract' && !contractsQuery.isLoading && !hasContracts ? (
           <div style={{ flex: 1, padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{
               background: 'var(--bg-1)', border: '1px dashed var(--line-2)',
