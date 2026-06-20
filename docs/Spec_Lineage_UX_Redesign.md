@@ -18,6 +18,23 @@ genau dieses Signal fehlt heute in der Lineage komplett und ist der rote Faden d
 > lesen, und ein Inspektions-Panel, das nicht über den Graphen klappt. Das ist mehr Choreografie
 > als Politur.
 
+> **Umgesetzt 2026-06-20 (Phase 1 + 2)** — Branch `claude/lineage-usability-design-7p9p01`,
+> alles in `apps/cockpit/src/pages/LineageMap.tsx`:
+> **Phase 1 (Ruhe):** UX-L1 (Spalten-Graph layoutet nur noch bei neu erscheinenden Knoten; Kamera
+> wird über Pan/Zoom und über Trace-Rebuilds hinweg erhalten statt refittet — *Einschränkung:*
+> bestehende Knoten können beim Trace-Rebuild reflowen, die Kamera bleibt aber stehen), UX-L2
+> (Fokus gleitet animiert und nur für Off-Screen-Knoten, respektiert `prefers-reduced-motion`),
+> UX-L3 (Canvas füllt die Seite via `clamp(...100dvh...)` + `ResizeObserver`→`cy.resize()` ohne
+> Refit), UX-L6 (leere Swimlanes werden bei Filtern ausgeblendet), UX-L7 (`useIsNarrow` per
+> `matchMedia`-Listener statt eingefrorenem Snapshot).
+> **Phase 2 (Optik):** UX-L8 (Objektknoten = Karte mit 3px-Familien-Spine + *einem* Coverage-Punkt,
+> Label im Knoten, Tokens), UX-L9 (Lanes = ruhige solide Swimlane-Bänder), UX-L10 (lesbare
+> Spalten-Pills, 11px), UX-L11 (Legenden in eine einklappbare Leiste unter dem Graphen, inkl.
+> Familien-Spine-Legende), UX-L12 (`useThemeVersion` baut den Graphen bei `data-theme`-Wechsel neu
+> auf → Live-Recolor). Verifiziert: `typecheck`, `lint`, 70 Tests, `build` grün.
+> **Offen (Phase 3):** UX-L13 (gedocktes Panel), UX-L4 (geteilte Instanz/Tabs), UX-L5 (Pin-Modus),
+> UX-L14 (Graph-Controls/Minimap), UX-L15 (Tastatur/A11y).
+
 ---
 
 ## 1 · Befund — was heute warum stört
