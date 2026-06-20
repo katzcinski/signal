@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Generator
 
 from ..engine.models import CheckResult, RunSummary
+from ..library.check_library import check_ids_where
 
 
 class ResultStore:
@@ -468,7 +469,11 @@ class ResultStore:
     # Familien-Status (R3-2) — Objekt × Familie statt Entweder-oder
     # ------------------------------------------------------------------
 
-    _OBS_TYPES = ("freshness", "sap_replication_lag", "row_count", "schema")
+    # Welche Check-Typen zur Observability-Familie zählen, kommt aus der
+    # Check-Bibliothek (`library/check_library.json`, Feld `family`) — dieselbe
+    # Quelle wie der Picker, statt hier dupliziert. `sorted` hält die
+    # Placeholder-Reihenfolge deterministisch.
+    _OBS_TYPES = tuple(sorted(check_ids_where("family", "observability")))
 
     def get_object_family_status(self) -> dict[str, dict[str, str]]:
         """Je Dataset der schlechteste Status getrennt nach Familie

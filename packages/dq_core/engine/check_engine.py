@@ -11,6 +11,7 @@ import yaml
 
 from .expectation import evaluate, validate_expectation
 from .models import CheckDef, CheckResult, DatasetConfig, RunSummary, VALID_SEVERITIES
+from ..library.check_library import check_ids_where
 from ..store.sqlite_store import ResultStore
 
 
@@ -117,11 +118,12 @@ def dataset_config_to_yaml(config: DatasetConfig) -> str:
 # ob teure Konsistenz-Checks überhaupt sinnvoll sind — stale Daten erzeugen
 # sonst Phantom-Failures. Übersprungene Checks erscheinen IMMER als explizites
 # Ergebnis mit state='skipped_stale' (G6), nie als stilles Auslassen.
-GATE_TYPES: frozenset[str] = frozenset({"freshness", "sap_replication_lag"})
-EXPENSIVE_TYPES: frozenset[str] = frozenset({
-    "reference_integrity", "aggregate_range", "duplicate", "duplicate_composite",
-    "sap_bseg_balance", "sap_bkpf_orphan", "sap_fiscal_completeness",
-})
+#
+# Die Klassifikation (gate | expensive | standard) lebt in der Check-Bibliothek
+# (`library/check_library.json`, Feld `gating`) — Single Source of Truth statt
+# hier dupliziert. Ein neuer Check wird dadurch automatisch korrekt gegated.
+GATE_TYPES: frozenset[str] = check_ids_where("gating", "gate")
+EXPENSIVE_TYPES: frozenset[str] = check_ids_where("gating", "expensive")
 
 
 def run_checks(

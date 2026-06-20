@@ -97,6 +97,11 @@ export interface CheckTemplateParam {
   hint?: string;
 }
 
+// Functional axis: which family a check's result rolls up into (obs/quality).
+export type CheckFamily = 'observability' | 'quality';
+// Execution axis: role in the gating chain (cheap gates gate expensive checks).
+export type CheckGating = 'gate' | 'expensive' | 'standard';
+
 export interface CheckDef {
   id: string;
   label: string;
@@ -104,6 +109,8 @@ export interface CheckDef {
   help: string;
   example?: string;
   category: string;
+  family: CheckFamily;
+  gating: CheckGating;
   sql_template: string;
   params: CheckTemplateParam[];
   default_expect: string;
@@ -114,6 +121,7 @@ export interface CheckDef {
 export interface CheckLibrary {
   checks: CheckDef[];
   categories: string[];
+  families: CheckFamily[];
 }
 
 // ---- Runs ----

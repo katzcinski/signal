@@ -59,6 +59,16 @@ def test_library_has_categories():
     assert len(data["categories"]) > 0
 
 
+def test_library_has_families():
+    resp = client.get("/api/library")
+    data = resp.json()
+    assert data["families"] == ["observability", "quality"]
+    # Every check carries the functional classification consumed by engine/store.
+    for check in data["checks"]:
+        assert check["family"] in {"observability", "quality"}
+        assert check["gating"] in {"gate", "expensive", "standard"}
+
+
 def test_objects_empty():
     resp = client.get("/api/objects")
     assert resp.status_code == 200
