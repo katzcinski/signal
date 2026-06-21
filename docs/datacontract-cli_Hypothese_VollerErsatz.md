@@ -277,6 +277,76 @@ selbst *mit* HANA-Engine — **nicht das Produkt, nur einen Motor**.
 
 ---
 
+## 6.5 Ein Executor oder zwei? — die Dual-Engine-Frage
+
+Naheliegender Einwand zum empfohlenen Mittelweg: Wenn **Delta-Tabellen über die
+CLI** und **HANA-Objekte über die eigene Engine** geprüft werden — sind das nicht
+**zwei Runner**, also genau das in Integration.md §0 verbotene Anti-Pattern? Und
+wäre die CLI als *single tool* für alle Ausführung dann nicht ein großer Mehrwert?
+
+**Was der Leitsatz „niemals ein zweiter Check-Runner" wirklich verbietet:**
+*dasselbe Objekt* durch zwei Engines laufen zu lassen und **zwei Wahrheiten** auf
+identischen Daten zu erzeugen. Der Substrat-Split ist etwas anderes:
+
+```
+HANA-Objekt  ──▶ genau EINE Engine (Signal)     ┐
+                                                 ├─▶ EIN Store · EIN compliance.py · EIN Cockpit
+Delta-Objekt ──▶ genau EINE Engine (CLI)         ┘
+```
+
+Jedes Objekt hat **genau einen** maßgeblichen Runner; nichts wird doppelt geprüft.
+Das ist „ein Runner *pro Substrat*", nicht „zwei Runner *auf einer Quelle*". Genau
+deshalb sagt Bewertung §8, die CLI sei als Executor *nur* in der Databricks-Plane
+tragfähig — dort gibt es kein HANA, mit dem sie kollidieren könnte.
+
+**Die entscheidende Frage ist: *was* muss „single" sein?** Der Mehrwert eines
+single tool ist **Konsistenz** — die zählt aber **nicht beim Executor**, sondern
+eine Ebene höher:
+
+| Schicht | muss einheitlich sein? | im Split? |
+|---|---|---|
+| Contract-Semantik (Garantien) | **ja** | ✅ eine Quelle |
+| Result-/Compliance-Modell | **ja** | ✅ ein Store, ein `compliance.py` |
+| Cockpit / Status / SLA | **ja** | ✅ eine Oberfläche |
+| **Executor (Binary)** | **nein** | ❌ zwei — *und das ist ok* |
+
+Solange Contract + Result-Modell + Cockpit **eins** sind, ist „zwei Executoren"
+kein zweites Tool, sondern **zwei Adapter hinter einer Plattform** (dasselbe
+Muster, mit dem Soda Core intern an Data-Source-Adapter dispatcht). Die CLI ist
+dann ein **untergeordneter Executor unter Signals Result-Modell**, kein
+gleichrangiges Tool — und diese Unterordnung löst die Anti-Pattern-Sorge auf.
+
+**Warum „CLI als single tool" den Mehrwert nicht gratis bringt:** Damit die CLI
+*alles* prüft, müsste sie auch HANA prüfen — also exakt das Hypothese-Szenario aus
+§2.3. Der single-tool-Vorteil (eine Mental-Map, ein Skillset, ein Config-Modell)
+wird erkauft mit **G1, G8, Read-only und Gating als Shim** zurück, SAP-/HANA-SQL in
+jeden Contract kopiert und dem verschenkten Differenzierer. Man tauscht „zwei
+saubere Adapter" gegen „ein Tool + vier Shims, die genau die gratis verlorenen
+Garantien rekonstruieren".
+
+**Die ehrlichen Kosten des Splits** (umsonst ist er nicht):
+
+| Kosten | Reales Risiko | Gegenmittel |
+|---|---|---|
+| Zwei Codepfade (HANA-Engine + CLI-Harness + result-mapper) | Wartungs-/Testlast verdoppelt | gemeinsamer Result-Mapper-Vertrag; ein Schema für `RunSummary` |
+| **Semantik-Drift** — `unique: true` (Compiler) ≠ Sodas Duplicate-Check? | faktisch doch *zwei Wahrheiten*, nur auf verschiedenen Objekten | **Autorität „Garantie → Check-Definition" bleibt in *einer* Spezifikation** (Library/Mapping); CLI führt nur aus, definiert nicht |
+| Zwei Failure-Modes, zwei Config-Welten (hdbcli vs. databricks/duckdb) | Betriebskomplexität | klare Plane-Zuordnung pro Objekt im Inventar; eine Trigger-API |
+| Zwei Performance-Profile (Batch-UNION vs. Soda-Round-Trips) | inkonsistente Laufzeiten | Erwartung pro Plane dokumentieren, nicht angleichen wollen |
+
+**Wann single tool *doch* gewinnt:** Es ist eine **Portfolio-Frage**. Ist die
+Flotte überwiegend Delta/BDC und HANA marginal, kann die operative Einfachheit
+*eines* Executors den Verlust der HANA-Native-Kante überwiegen. Ist HANA der Kern
+(heute der Fall), gewinnt der Split — weil der einzige Weg zum single tool über die
+HANA-Shim-Steuer (§2.3) führt.
+
+> **Merksatz:** Zwei Executoren hinter *einem* Contract-/Result-/Cockpit-Modell
+> sind kein Anti-Pattern, sondern „richtiges Werkzeug pro Substrat". Das
+> Anti-Pattern wäre erst zwei *Wahrheiten*. Der single-tool-Mehrwert ist real,
+> kostet auf der HANA-Seite aber genau die Governance-Garantien, die Signals Pitch
+> ausmachen.
+
+---
+
 ## 7. Fazit
 
 Unter P1–P3 ist der volle Ersatz **technisch konstruierbar** (§2–§3), aber er
