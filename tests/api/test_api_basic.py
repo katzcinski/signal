@@ -130,3 +130,68 @@ def test_contract_put_valid():
         },
     )
     assert resp.status_code == 200, resp.text
+
+
+def test_contract_checks_roundtrip_through_put_and_get():
+    """Iteration 1: checks[] must round-trip (not be stripped by model_dump)."""
+    body = {
+        "product": "test_checks_rt",
+        "dataset": "test_dataset",
+        "owned_by": "platform",
+        "version": "0.1.0",
+        "kind": "internal_gate",
+        "guarantees": {"keys": [{"columns": ["ID"], "unique": True}]},
+        "checks": [
+            {"id": "value_range",
+             "params": {"<SPALTE>": "AMOUNT", "<MIN>": "0", "<MAX>": "100"},
+             "expect": "= 0", "severity": "fail"},
+            {"id": "allowed_values",
+             "params": {"<SPALTE>": "STATUS", "<WERTE>": ["A", "B"]}},
+        ],
+    }
+    put = client.put("/api/contracts/test_checks_rt", json=body)
+    assert put.status_code == 200, put.text
+    assert len(put.json()["checks"]) == 2
+
+    got = client.get("/api/contracts/test_checks_rt")
+    assert got.status_code == 200, got.text
+    checks = got.json()["checks"]
+    assert [c["id"] for c in checks] == ["value_range", "allowed_values"]
+    assert checks[1]["params"]["<WERTE>"] == ["A", "B"]  # value_list preserved
+
+
+def test_contract_dry_run_compiles_checks_to_sql():
+    """End-to-end: validator admits checks[], compiler turns them into CheckDefs."""
+    body = {
+        "product": "test_checks_compile",
+        "dataset": "test_dataset",
+        "owned_by": "platform",
+        "version": "0.1.0",
+        "kind": "internal_gate",
+        "guarantees": {},
+        "checks": [
+            {"id": "value_range",
+             "params": {"<SPALTE>": "AMOUNT", "<MIN>": "0", "<MAX>": "100"}},
+        ],
+    }
+    assert client.put("/api/contracts/test_checks_compile", json=body).status_code == 200
+    resp = client.post("/api/contracts/test_checks_compile/compile", params={"dry_run": True})
+    assert resp.status_code == 200, resp.text
+    compiled = resp.json()["checks"]
+    assert any(c["type"] == "value_range" and "AMOUNT" in c["sql"] for c in compiled)
+
+
+def test_contract_put_rejects_unknown_check_param_via_compile():
+    """A checks[] entry with a bogus param compiles to a 422 on dry-run."""
+    body = {
+        "product": "test_checks_bad",
+        "dataset": "test_dataset",
+        "owned_by": "platform",
+        "version": "0.1.0",
+        "kind": "internal_gate",
+        "guarantees": {},
+        "checks": [{"id": "value_range", "params": {"<SPALTE>": "A"}}],  # missing <MIN>/<MAX>
+    }
+    assert client.put("/api/contracts/test_checks_bad", json=body).status_code == 200
+    resp = client.post("/api/contracts/test_checks_bad/compile", params={"dry_run": True})
+    assert resp.status_code == 422, resp.text

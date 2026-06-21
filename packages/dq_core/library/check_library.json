@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "families": ["observability", "quality"],
   "categories": [
     "Vollständigkeit",
@@ -49,7 +49,7 @@
       "help": "Zählt Zeilen, in denen eine Pflichtspalte NULL ist. Ersetze <SPALTE> durch die zu prüfende Spalte.",
       "example": "Erwartung \"= 0\" → keine fehlenden Werte erlaubt.",
       "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" IS NULL",
-      "params": [{ "token": "<SPALTE>", "label": "Spalte", "hint": "Pflichtspalte, die nicht NULL sein darf" }],
+      "params": [{ "token": "<SPALTE>", "type": "identifier", "label": "Spalte", "hint": "Pflichtspalte, die nicht NULL sein darf" }],
       "default_expect": "= 0",
       "default_severity": "fail",
       "unit": ""
@@ -64,7 +64,7 @@
       "help": "Anteil der NULL-Werte einer Spalte in Prozent. Toleriert eine geringe Lückenquote statt strikt 0.",
       "example": "Erwartung \"< 2.0\" → höchstens 2 % NULL-Werte.",
       "sql_template": "SELECT ROUND(100.0 * COUNT(CASE WHEN \"<SPALTE>\" IS NULL THEN 1 END) / NULLIF(COUNT(*), 0), 2) FROM \"{schema}\".\"{dataset}\"",
-      "params": [{ "token": "<SPALTE>", "label": "Spalte", "hint": "Spalte, deren NULL-Quote gemessen wird" }],
+      "params": [{ "token": "<SPALTE>", "type": "identifier", "label": "Spalte", "hint": "Spalte, deren NULL-Quote gemessen wird" }],
       "default_expect": "< 2.0",
       "default_severity": "warn",
       "unit": "%"
@@ -79,7 +79,7 @@
       "help": "Differenz zwischen Gesamtzahl und eindeutigen Werten. > 0 bedeutet doppelte Schlüssel.",
       "example": "Erwartung \"= 0\" → Schlüssel ist eindeutig.",
       "sql_template": "SELECT COUNT(*) - COUNT(DISTINCT \"<SPALTE>\") FROM \"{schema}\".\"{dataset}\"",
-      "params": [{ "token": "<SPALTE>", "label": "Schlüsselspalte", "hint": "Spalte, die eindeutig sein soll" }],
+      "params": [{ "token": "<SPALTE>", "type": "identifier", "label": "Schlüsselspalte", "hint": "Spalte, die eindeutig sein soll" }],
       "default_expect": "= 0",
       "default_severity": "critical",
       "unit": ""
@@ -94,7 +94,7 @@
       "help": "Differenz zwischen Gesamtzahl und eindeutigen Kombinationen mehrerer Schlüsselspalten. Der Schlüsselausdruck wird vom Compiler aus validierten Spaltennamen erzeugt.",
       "example": "Erwartung \"= 0\" → Kombination (OrderID, ItemNo) ist eindeutig.",
       "sql_template": "SELECT COUNT(*) - COUNT(DISTINCT <KEY_EXPR>) FROM \"{schema}\".\"{dataset}\"",
-      "params": [{ "token": "<KEY_EXPR>", "label": "Schlüsselausdruck", "hint": "Vom Compiler aus validierten Spalten erzeugte Konkatenation" }],
+      "params": [{ "token": "<KEY_EXPR>", "type": "expr", "label": "Schlüsselausdruck", "hint": "Vom Compiler aus validierten Spalten erzeugte Konkatenation" }],
       "default_expect": "= 0",
       "default_severity": "critical",
       "unit": ""
@@ -109,7 +109,7 @@
       "help": "Wie Duplicates, aber mit APPROXIMATE_COUNT_DISTINCT für sehr große Tabellen — schneller, leicht ungenau.",
       "example": "Erwartung \"= 0\" → näherungsweise eindeutig.",
       "sql_template": "SELECT COUNT(*) - APPROXIMATE_COUNT_DISTINCT(\"<SPALTE>\") FROM \"{schema}\".\"{dataset}\"",
-      "params": [{ "token": "<SPALTE>", "label": "Schlüsselspalte", "hint": "Spalte, die näherungsweise eindeutig sein soll" }],
+      "params": [{ "token": "<SPALTE>", "type": "identifier", "label": "Schlüsselspalte", "hint": "Spalte, die näherungsweise eindeutig sein soll" }],
       "default_expect": "= 0",
       "default_severity": "warn",
       "unit": ""
@@ -124,7 +124,7 @@
       "help": "Zählt Zeilen, die eine fachliche Regel verletzen. Passe die WHERE-Bedingung an die Regel an.",
       "example": "Erwartung \"= 0\" → keine ungültigen Werte.",
       "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" < 0",
-      "params": [{ "token": "<SPALTE>", "label": "Spalte", "hint": "Spalte mit fachlicher Regel" }],
+      "params": [{ "token": "<SPALTE>", "type": "identifier", "label": "Spalte", "hint": "Spalte mit fachlicher Regel" }],
       "default_expect": "= 0",
       "default_severity": "fail",
       "unit": ""
@@ -139,7 +139,7 @@
       "help": "Zählt Zeilen, die eine Regel zwischen mehreren Spalten verletzen. Die Bedingung beschreibt den gültigen Zustand; gezählt wird NOT (Bedingung).",
       "example": "z.B. \"END_DATE\" >= \"START_DATE\" oder \"GROSS\" = \"NET\" + \"TAX\", Erwartung \"= 0\".",
       "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE NOT (<REGEL>)",
-      "params": [{ "token": "<REGEL>", "label": "Regel", "hint": "SQL-Prädikat, das für gültige Zeilen wahr ist" }],
+      "params": [{ "token": "<REGEL>", "type": "expr", "label": "Regel", "hint": "SQL-Prädikat, das für gültige Zeilen wahr ist" }],
       "default_expect": "= 0",
       "default_severity": "fail",
       "unit": ""
@@ -155,9 +155,9 @@
       "example": "z.B. Rabatt 0–100 %: WHERE-Grenzen <MIN>=0, <MAX>=100, Erwartung \"= 0\".",
       "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" < <MIN> OR \"<SPALTE>\" > <MAX>",
       "params": [
-        { "token": "<SPALTE>", "label": "Spalte", "hint": "Numerische Spalte" },
-        { "token": "<MIN>", "label": "Minimum", "hint": "Kleinster erlaubter Wert" },
-        { "token": "<MAX>", "label": "Maximum", "hint": "Größter erlaubter Wert" }
+        { "token": "<SPALTE>", "type": "identifier", "label": "Spalte", "hint": "Numerische Spalte" },
+        { "token": "<MIN>", "type": "number", "label": "Minimum", "hint": "Kleinster erlaubter Wert" },
+        { "token": "<MAX>", "type": "number", "label": "Maximum", "hint": "Größter erlaubter Wert" }
       ],
       "default_expect": "= 0",
       "default_severity": "fail",
@@ -172,10 +172,10 @@
       "short": "Nur erlaubte Codes/Werte",
       "help": "Zählt Zeilen mit Werten außerhalb einer erlaubten Menge. Ersetze die Liste in NOT IN durch die zulässigen Werte.",
       "example": "z.B. Status nur 'A','B','C': WHERE \"STATUS\" NOT IN ('A','B','C'), Erwartung \"= 0\".",
-      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" NOT IN ('<WERT1>', '<WERT2>')",
+      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" NOT IN (<WERTE>)",
       "params": [
-        { "token": "<SPALTE>", "label": "Spalte", "hint": "Spalte mit fester Wertemenge" },
-        { "token": "'<WERT1>', '<WERT2>'", "label": "Erlaubte Werte", "hint": "Kommagetrennte Liste erlaubter Werte" }
+        { "token": "<SPALTE>", "type": "identifier", "label": "Spalte", "hint": "Spalte mit fester Wertemenge" },
+        { "token": "<WERTE>", "type": "value_list", "label": "Erlaubte Werte", "hint": "Liste erlaubter Werte; jeder Eintrag wird automatisch in Hochkommas gesetzt" }
       ],
       "default_expect": "= 0",
       "default_severity": "fail",
@@ -192,8 +192,8 @@
       "example": "z.B. nur Großbuchstaben+Ziffern: <REGEX> = ^[A-Z0-9]+$, Erwartung \"= 0\".",
       "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" IS NOT NULL AND NOT \"<SPALTE>\" LIKE_REGEXPR '<REGEX>'",
       "params": [
-        { "token": "<SPALTE>", "label": "Spalte", "hint": "Textspalte mit Formatregel" },
-        { "token": "<REGEX>", "label": "Regex-Muster", "hint": "HANA-kompatibler regulärer Ausdruck, z.B. ^[A-Z]{2}[0-9]+$" }
+        { "token": "<SPALTE>", "type": "identifier", "label": "Spalte", "hint": "Textspalte mit Formatregel" },
+        { "token": "<REGEX>", "type": "regex", "label": "Regex-Muster", "hint": "HANA-kompatibler regulärer Ausdruck, z.B. ^[A-Z]{2}[0-9]+$" }
       ],
       "default_expect": "= 0",
       "default_severity": "fail",
@@ -210,9 +210,9 @@
       "example": "z.B. genau 4 Zeichen: <MIN>=4, <MAX>=4, Erwartung \"= 0\".",
       "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" IS NOT NULL AND LENGTH(\"<SPALTE>\") NOT BETWEEN <MIN> AND <MAX>",
       "params": [
-        { "token": "<SPALTE>", "label": "Spalte", "hint": "Textspalte" },
-        { "token": "<MIN>", "label": "Min. Länge", "hint": "Kleinste erlaubte Zeichenanzahl" },
-        { "token": "<MAX>", "label": "Max. Länge", "hint": "Größte erlaubte Zeichenanzahl" }
+        { "token": "<SPALTE>", "type": "identifier", "label": "Spalte", "hint": "Textspalte" },
+        { "token": "<MIN>", "type": "number", "label": "Min. Länge", "hint": "Kleinste erlaubte Zeichenanzahl" },
+        { "token": "<MAX>", "type": "number", "label": "Max. Länge", "hint": "Größte erlaubte Zeichenanzahl" }
       ],
       "default_expect": "= 0",
       "default_severity": "warn",
@@ -229,9 +229,9 @@
       "example": "Erwartung \"= 0\" → jede Fact-Zeile hat einen gültigen Dimensionsbezug.",
       "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" f LEFT JOIN \"{schema}\".\"<DIMENSION>\" d ON f.\"<FK>\" = d.\"<PK>\" WHERE d.\"<PK>\" IS NULL",
       "params": [
-        { "token": "<DIMENSION>", "label": "Dimension", "hint": "Dimensionstabelle (aus Inventar wählbar)" },
-        { "token": "<FK>", "label": "Fremdschlüssel", "hint": "Schlüsselspalte im Fact" },
-        { "token": "<PK>", "label": "Primärschlüssel", "hint": "Schlüsselspalte in der Dimension" }
+        { "token": "<DIMENSION>", "type": "identifier", "label": "Dimension", "hint": "Dimensionstabelle (aus Inventar wählbar)" },
+        { "token": "<FK>", "type": "identifier", "label": "Fremdschlüssel", "hint": "Schlüsselspalte im Fact" },
+        { "token": "<PK>", "type": "identifier", "label": "Primärschlüssel", "hint": "Schlüsselspalte in der Dimension" }
       ],
       "default_expect": "= 0",
       "default_severity": "critical",
@@ -247,7 +247,7 @@
       "help": "Prüft, ob eine Aggregatkennzahl (AVG, SUM, MIN, MAX, STDDEV) innerhalb eines erwarteten Korridors liegt. Erkennt Ausreißer und Verteilungsdrift.",
       "example": "z.B. Durchschnittsbetrag plausibel: Erwartung \"BETWEEN 10 AND 10000\".",
       "sql_template": "SELECT AVG(\"<SPALTE>\") FROM \"{schema}\".\"{dataset}\"",
-      "params": [{ "token": "<SPALTE>", "label": "Kennzahl", "hint": "Numerische Spalte für die Aggregation" }],
+      "params": [{ "token": "<SPALTE>", "type": "identifier", "label": "Kennzahl", "hint": "Numerische Spalte für die Aggregation" }],
       "default_expect": "BETWEEN 0 AND 1000000",
       "default_severity": "warn",
       "unit": ""
@@ -262,7 +262,7 @@
       "help": "Sekunden seit dem jüngsten Datensatz. Stellt sicher, dass die Tabelle aktuell beladen wird.",
       "example": "Erwartung \"< 86400\" → Daten nicht älter als 24 Stunden.",
       "sql_template": "SELECT SECONDS_BETWEEN(MAX(\"<SPALTE>\"), CURRENT_TIMESTAMP) FROM \"{schema}\".\"{dataset}\"",
-      "params": [{ "token": "<SPALTE>", "label": "Zeitstempelspalte", "hint": "Datum/Zeit der letzten Änderung" }],
+      "params": [{ "token": "<SPALTE>", "type": "identifier", "label": "Zeitstempelspalte", "hint": "Datum/Zeit der letzten Änderung" }],
       "default_expect": "< 86400",
       "default_severity": "warn",
       "unit": "s"
@@ -293,8 +293,8 @@
       "example": "Erwartung \"= 0\" → ORDER_DATE ist weiterhin DATE, NET_AMOUNT weiterhin DECIMAL.",
       "sql_template": "SELECT CASE WHEN COUNT(*) = 0 THEN 1 WHEN MAX(DATA_TYPE_NAME) <> '<DATA_TYPE_NAME>' THEN 1 ELSE 0 END FROM \"SYS\".\"TABLE_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}' AND COLUMN_NAME = '<SPALTE>'",
       "params": [
-        { "token": "<SPALTE>", "label": "Spalte", "hint": "Contract-Spalte" },
-        { "token": "<DATA_TYPE_NAME>", "label": "HANA-Typ", "hint": "Erwarteter DATA_TYPE_NAME, z.B. NVARCHAR, DATE, DECIMAL" }
+        { "token": "<SPALTE>", "type": "identifier", "label": "Spalte", "hint": "Contract-Spalte" },
+        { "token": "<DATA_TYPE_NAME>", "type": "string", "label": "HANA-Typ", "hint": "Erwarteter DATA_TYPE_NAME, z.B. NVARCHAR, DATE, DECIMAL" }
       ],
       "default_expect": "= 0",
       "default_severity": "critical",
@@ -325,7 +325,7 @@
       "help": "Sekunden seit dem jüngsten replizierten Satz. Überwacht die Aktualität von Replication Flows.",
       "example": "Erwartung \"< 3600\" → Replikation nicht älter als 1 Stunde.",
       "sql_template": "SELECT SECONDS_BETWEEN(MAX(\"<TIMESTAMP_COL>\"), CURRENT_TIMESTAMP)\nFROM \"{schema}\".\"{dataset}\"",
-      "params": [{ "token": "<TIMESTAMP_COL>", "label": "Zeitstempelspalte", "hint": "Technischer Replikationszeitstempel" }],
+      "params": [{ "token": "<TIMESTAMP_COL>", "type": "identifier", "label": "Zeitstempelspalte", "hint": "Technischer Replikationszeitstempel" }],
       "default_expect": "< 3600",
       "default_severity": "warn",
       "unit": "s"

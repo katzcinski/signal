@@ -132,6 +132,32 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                 },
             },
         },
+        # checks[]: library-instantiated checks (internal gates, Iteration 1).
+        # Structural shape only — semantic validation (id exists, params complete
+        # and type-correct) lives in the compiler, which is library-aware.
+        "checks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["id"],
+                "properties": {
+                    "id": {"type": "string", "minLength": 1},
+                    # string for scalar params; array of strings for value_list.
+                    "params": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "anyOf": [
+                                {"type": "string"},
+                                {"type": "array", "items": {"type": "string"}},
+                            ],
+                        },
+                    },
+                    "expect": {"type": "string"},
+                    "severity": _SEVERITY,
+                },
+            },
+        },
     },
 }
 
@@ -181,11 +207,19 @@ def validate_contract(data: dict[str, Any]) -> list[str]:
         loc = ".".join(str(p) for p in err.absolute_path) or "root"
         errors.append(f"[SCHEMA] {loc}: {err.message}")
 
-    # Lint everything except free-text fields — catches quotes, semicolons,
-    # comments and SQL keywords inside identifier-bearing values (S2/G1).
-    _lint_strings(
-        {k: v for k, v in data.items() if k not in _FREE_TEXT_FIELDS},
-        "root",
-        errors,
-    )
+    # Lint everything except free-text fields AND checks[].params — the latter
+    # legitimately carry quotes/regex/value-lists; their injection safety is
+    # enforced by the compiler's type-aware binding (S2), not by this prose
+    # linter. checks[].id/expect/severity are still linted.
+    lint_data = {k: v for k, v in data.items() if k not in _FREE_TEXT_FIELDS}
+    checks_for_lint = lint_data.pop("checks", None)
+    _lint_strings(lint_data, "root", errors)
+    if isinstance(checks_for_lint, list):
+        for i, chk in enumerate(checks_for_lint):
+            if isinstance(chk, dict):
+                _lint_strings(
+                    {k: v for k, v in chk.items() if k != "params"},
+                    f"root.checks[{i}]",
+                    errors,
+                )
     return errors

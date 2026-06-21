@@ -249,6 +249,14 @@ export const t = {
       completeness: 'Vollständigkeit',
       not_null: 'Not-Null',
     } as Record<string, string>,
+    checks: {
+      title: 'Bibliotheks-Checks',
+      subtitle: 'Engineering-Checks aus der Bibliothek (Wertebereiche, Regex, erlaubte Werte …) — nur interne Gates.',
+      empty: 'Noch keine Bibliotheks-Checks. Unten einen hinzufügen.',
+      add: '+ Check aus Bibliothek …',
+      expect: 'Erwartung',
+      addValue: 'Wert + Enter',
+    },
     compile: {
       title: 'Kompilieren & Testen',
       compileDry: 'Kompilieren (Dry-Run)',
