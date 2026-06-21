@@ -357,6 +357,7 @@ export const t = {
     noGateForPromotion: 'Kein Internal Gate vorhanden.',
     promotionSuccess: 'Contract-Entwurf erstellt.',
     searchPlaceholder: 'Nach Name suchen…',
+    legend: 'Legende',
     covered: 'Abgedeckt',
     partial: 'Teilweise',
     gap: 'Lücke',

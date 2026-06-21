@@ -5,7 +5,7 @@ import dagre from 'cytoscape-dagre';
 import { fetchColumnLineage, useColumnLineage, useLineage } from '@/api/lineage';
 import { useCoverageSummary } from '@/api/coverage';
 import { ObjectProfilePanel } from '@/components/ObjectProfilePanel';
-import { coverageColor, coverageIconDataUri } from '@/components/ui/coverageIcon';
+import { coverageIconDataUri } from '@/components/ui/coverageIcon';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
 import { useRoleStore, canProfileObject } from '@/store/role';
@@ -58,32 +58,103 @@ const OBJECT_EDGE_FALLBACK = '#8b949e';
 interface ResolvedTheme {
   bg1: string;
   bg2: string;
+  bg3: string;
   fg: string;
   fg2: string;
   fg3: string;
   line: string;
   line2: string;
   cont: string;
+  obs: string;
+  qual: string;
   fontMono: string;
 }
 
-let resolvedTheme: ResolvedTheme | null = null;
+// Re-read on every build so a runtime theme switch (signal/blueprint/daylight/…)
+// recolours the canvas. The MutationObserver in useThemeVersion clears this and
+// bumps a version that rebuilds the graph (UX-L12). Cheap enough to not cache.
 function resolveTheme(): ResolvedTheme {
-  if (resolvedTheme) return resolvedTheme;
   const styles = getComputedStyle(document.documentElement);
   const cssVar = (name: string, fallback: string) => styles.getPropertyValue(name).trim() || fallback;
-  resolvedTheme = {
+  return {
     bg1: cssVar('--bg-1', '#11151B'),
     bg2: cssVar('--bg-2', '#1A1F27'),
+    bg3: cssVar('--bg-3', '#222C3E'),
     fg: cssVar('--fg', '#E7EBF2'),
     fg2: cssVar('--fg-2', '#AAB3C2'),
     fg3: cssVar('--fg-3', '#5E6877'),
     line: cssVar('--line', '#27303A'),
     line2: cssVar('--line-2', '#313945'),
     cont: cssVar('--cont', '#5E83E6'),
+    obs: cssVar('--obs', '#F59E0B'),
+    qual: cssVar('--qual', '#00D4AA'),
     fontMono: cssVar('--font-mono', "'JetBrains Mono', monospace"),
   };
-  return resolvedTheme;
+}
+
+// The 3px family-spine — the cockpit's one inherited style signal (Konzept §1),
+// finally applied to lineage nodes. Coloured by the node's check family; a
+// neutral hairline when a node carries no family (UX-L8).
+function familySpineColor(family: string, theme: ResolvedTheme): string {
+  switch (family) {
+    case 'observability': return theme.obs;
+    case 'quality':       return theme.qual;
+    case 'contract':      return theme.cont;
+    default:              return theme.line2;
+  }
+}
+
+function spineDataUri(color: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="3" height="32" viewBox="0 0 3 32"><rect width="3" height="32" rx="1.5" fill="${color}"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+// Slide the camera to a node only when it sits outside the current viewport, and
+// animate the move instead of snapping (UX-L2). A node already in view never
+// moves the camera.
+function focusNode(cy: Cytoscape.Core, node: Cytoscape.NodeSingular) {
+  const ext = cy.extent();
+  const pos = node.position();
+  const inView = pos.x >= ext.x1 && pos.x <= ext.x2 && pos.y >= ext.y1 && pos.y <= ext.y2;
+  if (inView) return;
+  if (prefersReducedMotion()) {
+    cy.center(node);
+  } else {
+    cy.animate({ center: { eles: node } }, { duration: 220, easing: 'ease-out' });
+  }
+}
+
+// Live narrow-viewport detection (UX-L7): the desktop-only gate must react to
+// window resizes instead of freezing on a one-time innerWidth snapshot.
+function useIsNarrow(maxWidth = 900): boolean {
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < maxWidth,
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia(`(max-width: ${maxWidth - 1}px)`);
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, [maxWidth]);
+  return narrow;
+}
+
+// Bumps a counter whenever <html data-theme> changes so graph-build effects can
+// re-run with freshly resolved tokens (UX-L12).
+function useThemeVersion(): number {
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    if (typeof MutationObserver === 'undefined') return;
+    const obs = new MutationObserver(() => setVersion(v => v + 1));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-density'] });
+    return () => obs.disconnect();
+  }, []);
+  return version;
 }
 
 function cacheKey(nodes: LineageNode[]) {
@@ -373,11 +444,13 @@ function ObjectLineageGraph({
   const [selectedNode, setSelectedNode] = useState<LineageNode | null>(null);
   const [graphReady, setGraphReady] = useState(0);
   const [graphError, setGraphError] = useState<string | null>(null);
+  const [legendOpen, setLegendOpen] = useState(false);
   const navigate = useNavigate();
   const nodes = data.nodes;
   const edges = data.edges;
   const lanes = useMemo(() => layerLanes(nodes), [nodes]);
   const edgeKinds = useMemo(() => [...new Set(edges.map(edgeKind))].sort(), [edges]);
+  const themeVersion = useThemeVersion();
 
   const applyFilters = useCallback(() => {
     const cy = cyInstance.current;
@@ -399,6 +472,12 @@ function ObjectLineageGraph({
         !String(n.data('id')).toLowerCase().includes(q)
       ).style('display', 'none');
     }
+    // UX-L6: collapse swimlanes with no visible members so filtered views read
+    // as a compact band instead of leaving hollow lanes behind.
+    cy.nodes().filter(n => n.data('isLane')).forEach(lane => {
+      const hasVisibleChild = lane.children().some(child => child.style('display') !== 'none');
+      if (!hasVisibleChild) lane.style('display', 'none');
+    });
     if (dimension === 'internal') {
       cy.nodes().filter(n =>
         !n.data('isLane') && !n.data('has_internal_gate')
@@ -424,7 +503,7 @@ function ObjectLineageGraph({
       if (!node.empty()) {
         cy.nodes().unselect();
         node.select();
-        cy.center(node);
+        focusNode(cy, node);
         const nodeData = nodes.find(n => n.id === focus);
         if (nodeData) setSelectedNode(nodeData);
       }
@@ -500,29 +579,35 @@ function ObjectLineageGraph({
         },
         style: [
           {
+            // Card, not a dot: family-spine on the lead edge, name inside,
+            // a single coverage mark on the right. One axis per element (UX-L8).
             selector: 'node',
             style: {
+              'shape': 'roundrectangle',
+              'width': 176,
+              'height': 32,
               'background-color': theme.bg2,
-              'background-image': (el: Cytoscape.NodeSingular) =>
+              'background-image': (el: Cytoscape.NodeSingular) => [
+                spineDataUri(familySpineColor(String(el.data('family')), theme)),
                 coverageIconDataUri(String(el.data('coverage_flag'))),
-              'background-fit': 'none',
-              'background-width': '18px',
-              'background-height': '18px',
-              'background-position-x': '50%',
-              'background-position-y': '50%',
-              'border-width': 2,
-              'border-color': (el: Cytoscape.NodeSingular) =>
-                coverageColor(String(el.data('coverage_flag'))),
+              ],
+              'background-fit': ['none', 'none'],
+              'background-clip': ['none', 'none'],
+              'background-width': ['3px', '12px'],
+              'background-height': ['100%', '12px'],
+              'background-position-x': ['2px', '96%'],
+              'background-position-y': ['50%', '50%'],
+              'border-width': 1,
+              'border-color': theme.line,
               'label': 'data(label)',
-              'font-size': 10,
+              'font-size': 11,
               'font-family': theme.fontMono,
               'color': theme.fg,
               'text-valign': 'center',
-              'text-halign': 'right',
-              'text-margin-x': 8,
-              'width': 28,
-              'height': 28,
-              'shape': 'roundrectangle',
+              'text-halign': 'center',
+              'text-margin-x': 6,
+              'text-max-width': '108px',
+              'text-wrap': 'ellipsis',
             } as Record<string, unknown>,
           },
           {
@@ -544,27 +629,29 @@ function ObjectLineageGraph({
             style: { 'border-style': 'dashed' } as Record<string, unknown>,
           },
           {
+            // A quiet, solid swimlane band carrying the layer axis (UX-L9).
             selector: 'node[?isLane]',
             style: {
               'background-color': theme.bg2,
-              'background-opacity': 0.35,
+              'background-opacity': 0.18,
               'background-image': 'none',
               'border-width': 1,
-              'border-color': theme.line2,
-              'border-style': 'dashed',
+              'border-color': theme.line,
+              'border-style': 'solid',
               'shape': 'roundrectangle',
               'label': 'data(label)',
               'text-valign': 'top',
-              'text-halign': 'center',
-              'text-margin-y': -6,
-              'text-margin-x': 0,
-              'font-size': 11,
+              'text-halign': 'left',
+              'text-margin-y': 5,
+              'text-margin-x': 10,
+              'text-transform': 'uppercase',
+              'font-size': 10,
               'font-family': theme.fontMono,
               'color': theme.fg3,
-              'padding': 24,
+              'padding': 22,
             } as Record<string, unknown>,
           },
-          { selector: 'node:selected', style: { 'border-width': 3 } as Record<string, unknown> },
+          { selector: 'node:selected', style: { 'border-width': 2, 'border-color': theme.cont } as Record<string, unknown> },
           { selector: '.rc-path', style: { 'opacity': 1, 'border-width': 3 } as Record<string, unknown> },
           { selector: 'edge.rc-path', style: { 'line-color': theme.cont, 'target-arrow-color': theme.cont, 'width': 2.5 } as Record<string, unknown> },
           { selector: '.dimension-dim', style: { 'opacity': 0.15 } as Record<string, unknown> },
@@ -629,11 +716,20 @@ function ObjectLineageGraph({
     cyInstance.current = cy;
     setGraphReady(g => g + 1);
 
+    // UX-L3: track the canvas size so the graph fills the page; resize without
+    // refitting so the camera stays where the user left it.
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && cyRef.current) {
+      ro = new ResizeObserver(() => cy.resize());
+      ro.observe(cyRef.current);
+    }
+
     return () => {
+      ro?.disconnect();
       cy.destroy();
       if (cyInstance.current === cy) cyInstance.current = null;
     };
-  }, [data, edges, lanes, navigate, nodes, setFocus]);
+  }, [data, edges, lanes, navigate, nodes, setFocus, themeVersion]);
 
   if (graphError) return (
     <div style={{ color: 'var(--status-fail)', padding: 24 }}>
@@ -688,7 +784,57 @@ function ObjectLineageGraph({
             padding: '5px 10px', color: 'var(--fg)', fontSize: 12, minWidth: 180,
           }}
         />
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setLegendOpen(o => !o)}
+          aria-expanded={legendOpen}
+          style={{
+            marginLeft: 'auto', background: 'var(--bg-2)', border: '1px solid var(--line)',
+            borderRadius: 5, padding: '5px 10px', color: 'var(--fg-2)', fontSize: 12,
+          }}
+        >
+          {legendOpen ? `${t.lineage.legend} ▴` : `${t.lineage.legend} ▾`}
+        </button>
+      </div>
+
+      <div style={{
+        position: 'relative', background: 'var(--bg-1)', border: '1px solid var(--line)',
+        borderRadius: 8, overflow: 'hidden',
+        height: 'clamp(420px, calc(100dvh - 280px), 1400px)',
+      }}>
+        <div ref={cyRef} style={{ width: '100%', height: '100%' }} />
+        {selectedNode && (
+          <ObjectSidePanel
+            node={selectedNode}
+            canProfile={canProfile}
+            onClose={() => {
+              setSelectedNode(null);
+              setFocus('');
+              const cy = cyInstance.current;
+              if (cy) applyRootCause(cy, '');
+            }}
+            onOpenColumns={id => {
+              setFocus(id);
+              setView('columns');
+            }}
+            onProfile={onProfile}
+          />
+        )}
+      </div>
+
+      {legendOpen && (
+        <div style={{
+          display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
+          marginTop: 10, padding: '10px 12px', background: 'var(--bg-1)',
+          border: '1px solid var(--line)', borderRadius: 8,
+        }}>
+          {([['observability', 'obs'], ['quality', 'qual'], ['contract', 'cont']] as const).map(([fam, token]) => (
+            <span key={fam} style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 3, height: 14, borderRadius: 2, background: `var(--${token})`, display: 'inline-block' }} />
+              {fam}
+            </span>
+          ))}
+          <span style={{ width: 1, height: 16, background: 'var(--line)' }} />
           {Object.entries(COVERAGE_LABEL).map(([flag, label]) => (
             <span
               key={flag}
@@ -699,6 +845,7 @@ function ObjectLineageGraph({
               <img src={coverageIconDataUri(flag)} width={14} height={14} alt="" style={{ display: 'block' }} /> {label}
             </span>
           ))}
+          <span style={{ width: 1, height: 16, background: 'var(--line)' }} />
           <span
             title={t.lineage.tooltips.gateSignal}
             aria-label={`${t.gateSignal}: ${t.lineage.tooltips.gateSignal}`}
@@ -722,28 +869,7 @@ function ObjectLineageGraph({
             </span>
           ))}
         </div>
-      </div>
-
-      <div style={{ position: 'relative', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', height: 560 }}>
-        <div ref={cyRef} style={{ width: '100%', height: '100%' }} />
-        {selectedNode && (
-          <ObjectSidePanel
-            node={selectedNode}
-            canProfile={canProfile}
-            onClose={() => {
-              setSelectedNode(null);
-              setFocus('');
-              const cy = cyInstance.current;
-              if (cy) applyRootCause(cy, '');
-            }}
-            onOpenColumns={id => {
-              setFocus(id);
-              setView('columns');
-            }}
-            onProfile={onProfile}
-          />
-        )}
-      </div>
+      )}
     </>
   );
 }
@@ -754,12 +880,19 @@ type ColumnSelection =
   | { kind: 'edge'; edge: ColumnGraphEdgeData }
   | null;
 
+interface ColumnLayoutState {
+  laidOut: Set<string>;
+  fitted: boolean;
+  viewport: { pan: { x: number; y: number }; zoom: number } | null;
+}
+
 function applyColumnGraphState(
   cy: Cytoscape.Core,
   expanded: Set<string>,
   traceColumnIds: Set<string>,
   traceEdgeIds: Set<string>,
   search: string,
+  layout: ColumnLayoutState,
 ) {
   cy.elements().removeClass('trace-hl trace-dim found');
   cy.nodes('[kind="column"]').forEach(n => {
@@ -794,9 +927,25 @@ function applyColumnGraphState(
     ).addClass('found');
   }
 
-  const visible = cy.elements().filter(el => el.style('display') !== 'none');
-  if (visible.length > 0) {
-    visible.layout({ name: 'dagre', rankDir: 'LR', nodeSep: 18, rankSep: 84, edgeSep: 8, padding: 38, fit: true } as unknown as { name: string }).run();
+  // UX-L1: only re-layout when previously unseen nodes appear (expand/trace).
+  // Collapse, search and selection never relayout. And after the first frame we
+  // keep the camera exactly where it was — interaction must not refit or rezoom.
+  const visibleNodes = cy.nodes().filter(n => n.style('display') !== 'none');
+  const unseen = visibleNodes.filter(n => !layout.laidOut.has(n.id()));
+  if (unseen.length > 0 && visibleNodes.length > 0) {
+    const pan = { ...cy.pan() };
+    const zoom = cy.zoom();
+    const subgraph = visibleNodes.union(visibleNodes.connectedEdges().filter(e => e.style('display') !== 'none'));
+    subgraph.layout({
+      name: 'dagre', rankDir: 'LR', nodeSep: 18, rankSep: 84, edgeSep: 8, padding: 38,
+      fit: !layout.fitted, animate: false,
+    } as unknown as { name: string }).run();
+    visibleNodes.forEach(n => { layout.laidOut.add(n.id()); });
+    if (layout.fitted) {
+      const saved = layout.viewport ?? { pan, zoom };
+      cy.viewport({ zoom: saved.zoom, pan: saved.pan });
+    }
+    layout.fitted = true;
   }
 }
 
@@ -940,8 +1089,10 @@ function ColumnLineageGraph({
 }) {
   const cyRef = useRef<HTMLDivElement>(null);
   const cyInstance = useRef<Cytoscape.Core | null>(null);
+  const layoutRef = useRef<ColumnLayoutState>({ laidOut: new Set(), fitted: false, viewport: null });
   const indexesRef = useRef<ColumnIndexByObject>({});
   const traceRef = useRef<(id: string) => void>(() => undefined);
+  const themeVersion = useThemeVersion();
   const { data, isLoading, isError, error, refetch } = useColumnLineage(focusObject);
   const [indexes, setIndexes] = useState<ColumnIndexByObject>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -1022,6 +1173,9 @@ function ColumnLineageGraph({
   useEffect(() => {
     if (!cyRef.current || elements.nodes.length === 0) return;
     const theme = resolveTheme();
+    // A rebuild (e.g. a trace pulled in new columns) re-lays-out, but we keep the
+    // camera the user had — restore the saved viewport instead of refitting (UX-L1).
+    layoutRef.current = { laidOut: new Set(), fitted: layoutRef.current.viewport != null, viewport: layoutRef.current.viewport };
     const cy = Cytoscape({
       container: cyRef.current,
       elements: {
@@ -1050,6 +1204,7 @@ function ColumnLineageGraph({
           } as Record<string, unknown>,
         },
         {
+          // UX-L10: readable column pills at default zoom (was 16px/9px).
           selector: 'node[kind="column"]',
           style: {
             'label': 'data(label)',
@@ -1058,13 +1213,15 @@ function ColumnLineageGraph({
             'border-width': 1,
             'border-color': theme.line2,
             'color': theme.fg2,
-            'font-size': 9,
+            'font-size': 11,
             'font-family': theme.fontMono,
             'width': 'label',
-            'height': 16,
-            'padding': 4,
+            'height': 22,
+            'padding': 7,
             'text-valign': 'center',
             'text-halign': 'center',
+            'text-max-width': '180px',
+            'text-wrap': 'ellipsis',
           } as Record<string, unknown>,
         },
         {
@@ -1096,8 +1253,9 @@ function ColumnLineageGraph({
             'font-family': theme.fontMono,
             'color': theme.fg3,
             'text-background-color': theme.bg1,
-            'text-background-opacity': 0.85,
-            'text-background-padding': 1,
+            'text-background-opacity': 0.9,
+            'text-background-padding': 3,
+            'text-background-shape': 'roundrectangle',
           } as Record<string, unknown>,
         },
         {
@@ -1111,8 +1269,8 @@ function ColumnLineageGraph({
             'z-index': 99,
           } as Record<string, unknown>,
         },
-        { selector: '.trace-dim', style: { 'opacity': 0.18 } as Record<string, unknown> },
-        { selector: '.found', style: { 'border-color': '#f59e0b', 'border-width': 3 } as Record<string, unknown> },
+        { selector: '.trace-dim', style: { 'opacity': 0.12 } as Record<string, unknown> },
+        { selector: '.found', style: { 'border-color': theme.obs, 'border-width': 3 } as Record<string, unknown> },
       ],
       layout: { name: 'preset' },
       userZoomingEnabled: true,
@@ -1151,16 +1309,26 @@ function ColumnLineageGraph({
     });
 
     cyInstance.current = cy;
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && cyRef.current) {
+      ro = new ResizeObserver(() => cy.resize());
+      ro.observe(cyRef.current);
+    }
+
     return () => {
+      ro?.disconnect();
+      // Remember the camera so the next build (after a trace) restores it.
+      layoutRef.current.viewport = { pan: { ...cy.pan() }, zoom: cy.zoom() };
       cy.destroy();
       if (cyInstance.current === cy) cyInstance.current = null;
     };
-  }, [elements]);
+  }, [elements, themeVersion]);
 
   useEffect(() => {
     const cy = cyInstance.current;
     if (!cy) return;
-    applyColumnGraphState(cy, expanded, traceColumnIds, traceEdgeIds, search);
+    applyColumnGraphState(cy, expanded, traceColumnIds, traceEdgeIds, search, layoutRef.current);
   }, [elements, expanded, traceColumnIds, traceEdgeIds, search]);
 
   if (!focusObject) {
@@ -1225,7 +1393,11 @@ function ColumnLineageGraph({
           ))}
         </div>
       </div>
-      <div style={{ position: 'relative', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', height: 560 }}>
+      <div style={{
+        position: 'relative', background: 'var(--bg-1)', border: '1px solid var(--line)',
+        borderRadius: 8, overflow: 'hidden',
+        height: 'clamp(420px, calc(100dvh - 280px), 1400px)',
+      }}>
         <div ref={cyRef} style={{ width: '100%', height: '100%' }} />
         <ColumnPanel
           selection={selection}
@@ -1251,7 +1423,7 @@ export default function LineageMap() {
   const role = useRoleStore(s => s.role);
   const canProfile = canProfileObject(role);
   const currentView = view === 'columns' ? 'columns' : 'objects';
-  const isNarrow = typeof window !== 'undefined' && window.innerWidth < 900;
+  const isNarrow = useIsNarrow(900);
 
   if (isNarrow) {
     return (

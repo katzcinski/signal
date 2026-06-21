@@ -17,7 +17,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install fastapi pydantic pydantic-settings uvicorn pyyaml httpx pytest pytest-cov "python-jose[cryptography]" gitpython jsonschema
+          pip install fastapi pydantic pydantic-settings uvicorn pyyaml httpx pytest pytest-cov "python-jose[cryptography]" gitpython jsonschema respx hdbcli
           pip install -e packages/dq_core
 
       - name: G5 — Engine regression (unit tests)
