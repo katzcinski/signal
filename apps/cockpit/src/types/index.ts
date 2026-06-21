@@ -91,8 +91,13 @@ export interface ObjectSummary {
 }
 
 // ---- Check Library ----
+// Param binding type — drives both the builder input and the compiler's
+// escaping. 'expr' params are raw SQL fragments with no GUI path (deferred §5).
+export type CheckParamType = 'identifier' | 'number' | 'string' | 'regex' | 'value_list' | 'expr';
+
 export interface CheckTemplateParam {
   token: string;
+  type?: CheckParamType;
   label: string;
   hint?: string;
 }
@@ -330,6 +335,15 @@ export interface ContractGuarantees {
   not_null?: GuaranteeNotNull[];
 }
 
+// A library-instantiated check on an internal gate (HANDOVER Iteration 1).
+// params values are strings for scalar types, string[] for value_list.
+export interface GateCheck {
+  id: string;
+  params: Record<string, string | string[]>;
+  expect: string;
+  severity: Severity;
+}
+
 export interface Contract {
   product: string;
   kind: ArtifactKind;
@@ -341,6 +355,7 @@ export interface Contract {
   version: string;
   description?: string;
   guarantees?: ContractGuarantees;
+  checks?: GateCheck[];
 }
 
 export interface ContractOut extends Contract {
@@ -359,6 +374,7 @@ export interface ContractPutBody {
   version: string;
   description?: string;
   guarantees?: ContractGuarantees;
+  checks?: GateCheck[];
 }
 
 // ---- Breaking-diff (POST /api/contracts/{product}/diff) ----

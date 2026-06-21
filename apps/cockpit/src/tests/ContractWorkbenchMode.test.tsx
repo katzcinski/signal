@@ -56,6 +56,42 @@ vi.mock('@/api/contracts', () => ({
   }),
 }));
 
+// The check builder renders for internal gates, so every internal-gate render
+// here now consumes the library. Mock it (real hook needs a QueryClient) with a
+// mix that exercises the eligibility filter: eligible (value_range,
+// allowed_values), guarantee-covered (missing), empty-template (custom_sql),
+// expr-param (cross_field_consistency).
+const libCheck = (over: Record<string, unknown>) => ({
+  id: '', label: '', short: '', help: '', example: '', category: 'Konsistenz',
+  family: 'quality', gating: 'standard', sql_template: 'SELECT 1',
+  default_expect: '= 0', default_severity: 'fail', unit: '', params: [], ...over,
+});
+vi.mock('@/api/library', () => ({
+  useLibrary: () => ({
+    data: {
+      categories: ['Konsistenz', 'Vollständigkeit'],
+      families: ['observability', 'quality'],
+      checks: [
+        libCheck({ id: 'value_range', label: 'Value Range (Min/Max)', help: 'Range help', params: [
+          { token: '<SPALTE>', type: 'identifier', label: 'Spalte' },
+          { token: '<MIN>', type: 'number', label: 'Minimum' },
+          { token: '<MAX>', type: 'number', label: 'Maximum' },
+        ] }),
+        libCheck({ id: 'allowed_values', label: 'Allowed Values (Set)', params: [
+          { token: '<SPALTE>', type: 'identifier', label: 'Spalte' },
+          { token: '<WERTE>', type: 'value_list', label: 'Erlaubte Werte' },
+        ] }),
+        libCheck({ id: 'missing', label: 'Missing Values', category: 'Vollständigkeit',
+          params: [{ token: '<SPALTE>', type: 'identifier', label: 'Spalte' }] }),
+        libCheck({ id: 'cross_field_consistency', label: 'Cross-Field Consistency',
+          sql_template: 'SELECT 1 WHERE NOT (<REGEL>)',
+          params: [{ token: '<REGEL>', type: 'expr', label: 'Regel' }] }),
+        libCheck({ id: 'custom_sql', label: 'Custom SQL', sql_template: '' }),
+      ],
+    },
+  }),
+}));
+
 const contract = (overrides: Partial<ContractOut> = {}): ContractOut => ({
   product: 'P_MODE',
   kind: 'internal_gate',
@@ -191,5 +227,48 @@ describe('ContractWorkbench frame split', () => {
     renderWorkbench();
 
     expect(screen.queryByRole('button', { name: t.workbench.promote })).not.toBeInTheDocument();
+  });
+});
+
+describe('ContractWorkbench check builder', () => {
+  beforeEach(() => {
+    currentContract = contract();   // internal_gate → builder visible
+    currentList = null;
+  });
+
+  it('renders the library check builder in the internal frame', () => {
+    renderWorkbench();
+    expect(screen.getByText(t.workbench.checks.title)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.workbench.checks.add })).toBeInTheDocument();
+  });
+
+  it('excludes guarantee-covered, custom_sql and expr-param checks from the picker', () => {
+    renderWorkbench();
+    const add = screen.getByRole('combobox', { name: t.workbench.checks.add }) as HTMLSelectElement;
+    const values = Array.from(add.options).map(o => o.value);
+    expect(values).toContain('value_range');
+    expect(values).toContain('allowed_values');
+    expect(values).not.toContain('missing');                  // guarantee-covered
+    expect(values).not.toContain('custom_sql');               // empty template (deferred)
+    expect(values).not.toContain('cross_field_consistency');  // expr param (deferred)
+  });
+
+  it('adds a selected check into the draft as an editable, prefilled row', () => {
+    renderWorkbench();
+    expect(screen.queryByLabelText(t.workbench.checks.expect)).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('combobox', { name: t.workbench.checks.add }), {
+      target: { value: 'value_range' },
+    });
+
+    const expectInput = screen.getByLabelText(t.workbench.checks.expect) as HTMLInputElement;
+    expect(expectInput.value).toBe('= 0');          // prefilled from default_expect
+    expect(screen.getByText('Minimum')).toBeInTheDocument();  // param form rendered
+  });
+
+  it('does not render the check builder for a boundary contract', () => {
+    currentContract = contract({ kind: 'consumer_contract', owned_by: 'product' });
+    renderWorkbench();
+    expect(screen.queryByText(t.workbench.checks.title)).not.toBeInTheDocument();
   });
 });

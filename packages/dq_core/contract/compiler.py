@@ -85,6 +85,115 @@ def _mk(template_id: str, dataset: str, params: dict[str, Any], *,
                     unit=unit, owned_by=owner)
 
 
+# ── Typed literal binding for the generic checks[] path ───────────────────────
+# Guarantees compile through _ident/_bind; library-instantiated checks bind each
+# param by its declared `type` (check_library.json). identifier → S2 (_ident);
+# literals are escaped per type and injected where the template supplies the
+# surrounding quotes. `expr` (raw SQL fragments — cross_field's <REGEL>, the
+# compiler-only <KEY_EXPR>) is deliberately NOT bindable here: raw SQL stays
+# deferred (HANDOVER §5).
+_NUMBER = re.compile(r"^-?\d+(?:\.\d+)?$")
+
+
+def _lit_number(value: Any, where: str) -> str:
+    s = str(value).strip()
+    if not _NUMBER.match(s):
+        raise CompileError(f"[checks] {where}: {value!r} ist keine Zahl")
+    return s
+
+
+def _lit_string(value: Any, where: str) -> str:
+    """String-/Regex-Literal: einfache Quotes verdoppeln; die umschließenden
+    Quotes liefert das Template ('<TOKEN>'). Ein Ausbruch aus dem Literal ist
+    damit unmöglich (HANA kennt kein Backslash-Escaping in String-Literalen)."""
+    return str(value).replace("'", "''")
+
+
+def _lit_value_list(value: Any, where: str) -> str:
+    """value_list → komma-getrennte, je Eintrag gequotete SQL-Liste ('a','b').
+    Die Klammern liefert das Template (… NOT IN (<TOKEN>))."""
+    items = list(value) if isinstance(value, (list, tuple)) else [value]
+    items = [str(v) for v in items if str(v) != ""]
+    if not items:
+        raise CompileError(f"[checks] {where}: leere Werteliste")
+    return ", ".join("'" + v.replace("'", "''") + "'" for v in items)
+
+
+_LITERAL_BINDERS = {
+    "number": _lit_number,
+    "string": _lit_string,
+    "regex": _lit_string,
+    "value_list": _lit_value_list,
+}
+
+
+def _bind_typed(template: str, dataset: str, bound: dict[str, str], *, where: str) -> str:
+    """Einmalige Token-Substitution. '{schema}' bleibt wörtlich (G2). Eine
+    einzige re.sub-Passage verhindert, dass ein Literalwert, der zufällig ein
+    anderes Token enthält (z. B. Regex mit '<MIN>'), erneut ersetzt wird."""
+    unbound = set(_UNBOUND_TOKEN.findall(template)) - set(bound)
+    if unbound:
+        raise CompileError(
+            f"{where}: Template-Token {sorted(unbound)!r} ohne Parameter (Library-Inkonsistenz)"
+        )
+    sql = template.replace("{dataset}", dataset)
+    if not bound:
+        return sql
+    pattern = re.compile("|".join(re.escape(t) for t in sorted(bound, key=len, reverse=True)))
+    return pattern.sub(lambda m: bound[m.group(0)], sql)
+
+
+def _compile_check(chk: dict[str, Any], dataset: str, *, owner: str,
+                   cols: set[str] | None, where: str) -> CheckDef:
+    """Eine library-instanziierte checks[]-Position → CheckDef. Die semantische
+    Validierung (id existiert, Parameter vollständig & typgerecht) lebt hier,
+    nicht im (bewusst library-agnostischen) Validator."""
+    cid = str(chk.get("id") or "")
+    entry = check_by_id(cid)
+    if entry is None:
+        raise CompileError(f"{where}: unbekannte Check-ID {cid!r}")
+    template = entry.get("sql_template") or ""
+    if not template:
+        raise CompileError(
+            f"{where}: Check {cid!r} hat kein sql_template — Roh-SQL ist in dieser "
+            f"Iteration nicht freigeschaltet (HANDOVER §5)"
+        )
+    specs = {p["token"]: p for p in entry.get("params", [])}
+    given = chk.get("params") or {}
+    if not isinstance(given, dict):
+        raise CompileError(f"{where}: params muss ein Objekt sein")
+    missing = set(specs) - set(given)
+    if missing:
+        raise CompileError(f"{where}: fehlende Parameter {sorted(missing)!r} für {cid!r}")
+    extra = set(given) - set(specs)
+    if extra:
+        raise CompileError(f"{where}: unbekannte Parameter {sorted(extra)!r} für {cid!r}")
+    bound: dict[str, str] = {}
+    for token, spec in specs.items():
+        ptype = str(spec.get("type") or "")
+        w = f"{where}.params.{token}"
+        if ptype == "identifier":
+            bound[token] = _ident(given[token], w, cols)
+        elif ptype in _LITERAL_BINDERS:
+            bound[token] = _LITERAL_BINDERS[ptype](given[token], w)
+        else:
+            raise CompileError(
+                f"{where}: Parametertyp {ptype!r} ({token}) ist im checks:-Pfad nicht "
+                f"unterstützt (Roh-SQL-Ausdrücke sind deferred)"
+            )
+    expect = str(chk.get("expect") or entry.get("default_expect") or "")
+    if not expect:
+        raise CompileError(f"{where}: expect fehlt (kein default_expect in der Library)")
+    severity = str(chk.get("severity") or entry.get("default_severity") or "warn")
+    if severity not in VALID_SEVERITIES:
+        raise CompileError(f"{where}: unbekannte severity {severity!r}")
+    idents = [bound[t] for t, s in specs.items() if s.get("type") == "identifier"]
+    name = "_".join([cid, *idents]) if idents else cid
+    return CheckDef(name=name, sql=_bind_typed(template, dataset, bound, where=where),
+                    expect=expect, severity=severity, type=cid,
+                    unit=str(entry.get("unit") or ""), owned_by=owner)
+
+
 def compile_contract(
     contract: dict[str, Any],
     *,
@@ -171,6 +280,22 @@ def compile_contract(
             checks.append(_mk("missing", dataset, {"<SPALTE>": col},
                               name=f"{col}_not_null", expect="= 0",
                               severity=sev, owner=owner))
+
+    # checks[]: library-instanziierte Checks (interne Gates, HANDOVER Iteration 1).
+    # Additiv zu den Garantien und nach ihnen kompiliert — eine Quelle, ein
+    # compiler_hash. Bindung typgesteuert (S2 für Identifier, Escaping für Literale).
+    checks_in = contract.get("checks") or []
+    if not isinstance(checks_in, list):
+        raise CompileError("checks muss eine Liste sein")
+    seen = {c.name for c in checks}
+    for i, chk in enumerate(checks_in):
+        if not isinstance(chk, dict):
+            raise CompileError(f"checks[{i}] muss ein Objekt sein")
+        cd = _compile_check(chk, dataset, owner=owner, cols=cols, where=f"checks[{i}]")
+        if cd.name in seen:  # readable name collided (same check+column twice) → disambiguate
+            cd.name = f"{cd.name}_{i}"
+        seen.add(cd.name)
+        checks.append(cd)
 
     return DatasetConfig(
         dataset=dataset,

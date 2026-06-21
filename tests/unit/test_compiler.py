@@ -148,3 +148,130 @@ def test_parse_iso_duration():
     assert parse_iso_duration("PT30M") == 1800
     with pytest.raises(CompileError):
         parse_iso_duration("26h")
+
+
+# ── checks[]: library-instantiated checks (HANDOVER Iteration 1) ──────────────
+
+def _with_checks(checks: list) -> dict:
+    return {"product": "X", "dataset": "X", "version": "1.0.0",
+            "guarantees": {}, "checks": checks}
+
+
+def test_checks_value_range_binds_identifier_and_numbers():
+    config = compile_contract(_with_checks([
+        {"id": "value_range",
+         "params": {"<SPALTE>": "NET_AMOUNT", "<MIN>": "0", "<MAX>": "100"},
+         "expect": "= 0", "severity": "fail"},
+    ]))
+    c = config.checks[-1]
+    assert c.type == "value_range"            # type == library id → family rollup
+    assert c.name == "value_range_NET_AMOUNT"
+    assert '"NET_AMOUNT" < 0 OR "NET_AMOUNT" > 100' in c.sql
+    assert "{schema}" in c.sql                # G2: schema bound only at runtime
+    assert c.expect == "= 0" and c.severity == "fail"
+
+
+def test_checks_prefill_expect_and_severity_from_library_defaults():
+    c = compile_contract(_with_checks([
+        {"id": "duplicate_approx", "params": {"<SPALTE>": "ID"}},
+    ])).checks[-1]
+    assert c.expect == "= 0"      # default_expect
+    assert c.severity == "warn"   # default_severity
+    assert c.type == "duplicate_approx"
+
+
+def test_checks_value_list_assembles_quoted_list_with_escaping():
+    c = compile_contract(_with_checks([
+        {"id": "allowed_values",
+         "params": {"<SPALTE>": "STATUS", "<WERTE>": ["A", "B'C"]}},
+    ])).checks[-1]
+    assert "NOT IN ('A', 'B''C')" in c.sql     # per-item quote-escaping
+
+
+def test_checks_string_and_regex_params_escape_single_quotes():
+    cfg = compile_contract(_with_checks([
+        {"id": "pattern_match", "params": {"<SPALTE>": "CODE", "<REGEX>": "^A'B$"}},
+        {"id": "type_conformance",
+         "params": {"<SPALTE>": "ORDER_DATE", "<DATA_TYPE_NAME>": "DATE"}},
+    ]))
+    assert "LIKE_REGEXPR '^A''B$'" in cfg.checks[-2].sql
+    assert "<> 'DATE'" in cfg.checks[-1].sql
+
+
+def test_checks_identifier_param_blocks_injection_s2():
+    with pytest.raises(CompileError, match="Unsicherer Identifier"):
+        compile_contract(_with_checks([
+            {"id": "value_range",
+             "params": {"<SPALTE>": 'X" OR 1=1 --', "<MIN>": "0", "<MAX>": "1"}},
+        ]))
+
+
+def test_checks_number_param_rejects_non_numeric_smuggle():
+    with pytest.raises(CompileError, match="keine Zahl"):
+        compile_contract(_with_checks([
+            {"id": "value_range",
+             "params": {"<SPALTE>": "A", "<MIN>": "0); DROP TABLE x --", "<MAX>": "1"}},
+        ]))
+
+
+def test_checks_identifier_respects_inventory_existence():
+    contract = _with_checks([
+        {"id": "value_range", "params": {"<SPALTE>": "GHOST", "<MIN>": "0", "<MAX>": "1"}},
+    ])
+    with pytest.raises(CompileError, match="existiert nicht im Inventar"):
+        compile_contract(contract, inventory_columns={"REAL"})
+
+
+def test_checks_unknown_id_rejected():
+    with pytest.raises(CompileError, match="unbekannte Check-ID"):
+        compile_contract(_with_checks([{"id": "does_not_exist", "params": {}}]))
+
+
+def test_checks_missing_and_extra_params_rejected():
+    with pytest.raises(CompileError, match="fehlende Parameter"):
+        compile_contract(_with_checks([{"id": "value_range", "params": {"<SPALTE>": "A"}}]))
+    with pytest.raises(CompileError, match="unbekannte Parameter"):
+        compile_contract(_with_checks([
+            {"id": "duplicate_approx", "params": {"<SPALTE>": "A", "<BOGUS>": "1"}},
+        ]))
+
+
+def test_checks_custom_sql_empty_template_rejected():
+    """custom_sql has an empty sql_template → naturally excluded (raw SQL deferred)."""
+    with pytest.raises(CompileError, match="kein sql_template"):
+        compile_contract(_with_checks([{"id": "custom_sql", "params": {}}]))
+
+
+def test_checks_expr_param_type_is_deferred():
+    """<REGEL> (cross_field) / <KEY_EXPR> (duplicate_composite) are raw-SQL
+    expression params — not bindable in the checks: path (HANDOVER §5)."""
+    with pytest.raises(CompileError, match="deferred"):
+        compile_contract(_with_checks([
+            {"id": "cross_field_consistency", "params": {"<REGEL>": '"A" >= "B"'}},
+        ]))
+
+
+def test_checks_are_additive_to_guarantees_and_change_hash():
+    base = {"product": "X", "dataset": "X", "version": "1.0.0",
+            "guarantees": {"not_null": [{"columns": ["A"]}]}}
+    with_checks = dict(base, checks=[{"id": "duplicate_approx", "params": {"<SPALTE>": "A"}}])
+    assert len(compile_contract(with_checks).checks) == len(compile_contract(base).checks) + 1
+    assert compiler_hash(base) != compiler_hash(with_checks)
+
+
+def test_checks_duplicate_name_is_disambiguated():
+    cfg = compile_contract(_with_checks([
+        {"id": "value_range", "params": {"<SPALTE>": "A", "<MIN>": "0", "<MAX>": "1"}},
+        {"id": "value_range", "params": {"<SPALTE>": "A", "<MIN>": "5", "<MAX>": "9"}},
+    ]))
+    names = [c.name for c in cfg.checks]
+    assert names == ["value_range_A", "value_range_A_1"]
+
+
+def test_checks_value_literal_with_token_like_text_not_resubstituted():
+    """Single-pass binding: a regex value containing another token ('<MIN>') must
+    survive verbatim inside the string literal, not be re-substituted."""
+    c = compile_contract(_with_checks([
+        {"id": "pattern_match", "params": {"<SPALTE>": "C", "<REGEX>": "<MIN>"}},
+    ])).checks[-1]
+    assert "LIKE_REGEXPR '<MIN>'" in c.sql

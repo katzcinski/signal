@@ -9,6 +9,7 @@ import {
   useSeedContract, useDiffContract, useContractSla, useInventory, useCertifyContract,
   usePromoteContract,
 } from '@/api/contracts';
+import { useLibrary } from '@/api/library';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { StatePill } from '@/components/ui/StatePill';
 import { StatusDot } from '@/components/ui/StatusDot';
@@ -20,7 +21,8 @@ import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
 import { useRoleStore, canWriteContract } from '@/store/role';
 import type {
-  ArtifactKind, Contract, ContractGuarantees, ContractOut, ContractPutBody, CheckState, DiffEntry,
+  ArtifactKind, Contract, ContractGuarantees, ContractOut, ContractPutBody, CheckState,
+  CheckDef as LibraryCheck, CheckTemplateParam, DiffEntry, GateCheck,
   GuaranteeCompleteness, GuaranteeKey, GuaranteeNotNull, GuaranteeReferential,
   InventoryDataset, Severity,
 } from '@/types';
@@ -104,6 +106,7 @@ const toPutBody = (c: Contract | ContractPutBody): ContractPutBody => ({
   version: c.version,
   description: c.description,
   guarantees: c.guarantees ?? {},
+  checks: c.checks ?? [],
 });
 
 // RFC-7807: detail.errors list (defensive against shape variants).
@@ -989,6 +992,191 @@ function ContractList({ contracts, inventory, selected, onSelect, section, onSec
   );
 }
 
+// ─── Check builder (internal gates only): library-instantiated checks ────────
+// Iteration 1: author the engineering checks that have no guarantee equivalent
+// (ranges, regex, allowed sets, …). Guarantee-covered templates are excluded so
+// nothing can be authored twice; custom_sql and raw-SQL-expression (`expr`)
+// params are deferred — no GUI path yet (HANDOVER §5).
+const GUARANTEE_COVERED_IDS = new Set([
+  'schema', 'duplicate', 'duplicate_composite', 'reference_integrity',
+  'freshness', 'row_count', 'completeness_pct', 'missing',
+]);
+
+const isBuilderEligible = (c: LibraryCheck): boolean =>
+  !!c.sql_template
+  && c.id !== 'custom_sql'
+  && !GUARANTEE_COVERED_IDS.has(c.id)
+  && c.params.every(p => p.type !== 'expr');
+
+// Free-text multi-value input for value_list params (chips + type-and-Enter).
+function ValueListInput({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const [entry, setEntry] = useState('');
+  const commit = () => {
+    const v = entry.trim();
+    if (v && !value.includes(v)) onChange([...value, v]);
+    setEntry('');
+  };
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+      {value.map(v => (
+        <span key={v} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          background: 'var(--bg-3)', border: '1px solid var(--line-2)', borderRadius: 4,
+          padding: '2px 6px', ...monoStyle, fontSize: 11,
+        }}>
+          {v}
+          <button
+            onClick={() => onChange(value.filter(x => x !== v))}
+            aria-label={`${t.common.remove}: ${v}`}
+            style={{ background: 'none', border: 'none', color: 'var(--fg-3)', padding: 0, fontSize: 12, cursor: 'pointer' }}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        value={entry}
+        onChange={e => setEntry(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }}
+        onBlur={commit}
+        placeholder={t.workbench.checks.addValue}
+        style={{ ...selectStyle, width: 120 }}
+      />
+    </div>
+  );
+}
+
+// One param input, chosen by the library param `type`.
+function CheckParamInput({ param, value, columnOptions, onChange }: {
+  param: CheckTemplateParam;
+  value: string | string[];
+  columnOptions: string[];
+  onChange: (v: string | string[]) => void;
+}) {
+  if (param.type === 'identifier') {
+    return (
+      <Combobox
+        options={columnOptions}
+        value={typeof value === 'string' ? value : ''}
+        onChange={onChange}
+        placeholder={t.workbench.fields.pickColumn}
+        width={180}
+      />
+    );
+  }
+  if (param.type === 'value_list') {
+    return <ValueListInput value={Array.isArray(value) ? value : []} onChange={onChange} />;
+  }
+  return (
+    <input
+      type={param.type === 'number' ? 'number' : 'text'}
+      value={typeof value === 'string' ? value : ''}
+      onChange={e => onChange(e.target.value)}
+      placeholder={param.hint}
+      aria-label={param.label}
+      style={{ ...selectStyle, ...monoStyle, width: param.type === 'number' ? 110 : 200 }}
+    />
+  );
+}
+
+interface CheckBuilderProps {
+  checks: GateCheck[];
+  onChange: (checks: GateCheck[]) => void;
+  columnOptions: string[];
+}
+
+function CheckBuilder({ checks, onChange, columnOptions }: CheckBuilderProps) {
+  const { data: library } = useLibrary();
+  const templates = useMemo(() => (library?.checks ?? []).filter(isBuilderEligible), [library]);
+  const byId = useMemo(() => new Map(templates.map(c => [c.id, c])), [templates]);
+  const grouped = useMemo(() => {
+    const m = new Map<string, LibraryCheck[]>();
+    for (const c of templates) {
+      const arr = m.get(c.category);
+      if (arr) arr.push(c); else m.set(c.category, [c]);
+    }
+    return [...m.entries()];
+  }, [templates]);
+
+  const addCheck = (id: string) => {
+    const tpl = byId.get(id);
+    if (!tpl) return;
+    const params: Record<string, string | string[]> = {};
+    for (const p of tpl.params) params[p.token] = p.type === 'value_list' ? [] : '';
+    onChange([...checks, { id, params, expect: tpl.default_expect, severity: tpl.default_severity }]);
+  };
+  const updateCheck = (i: number, patch: Partial<GateCheck>) =>
+    onChange(checks.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 600, fontSize: 14 }}>{t.workbench.checks.title}</span>
+        <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{t.workbench.checks.subtitle}</span>
+      </div>
+
+      {checks.length === 0 && (
+        <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.checks.empty}</div>
+      )}
+
+      {checks.map((chk, i) => {
+        const tpl = byId.get(chk.id);
+        return (
+          <div key={i} style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: tpl ? '1px solid var(--line)' : 'none' }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{tpl?.label ?? chk.id}</span>
+              <span style={{ ...monoStyle, fontSize: 10, color: 'var(--fg-3)' }}>{chk.id}</span>
+              <div style={{ flex: 1 }} />
+              <RemoveRowButton onClick={() => onChange(checks.filter((_, j) => j !== i))} />
+            </div>
+            {tpl && (
+              <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 11, color: 'var(--fg-3)' }}>{tpl.help}</div>
+                {tpl.params.map(p => (
+                  <div key={p.token} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ ...fieldLabel, minWidth: 96 }} title={p.hint}>{p.label}</span>
+                    <CheckParamInput
+                      param={p}
+                      value={chk.params[p.token] ?? (p.type === 'value_list' ? [] : '')}
+                      columnOptions={columnOptions}
+                      onChange={v => updateCheck(i, { params: { ...chk.params, [p.token]: v } })}
+                    />
+                  </div>
+                ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ ...fieldLabel, minWidth: 96 }}>{t.workbench.checks.expect}</span>
+                  <input
+                    value={chk.expect}
+                    onChange={e => updateCheck(i, { expect: e.target.value })}
+                    aria-label={t.workbench.checks.expect}
+                    style={{ ...selectStyle, ...monoStyle, width: 160 }}
+                  />
+                  {tpl.unit && <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{tpl.unit}</span>}
+                  <SeveritySelect value={chk.severity} onChange={s => updateCheck(i, { severity: s })} />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <select
+        value=""
+        onChange={e => { if (e.target.value) addCheck(e.target.value); }}
+        aria-label={t.workbench.checks.add}
+        style={{ ...selectStyle, alignSelf: 'flex-start', minWidth: 230 }}
+      >
+        <option value="">{t.workbench.checks.add}</option>
+        {grouped.map(([cat, items]) => (
+          <optgroup key={cat} label={cat}>
+            {items.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </optgroup>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 // ─── Editor pane ─────────────────────────────────────────────────────────────
 
 function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promotePending }: {
@@ -1111,6 +1299,16 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
     />
   );
 
+  // Internal gates can also carry library-instantiated checks (engineering checks
+  // with no guarantee equivalent). Boundary contracts stay guarantees-only.
+  const checkBuilder = draftKind === 'internal_gate' ? (
+    <CheckBuilder
+      checks={draft.checks ?? []}
+      onChange={c => setDraft({ ...draft, checks: c })}
+      columnOptions={columnOptions}
+    />
+  ) : null;
+
   const saveButton = (
     <button
       onClick={() => put.mutate(JSON.parse(draftJson) as ContractPutBody)}
@@ -1164,6 +1362,7 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
           <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.gateChangeHint}</div>
         )}
         {guaranteeEditor}
+        {checkBuilder}
         {certifyErrors.length > 0 && (
           <div style={{ background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 5, padding: '8px 12px' }}>
             <div style={{ color: 'var(--status-fail)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t.workbench.validationErrors}</div>
@@ -1250,6 +1449,7 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
           </div>
           <div style={{ fontSize: 11, color: 'var(--fg-3)' }}>{t.workbench.noSql}</div>
           {guaranteeEditor}
+          {checkBuilder}
           {errorsBlock}
         </div>
 

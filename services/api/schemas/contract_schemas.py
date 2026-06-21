@@ -15,6 +15,10 @@ class ContractIn(BaseModel):
     version: str = "0.1.0"
     description: str = ""
     guarantees: dict[str, Any] = {}
+    # checks[]: library-instantiated checks (internal gates, Iteration 1). Rides
+    # through model_dump() → validate → save; the compiler turns each into a
+    # CheckDef. G1 stays intact — these reference library templates, never raw SQL.
+    checks: list[dict[str, Any]] = []
 
 
 class ContractOut(BaseModel):
@@ -27,6 +31,7 @@ class ContractOut(BaseModel):
     lifecycle: str = "draft"
     description: str = ""
     guarantees: dict[str, Any] = {}
+    checks: list[dict[str, Any]] = []
     compliance: Optional[str] = None
     certified: bool = False
 

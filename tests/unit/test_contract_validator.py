@@ -114,3 +114,45 @@ def test_invalid_owned_by():
 def test_prose_description_is_allowed():
     ok = {**VALID_CONTRACT, "description": "harmonised from RAW_SALES and RAW_ORDERS"}
     assert validate_contract(ok) == []
+
+
+# ── checks[]: library-instantiated checks (HANDOVER Iteration 1) ──────────────
+
+def test_checks_array_well_formed_passes():
+    ok = {**VALID_CONTRACT, "kind": "internal_gate", "checks": [
+        {"id": "value_range", "params": {"<SPALTE>": "AMOUNT", "<MIN>": "0", "<MAX>": "100"},
+         "expect": "= 0", "severity": "fail"},
+        {"id": "allowed_values", "params": {"<SPALTE>": "STATUS", "<WERTE>": ["A", "B", "C"]}},
+    ]}
+    assert validate_contract(ok) == []
+
+
+def test_checks_params_with_quotes_and_regex_not_flagged_as_smuggle():
+    """The SQL-smuggle linter must NOT flag legitimate regex/quoted values in
+    checks[].params — their injection safety is the compiler's typed binding."""
+    ok = {**VALID_CONTRACT, "checks": [
+        {"id": "pattern_match", "params": {"<SPALTE>": "CODE", "<REGEX>": "^[A-Z]{2}'[0-9]+$"}},
+        {"id": "allowed_values", "params": {"<SPALTE>": "ST", "<WERTE>": ["A'B", "C;D"]}},
+    ]}
+    assert validate_contract(ok) == []
+
+
+def test_checks_malformed_shape_rejected():
+    bad = {**VALID_CONTRACT, "checks": [{"id": "value_range", "bogus": 1}]}
+    assert any("checks" in e for e in validate_contract(bad)), validate_contract(bad)
+
+
+def test_checks_missing_id_rejected():
+    bad = {**VALID_CONTRACT, "checks": [{"params": {"<SPALTE>": "A"}}]}
+    assert validate_contract(bad), "check without id must be rejected"
+
+
+def test_checks_id_still_linted_for_smuggle():
+    """params are exempt from the lint, but id/expect/severity are not."""
+    bad = {**VALID_CONTRACT, "checks": [{"id": "x; DROP TABLE y"}]}
+    assert any("[G1]" in e for e in validate_contract(bad)), validate_contract(bad)
+
+
+def test_checks_bad_severity_rejected():
+    bad = {**VALID_CONTRACT, "checks": [{"id": "value_range", "severity": "blocker"}]}
+    assert any("checks" in e for e in validate_contract(bad)), validate_contract(bad)
