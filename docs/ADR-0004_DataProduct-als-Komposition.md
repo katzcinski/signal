@@ -1,4 +1,4 @@
-# ADR-0003 — Datenprodukt als Komposition über Lineage (Manifest + abgeleitetes Interieur)
+# ADR-0004 — Datenprodukt als Komposition über Lineage (Manifest + abgeleitetes Interieur)
 
 **Adressat:** Beratung, Plattform-Team, Governance, Entwicklung · **Stand:** 2026-06-21
 **Status:** *Vorschlag* (proposed) — noch kein Code; konzeptionell abgestimmt.
@@ -225,4 +225,4 @@ Infrastruktur teilweise vorhanden: `build_lineage_graph` erzeugt bereits **exter
 3. **Cockpit-Rendering:** Produkt als Hülle um den Lineage-Subgraphen, IN/OUT-Badges (vorhanden) an den Randknoten, GATE-Badges im Inneren, transitive Kette als separate Spur.
 4. **Reihenfolge:** Modell + Manifest-Schema + Walk + Reconciliation zuerst (Read-Side); Discovery-Ranking und `boundary`-Generierung danach.
 
-> **Faustregel (ADR-0003):** Das Produkt deklariert nur seine Ränder und seine Owner-Hülle; das Interieur leitet die Lineage ab. Ports sind durch grenzüberschreitenden Konsum definiert, nicht durch Layer oder Topologie. `boundary` ist das Ergebnis von Intent ⋈ Reality — keine zweite Handeingabe.
+> **Faustregel (ADR-0004):** Das Produkt deklariert nur seine Ränder und seine Owner-Hülle; das Interieur leitet die Lineage ab. Ports sind durch grenzüberschreitenden Konsum definiert, nicht durch Layer oder Topologie. `boundary` ist das Ergebnis von Intent ⋈ Reality — keine zweite Handeingabe.
