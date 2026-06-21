@@ -4,7 +4,7 @@
 **Status:** *Vorschlag* (proposed) — noch kein Code; konzeptionell abgestimmt.
 **Zweck:** Festhalten, wie Signal das **Datenprodukt als Aggregat über mehrere Layer** modelliert — ein Produkt ist die Kombination aus Objekten des Raw-, Integrated-Core- und Business-Core-Layers mit den Serving-/Business-Layer-Objekten als Output. Bisher kennt das Modell dieses „Ganze" nicht; Contracts sind dataset-zentriert.
 
-> Verwandte Dokumente: `ADR-0001_Quality-Gates_vs_Contracts.md` (`boundary`-Diskriminator, Komposition §10, DSP-Tiering §11 — die direkte Grundlage) · `ADR-0002_Editor-Modus_aus_Kind.md` (Lite/Full ⊥ kind) · `Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md` (Konzept-Gerüst, §2 Data Product vs. Contract) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam) · `Konzept_DQ_Observability_Cockpit.md` (fachliches Konzept).
+> Verwandte Dokumente: `ADR-0001_Quality-Gates_vs_Contracts.md` (`boundary`-Diskriminator, Komposition §10, DSP-Tiering §11 — die direkte Grundlage) · `ADR-0002_Editor-Modus_aus_Kind.md` (Lite/Full ⊥ kind) · `ADR-0003_BDC-Datasphere-DataProductStudio.md` (**§12 wendet dieses Kompositions-Modell auf das BDC/HDLF-Setup an** — Owner-Walk über File-Knoten, `output_ports` = SQL-Enforcement-Naht, „derive überall, enforce nur an SQL") · `Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md` (Konzept-Gerüst, §2 Data Product vs. Contract) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam) · `Konzept_DQ_Observability_Cockpit.md` (fachliches Konzept).
 
 ---
 

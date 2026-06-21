@@ -4,7 +4,9 @@
 **Status:** *Analyse / Vorschlag* (proposed) — bewertet, wie Signals Konzept mit den kommenden Custom Data Products aus dem **Data Product Studio** (BDC) zusammenspielt; betrachtet beide Auslieferungspfade (HDLF-Spaces und SQL-Output-Port). Keine gesetzten Code-Entscheidungen; technische Verifikationspunkte explizit markiert.
 **Zweck:** Festhalten, **wo** Signals konzeptionelle Ebene (boundary × Lite/Full) und Signals **technische** Ebene (GX-on-HANA-Executor) bei BDC-Custom-Datenprodukten greifen — und wo nicht — abhängig davon, ob ein Datenprodukt auf einem **HDLF-Space** (Object Store, Delta/Parquet) oder über einen **SQL-Output-Port** ausgeliefert wird.
 
-> Verwandte Dokumente: `ADR-0001_Quality-Gates_vs_Contracts.md` (boundary-Diskriminator, Komposition §10, DSP-Taxonomie-Tiering §11) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam, Port-Topologie, offene Punkte R1/R2/R7) · `Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md` (fünf Schichten, Output-Port = Delta Share **oder** exponierte View, §1.5) · `Betriebsmodi_Lite_und_Full.md` (Prozess-Zeremonie) · `Tooldokumentation.md` (Architektur, Executor).
+> Verwandte Dokumente: `ADR-0001_Quality-Gates_vs_Contracts.md` (boundary-Diskriminator, Komposition §10, DSP-Taxonomie-Tiering §11) · `ADR-0004_DataProduct-als-Komposition.md` (Manifest + aus Lineage abgeleitetes Interieur, `boundary` = Intent ⋈ Reality — **§12 dieser ADR bewertet ADR-0003 unter dieser Linse neu**) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam, Port-Topologie, offene Punkte R1/R2/R7) · `Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md` (fünf Schichten, Output-Port = Delta Share **oder** exponierte View, §1.5) · `Betriebsmodi_Lite_und_Full.md` (Prozess-Zeremonie) · `Tooldokumentation.md` (Architektur, Executor).
+>
+> **Nachtrag (Neubewertung):** §0–§11 lesen das Datenprodukt implizit als *eine* SQL-erreichbare Oberfläche (den Output-Port). ADR-0004 modelliert das Produkt als *Komposition über Layer* (dünnes Manifest + abgeleitetes Interieur). **§12** trägt diese Linse nach: Sie bestätigt die Enforcement-Naht, schärft den out-of-scope-Fall (Delta-Share-only ist nicht governance-blind, nur nicht *prüfbar*) und zeigt, dass ADR-0004s Interieur-Ableitung denselben Reachability-Constraint erbt — *derive überall, enforce nur an SQL*.
 
 ---
 
@@ -223,3 +225,107 @@ Kernbotschaft der Tabelle: **Der teuerste Posten ist Wissen (G-5/G-6), nicht Cod
 5. **Kein zweiter Executor.** Object-Store-/Spark-Enforcement wird abgelehnt; single executor, G7, `[ENGINE-FROZEN]` bleiben.
 6. **Der teure Posten ist Wissen, nicht Code.** Die Code-Anpassung ist klein und additiv; die Verifikationspunkte V1–V6 sind der eigentliche kritische Pfad.
 7. **„SQL-Output-Port = überwachbar."** Das ehrliche Kunden-Framing: Wo Governance zählt (Tier 2), gib dem Produkt einen SQL-Port.
+
+---
+
+## 12 — Neubewertung im Licht von ADR-0004 (Datenprodukt als Komposition)
+
+> Diese Sektion ist nachgetragen. §0–§11 bewerten Signals BDC-Tauglichkeit aus der **Executor-Perspektive**: Ein Datenprodukt ist dort implizit *eine* per SQL adressierbare Oberfläche `schema.object`, an der enforced wird. ADR-0004 führt parallel ein **Kompositions-Modell** ein: Ein Produkt ist *das Ganze über alle Layer* — ein dünnes **Manifest** (`products/<name>.yaml`) deklariert nur Identität, Owner-Hülle und Ports (die Ränder); das **Interieur** (Raw-/Core-/Business-Core-Objekte) wird aus der Lineage abgeleitet; `boundary` wird nicht mehr handgesetzt, sondern aus **Intent ⋈ Reality** abgeleitet. Die Kombination beider ADRs bestätigt drei Aussagen von ADR-0003, schärft zwei und liefert ADR-0003 ausgerechnet den Mechanismus für seinen härtesten Fall.
+
+### 12.0 — Kernaussage der Neubewertung
+
+ADR-0003 und ADR-0004 sind **orthogonal und komplementär**, nicht konkurrierend:
+
+- ADR-0004 beschreibt, **was** ein Produkt *ist* und **wo** seine Grenzen liegen (Read-Side-Aggregat, Deklaration, Reconciliation) — **speicher-agnostisch**, exakt wie ADR-0003 §6 es für die Konzept-Ebene behauptet.
+- ADR-0003 beschreibt, **wo** Signal *erzwingen* kann (die SQL-erreichbare Oberfläche) — **nicht** speicher-agnostisch.
+
+> **Der eine Satz, der beide ADRs verbindet:** *Derive überall, enforce nur an SQL.* ADR-0004s Ableitung (Owner-Walk, Reconciliation, Discovery) läuft über **jeden** Lineage-Knoten — auch über HDLF-File-Knoten, sofern sie im Graph stehen. ADR-0003s Executor greift nur dort, wo derselbe Knoten eine SQL-Oberfläche `schema.object` hat. Die Naht aus ADR-0003 §0 (SQL-erreichbar = Enforcement-Grenze) wiederholt sich in ADR-0004 **eine Ebene tiefer**: am Output-Port (ADR-0003) *und* an jedem Interieur-Gate (ADR-0004).
+
+### 12.1 — Was sich bestätigt (ADR-0004 verstärkt ADR-0003)
+
+| ADR-0003-Aussage | ADR-0004-Pendant | Effekt |
+|---|---|---|
+| „Signal erzwingt am **SQL-Output-Port**" (§5/§7.2) | Manifest deklariert **nur die Ränder** = `output_ports` (§3) | **Deckungsgleich.** Der `output_port` im Manifest *ist* die Enforcement-Naht. ADR-0003s 1:1:1:1 (Contract→Port→Schema→Read-Role) ist genau ADR-0004s „je Port ein Outbound-Contract". |
+| „mehrere physische Ports auf denselben Inhalt = verschiedene **Transporte** einer Zusage" (§6, Transport-Äquivalenz) | `output_ports` ist eine **Liste**; Produkt nicht versioniert, SemVer pro Port (§3, §8) | **Bestätigt + operationalisiert.** Delta Share **und** SQL-on-Files derselben Daten = zwei Einträge, ein Outbound-Contract. Signal enforced am SQL-Port, deckt den Share transitiv mit (ADR-0003 V6 = ADR-0004 Manifest-Realität). |
+| „Konzept-Ebene überträgt sich unverändert" (§6) | `boundary` × Lite/Full bleibt; Aggregat ist additiv, Read-Side (§0, §11) | **Bestätigt + konkretisiert.** ADR-0003 sagt „das Konzept wackelt nicht"; ADR-0004 gibt ihm ein **Artefakt** (Manifest) statt nur ein handgesetztes `boundary`-Feld. |
+
+### 12.2 — Schärfung 1: Der out-of-scope-Fall (F) ist *nicht* governance-blind
+
+Der härteste Fall in ADR-0003 ist **Zweig F** (§3.1): Delta-Share-/Object-Store-only, **keine** SQL-Sicht → außerhalb der Executor-Reichweite. §3.2/§9 fordern, ihn „ehrlich als nicht überwacht auszuweisen, nicht grün vorzutäuschen" — aber **ohne Mechanismus**, wie dieser Zustand entsteht und gerendert wird.
+
+ADR-0004 liefert genau diesen Mechanismus, und zwar überraschend: **Ein Delta Share ist in ADR-0004 §9 das *stärkste* Discovery-Signal** („Konsum verlässt das Estate"). Daraus folgt die Auflösung der Asymmetrie:
+
+| | ADR-0003 (Enforcement) | ADR-0004 (Deklaration/Discovery) |
+|---|---|---|
+| Delta-Share-only-Produkt | **unsichtbar** für den Executor (Zweig F) | **maximal sichtbar** — stärkstes Port-/Boundary-Leak-Signal (§9, §6) |
+
+> **Das ist exakt `Deklaration ≠ Enforcement` (ADR-0001 §5/§10.5), jetzt über *beide* ADRs realisiert.** Das Produkt, das ADR-0003 nicht *prüfen* kann, wird von ADR-0004 **deklariert, entdeckt und in der zweistufigen Ampel (§7) geführt** — mit ehrlichem Status „monitored = no". ADR-0003 §9 forderte diesen Zustand; ADR-0004 §6/§7/§9 erzeugt und rendert ihn. **„Out-of-scope für den Executor" heißt nicht „out-of-scope für Governance."** Die Coverage-Map zeigt das Produkt als deklarierten Port ohne Enforcement — nicht als weißen Fleck.
+
+Damit wird ADR-0003 §9s Negativ-Risiko („schrumpft Signals adressierbare Fläche") **abgemildert**: Die *governbare* Fläche (deklarieren, entdecken, Boundary-Leak melden) ist größer als die *erzwingbare* Fläche. Nur Letztere endet an der SQL-Grenze.
+
+### 12.3 — Schärfung 2: ADR-0004s Interieur-Ableitung erbt ADR-0003s Reachability-Constraint
+
+ADR-0004 §4 leitet das Interieur aus der Lineage ab und reicht es an den Miner: *„Alles dazwischen = Interieur → interne Gates."* In einem **HANA-Setup** ist das unkritisch (Core-Objekte sind Tabellen/Views, SQL-erreichbar). In **HDLF** ist das Interieur **Dateien** — kein SQL. Daraus folgt eine Qualifikation, die ADR-0004 (HANA-zentrisch geschrieben) nicht explizit macht:
+
+| ADR-0004-Schritt | speicher-agnostisch? | in HDLF |
+|---|---|---|
+| Interieur **ableiten** (Owner-Walk §4, Reconciliation §6, zweistufige Ampel §7) | **ja** — braucht nur Graph-Knoten + Owner-Set | funktioniert über File-Knoten, **sofern sie im Lineage-Graph stehen** (→ G-7/V5) |
+| Interieur **als Gate prüfen** (§4 „interne Gates", Miner) | **nein** — braucht SQL-Oberfläche (ADR-0003 §2) | **nur** auf SQL-erreichbaren Interieur-Knoten; File-only-Interieur ist *sichtbar, aber nicht gate-prüfbar* |
+
+> **Schärfung von ADR-0004 §4:** „Interieur → interne Gates" gilt uneingeschränkt nur, wo der Interieur-Knoten SQL spricht. In HDLF zerfällt der Schritt in **Ableitung** (immer möglich) und **Enforcement** (nur an SQL). Das ist *dieselbe* Naht wie am Output-Port — ADR-0003s Regel wirkt nicht nur an der Produkt-Grenze, sondern an jedem Interieur-Gate. Ein internes HDLF-File-Gate ist *vorschlagbar* (Miner sieht den Knoten), aber erst *ausführbar*, wenn das File eine SQL-on-Files-Sicht bekommt.
+
+**Praktischer Gewinn trotz dieses Constraints:** Selbst nicht-prüfbares File-Interieur liefert über ADR-0004 §6 echte Befunde **ohne** Executor-Reichweite — z. B. **Boundary-Leak**: ein internes HDLF-File wird heimlich von einem Fremd-Team über einen Share konsumiert → *undeklarierter Outbound-Contract*. Das ist Governance-Wert (eine Query, kein Workshop) genau dort, wo ADR-0003 keinen Check fahren kann.
+
+### 12.4 — Schärfung 3: Der Owner-gegatete Walk hängt in HDLF an ADR-0003s offenen V-Punkten
+
+ADR-0004s Walk (§4) braucht zwei Dinge, die in BDC/HDLF **genau ADR-0003s offene Punkte** sind:
+
+1. **Knoten im Graph (a).** Ohne dass HDLF-Files/Virtual-Tables im Inventar landen, hat der Walk nichts, worüber er läuft. Das ist **ADR-0003 G-7 (Discovery) + V5 (HDLF-Metadaten/Catalog-Zugriff)**. → *ADR-0004s Walk ist in HDLF nur so gut wie ADR-0003s HDLF-Discovery.*
+2. **Owner-Attribution (b).** Der Walk stoppt am Port eines *fremden* Owners (§4). ADR-0004 §2 hält fest: Hülle = Owner-Set, **nicht** Space — „Teams schneiden nicht entlang der DSP-Spaces". **BDC ist der Paradefall:** Ein Produkt kann Interieur im **HDLF-Space** und seinen Output-Port als **SQL-on-Files / HANA-Space** haben — die Owner-Hülle schneidet quer durch zwei *physisch verschiedene* Spaces. Genau hier zahlt sich ADR-0004s Entscheidung „Hülle ≠ Space" in der BDC-Realität aus.
+
+### 12.5 — Konvergenz: ADR-0003 G-7 und ADR-0004 §9 sind *derselbe* Discovery-Workstream
+
+ADR-0003 G-7 fordert: HDLF-Produkte müssen erst ins Inventar *finden*. ADR-0004 §9 baut Discovery aus **Konsum-Evidenz**, mit dem stärksten Cold-Start-Signal „**Konsum verlässt das Estate**" (Delta Share, exponierte Share-View). In BDC ist das **identisch**: Der HDLF-Output-Port (Delta Share) *ist* das „Estate-verlassende" Signal. Daraus:
+
+- ADR-0004 liefert ADR-0003 den **Discovery-Mechanismus** (Port-Kandidaten aus Share-/Katalog-Evidenz, §9-Ranking).
+- ADR-0003 liefert ADR-0004 den **Reachability-Qualifier** (entdeckt ≠ erzwingbar).
+- ADR-0004s Pointe „Discovery und Boundary-Leak = derselbe Mechanismus" (§9) trägt 1:1 in BDC: **vor** Manifest → HDLF-Port-*Vorschlag*; **nach** Manifest → *Boundary-Leak*, wenn ein HDLF-Share grenzüberschreitend konsumiert wird, ohne dass das Manifest einen Port deklariert.
+
+### 12.6 — Beide Fälle neu bewertet durch die Kompositions-Linse
+
+**Fall 1 — HDLF-Space (SAPs erster Weg), neu:**
+ADR-0003 sah *ein* HDLF-Produkt, prüfbar gdw. SQL-on-Files-Sicht existiert. ADR-0004 verfeinert: Das HDLF-„Produkt" ist selten *ein* Objekt — es ist **Manifest (Owner + Ports) + abgeleitetes File-Interieur**. Konsequenzen:
+- Der/die **SQL-on-Files-Output-Port(s)** = Enforcement-Naht (ADR-0003 unverändert).
+- Das **File-Interieur** = sichtbar für Reconciliation (Boundary-Leak, Contested-Interieur, Orphan-Interieur), aber nur an SQL-Knoten gate-prüfbar (§12.3).
+- Das **Contested-Interieur** (ADR-0004 §6) bekommt in BDC eine konkrete Gestalt: zwei Custom-Produkte greifen auf dasselbe HDLF-Roh-File → Foundation-Product-Kandidat → erhalte es zu eigenem (idealerweise SQL-)Port (ADR-0001 §10.2). Das ist die auditierbare Promotion, jetzt datengetrieben.
+
+**Fall 2 — SQL-Output-Port, neu:**
+ADR-0003 sah den Happy Path. ADR-0004 ergänzt zwei Dinge:
+- Der SQL-Port ist *ein* `output_port`-Listeneintrag; **Transport-Äquivalenz** (ADR-0003 §6/V6) wird Manifest-Realität — mehrere Ports, ein Contract, Enforcement am SQL-Port.
+- **Zweistufige Ampel** (ADR-0004 §7) wird in BDC besonders relevant: Custom-Produkte aus dem Studio konsumieren typischerweise **SAP-Standard-Produkte** (Fall B, gekettete Contracts, ADR-0001 §10.4). Das BDC-Produkt bekommt damit getrennt: **eigenes Versprechen** (eigene Outbound-Checks am SQL-Port) ⊥ **Upstream-Risiko** (Compliance des gepinnten SAP-Upstream-Produkts). Bricht das SAP-Upstream, wird das Custom-Produkt **nicht automatisch rot** — ehrliche Ampel.
+
+### 12.7 — Neubewertung der ADR-0003-Entscheidungen (§7)
+
+| §7-Entscheidung | bleibt / geschärft | durch ADR-0004 |
+|---|---|---|
+| 1. Konzept-Ebene unverändert | **bleibt, +konkretisiert** | Konzept bekommt ein **Artefakt** (`products/*.yaml`), `boundary` wird abgeleitet statt handgesetzt |
+| 2. SQL-Output-Port = kanonische Enforcement-Naht | **bleibt** | = ADR-0004 `output_ports` (Ränder-Deklaration) |
+| 3. Fall 2 = Happy Path | **bleibt, +zweistufige Ampel** | Upstream-Risiko-Spur für gekettete SAP-Upstreams |
+| 4. Fall 1 nur mit SQL-Sicht prüfbar | **GESCHÄRFT** | „prüfbar nur mit SQL-Sicht" gilt für **Enforcement**; **Deklaration/Discovery/Reconciliation** greifen auch ohne SQL-Sicht. *out-of-scope für den Executor ≠ out-of-scope für Governance* |
+| 5. Kein zweiter Executor | **bleibt, +verstärkt** | ADR-0004 zeigt, dass man File-Interieur **governen kann, ohne es zu prüfen** (Read-Side-Reconciliation) — der Spark-Executor wird damit noch unnötiger |
+| 6. dünne Adressierungs-Abstraktion | **bleibt** | unberührt; betrifft die Enforcement-Naht, nicht das Aggregat |
+| *(neu)* | **ergänzt** | Das **Manifest** ist der Ort, an dem ADR-0003s „gib dem Produkt einen SQL-Output-Port" konkret wird: `output_ports` listet die SQL-Ports, Discovery (§9) schlägt sie vor, der Mensch bestätigt |
+
+### 12.8 — Ergänzende Verifikationspunkte (zu V1–V6)
+
+- **V7 [H] — Stehen HDLF-File-Objekte/Virtual-Tables im Lineage-Graph?** Liefert `build_lineage_graph` (heute HANA-Katalog-getrieben, `inventory.py`) Knoten für HDLF-Produkt-Objekte, sodass ADR-0004s Owner-Walk überhaupt etwas zu laufen hat? Koppelt **G-7 + V5**. Ohne Knoten kein Aggregat.
+- **V8 [M] — Taugt BDC/Datasphere-Ownership als Stopp-Bedingung?** Existiert eine programmatisch lesbare Owner-Attribution für HDLF-/Studio-Objekte, die als „fremder Owner" (ADR-0004 §4) belastbar ist? Sonst bleibt der Walk grob (ADR-0004 §11-Risiko in BDC verschärft).
+- **V9 [M] — Delta Share als externer *Konsumenten*-Knoten.** Lässt sich ein Share/exponierte Share-View downstream als externer Knoten darstellen (Analogon zu `sourceScope == "external_system"`, das ADR-0004 §9 für *Upstream*-Quellen bereits erzeugt)? Das ist das stärkste BDC-Discovery-Signal.
+- **V10 [L] — Inhaltsgleichheit Share ↔ SQL-on-Files** (= ADR-0003 V6) für transitives Enforcement über die Manifest-Port-Liste (ADR-0004 §3 `output_ports`).
+
+### 12.9 — Faustregeln (Ergänzung zu §11)
+
+8. **Derive überall, enforce nur an SQL.** ADR-0004s Ableitung (Walk, Reconciliation, Discovery) ist speicher-agnostisch; ADR-0003s Executor nicht. Die SQL-Grenze trennt *sichtbar* von *prüfbar* — am Output-Port **und** an jedem Interieur-Gate.
+9. **Out-of-scope für den Executor ≠ out-of-scope für Governance.** Das Delta-Share-only-Produkt ist ADR-0003s blinder Fleck *und* ADR-0004s hellstes Discovery-Signal. Deklariert, entdeckt, mit „monitored = no" geführt — nicht weiß.
+10. **Das Manifest ist der Ort von „gib ihm einen SQL-Port".** Discovery schlägt Ports vor, der Mensch bestätigt, Enforcement folgt am SQL-Port. ADR-0003s Kunden-Framing wird zum konkreten Authoring-Flow (ADR-0004 §9).
+11. **ADR-0004s Walk ist in HDLF nur so gut wie ADR-0003s HDLF-Discovery.** Kein Inventar-Knoten, kein Aggregat. Der teuerste Posten bleibt Wissen (G-7/V5/V7), nicht Code.
