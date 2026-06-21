@@ -45,6 +45,14 @@ gesetzt und werden nicht neu verhandelt.
 > `get_health_trend`, `get_status_heatmap` im Store (+ Protocol/HANA-Stub), Tests in
 > `tests/unit/test_metric_series.py` und `tests/api/test_timeseries_health.py`.
 
+> **Umgesetzt 2026-06-21 (Batch UX-N13–N15)**: **UX-N13** (semantischer Diff in Contract-
+> Versionen und Proposal-Erklärungen), **UX-N14** (Profiling-Drawer mit Spaltenstatistik,
+> PK-Kandidaten und optionalen Sample Rows hinter `[PII-GATE]`: `include_samples`, serverseitig
+> default-off via `ALLOW_PROFILE_SAMPLES`, Projektion nur auf `PROFILE_SAMPLE_COLUMNS`) und
+> **UX-N15** (Activity-/Audit-Feed im Cockpit aus `/api/activity`). Tests: `tests/api/test_version_diff.py`,
+> `tests/api/test_profile_endpoint.py`, `tests/api/test_activity.py`,
+> `apps/cockpit/src/tests/diff.test.ts`, `apps/cockpit/src/tests/ObjectProfilePanel.test.tsx`.
+
 ## Übersicht & Priorisierung
 
 | ID | Inhalt | Klasse | Tier | Aufwand (PT) | hängt ab von |

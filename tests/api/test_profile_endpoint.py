@@ -23,9 +23,24 @@ class _FakeConn:
         pass
 
 
-def _patch_live_hana(monkeypatch):
+class _SampleCursor(FakeCursor):
+    def execute(self, sql, params=None):
+        text = " ".join(str(sql).split())
+        upper = text.upper()
+        if upper.startswith('SELECT "ID", "AMOUNT" FROM ') and " LIMIT " in upper:
+            self.description = [("ID",), ("AMOUNT",)]
+            self._rows = [(1, 42.5), (2, 84.0)]
+            self._scalar = None
+            return
+        super().execute(sql, params)
+
+
+def _patch_live_hana(monkeypatch, cursor_factory=None):
     import dq_core.connect.db_connection as dbmod
     import services.api.routers.profile as profile_mod
+
+    if cursor_factory is None:
+        cursor_factory = lambda: FakeCursor(_DEMO_COLUMNS, _DEMO_AGG_ROW, _DEMO_PROFILE_ROW)
 
     monkeypatch.setattr(
         profile_mod, "get_environment",
@@ -33,7 +48,7 @@ def _patch_live_hana(monkeypatch):
     )
     monkeypatch.setattr(
         dbmod, "get_connection",
-        lambda **kwargs: _FakeConn(FakeCursor(_DEMO_COLUMNS, _DEMO_AGG_ROW, _DEMO_PROFILE_ROW)),
+        lambda **kwargs: _FakeConn(cursor_factory()),
     )
 
 
@@ -54,6 +69,63 @@ def test_profile_returns_column_stats_and_pk_candidates(api_client, monkeypatch)
     ranked = [c["column"] for c in data["pk_candidates"]["ranked_single"]]
     assert "ID" in ranked
     assert "AMOUNT" not in ranked  # decimal measure excluded from PK candidates
+
+
+def test_profile_samples_disabled_by_default(api_client, monkeypatch):
+    _patch_live_hana(monkeypatch)
+    resp = api_client.post(
+        "/api/objects/DS_SALES_ORDERS/profile",
+        json={"environment": "prod", "include_samples": True},
+        headers={"X-DQ-Role": "steward"},
+    )
+    assert resp.status_code == 200, resp.text
+    sample = resp.json()["sample_rows"]
+    assert sample["enabled"] is False
+    assert sample["rows"] == []
+    assert "disabled" in sample["reason"]
+
+
+def test_profile_samples_require_allowlist(api_client, monkeypatch):
+    import services.api.settings as settings_mod
+
+    monkeypatch.setenv("ALLOW_PROFILE_SAMPLES", "true")
+    settings_mod._settings = None
+    _patch_live_hana(monkeypatch)
+
+    resp = api_client.post(
+        "/api/objects/DS_SALES_ORDERS/profile",
+        json={"environment": "prod", "include_samples": True},
+        headers={"X-DQ-Role": "steward"},
+    )
+    assert resp.status_code == 200, resp.text
+    sample = resp.json()["sample_rows"]
+    assert sample["enabled"] is False
+    assert sample["rows"] == []
+    assert "allowlisted" in sample["reason"]
+
+
+def test_profile_samples_project_allowlisted_columns(api_client, monkeypatch):
+    import services.api.settings as settings_mod
+
+    monkeypatch.setenv("ALLOW_PROFILE_SAMPLES", "true")
+    monkeypatch.setenv("PROFILE_SAMPLE_COLUMNS", '["ID","AMOUNT","SSN"]')
+    settings_mod._settings = None
+    _patch_live_hana(
+        monkeypatch,
+        cursor_factory=lambda: _SampleCursor(_DEMO_COLUMNS, _DEMO_AGG_ROW, _DEMO_PROFILE_ROW),
+    )
+
+    resp = api_client.post(
+        "/api/objects/DS_SALES_ORDERS/profile",
+        json={"environment": "prod", "include_samples": True, "sample_limit": 2},
+        headers={"X-DQ-Role": "steward"},
+    )
+    assert resp.status_code == 200, resp.text
+    sample = resp.json()["sample_rows"]
+    assert sample["enabled"] is True
+    assert sample["columns"] == ["ID", "AMOUNT"]
+    assert sample["rows"] == [{"ID": 1, "AMOUNT": 42.5}, {"ID": 2, "AMOUNT": 84.0}]
+    assert "SSN" not in sample["rows"][0]
 
 
 def test_profile_forbidden_for_viewer(api_client, monkeypatch):

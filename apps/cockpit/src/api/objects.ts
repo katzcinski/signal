@@ -74,6 +74,8 @@ export const useEnvironments = () =>
 export interface ObjectProfileRequest {
   environment?: string;
   include_composite?: boolean;
+  include_samples?: boolean;
+  sample_limit?: number;
 }
 
 export const useObjectProfile = (id: string) =>

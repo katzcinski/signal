@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     # Diagnostics PII gate (S1)
     allow_local_diagnostics: bool = Field(default=False)
     diagnostics_ttl_days: int = Field(default=7)
+    allow_profile_samples: bool = Field(default=False)
+    profile_sample_columns: list[str] = Field(default=[])
 
     # F5: Staleness threshold for inventory/lineage extract (days)
     extract_stale_days: int = Field(default=7)

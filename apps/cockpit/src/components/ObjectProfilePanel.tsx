@@ -7,6 +7,7 @@ import { Table, type ColDef } from '@/components/ui/Table';
 import type {
   ObjectProfileColumn,
   ObjectProfileResult,
+  ProfileSampleRows,
   ProfileCompositeCandidate,
   ProfileSingleCandidate,
 } from '@/types';
@@ -199,6 +200,46 @@ function ColumnStatsTable({ columns }: { columns: ObjectProfileColumn[] }) {
   );
 }
 
+type SampleRow = { __idx: number } & Record<string, unknown>;
+
+function SampleRowsSection({ sample }: { sample?: ProfileSampleRows }) {
+  const rows = useMemo<SampleRow[]>(
+    () => (sample?.rows ?? []).map((row, idx) => ({ __idx: idx, ...row })),
+    [sample?.rows],
+  );
+  const columns = useMemo(
+    () => sample?.columns.length ? sample.columns : Object.keys(sample?.rows[0] ?? {}),
+    [sample],
+  );
+  const colDefs: ColDef<SampleRow>[] = useMemo(() => columns.map(col => ({
+    key: col,
+    header: col,
+    mono: true,
+    render: row => fmtValue(row[col]),
+  })), [columns]);
+
+  if (!sample) return null;
+
+  return (
+    <section style={{ marginTop: 18 }}>
+      <div style={sectionTitle}>Sample rows [PII-GATE]</div>
+      {!sample.enabled ? (
+        <div style={{ color: 'var(--fg-3)', fontSize: 12 }}>{sample.reason || 'Sample rows unavailable.'}</div>
+      ) : (
+        <div style={{ border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden' }}>
+          <Table
+            columns={colDefs}
+            rows={rows}
+            rowKey={row => String(row.__idx)}
+            empty="No sample rows returned."
+            maxHeight={240}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function ObjectProfilePanel({ objectId, onClose }: Props) {
   const role = useRoleStore(s => s.role);
   const allowed = canProfileObject(role);
@@ -206,13 +247,19 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
   const { data: envData, isLoading: envLoading } = useEnvironments();
   const environments = useMemo(() => envData?.environments ?? [], [envData]);
   const [environment, setEnvironment] = useState('');
+  const [includeSamples, setIncludeSamples] = useState(false);
 
   useEffect(() => {
     if (!environment && environments[0]) setEnvironment(environments[0].name);
   }, [environment, environments]);
 
   const runProfile = () => {
-    profile.mutate({ environment, include_composite: true });
+    profile.mutate({
+      environment,
+      include_composite: true,
+      include_samples: includeSamples,
+      sample_limit: 20,
+    });
   };
 
   const error = profile.isError ? profileErrorMessage(profile.error) : '';
@@ -260,6 +307,16 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
           </select>
         </label>
 
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--fg-2)', fontSize: 12 }}>
+          <input
+            type="checkbox"
+            checked={includeSamples}
+            onChange={e => setIncludeSamples(e.target.checked)}
+            disabled={!allowed || profile.isPending}
+          />
+          Sample rows [PII-GATE]
+        </label>
+
         {error && (
           <div style={{
             border: '1px solid var(--status-crit)',
@@ -287,6 +344,7 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
             <CandidateSection title="Single-column key candidates" candidates={profile.data.pk_candidates.ranked_single ?? []} />
             <CandidateSection title="Composite key candidates" candidates={profile.data.pk_candidates.ranked_composite ?? []} />
             <ColumnStatsTable columns={profile.data.columns} />
+            <SampleRowsSection sample={profile.data.sample_rows} />
           </div>
         )}
       </div>

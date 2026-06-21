@@ -111,7 +111,45 @@ describe('ObjectProfilePanel', () => {
     await waitFor(() => expect(button).not.toBeDisabled());
     fireEvent.click(button);
 
-    expect(apiMock.mutate).toHaveBeenCalledWith({ environment: 'prod', include_composite: true });
+    expect(apiMock.mutate).toHaveBeenCalledWith({
+      environment: 'prod',
+      include_composite: true,
+      include_samples: false,
+      sample_limit: 20,
+    });
+  });
+
+  it('requests sample rows only after the PII gate checkbox is enabled', async () => {
+    render(<ObjectProfilePanel objectId="DS_SALES_ORDERS" onClose={() => undefined} />);
+
+    fireEvent.click(screen.getByLabelText('Sample rows [PII-GATE]'));
+    const button = screen.getByRole('button', { name: 'Run profile' });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+
+    expect(apiMock.mutate).toHaveBeenCalledWith({
+      environment: 'prod',
+      include_composite: true,
+      include_samples: true,
+      sample_limit: 20,
+    });
+  });
+
+  it('renders PII-gated sample rows when the server returns them', () => {
+    apiMock.state.data = {
+      ...profileResult,
+      sample_rows: {
+        enabled: true,
+        columns: ['ORDER_ID', 'AMOUNT'],
+        rows: [{ ORDER_ID: 'SO-1', AMOUNT: 1234.5 }],
+      },
+    };
+
+    render(<ObjectProfilePanel objectId="DS_SALES_ORDERS" onClose={() => undefined} />);
+
+    expect(screen.getAllByText('Sample rows [PII-GATE]').length).toBe(2);
+    expect(screen.getByText('SO-1')).toBeTruthy();
+    expect(screen.getByText('1234.50')).toBeTruthy();
   });
 
   it('disables profiling for viewer role', () => {

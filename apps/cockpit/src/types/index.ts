@@ -639,6 +639,13 @@ export interface ProfileDerivedStats {
   numeric_stats?: { column: string; min?: unknown; max?: unknown; avg?: unknown; median?: unknown }[];
 }
 
+export interface ProfileSampleRows {
+  enabled: boolean;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  reason?: string;
+}
+
 export interface ObjectProfileResult {
   schema: string;
   table: string;
@@ -651,6 +658,7 @@ export interface ObjectProfileResult {
   issues?: ProfileIssue[];
   scores?: ProfileScores;
   heuristics?: Record<string, unknown>;
+  sample_rows?: ProfileSampleRows;
 }
 
 // ---- Incidents: persistent lifecycle objects ----

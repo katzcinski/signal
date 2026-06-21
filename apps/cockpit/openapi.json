@@ -831,6 +831,16 @@
             "default": true,
             "title": "Include Composite",
             "type": "boolean"
+          },
+          "include_samples": {
+            "default": false,
+            "title": "Include Samples",
+            "type": "boolean"
+          },
+          "sample_limit": {
+            "default": 20,
+            "title": "Sample Limit",
+            "type": "integer"
           }
         },
         "title": "ProfileRequest",
@@ -4007,7 +4017,9 @@
               "schema": {
                 "$ref": "#/components/schemas/ProfileRequest",
                 "default": {
-                  "include_composite": true
+                  "include_composite": true,
+                  "include_samples": false,
+                  "sample_limit": 20
                 }
               }
             }

@@ -1699,6 +1699,16 @@ export interface components {
              * @default true
              */
             include_composite: boolean;
+            /**
+             * Include Samples
+             * @default false
+             */
+            include_samples: boolean;
+            /**
+             * Sample Limit
+             * @default 20
+             */
+            sample_limit: number;
         };
         /** ProposalOut */
         ProposalOut: {
