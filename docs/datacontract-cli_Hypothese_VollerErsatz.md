@@ -367,6 +367,71 @@ HANA-Shim-Steuer (§2.3) führt.
 
 ---
 
+## 6.6 Und wenn Signal selbst Delta/HDLF prüfen will?
+
+Folgefrage: Soll Signal später auch Objekte im **HDLF-Space** (Tabellen im
+**Delta-Format**) prüfen — müssten dann nicht dieselben Garantien (read-only, PII,
+G1, Gating) **auch dort neu gebaut** werden? Kurz: teils ja, teils nein — und die
+Antwort verschiebt die §6.5-Empfehlung.
+
+### Zwei Klassen von Garantien — nur eine ist executor-nah
+
+| Garantie | Ebene | Für Delta neu? |
+|---|---|---|
+| Result-/Compliance-Modell (`store/`, `compliance.py`) | **Plattform** (substrat-agnostisch) | **nein** — wiederverwendet |
+| Cockpit · SLA · Incidents · Lineage · Lifecycle | **Plattform** | **nein** |
+| **G1** (kein SQL im Contract) | **Authoring-Gate** (`validator.py`) | **nein** — gilt für die YAML, *egal wo* sie läuft |
+| **Read-only** auf die Delta-Quelle | **Executor** (pro Pfad) | **ja** |
+| **PII-Gate (G8)** auf Delta-Rohzeilen | **Executor** | **ja** |
+| **Gating/`skipped_stale` (G6)** | **Executor** | **ja** — oder wiederverwendbar (s. Option B) |
+
+Der Großteil dessen, was Signal ausmacht, ist **substrat-agnostisch** und wird
+mitbenutzt. Neu ist nur die **executor-nahe** Schicht — genau das, was §2.3 „Shim"
+nennt.
+
+### Warum das *nicht* derselbe Verlust ist wie der HANA-Voll-Ersatz
+
+Beim HANA-Voll-Ersatz (dieses Doc) reißt man eine *funktionierende native* Engine
+heraus und baut ihre Garantien als Shim wieder auf — **reiner Verlust**, um wieder
+dort zu landen, wo man war. Bei Delta/HDLF gibt es **noch keine** Signal-Engine
+(Signals Engine ist HANA-only via `hdbcli`). Man ersetzt nichts, man erschließt
+**Neuland** — die Executor-Garantien sind **netto-neue Arbeit für netto-neuen
+Scope**, kein Wiederaufbau.
+
+### Die zwei realen Optionen für Delta
+
+Weil read-only + PII + Gating für den Delta-Pfad **so oder so** anfallen, schrumpft
+der Vorteil der CLI — es bleiben zwei echte Wege:
+
+| | **Option A — CLI als Delta-Executor** (Bewertung §8) | **Option B — eigene Engine auf Delta erweitern** |
+|---|---|---|
+| Neu zu bauen | read-only/PII-Shim · result-mapper · Gating-Orchestrierung *um* den Fremdprozess | DuckDB/ibis-Connector in `connect/` · Delta-Dialekt der SQL-Templates |
+| Wiederverwendet | store/compliance/cockpit/G1-Authoring | **alles oben + read-only/PII/Gating nativ** (`check_engine` ist verbindungs-agnostisch) |
+| Gespart | CLI bringt Delta-Connectoren fertig (`[duckdb]`/`[databricks]`) inkl. Dialekt | kein Fremdprozess, kein Mapper, **eine** Engine |
+| Kostet | Fremdprozess · zweite Engine · Dual-Engine-Risiko (§6.5) | Connector + Template-Transpile (ironischerweise via demselben `sqlglot`) |
+| Nebenwirkung | zwei Executoren (vgl. §6.5) | **kollabiert den Dual-Engine-Split** — eine Engine für HANA *und* Delta, kein G7-Bruch |
+
+**Der eigentliche Tausch:** A spart den **Connector** (Delta-Lesen + Dialekt sind
+geschenkt), zahlt aber Shim + Mapper + Fremdprozess + zweite Engine. B spart
+**Shim/Mapper/Fremdprozess** (alles nativ wiederverwendet), zahlt aber Connector +
+Template-Dialekt selbst. Weil Signal Compiler + Engine + Gating **schon hat**, sind
+Option B's Mehrkosten realistisch *nur* „ein DuckDB/ibis-Adapter + `sqlglot`-Transpile
+der HANA-Templates" — möglicherweise **billiger als A** *und* sauberer.
+
+> **Konstante über beide Optionen:** G1 bleibt nur erhalten, wenn Signals
+> **SQL-freies Schema die Quelle der Wahrheit** bleibt und daraus kompiliert wird —
+> **nicht**, wenn das CLI-`quality: type:sql`-Format als Autorenformat übernommen
+> wird. *Der Executor darf wechseln, das Vertragsformat nicht.*
+
+**Fazit §6.6:** Die *Executor*-Garantien (read-only/PII/Gating) müssen für Delta
+bereitstehen — die *Plattform*-Garantien (Compliance/Cockpit/G1-Authoring) **nicht**
+neu gebaut werden. Und weil die Executor-Garantien ohnehin anfallen, ist das das
+stärkste Argument, Delta **nicht** über die CLI, sondern über eine
+**DuckDB/ibis-Erweiterung der eigenen Engine** (Option B) zu fahren — was nebenbei
+die Zwei-Engine-Frage aus §6.5 auflöst.
+
+---
+
 ## 7. Fazit
 
 Unter P1–P3 ist der volle Ersatz **technisch konstruierbar** (§2–§3), aber er
