@@ -291,7 +291,17 @@
       Ab dem Output-Port läuft ein Upstream-Walk durch den Lineage-Graphen. Der Owner-Set wirkt <strong>negativ</strong> — als
       Stopp-Bedingung, nicht als Mitgliedschafts-Tag. Schritt durch den Walk und beobachte, wie <span class="ok">Interieur</span>,
       <span style="color:var(--outbound)">eigener Port</span> und <span class="warn">Stopp-Knoten</span> (fremder Port / externe Quelle) klassifiziert werden.
+      Wechsle die <strong>Port-Lage</strong>, um zu sehen, dass der Walk an jeder Schicht identisch ansetzt — der Layer-Stamp ist nie Stopp-Kriterium.
     </p>
+
+    <div class="toolbar" style="margin-bottom:6px">
+      <span style="font-size:11.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px;font-weight:700;align-self:center">Port-Lage</span>
+      <div class="seg" id="walkSeg">
+        <button data-sc="serving" class="on">Port @ Serving</button>
+        <button data-sc="core">Port @ Core (Foundation)</button>
+      </div>
+    </div>
+    <div class="callout" id="walkCaption" style="margin:0 0 14px"></div>
 
     <div class="toolbar">
       <button class="btn sm" id="walkStep">Nächster Schritt ▶</button>
@@ -555,59 +565,94 @@ document.getElementById('lyrFlowBtn').addEventListener('click',function(){
 renderLayers('consumer');
 
 //// ========== VIEW 2: COMPOSITION WALK ==========
-const compNodes = [
-  {id:'csrc', layer:'Source · extern', name:'S/4HANA', tech:'ext. System', boundary:'external'},
-  {id:'craw', layer:'Raw', name:'Raw Sales', tech:'RAW.SALES', boundary:'inbound', tags:['in']},
-  {id:'cicore', layer:'Integrated Core', name:'Integrated Core', tech:'CORE.SALES_INT', boundary:'internal', tags:['gate']},
-  {id:'cdim', layer:'Fremd-Produkt', name:'Foundation: kunde', tech:'kunde@1.2 · Team K', boundary:'external', tags:['foreign']},
-  {id:'cbcore', layer:'Business Core', name:'Business Core (Join)', tech:'CORE.SALES_BUS', boundary:'internal', tags:['gate']},
-  {id:'cserve', layer:'Output-Port', name:'sales_overview', tech:'DS_REVENUE_SUMMARY', boundary:'outbound', tags:['contract']},
-  {id:'ccons', layer:'Consumer', name:'FIN-Reporting', tech:'anderes Team', boundary:'external'},
-];
-const walkSteps = [
-  {ids:['cserve'], cls:'walk-port', title:'Start: eigener Output-Port',
-   text:'Der Walk startet am Output-Port aus dem Manifest (output_ports: DS_REVENUE_SUMMARY). Das ist die eigene Outbound-Grenze.'},
-  {ids:['cbcore'], cls:'walk-interior', title:'Interieur — Business Core',
-   text:'Im selben Owner-Set (team-sales). Der Walk läuft hindurch → Interieur → internes Gate (Miner-vorschlagbar). Layer ist nur Beschreibung, nie Stopp-Kriterium.'},
-  {ids:['cdim'], cls:'walk-stop', title:'Stopp (a): fremder Output-Port',
-   text:'Die Kante trifft den Output-Port von kunde (Team K) — ein FREMDER Owner-Set. Der Walk stoppt hier → Inbound-Dependency (Fall B, depends_on + gepinnte Version 1.2). kunde wird NICHT ins Interieur eingerechnet.'},
-  {ids:['cicore'], cls:'walk-interior', title:'Interieur — Integrated Core',
-   text:'Weiter upstream im eigenen Owner-Set → Interieur → internes Gate.'},
-  {ids:['craw'], cls:'walk-interior', title:'Interieur — Raw (Inbound-Seite)',
-   text:'Die Raw-Tabelle gehört zur Inbound-Seite des eigenen Produkts → Interieur. Der Inbound-Contract-Test sitzt hier.'},
-  {ids:['csrc'], cls:'walk-stop', title:'Stopp (b): externe Source',
-   text:'Externer Source-Node (S/4HANA) → Walk stoppt → Inbound-Source (Kandidat für Inbound-Contract). Walk abgeschlossen.'},
-];
+const walkScenarios = {
+  serving: {
+    cap:'<strong>Consumer-aligned · Port @ Serving:</strong> sales_overview — der Output-Port ist die Fact View im Serving-Layer. Der Walk durchläuft zwei Core-Layer, stoppt am fremden Port (kunde, Fall B) und an der externen Source.',
+    hull:['craw','cicore','cbcore','cserve'],
+    nodes:[
+      {id:'csrc', layer:'Source · extern', name:'S/4HANA', tech:'ext. System', boundary:'external'},
+      {id:'craw', layer:'Raw', name:'Raw Sales', tech:'RAW.SALES', boundary:'inbound', tags:['in']},
+      {id:'cicore', layer:'Integrated Core', name:'Integrated Core', tech:'CORE.SALES_INT', boundary:'internal', tags:['gate']},
+      {id:'cdim', layer:'Fremd-Produkt', name:'Foundation: kunde', tech:'kunde@1.2 · Team K', boundary:'external', tags:['foreign']},
+      {id:'cbcore', layer:'Business Core', name:'Business Core (Join)', tech:'CORE.SALES_BUS', boundary:'internal', tags:['gate']},
+      {id:'cserve', layer:'Output-Port · Serving', name:'sales_overview', tech:'DS_REVENUE_SUMMARY', boundary:'outbound', tags:['contract']},
+      {id:'ccons', layer:'Consumer', name:'FIN-Reporting', tech:'anderes Team', boundary:'external', tags:['down']},
+    ],
+    steps:[
+      {ids:['cserve'], cls:'walk-port', title:'Start: eigener Output-Port @ Serving',
+       text:'Der Walk startet am Output-Port aus dem Manifest (output_ports: DS_REVENUE_SUMMARY). Das ist die eigene Outbound-Grenze.'},
+      {ids:['cbcore'], cls:'walk-interior', title:'Interieur — Business Core',
+       text:'Im selben Owner-Set (team-sales). Der Walk läuft hindurch → Interieur → internes Gate (Miner-vorschlagbar). Layer ist nur Beschreibung, nie Stopp-Kriterium.'},
+      {ids:['cdim'], cls:'walk-stop', title:'Stopp (a): fremder Output-Port',
+       text:'Die Kante trifft den Output-Port von kunde (Team K) — ein FREMDER Owner-Set. Der Walk stoppt hier → Inbound-Dependency (Fall B, depends_on + gepinnte Version 1.2). kunde wird NICHT ins Interieur eingerechnet.'},
+      {ids:['cicore'], cls:'walk-interior', title:'Interieur — Integrated Core',
+       text:'Weiter upstream im eigenen Owner-Set → Interieur → internes Gate.'},
+      {ids:['craw'], cls:'walk-interior', title:'Interieur — Raw (Inbound-Seite)',
+       text:'Die Raw-Tabelle gehört zur Inbound-Seite des eigenen Produkts → Interieur. Der Inbound-Contract-Test sitzt hier.'},
+      {ids:['csrc'], cls:'walk-stop', title:'Stopp (b): externe Source',
+       text:'Externer Source-Node (S/4HANA) → Walk stoppt → Inbound-Source (Kandidat für Inbound-Contract). Walk abgeschlossen.'},
+    ]
+  },
+  core: {
+    cap:'<strong>Aggregate / Foundation · Port @ Core:</strong> kunde — der Output-Port liegt im Integrated Core (konforme Dimension). Derselbe Walk, nur früher angesetzt: Layer ist egal. Die Downstream-Konsumenten gehören NICHT zum Produkt (für sie ist das Fall B).',
+    hull:['kraw','kcore'],
+    nodes:[
+      {id:'ksrc', layer:'Source · extern', name:'MDG / CRM', tech:'ext. System', boundary:'external'},
+      {id:'kraw', layer:'Raw', name:'Raw Kunde', tech:'RAW.KUNDE', boundary:'inbound', tags:['in']},
+      {id:'kcore', layer:'Output-Port · Core', name:'kunde (konforme Dim)', tech:'CORE.DIM_KUNDE', boundary:'outbound', tags:['contract']},
+      {id:'kc1', layer:'Consumer', name:'sales_overview', tech:'Team S · Fall B', boundary:'external', tags:['down']},
+      {id:'kc2', layer:'Consumer', name:'CRM-Analytics', tech:'anderes Team', boundary:'external', tags:['down']},
+    ],
+    steps:[
+      {ids:['kcore'], cls:'walk-port', title:'Start: Output-Port @ Integrated Core',
+       text:'Eine konforme Dimension wird grenzüberschreitend konsumiert → der Port liegt im Core, NICHT im Serving. Der Walk startet trotzdem identisch am Port aus dem Manifest.'},
+      {ids:['kraw'], cls:'walk-interior', title:'Interieur — Raw (Inbound-Seite)',
+       text:'Upstream im eigenen Owner-Set (team-kunde) → Interieur → internes Gate. Die Raw-Tabelle gehört zur Inbound-Seite.'},
+      {ids:['ksrc'], cls:'walk-stop', title:'Stopp (b): externe Source',
+       text:'Externer Source-Node (MDG/CRM) → Stopp → Inbound-Source. Walk abgeschlossen. Die Downstream-Knoten (sales_overview, CRM-Analytics) gehören NICHT zum Produkt — sie konsumieren den Port (aus ihrer Sicht Fall B).'},
+    ]
+  }
+};
+let curWalk='serving';
 let walkPos=0;
-renderFlow(document.getElementById('compFlow'), compNodes, ()=>{});
 const walkDetail=document.getElementById('walkDetail');
 const walkStatus=document.getElementById('walkStatus');
+function curScenario(){ return walkScenarios[curWalk]; }
 function applyWalk(){
+  const sc=curScenario();
   const flow=document.getElementById('compFlow');
   flow.querySelectorAll('.node').forEach(el=>el.classList.remove('walk-interior','walk-stop','walk-port'));
   for(let i=0;i<walkPos;i++){
-    walkSteps[i].ids.forEach(id=>{
-      const el=flow.querySelector('.node[data-id="'+id+'"]'); if(el) el.classList.add(walkSteps[i].cls);
+    sc.steps[i].ids.forEach(id=>{
+      const el=flow.querySelector('.node[data-id="'+id+'"]'); if(el) el.classList.add(sc.steps[i].cls);
     });
   }
-  walkStatus.textContent='Schritt '+walkPos+' / '+walkSteps.length;
+  walkStatus.textContent='Schritt '+walkPos+' / '+sc.steps.length;
   if(walkPos===0){
     walkDetail.innerHTML='<h3>Walk-Regel</h3><p style="color:var(--muted);margin:0">Ein Ast stoppt bei: <b>(a)</b> Output-Port eines <em>anderen</em> Produkts → Inbound-Dependency (Fall B) · <b>(b)</b> externem Source-Node → Inbound-Source · <b>(c)</b> bereits besucht. Alles dazwischen = Interieur → interne Gates.</p>';
   } else {
-    const s=walkSteps[walkPos-1];
+    const s=sc.steps[walkPos-1];
     const head={'walk-port':'#f472b6','walk-interior':'#34d399','walk-stop':'#fbbf24'}[s.cls];
     walkDetail.innerHTML='<h3 style="color:'+head+'">'+s.title+'</h3><p style="color:var(--muted);margin:0">'+s.text+'</p>';
   }
 }
-document.getElementById('walkStep').addEventListener('click',()=>{ if(walkPos<walkSteps.length){walkPos++;applyWalk();} });
+function renderWalk(key){
+  curWalk=key; walkPos=0;
+  document.getElementById('walkCaption').innerHTML=curScenario().cap;
+  renderFlow(document.getElementById('compFlow'), curScenario().nodes, ()=>{});
+  document.getElementById('ownerband').style.opacity=0;
+  hullOn=false; document.getElementById('walkHull').textContent='Owner-Hülle zeigen';
+  applyWalk();
+}
+document.getElementById('walkStep').addEventListener('click',()=>{ if(walkPos<curScenario().steps.length){walkPos++;applyWalk();} });
 document.getElementById('walkReset').addEventListener('click',()=>{ walkPos=0;applyWalk(); });
 let hullOn=false;
 document.getElementById('walkHull').addEventListener('click',function(){
   hullOn=!hullOn; this.textContent=hullOn?'Owner-Hülle ausblenden':'Owner-Hülle zeigen';
   const band=document.getElementById('ownerband'); const flow=document.getElementById('compFlow');
   if(!hullOn){band.style.opacity=0;return;}
-  const ids=['craw','cicore','cbcore','cserve'];
-  const els=ids.map(id=>flow.querySelector('.node[data-id="'+id+'"]'));
+  const ids=curScenario().hull;
+  const els=ids.map(id=>flow.querySelector('.node[data-id="'+id+'"]')).filter(Boolean);
   const shell=document.querySelector('#view-composition .lineage-shell');
   const sr=shell.getBoundingClientRect();
   let minL=1e9,minT=1e9,maxR=-1e9,maxB=-1e9;
@@ -616,7 +661,12 @@ document.getElementById('walkHull').addEventListener('click',function(){
   band.style.width=(maxR-minL+18)+'px'; band.style.height=(maxB-minT+18)+'px';
   band.style.opacity=1;
 });
-applyWalk();
+document.getElementById('walkSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  [...e.currentTarget.querySelectorAll('button')].forEach(x=>x.classList.toggle('on',x===b));
+  renderWalk(b.dataset.sc);
+});
+renderWalk('serving');
 
 const recon=[
   {f:'Boundary-Leak', m:'Reality hat grenzüberschreitenden Konsumenten, Intent hat KEINEN Port', k:'= undeklarierter Outbound-Contract (§10.2 automatisiert) → Port/Contract anlegen', c:'bad'},
