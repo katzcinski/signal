@@ -21,7 +21,7 @@
 
 | # | Annahme | Realität heute |
 |---|---|---|
-| P1 | `datacontract test` besitzt einen **HANA-Connector** (`servers: type: hana`), gebaut auf `sqlalchemy-hana`/`hdbcli`, delegiert an Soda Core | existiert **nicht** (kein `type: hana`) |
+| P1 | `datacontract test` besitzt ein **HANA-Backend** (`servers: type: hana`) — seit v1.0.0 ein **ibis-Backend** (Ausführung via ibis→`sqlglot`, nicht mehr Soda Core), realistisch auf `hdbcli`/`sqlalchemy-hana` | existiert **nicht** (kein ibis-HANA-Backend; ibis kennt DuckDB/Snowflake/BigQuery/Postgres/Spark …, kein HANA) |
 | P2 | Quality wird **im Contract-YAML** geschrieben (`quality:`-Sektion, Ebene B) statt aus Garantien kompiliert | bei Signal verboten (Gate G1) |
 | P3 | Wir akzeptieren das **datacontract.com-/ODCS-YAML-Format** als kanonische Quelle der Wahrheit statt unseres Schemas v1 | heute ist `contracts/*.yaml` (Schema v1) die Wahrheit, ODCS nur Einweg-Export |
 
@@ -84,8 +84,8 @@ contracts/*.dcs.yaml    NEU: signal_harness/                       datacontract-
    ▼                  ┌──────────────┐   subprocess   ┌─────────────────────────────┐
 ┌──────────┐          │ ro/PII-Shim  │───────────────▶│ datacontract test           │
 │ Contract │          │ (Ex-G8/G7/   │   datacontract │  servers.type: hana         │
-│ YAML mit │─────────▶│  read-only)  │   test --output│  → Soda Core → sqlalchemy-  │
-│ quality: │ dc lint  │              │◀───────────────│    hana → HANA (LESEND?)    │
+│ YAML mit │─────────▶│  read-only)  │   test --output│  → ibis/sqlglot → hdbcli/   │
+│ quality: │ dc lint  │              │◀───────────────│    sqlalchemy-hana → HANA(RO?)│
 └──────────┘ (Ex-G1?) └──────┬───────┘   run.json     └─────────────────────────────┘
                              │  parse run.json (pass/fail je Check)
                              ▼
@@ -103,10 +103,10 @@ contracts/*.dcs.yaml    NEU: signal_harness/                       datacontract-
 | Baustein heute | Schicksal | Ersetzt durch |
 |---|---|---|
 | `contract/validator.py` (G1-Gate) | **entfällt** | `datacontract lint` (ODCS-Spec-Konformität) — semantisch **schwächer**, s. §4 |
-| `contract/compiler.py` (Garantie→SQL) | **entfällt** | `datacontract test` generiert SQL/SodaCL intern |
-| `library/check_library.json` (Template-Katalog) | **entfällt als Laufzeitpfad** | Soda-Core-Metriken + im YAML geschriebene `quality:`-Checks |
-| `engine/check_engine.py` (HANA-Runner, Batch/Gating) | **entfällt** | `datacontract test` (Soda Core) |
-| `engine/expectation.py` (Soll-Grammatik `= 0`, `>= 1000`) | **entfällt** | Soda/ODCS-Operatoren (`mustBe…`, `fail condition`) |
+| `contract/compiler.py` (Garantie→SQL) | **entfällt** | `datacontract test` kompiliert intern zu ibis→`sqlglot`-SQL |
+| `library/check_library.json` (Template-Katalog) | **entfällt als Laufzeitpfad** | `quality.type: library`-Metriken + im YAML geschriebene `type: sql`-Checks |
+| `engine/check_engine.py` (HANA-Runner, Batch/Gating) | **entfällt** | `datacontract test` (ibis-Engine) |
+| `engine/expectation.py` (Soll-Grammatik `= 0`, `>= 1000`) | **entfällt** | ODCS-Operatoren (`mustBe…`, `unit: percent`) |
 
 ### 2.2 Was **bleibt** (CLI kann es konzeptionell nicht)
 
@@ -127,7 +127,7 @@ contracts/*.dcs.yaml    NEU: signal_harness/                       datacontract-
 | **result-mapper** | parst `datacontract test --output run.json` → `RunSummary`/`CheckResult` für den Store | die heute integrierte Engine→Store-Naht |
 | **subprocess/runtime-isolation** | CLI als Fremdprozess kapseln, Timeouts, Fehlerklassifikation, Secrets-Handling | `statementTimeout`, `execution_mode`, Batch-Fallback aus `check_engine` |
 | **YAML-Bridge** | unser Schema v1 ↔ datacontract.com-Format (oder Vollumstieg auf dc-Format) | Authoring-Pfad + `to_odcs()` |
-| **Gating-Reimplementierung** | günstige Gates vor teure Checks; `skipped_stale` sichtbar | **G6** — Soda Core kennt unser Gating-Modell nicht |
+| **Gating-Reimplementierung** | günstige Gates vor teure Checks; `skipped_stale` sichtbar | **G6** — die CLI/ibis-Engine kennt unser Gating-Modell nicht |
 
 > **Die unbequeme Symmetrie:** Drei Bausteine entfallen (2.1), aber fünf neue
 > entstehen (2.3) — und vier davon existieren **nur**, um Garantien
@@ -149,7 +149,7 @@ contracts/*.dcs.yaml    NEU: signal_harness/                       datacontract-
 4. Execute        subprocess:  datacontract test contracts/<ds>.dcs.yaml \         │ (NEU, war im
                                  --server hana_prod --output run.json              │  Engine gratis)
                        │            │                                              │
-                       │            └─▶ Soda Core ─▶ sqlalchemy-hana ─▶ HANA ◀─────┘
+                       │            └─▶ ibis/sqlglot ─▶ hdbcli/sqlalchemy-hana ─▶ HANA ◀┘
                        │
 5. Map            result-mapper:  run.json → RunSummary(run_id, results[], …)
                        │           (Verlust: kein 'state=skipped_stale', kein
@@ -167,8 +167,8 @@ contracts/*.dcs.yaml    NEU: signal_harness/                       datacontract-
   Daten — die teuren Checks. Das native `_run_with_gating` (ein Prozess, ein
   Batch) wird zu **mehreren CLI-Aufrufen** mit eigener Orchestrierung.
 - **Batch-Effizienz** geht verloren: `check_engine._build_batch_sql` bündelt heute
-  ~20 Checks in *ein* `UNION ALL ... FROM DUMMY`. Soda Core fährt pro Metrik/Query;
-  Round-Trips gegen HANA steigen.
+  ~20 Checks in *ein* `UNION ALL ... FROM DUMMY`. Die ibis-Engine fährt pro
+  Metrik/Query; Round-Trips gegen HANA steigen.
 - **PII-Diagnostik (G8)** war ein *Feld am Check* (`diagnostics.enabled` +
   Spalten-Allowlist) mit Unterdrückung **an der Quelle**. Mit der CLI gibt es kein
   äquivalentes per-Check-Flag — die Unterdrückung muss vor- und nachgelagert um
@@ -196,7 +196,7 @@ Unter der Hypothese (datacontract.com-Format, Quality **in** der YAML):
 models:
   sales_orders:
     fields:
-      ORDER_ID: { type: string, unique: true, primaryKey: true }
+      ORDER_ID: { type: string, unique: true, primaryKey: true }   # Ebene 1: deklarativ, kein SQL
       ORDER_DATE: { type: timestamp }
 servers:
   hana_prod:
@@ -204,27 +204,47 @@ servers:
     host: ...
     schema: SALES
 quality:
-  - type: sql             # ← Ebene B: SQL kehrt in den Contract zurück
+  - type: library         # Ebene 2: benannte Metrik + Operator → KEIN SQL
+    metric: rowCount
+    mustBeGreaterOrEqualTo: 1000
+  - type: sql             # Ebene 3: Escape-Hatch → SQL kehrt in den Contract zurück
     query: |
       SELECT SECONDS_BETWEEN(MAX(ORDER_DATE), CURRENT_TIMESTAMP) FROM sales_orders
     mustBeLessThan: 93600
 ```
 
+**Wichtige Präzisierung (Stand datacontract-cli v1.0.0, 2026-06):** Die CLI
+schreibt **nicht** überall SQL. `datacontract test` kompiliert Schema- und
+Quality-Checks seit v1.0.0 in **ibis-Ausdrücke** (→ dialekt-korrektes SQL via
+`sqlglot`); die frühere **Soda-Core-Engine ist ersetzt**, und **rohe SodaCL-Custom-
+Checks (`type: custom`, `engine: soda`) werden nicht mehr ausgeführt** (nur Warnung,
+Migration nach `type: sql` *oder* `library`-Metrik empfohlen). Es bleiben **drei**
+Ebenen:
+
+| Ebene | Mechanik | SQL im Contract? | Verhältnis zu G1 |
+|---|---|---|---|
+| 1 — Schema/Model | `type`·`required`·`unique`·`enum`·`pattern` automatisch | **nein** | **kein** Bruch — mappt sauber auf Signal-Garantien |
+| 2 — `quality.type: library` | benannte Metrik (`rowCount`, `nullValues`, `unit: percent`) + Operator | **nein** | **kein** Bruch — deklarativ, wie Signals Familien |
+| 3 — `quality.type: sql` | inline `query:` + Schwellwert | **ja** | **Bruch** — Roh-SQL im Vertrag |
+
 **Was das kostet:**
 
-1. **G1 fällt.** Die `quality:`-Sektion erlaubt `type: sql`/`custom` →
-   Roh-SQL/SQL-Injection-Fläche im Vertrag, S2-Identifier-Schutz weg. `datacontract
-   lint` prüft **Spec-Konformität**, nicht „kein SQL" — das müsste man als eigenen
-   Lint-Regelsatz **neu** bauen (und widerspräche dann dem Sinn von Ebene B).
-2. **Determinismus/Diffbarkeit** sinkt. Heute ist ein Check ein Bedeutungs-Diff
-   (`unique: true`); künftig ein SQL-String-Diff — `diff.py`/`gate_g3.py` müssten
-   auf SQL-Heuristik umgestellt werden.
-3. **SAP/HANA-Semantik wandert in jeden Contract.** BSEG-Balance, BKPF-Orphan,
-   Fiscal Completeness, `SYS`-Views, Input-Parameter haben in SodaCL kein
-   deklaratives Äquivalent → landen als `type: sql custom`. Der ~v4-Katalog aus
+1. **G1 fällt nur an Ebene 3 — aber genau dort, wo Signals Wert liegt.** Für
+   generische Checks (Ebene 1/2) ist die CLI deklarativ; kein G1-Problem. Der Bruch
+   beginnt bei `type: sql`. Und der **deklarative Mittelweg „SodaCL-Template
+   schreiben" wurde in v1.0.0 entfernt** — es bleibt library-Metrik (begrenzter
+   Katalog) **oder** Roh-SQL. `datacontract lint` prüft **Spec-Konformität**, nicht
+   „kein SQL"; ein „No-SQL"-Gate müsste man neu bauen (und entwertete dann Ebene 3).
+2. **Determinismus/Diffbarkeit** sinkt für Ebene-3-Checks. Ein library-Check bleibt
+   ein Bedeutungs-Diff; ein `type: sql`-Check wird ein SQL-String-Diff —
+   `diff.py`/`gate_g3.py` müssten dafür auf SQL-Heuristik umgestellt werden.
+3. **SAP/HANA-Semantik wandert zwangsläufig auf Ebene 3.** BSEG-Balance,
+   BKPF-Orphan, Fiscal Completeness, `SYS`-Views, Input-Parameter haben **keine**
+   `library`-Metrik → landen als `type: sql`. Der ~v4-Katalog aus
    `check_library.json` wird von **einem zentralen, getesteten Template** zu
-   **kopiertem SQL pro YAML**.
-4. **G7 bröckelt.** Der Harness importiert/ruft ein Framework (CLI + Soda Core).
+   **kopiertem SQL pro YAML** — die Differenzierung ist genau der Teil, der nicht
+   deklarativ bleibt.
+4. **G7 bröckelt.** Der Harness importiert/ruft ein Framework (CLI + ibis/sqlglot).
    `dq_core` bliebe nur frameworkfrei, wenn der CLI-Aufruf strikt in
    `services/`/`signal_harness/` gekapselt wird — `dq_core` verlöre dann aber
    seinen Zweck (Engine/Compiler sind ja weg).
@@ -256,7 +276,7 @@ HANA-Native-SQL nicht ausdrücken.
 
 **Was man gewinnt**
 
-- Ein **Standard-Executor** statt Eigenbau-Engine; Ökosystem-Anschluss (Soda/GX,
+- Ein **Standard-Executor** statt Eigenbau-Engine; Ökosystem-Anschluss (Soda/GX-Export,
   dbt-Export, breite Backends).
 - `check_engine.py`/`compiler.py`/`library` als Wartungslast entfallen
   (~der „leichteste" 20–30 %-Layer, Bewertung §6).
@@ -312,7 +332,7 @@ eine Ebene höher:
 
 Solange Contract + Result-Modell + Cockpit **eins** sind, ist „zwei Executoren"
 kein zweites Tool, sondern **zwei Adapter hinter einer Plattform** (dasselbe
-Muster, mit dem Soda Core intern an Data-Source-Adapter dispatcht). Die CLI ist
+Muster, mit dem die ibis-Engine intern an verschiedene Backends dispatcht). Die CLI ist
 dann ein **untergeordneter Executor unter Signals Result-Modell**, kein
 gleichrangiges Tool — und diese Unterordnung löst die Anti-Pattern-Sorge auf.
 
@@ -329,9 +349,9 @@ Garantien rekonstruieren".
 | Kosten | Reales Risiko | Gegenmittel |
 |---|---|---|
 | Zwei Codepfade (HANA-Engine + CLI-Harness + result-mapper) | Wartungs-/Testlast verdoppelt | gemeinsamer Result-Mapper-Vertrag; ein Schema für `RunSummary` |
-| **Semantik-Drift** — `unique: true` (Compiler) ≠ Sodas Duplicate-Check? | faktisch doch *zwei Wahrheiten*, nur auf verschiedenen Objekten | **Autorität „Garantie → Check-Definition" bleibt in *einer* Spezifikation** (Library/Mapping); CLI führt nur aus, definiert nicht |
+| **Semantik-Drift** — `unique: true` (Compiler) ≠ ibis-Duplicate-Check der CLI? | faktisch doch *zwei Wahrheiten*, nur auf verschiedenen Objekten | **Autorität „Garantie → Check-Definition" bleibt in *einer* Spezifikation** (Library/Mapping); CLI führt nur aus, definiert nicht |
 | Zwei Failure-Modes, zwei Config-Welten (hdbcli vs. databricks/duckdb) | Betriebskomplexität | klare Plane-Zuordnung pro Objekt im Inventar; eine Trigger-API |
-| Zwei Performance-Profile (Batch-UNION vs. Soda-Round-Trips) | inkonsistente Laufzeiten | Erwartung pro Plane dokumentieren, nicht angleichen wollen |
+| Zwei Performance-Profile (Batch-UNION vs. ibis-Round-Trips pro Metrik) | inkonsistente Laufzeiten | Erwartung pro Plane dokumentieren, nicht angleichen wollen |
 
 **Wann single tool *doch* gewinnt:** Es ist eine **Portfolio-Frage**. Ist die
 Flotte überwiegend Delta/BDC und HANA marginal, kann die operative Einfachheit
