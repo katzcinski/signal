@@ -548,11 +548,12 @@ export const t = {
   },
   theme: {
     label: 'Theme',
+    toggle: 'Theme umschalten',
     classic: 'Classic',
     signal: 'Signal',
     blueprint: 'Blueprint',
     daylight: 'Daylight',
-    amber: 'Amber',
+    amber: 'Amber CRT',
   },
   peek: {
     checksLatestRun: 'Checks · letzter Run',

@@ -8,30 +8,28 @@ interface Props {
   onOpenPalette: () => void;
 }
 
-const THEME_ACCENT: Record<Theme, string> = {
-  classic: '#7B6FEE',
-  signal: '#7AEA7A',
-  blueprint: '#00B8D4',
-  daylight: '#C4541A',
-  amber: '#FFB830',
-};
-
+// Theme switcher. Each theme is a token set applied via data-theme on <html>
+// (see store/ui.ts + Shell + index.css). The dot previews the active accent.
 function ThemeSwitcher() {
   const theme = useUIStore(s => s.theme);
   const setTheme = useUIStore(s => s.setTheme);
   return (
-    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-      <span style={{ fontSize: 10, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-        {t.theme.label}
-      </span>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: THEME_ACCENT[theme], flexShrink: 0 }} />
+    <label
+      title={t.theme.toggle}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
+    >
+      <span style={{
+        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+        background: 'var(--signal)',
+        boxShadow: theme === 'classic' ? undefined : '0 0 0 3px var(--signal-dim)',
+      }} />
       <select
         value={theme}
         onChange={e => setTheme(e.target.value as Theme)}
         aria-label={t.theme.label}
         style={{
-          background: 'var(--cont)22', border: '1px solid var(--cont)55', color: 'var(--cont)',
-          borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer',
+          background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)',
+          borderRadius: 'var(--r-md)', padding: '4px 8px', fontSize: 12, cursor: 'pointer',
         }}
       >
         {THEMES.map(th => (
@@ -95,27 +93,35 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
     }}>
       <button
         onClick={onToggleSidebar}
-        style={{ background: 'none', border: 'none', color: 'var(--fg-2)', fontSize: 16, padding: 4 }}
+        style={{
+          background: 'none', border: 'none', color: 'var(--fg-2)',
+          padding: 4, display: 'inline-flex', alignItems: 'center',
+        }}
         aria-label="Toggle sidebar"
         title="Toggle sidebar"
       >
-        ☰
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.8" strokeLinecap="round" aria-hidden focusable="false">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
       </button>
       <button
         onClick={onOpenPalette}
         style={{
-          background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-          color: 'var(--fg-2)', borderRadius: 5, padding: '4px 12px',
-          fontSize: 12, display: 'flex', alignItems: 'center', gap: 8,
+          background: 'var(--bg-2)', border: '1px solid var(--line)',
+          color: 'var(--fg-2)', borderRadius: 'var(--r-md)', padding: '4px 8px 4px 12px',
+          fontSize: 12, display: 'flex', alignItems: 'center', gap: 10,
         }}
       >
         <span>{t.palette.placeholder}</span>
         <kbd style={{
-          background: 'var(--bg-3)', border: '1px solid var(--line-2)',
+          background: 'var(--bg-0)', border: '1px solid var(--line-2)',
           borderRadius: 3, padding: '1px 5px', fontSize: 10,
+          fontFamily: 'var(--font-mono)', color: 'var(--fg-3)',
         }}>⌘K</kbd>
       </button>
       <div style={{ flex: 1 }} />
+      <ThemeSwitcher />
       <button
         onClick={toggleDensity}
         title={t.density.toggle}
@@ -127,7 +133,6 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
       >
         ↕ {density === 'compact' ? t.density.compact : t.density.comfortable}
       </button>
-      <ThemeSwitcher />
       <RoleSwitcher />
     </header>
   );

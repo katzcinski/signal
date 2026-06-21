@@ -38,6 +38,8 @@ export function Shell({ children }: Props) {
 
   // R6-7: drive density tokens off a root data attribute.
   useEffect(() => { document.documentElement.dataset.density = density; }, [density]);
+
+  // Drive the theme token set off a root data attribute (see index.css).
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
 
   useEffect(() => {
