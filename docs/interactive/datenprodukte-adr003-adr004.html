@@ -84,23 +84,25 @@
   .flow{display:flex;align-items:stretch;gap:0;min-width:880px}
   .colwrap{display:flex;flex-direction:column;align-items:center;flex:1 1 0;min-width:130px}
   .arrow{align-self:center;color:var(--faint);font-size:22px;flex:0 0 26px;text-align:center;display:flex;align-items:center;justify-content:center}
-  .node{position:relative;width:100%;background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:11px 11px 12px;cursor:pointer;transition:border-color .18s,transform .15s,box-shadow .2s;text-align:left}
+  .node{position:relative;width:100%;background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:11px 11px 12px;cursor:pointer;transition:border-color .18s,transform .15s,box-shadow .2s,opacity .2s;text-align:left}
   .node:hover{transform:translateY(-3px);border-color:var(--line2)}
   .node.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 10px 30px -12px rgba(56,189,248,.55)}
   .node .layer{font-size:9.5px;font-family:var(--mono);letter-spacing:.6px;text-transform:uppercase;color:var(--faint)}
   .node .name{font-weight:700;font-size:13px;margin-top:3px;line-height:1.2}
   .node .tech{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:3px;word-break:break-all}
-  .node .badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+  .node .badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;min-height:14px}
   .tag{font-size:9px;font-weight:700;letter-spacing:.4px;padding:1px 6px;border-radius:5px;text-transform:uppercase}
   .tag.gate{background:rgba(56,189,248,.16);color:var(--internal);border:1px solid #1d4a63}
   .tag.contract{background:rgba(244,114,182,.16);color:var(--outbound);border:1px solid #5a2747}
   .tag.in{background:rgba(251,191,36,.16);color:var(--inbound);border:1px solid #5a4a1e}
   .tag.foreign{background:rgba(129,140,248,.16);color:var(--accent2);border:1px solid #34406b}
+  .tag.down{background:rgba(100,116,139,.16);color:var(--external);border:1px solid #3a4658}
   /* boundary edge accent */
   .node.bd-inbound{border-left:4px solid var(--inbound)}
   .node.bd-outbound{border-left:4px solid var(--outbound)}
   .node.bd-internal{border-left:4px solid var(--internal)}
   .node.bd-external{border-left:4px solid var(--external);opacity:.92}
+  .node.is-down{opacity:.5}
   /* owner hull band */
   .ownerband{position:absolute;border:1.5px dashed var(--accent2);border-radius:14px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:1}
   .ownerband .lbl{position:absolute;top:-11px;left:14px;background:var(--bg2);color:var(--accent2);font-size:10px;font-weight:700;padding:1px 8px;border-radius:6px;border:1px solid #34406b;font-family:var(--mono)}
@@ -108,7 +110,6 @@
   .node.walk-interior{box-shadow:0 0 0 2px var(--green) inset}
   .node.walk-stop{box-shadow:0 0 0 2px var(--amber) inset}
   .node.walk-port{box-shadow:0 0 0 2px var(--outbound) inset}
-  .node.walk-dim{opacity:.32}
 
   .detail{margin-top:14px;background:var(--panel);border:1px solid var(--line2);border-radius:13px;padding:16px 18px;min-height:96px}
   .detail h3{color:var(--accent)}
@@ -130,7 +131,7 @@
 
   /* decision tree */
   .tree{display:flex;flex-direction:column;gap:0;align-items:center;margin-top:6px}
-  .tnode{background:var(--panel);border:1.5px solid var(--line2);border-radius:12px;padding:12px 16px;max-width:560px;text-align:center;position:relative;transition:border-color .18s,box-shadow .2s,opacity .2s}
+  .tnode{background:var(--panel);border:1.5px solid var(--line2);border-radius:12px;padding:12px 16px;max-width:600px;text-align:center;position:relative;transition:border-color .18s,box-shadow .2s,opacity .2s}
   .tnode.q{cursor:default}
   .tnode.lit{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
   .tnode.term-ok{border-color:var(--green)} .tnode.term-ok.lit{box-shadow:0 0 0 1px var(--green)}
@@ -138,7 +139,6 @@
   .tnode.term-seam{border-color:var(--outbound)} .tnode.term-seam.lit{box-shadow:0 0 0 1px var(--outbound)}
   .tnode .tt{font-weight:700;font-size:14px}
   .tnode .td{font-size:12px;color:var(--muted);margin-top:4px}
-  .tbranch{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:0}
   .tconn{height:18px;width:2px;background:var(--line2)}
   .choice{display:flex;gap:9px;justify-content:center;margin:9px 0;flex-wrap:wrap}
   .choice button{cursor:pointer;font-family:var(--sans);font-weight:600;font-size:12.5px;padding:6px 12px;border-radius:8px;background:var(--bg2);border:1px solid var(--line2);color:var(--ink)}
@@ -161,7 +161,7 @@
 
   .ftr{color:var(--faint);font-size:12px;text-align:center;padding:28px 0 8px;border-top:1px solid var(--line)}
 
-  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden;flex-wrap:wrap}
   .seg button{background:var(--bg2);color:var(--muted);border:0;padding:7px 14px;cursor:pointer;font-family:var(--sans);font-weight:600;font-size:12.5px}
   .seg button.on{background:var(--accent);color:#06121f}
   .seg button+button{border-left:1px solid var(--line2)}
@@ -196,14 +196,24 @@
 <!-- ===================== VIEW 1: LAYERS & BOUNDARIES ===================== -->
 <div class="view active" id="view-layers"><div class="wrap">
   <section>
-    <div class="kicker">Briefing §1.4–1.6 · ADR-0001</div>
-    <h2>Fünf Schichten, zwei Grenzen — Checks überall, Contracts nur an den Rändern</h2>
+    <div class="kicker">Briefing §1.4–1.6 · ADR-0001 · ADR-0004</div>
+    <h2>Schichten sind Beschreibung — die Grenze macht den Contract</h2>
     <p class="sub">
       Ein Datenprodukt durchläuft Schichten von der Quelle bis zum Konsumenten. Eine Schicht ist nur eine technische Tatsache
-      (<em>Layer ≠ Grenze</em>). Ein <strong>Contract</strong> entsteht erst, wo die Verantwortung den Owner wechselt —
-      an der <strong>Inbound-</strong> und der <strong>Outbound-Grenze</strong>. Dazwischen liegen <strong>interne Quality Gates</strong>,
-      keine Verträge. Klicke einen Knoten an.
+      (<em>Layer ≠ Grenze</em>). Ein <strong>Contract</strong> entsteht erst, wo die Verantwortung den Owner wechselt.
+      Der <strong>Output-Port</strong> sitzt deshalb dort, wo der Konsum die Owner-Grenze kreuzt — an einer <em>beliebigen</em> Schicht,
+      nicht zwangsläufig im Serving-Layer. Wechsle den Produkt-Typ und klicke einen Knoten an.
     </p>
+
+    <div class="toolbar" style="margin-bottom:6px">
+      <span style="font-size:11.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px;font-weight:700;align-self:center">Produkt-Typ</span>
+      <div class="seg" id="archSeg">
+        <button data-arch="source">Source-aligned · Port @ Raw</button>
+        <button data-arch="aggregate">Aggregate · Port @ Core</button>
+        <button data-arch="consumer" class="on">Consumer-aligned · Port @ Serving</button>
+      </div>
+    </div>
+    <div class="callout" id="lyrCaption" style="margin:0 0 14px"></div>
 
     <div class="toolbar">
       <button class="btn sm" id="lyrBoundaryToggle">Grenzen hervorheben</button>
@@ -220,18 +230,15 @@
       <div class="flow" id="lyrFlow"></div>
     </div>
 
-    <div class="detail" id="lyrDetail">
-      <h3>Klicke einen Knoten</h3>
-      <p style="color:var(--muted);margin:0">Jeder Knoten zeigt seine Schicht, seine Grenz-Klassifikation (<code>boundary</code>) und ob dort ein <em>Contract</em> oder nur ein <em>internes Gate</em> sitzt.</p>
-    </div>
+    <div class="detail" id="lyrDetail"></div>
 
     <div class="grid g3" style="margin-top:18px">
       <div class="card"><h3><span class="pill b-inbound"><span class="dot" style="background:var(--inbound)"></span>Inbound</span></h3>
         <p>Source ↔ Raw. Was die Quelle zu liefern verspricht (Schema, Typen, Frequenz). Die <strong>Raw-Tabelle gehört zur Inbound-Seite</strong>. Bei S/4HANA via BDC ist das gelieferte Produkt <em>bereits</em> der Inbound-Contract.</p></div>
       <div class="card"><h3><span class="pill b-internal"><span class="dot" style="background:var(--internal)"></span>Internal</span></h3>
-        <p>Integrated Core &amp; Business Core: Business Rules, Dedup, Ref-Integrität. <strong>Interne Quality Gates — kein Contract.</strong> Das <code>DQ_STATUS</code>-Pattern ist Enforcement, kein Vertragsartefakt.</p></div>
+        <p>Interieur des Produkts (Integrated/Business Core, ggf. Raw): Business Rules, Dedup, Ref-Integrität. <strong>Interne Quality Gates — kein Contract.</strong> Das <code>DQ_STATUS</code>-Pattern ist Enforcement, kein Vertragsartefakt.</p></div>
       <div class="card"><h3><span class="pill b-outbound"><span class="dot" style="background:var(--outbound)"></span>Outbound</span></h3>
-        <p>Data Product ↔ Consumer am <strong>Output-Port</strong> (Delta Share <em>oder</em> exponierte View). 1:1:1:1: Data Contract → Output Port → Schema → Read Role.</p></div>
+        <p>Data Product ↔ Consumer am <strong>Output-Port</strong> — ein Delta Share <em>oder</em> eine exponierte View, auf <em>jeder</em> Schicht. 1:1:1:1: Data Contract → Output Port → Schema → Read Role.</p></div>
     </div>
 
     <div class="callout">
@@ -262,7 +269,7 @@
 <span class="k">inbound</span>:                       <span class="c"># nur bei echter Gegenpartei</span>
   - <span class="k">depends_on</span>: { product: kunde, version: <span class="s">"1.2.0"</span> }
 <span class="c"># interieur: NICHT gelistet — wird aus Lineage abgeleitet</span></pre>
-        <p>Kein Interieur, kein Zustand, keine Version. SemVer lebt am <em>Outbound-Contract pro Port</em>, nicht am Produkt.</p>
+        <p>Kein Interieur, kein Zustand, keine Version. SemVer lebt am <em>Outbound-Contract pro Port</em>, nicht am Produkt. Der Port-Eintrag kann auf ein Objekt <em>jeder</em> Schicht zeigen.</p>
       </div>
       <div class="card">
         <h3>Drei Ebenen, ein Abgleich</h3>
@@ -303,17 +310,13 @@
       <span><i style="border-color:var(--amber)"></i>Stopp: fremder Port / externe Quelle</span>
     </div>
 
-    <div class="detail" id="walkDetail">
-      <h3>Walk-Regel</h3>
-      <p style="color:var(--muted);margin:0">Ein Ast stoppt bei: <b>(a)</b> Output-Port eines <em>anderen</em> Produkts → Inbound-Dependency (Fall B) ·
-      <b>(b)</b> externem Source-Node → Inbound-Source · <b>(c)</b> bereits besucht. Alles dazwischen = Interieur → interne Gates.</p>
-    </div>
+    <div class="detail" id="walkDetail"></div>
   </section>
 
   <section>
     <div class="kicker">ADR-0004 §6 · Reconciliation</div>
     <h2>Der eigentliche Gewinn: Befunde als Delta Intent ⋈ Reality</h2>
-    <p class="sub">Sobald das Aggregat existiert, fallen die Befunde automatisch ab. Klicke eine Zeile für die Konsequenz.</p>
+    <p class="sub">Sobald das Aggregat existiert, fallen die Befunde automatisch ab.</p>
     <table id="reconTable">
       <tr><th>Befund</th><th>Bedeutung</th><th>Konsequenz</th></tr>
     </table>
@@ -366,7 +369,7 @@
           <tr><td>Quality/SLA</td><td>DQ-Logik / Task Chains</td><td><span class="warn">nur implementiert</span></td></tr>
         </table>
         <div class="callout pink" style="margin-bottom:0">
-          <strong>1:1:1:1:</strong> Data Contract → Output Port → Schema → Read Role. Der Output-Port ist 1:1 die <code>boundary: outbound</code>.
+          <strong>1:1:1:1:</strong> Data Contract → Output Port → Schema → Read Role. Der Output-Port ist 1:1 die <code>boundary: outbound</code> — unabhängig vom Transport.
         </div>
       </div>
     </div>
@@ -376,8 +379,9 @@
     <div class="kicker">ADR-0003 §3.1 · Entscheidungsbaum</div>
     <h2>Wo erzwingt Signal bei einem Studio-Produkt?</h2>
     <p class="sub">
-      Die ganze ADR verdichtet sich auf <strong>eine</strong> Frage je Produkt: <em>Gibt es eine SQL-erreichbare Oberfläche desselben Inhalts?</em>
-      Der einzige Executor ist <strong>GX-on-HANA</strong> (read-only, SQL-Template gegen <code>"{schema}"."{dataset}"</code>). Spiele den Baum durch.
+      Der Output-Port kann jeden Transport sprechen (Delta Share, SQL-on-Files, HANA-View, ODBC). Für die <em>Governance</em> ist er immer der Port.
+      Für das <em>Enforcement</em> zählt nur eins: <strong>gibt es eine SQL-erreichbare Oberfläche desselben Inhalts?</strong> Der einzige Executor ist
+      <strong>GX-on-HANA</strong> (read-only, SQL-Template gegen <code>"{schema}"."{dataset}"</code>). Spiele den Baum durch.
     </p>
 
     <div class="toolbar"><button class="btn ghost sm" id="treeReset">Baum zurücksetzen</button></div>
@@ -387,6 +391,21 @@
       <h3>Beispiel: <code>sales_orders_curated</code></h3>
       <p style="color:var(--muted);margin:0">HDLF-Custom-Produkt, von FIN-Reporting konsumiert. Beantworte die Fragen oben, um den Pfad zu sehen.</p>
     </div>
+
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card" style="border-color:#1f5a3a">
+        <h3 class="ok">✅ HANA liest die Files</h3>
+        <p>SQL-on-Files / Virtual Table: <strong>HANA</strong> liest die HDLF-Delta/Parquet-Bytes, Signal spricht nur SQL gegen HANA.
+        Die Bytes kommen aus dem HDLF — aber durch das HANA-SQL-Interface. Das ist <strong>weiterhin GX-on-HANA</strong>, kein zweiter Executor (Fall 3c).
+        Voraussetzung: ein stabiler zweiteiliger Name <code>schema.object</code> (Verifikationspunkt V1).</p>
+      </div>
+      <div class="card" style="border-color:#5a2730">
+        <h3 class="bad">✗ Signal liest die Files</h3>
+        <p>Ein Signal-eigener Delta-Sharing-/Spark-/Object-Store-Reader wird von ADR-0003 §7.5 <strong>abgelehnt</strong>: bricht „single executor",
+        dupliziert die 20 Checks gegen ein zweites Runtime und verletzt G7 (Frameworkfreiheit). Die Engine bleibt <code>[ENGINE-FROZEN]</code>.
+        Technisch möglich — bewusst nicht gewollt.</p>
+      </div>
+    </div>
   </section>
 
   <section>
@@ -395,7 +414,7 @@
     <div class="grid g3">
       <div class="card"><h3>① Konzept ist speicher-agnostisch</h3><p><code>boundary</code> × Lite/Full und das Tiering gelten für ein HDLF-Produkt <em>genauso</em> wie für ein HANA-Produkt. Keine Anpassung auf der Governance-Seite.</p></div>
       <div class="card"><h3>② Enforcement an der SQL-Naht</h3><p>„HANA-Space-Produkt" und „HDLF-via-SQL-on-Files" sind für den Executor <strong>dasselbe</strong>: eine relationale Oberfläche <code>schema.object</code>. (b) und (c) kollabieren.</p></div>
-      <div class="card"><h3>③ Delta Share ist kein SQL-Endpoint</h3><p>Direkt nicht prüfbar. Transitiv an der SQL-Repräsentation desselben Inhalts enforcen — oder ehrlich <span class="bad">out-of-scope</span>. <strong>Kein zweiter Executor</strong> (Gate G7).</p></div>
+      <div class="card"><h3>③ Delta Share = Port, kein SQL-Endpoint</h3><p>Gültiger Output-Port, aber direkt nicht prüfbar. Transitiv an der SQL-Repräsentation desselben Inhalts enforcen — oder ehrlich <span class="bad">out-of-scope</span>. <strong>Kein zweiter Executor</strong> (Gate G7).</p></div>
     </div>
     <div class="callout">
       <strong>„SQL-Output-Port = überwachbar."</strong> Das ehrliche Kunden-Framing: Wo Governance zählt (Tier 2), gib dem Produkt einen SQL-Output-Port —
@@ -423,34 +442,19 @@ tabs.addEventListener('click', e => {
   window.scrollTo({top:0,behavior:'smooth'});
 });
 
-//// ---------- shared node descriptions ----------
 const ARROW = '→';
 
-//// ========== VIEW 1: LAYERS ==========
-const layerNodes = [
-  {id:'src', layer:'Source · extern', name:'S/4HANA · LucaNet', tech:'ext. System', boundary:'external',
-   role:'Liefernde Gegenpartei. Bei S/4HANA via BDC ist das gelieferte Produkt bereits der Inbound-Contract (ORD + Delta Share) — nichts nachzubauen.', kind:'—'},
-  {id:'raw', layer:'Raw Layer', name:'Raw / Lokale Tabelle', tech:'RAW.SALES', boundary:'inbound', tags:['in'],
-   role:'Gehört zur Inbound-Seite. Hier sitzt der Inbound-Contract-Test: prüft die gepinnte Zusage der Quelle (Schema, Typen, Frequenz, Null-Verhalten).', kind:'Inbound-Contract-Test'},
-  {id:'icore', layer:'Integrated Core', name:'Integrated Core', tech:'CORE.SALES_INT', boundary:'internal', tags:['gate'],
-   role:'Business Rules, Dedup, referenzielle Integrität. Internes Quality Gate — KEIN Contract. DQ_STATUS-Pattern ist Enforcement, kein Vertrag.', kind:'Internes Gate'},
-  {id:'bcore', layer:'Business Core', name:'Business Core', tech:'CORE.SALES_BUS', boundary:'internal', tags:['gate'],
-   role:'Fachliche Aufbereitung, Kennzahlen-Logik. Weiterhin Interieur des Produkts → internes Gate, kein Vertrag (Layer ≠ Grenze).', kind:'Internes Gate'},
-  {id:'serve', layer:'Serving / Business', name:'Fact View / Analytic Model', tech:'DS_REVENUE_SUMMARY', boundary:'outbound', tags:['contract'],
-   role:'Der Output-Port. Hier sitzt der Outbound-Contract: Schema, Semantik, SLA, Qualität, Zugriff. 1:1:1:1 — ein Contract pro Port.', kind:'Outbound-Contract'},
-  {id:'cons', layer:'Consumer · extern', name:'Consumer (anderes Team)', tech:'BI / FIN-Reporting', boundary:'external',
-   role:'Zustimmende Gegenpartei am Outbound-Port. Konsum über eine Ownership-Grenze macht das Produkt erst zum governten Produkt.', kind:'—'},
-];
-
+//// ---------- shared lineage renderer (View 1 + View 2) ----------
 function renderFlow(container, nodes, onClick){
   container.innerHTML='';
   nodes.forEach((n,i)=>{
     const col=document.createElement('div'); col.className='colwrap';
     const el=document.createElement('div');
-    el.className='node bd-'+n.boundary; el.dataset.id=n.id;
+    el.className='node bd-'+n.boundary + (n.tags && n.tags.indexOf('down')>=0 ? ' is-down':'');
+    el.dataset.id=n.id;
     let badges='';
     (n.tags||[]).forEach(t=>{
-      const lbl={gate:'Gate',contract:'Contract',in:'Inbound',foreign:'Fremd-Port'}[t];
+      const lbl={gate:'Gate',contract:'Contract',in:'Inbound',foreign:'Fremd-Port',down:'Stromabwärts'}[t];
       badges+='<span class="tag '+t+'">'+lbl+'</span>';
     });
     el.innerHTML='<div class="layer">'+n.layer+'</div><div class="name">'+n.name+'</div>'+
@@ -461,6 +465,54 @@ function renderFlow(container, nodes, onClick){
   });
 }
 
+//// ========== VIEW 1: LAYERS — port placement is layer-agnostic ==========
+const lyrChain = [
+  {id:'src',   layer:'Source · extern',    name:'S/4HANA · LucaNet',          tech:'ext. System'},
+  {id:'raw',   layer:'Raw Layer',          name:'Raw / Lokale Tabelle',       tech:'RAW.SALES'},
+  {id:'icore', layer:'Integrated Core',    name:'Integrated Core',            tech:'CORE.SALES_INT'},
+  {id:'bcore', layer:'Business Core',      name:'Business Core',              tech:'CORE.SALES_BUS'},
+  {id:'serve', layer:'Serving / Business', name:'Fact View / Analytic Model', tech:'DS_REVENUE_SUMMARY'},
+  {id:'cons',  layer:'Consumer · extern',  name:'Consumer (anderes Team)',    tech:'BI / FIN-Reporting'},
+];
+const lyrArch = {
+  source:    {port:'raw',   cap:'<strong>Source-aligned:</strong> Output-Port @ Raw — ein leicht aufbereiteter, gelandeter Extrakt wird selbst als Produkt publiziert. Die Grenze (und der Contract) liegt hier ganz früh in der Lineage.'},
+  aggregate: {port:'icore', cap:'<strong>Aggregate / Foundation:</strong> Output-Port @ Integrated Core — z. B. eine konforme Dimension (kunde), die andere Domänen konsumieren (Fall B → gekettete Contracts). Layer = Core, Grenze = outbound.'},
+  consumer:  {port:'serve', cap:'<strong>Consumer-aligned:</strong> Output-Port @ Serving — die klassische Fact View / Analytic Model. Nur EINE von drei Möglichkeiten, nicht die Regel.'},
+};
+const portRole = {
+  raw:   'Source-aligned: der gelandete Extrakt IST das Produkt — Output-Port @ Raw. Misch-Fall (ADR-0001 OP-2): boundary je Garantie — dasselbe Objekt wird inbound getestet UND outbound versprochen.',
+  icore: 'Aggregate/Foundation: z. B. konforme Dimension. Output-Port @ Integrated Core, grenzüberschreitend konsumiert (Fall B). Layer ist Core — die Grenze ist trotzdem outbound.',
+  serve: 'Consumer-aligned: klassische Fact View / Analytic Model. Output-Port @ Serving. Hier fallen Layer und Port zusammen — aber nicht zwangsläufig.',
+};
+function buildLayerNodes(archKey){
+  const a = lyrArch[archKey];
+  const p = lyrChain.findIndex(c=>c.id===a.port);
+  return lyrChain.map((c,i)=>{
+    const n = Object.assign({}, c);
+    if(i===0){
+      n.boundary='external'; n.kind='Inbound-Source';
+      n.role='Liefernde Gegenpartei / Inbound-Source. Bei S/4HANA via BDC ist das gelieferte Produkt bereits der Inbound-Contract (ORD + Delta Share).';
+    } else if(i<p){
+      if(i===1){
+        n.boundary='inbound'; n.tags=['in']; n.kind='Inbound-Contract-Test';
+        n.role='Inbound-Seite des Produkts. Hier sitzt der Inbound-Contract-Test: die gepinnte Zusage der Quelle (Schema, Typen, Frequenz).';
+      } else {
+        n.boundary='internal'; n.tags=['gate']; n.kind='Internes Gate';
+        n.role='Interieur des Produkts → internes Quality Gate, KEIN Contract (Layer ≠ Grenze).';
+      }
+    } else if(i===p){
+      n.boundary='outbound';
+      n.tags = (p===1) ? ['in','contract'] : ['contract'];
+      n.kind = (p===1) ? 'Inbound-fed + Outbound-Port' : 'Outbound-Contract';
+      n.role = portRole[a.port];
+    } else {
+      n.boundary='external'; n.tags=['down']; n.kind='Konsumenten-Seite';
+      n.role='Stromabwärts der Port-Grenze → Konsumenten-Seite, evtl. ein anderes Produkt/Team. Für DIESES Produkt extern.';
+    }
+    return n;
+  });
+}
+
 const lyrDetail=document.getElementById('lyrDetail');
 function selectLayer(n,el,container){
   container.querySelectorAll('.node').forEach(x=>x.classList.remove('sel'));
@@ -468,22 +520,30 @@ function selectLayer(n,el,container){
   const bmap={external:'extern',inbound:'inbound',outbound:'outbound',internal:'internal'};
   const cls={external:'b-external',inbound:'b-inbound',outbound:'b-outbound',internal:'b-internal'}[n.boundary];
   lyrDetail.innerHTML='<h3>'+n.name+'</h3>'+
-    '<div class="row"><span class="pill '+cls+'"><span class="dot" style="background:var(--'+(n.boundary==='external'?'external':n.boundary)+')"></span>boundary: '+bmap[n.boundary]+'</span>'+
+    '<div class="row"><span class="pill '+cls+'"><span class="dot" style="background:var(--'+n.boundary+')"></span>boundary: '+bmap[n.boundary]+'</span>'+
     '<span class="pill">'+n.kind+'</span></div>'+
     '<dl><dt>Schicht</dt><dd>'+n.layer+'</dd><dt>Objekt</dt><dd class="mono">'+n.tech+'</dd></dl>'+
     '<p style="margin:12px 0 0;color:var(--muted)">'+n.role+'</p>';
 }
-renderFlow(document.getElementById('lyrFlow'), layerNodes, selectLayer);
 
-// boundary highlight toggle
 let bdOn=false;
+function renderLayers(archKey){
+  document.getElementById('lyrCaption').innerHTML = lyrArch[archKey].cap;
+  renderFlow(document.getElementById('lyrFlow'), buildLayerNodes(archKey), selectLayer);
+  lyrDetail.innerHTML='<h3>Klicke einen Knoten</h3><p style="color:var(--muted);margin:0">Der Output-Port (Contract-Badge) sitzt dort, wo der Konsum die Owner-Grenze kreuzt — NICHT an einer festen Schicht. Alles stromaufwärts ist Interieur (Gates), alles stromabwärts ist Konsumenten-Seite.</p>';
+  bdOn=false; document.getElementById('lyrBoundaryToggle').textContent='Grenzen hervorheben';
+}
+document.getElementById('archSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  [...e.currentTarget.querySelectorAll('button')].forEach(x=>x.classList.toggle('on',x===b));
+  renderLayers(b.dataset.arch);
+});
 document.getElementById('lyrBoundaryToggle').addEventListener('click',function(){
   bdOn=!bdOn; this.textContent=bdOn?'Grenzen ausblenden':'Grenzen hervorheben';
   document.querySelectorAll('#lyrFlow .node').forEach(el=>{
     el.style.opacity = bdOn ? (el.classList.contains('bd-internal')||el.classList.contains('bd-external')?'.45':'1') : '';
   });
 });
-// flow animation: light nodes left→right
 document.getElementById('lyrFlowBtn').addEventListener('click',function(){
   const nodes=[...document.querySelectorAll('#lyrFlow .node')];
   this.disabled=true;
@@ -492,9 +552,9 @@ document.getElementById('lyrFlowBtn').addEventListener('click',function(){
     if(i===nodes.length-1) setTimeout(()=>this.disabled=false,560);
   }, i*420));
 });
+renderLayers('consumer');
 
 //// ========== VIEW 2: COMPOSITION WALK ==========
-// graph extended with a foreign product port (kunde) joining the core
 const compNodes = [
   {id:'csrc', layer:'Source · extern', name:'S/4HANA', tech:'ext. System', boundary:'external'},
   {id:'craw', layer:'Raw', name:'Raw Sales', tech:'RAW.SALES', boundary:'inbound', tags:['in']},
@@ -504,7 +564,6 @@ const compNodes = [
   {id:'cserve', layer:'Output-Port', name:'sales_overview', tech:'DS_REVENUE_SUMMARY', boundary:'outbound', tags:['contract']},
   {id:'ccons', layer:'Consumer', name:'FIN-Reporting', tech:'anderes Team', boundary:'external'},
 ];
-// walk order (downstream→upstream from the port), with classification + explanation
 const walkSteps = [
   {ids:['cserve'], cls:'walk-port', title:'Start: eigener Output-Port',
    text:'Der Walk startet am Output-Port aus dem Manifest (output_ports: DS_REVENUE_SUMMARY). Das ist die eigene Outbound-Grenze.'},
@@ -520,13 +579,12 @@ const walkSteps = [
    text:'Externer Source-Node (S/4HANA) → Walk stoppt → Inbound-Source (Kandidat für Inbound-Contract). Walk abgeschlossen.'},
 ];
 let walkPos=0;
-renderFlow(document.getElementById('compFlow'), compNodes, (n,el,c)=>{ /* passive click does nothing special */ });
+renderFlow(document.getElementById('compFlow'), compNodes, ()=>{});
 const walkDetail=document.getElementById('walkDetail');
 const walkStatus=document.getElementById('walkStatus');
 function applyWalk(){
   const flow=document.getElementById('compFlow');
-  flow.querySelectorAll('.node').forEach(el=>el.classList.remove('walk-interior','walk-stop','walk-port','walk-dim'));
-  // dim everything beyond current position
+  flow.querySelectorAll('.node').forEach(el=>el.classList.remove('walk-interior','walk-stop','walk-port'));
   for(let i=0;i<walkPos;i++){
     walkSteps[i].ids.forEach(id=>{
       const el=flow.querySelector('.node[data-id="'+id+'"]'); if(el) el.classList.add(walkSteps[i].cls);
@@ -534,7 +592,7 @@ function applyWalk(){
   }
   walkStatus.textContent='Schritt '+walkPos+' / '+walkSteps.length;
   if(walkPos===0){
-    walkDetail.innerHTML='<h3>Walk-Regel</h3><p style="color:var(--muted);margin:0">Ab dem Output-Port upstream. Stoppt bei (a) fremdem Port, (b) externer Source, (c) bereits besucht. Dazwischen = Interieur.</p>';
+    walkDetail.innerHTML='<h3>Walk-Regel</h3><p style="color:var(--muted);margin:0">Ein Ast stoppt bei: <b>(a)</b> Output-Port eines <em>anderen</em> Produkts → Inbound-Dependency (Fall B) · <b>(b)</b> externem Source-Node → Inbound-Source · <b>(c)</b> bereits besucht. Alles dazwischen = Interieur → interne Gates.</p>';
   } else {
     const s=walkSteps[walkPos-1];
     const head={'walk-port':'#f472b6','walk-interior':'#34d399','walk-stop':'#fbbf24'}[s.cls];
@@ -543,13 +601,11 @@ function applyWalk(){
 }
 document.getElementById('walkStep').addEventListener('click',()=>{ if(walkPos<walkSteps.length){walkPos++;applyWalk();} });
 document.getElementById('walkReset').addEventListener('click',()=>{ walkPos=0;applyWalk(); });
-// owner hull band
 let hullOn=false;
 document.getElementById('walkHull').addEventListener('click',function(){
   hullOn=!hullOn; this.textContent=hullOn?'Owner-Hülle ausblenden':'Owner-Hülle zeigen';
   const band=document.getElementById('ownerband'); const flow=document.getElementById('compFlow');
   if(!hullOn){band.style.opacity=0;return;}
-  // span the hull around interior nodes: craw .. cbcore + cserve (own owner-set), excluding cdim/csrc/ccons
   const ids=['craw','cicore','cbcore','cserve'];
   const els=ids.map(id=>flow.querySelector('.node[data-id="'+id+'"]'));
   const shell=document.querySelector('#view-composition .lineage-shell');
@@ -562,7 +618,6 @@ document.getElementById('walkHull').addEventListener('click',function(){
 });
 applyWalk();
 
-// reconciliation table
 const recon=[
   {f:'Boundary-Leak', m:'Reality hat grenzüberschreitenden Konsumenten, Intent hat KEINEN Port', k:'= undeklarierter Outbound-Contract (§10.2 automatisiert) → Port/Contract anlegen', c:'bad'},
   {f:'Over-Declaration', m:'Intent sagt Port, Reality hat keinen grenzüberschreitenden Konsumenten', k:'Versprechen ohne Konsument → Tier-0-Verdacht (Over-Governance)', c:'warn'},
@@ -578,14 +633,13 @@ recon.forEach(r=>{
 });
 
 //// ========== VIEW 3: BDC ==========
-// DPS creation steps, storage-aware
 const dpsData = {
   hdlf: {
     hint:'SAPs erster Weg · Delta/Parquet im Object Store', share:'Delta Sharing (+ optional SQL-on-Files)',
     steps:[
       {h:'Produkt im Studio anlegen', p:'Custom Data Product definieren — über SAP-Standardprodukte hinaus. Name, Domäne, Owner.', s:'Owner-Set = Manifest-Hülle (ADR-0004). boundary speicher-agnostisch (ADR-0003 §6).'},
-      {h:'Storage: HDLF-Space', p:'Physische Daten = Dateien (Delta/Parquet) im HANA Data Lake Files. Keine HANA-Tabellen.', s:'Executor (GX-on-HANA) erreicht das erst über eine SQL-Sicht.'},
-      {h:'Output-Port wählen', p:'Delta Share für Spark-/Databricks-Konsum — optional zusätzlich eine SQL-on-Files-Sicht desselben Inhalts.', s:'Delta Share = kein SQL-Endpoint → direkt nicht prüfbar. SQL-on-Files-Sicht = Enforcement-Naht.'},
+      {h:'Storage: HDLF-Space', p:'Physische Daten = Dateien (Delta/Parquet) im HANA Data Lake Files. Keine HANA-Tabellen.', s:'Executor (GX-on-HANA) erreicht das erst über eine SQL-Sicht, die HANA über die Files legt.'},
+      {h:'Output-Port wählen', p:'Delta Share für Spark-/Databricks-Konsum — optional zusätzlich eine SQL-on-Files-Sicht desselben Inhalts.', s:'Delta Share = gültiger Port, aber kein SQL-Endpoint → direkt nicht prüfbar. SQL-on-Files-Sicht = Enforcement-Naht.'},
       {h:'ORD-Descriptor + Catalog', p:'Jedes Studio-Produkt ist automatisch ein Katalog-/ORD-Produkt (auffindbar/teilbar).', s:'Katalog-Produkt ≠ governter Contract. Tier datengetrieben aus Lineage.'},
       {h:'Read Roles / Access', p:'Data Access Controls + Scoped/Read Roles am Port.', s:'1:1:1:1 — Read Role gehört zur Outbound-Klausel.'},
     ]
@@ -620,16 +674,16 @@ document.getElementById('storageSeg').addEventListener('click',e=>{
 });
 renderDPS('hdlf');
 
-// decision tree (interactive walkthrough)
+// decision tree
 const tree=document.getElementById('decisionTree');
 const treeDetail=document.getElementById('treeDetail');
 function buildTree(){
   tree.innerHTML=
-    '<div class="tnode q lit" id="q-start"><div class="tt">Studio-Datenprodukt (Custom, BDC)</div><div class="td">Physik: Files (HDLF) oder HANA-Space</div></div>'+
+    '<div class="tnode q lit" id="q-start"><div class="tt">Studio-Datenprodukt (Custom, BDC)</div><div class="td">Output-Port: Delta Share / SQL-on-Files / HANA-View / ODBC — jeder Transport ist ein gültiger Port</div></div>'+
     '<div class="tconn"></div>'+
-    '<div class="tnode q" id="q-sql"><div class="tt">Output-Port spricht SQL?</div><div class="td">HANA-View / SQL-on-Files / ODBC?</div></div>'+
+    '<div class="tnode q" id="q-sql"><div class="tt">Hat der Port eine SQL-erreichbare Oberfläche?</div><div class="td">Der Port selbst kann ein Delta Share sein — das hier fragt NUR, ob Signal ihn erreicht. Delta Share = gültiger Port, kein SQL-Endpoint.</div></div>'+
     '<div class="choice" id="c-sql">'+
-      '<button data-go="direct">ja — SQL-Oberfläche</button>'+
+      '<button data-go="direct">ja — HANA-View / SQL-on-Files</button>'+
       '<button data-go="nosql">nein — nur Delta Share / Object Store</button>'+
     '</div>'+
     '<div id="branch"></div>';
@@ -642,15 +696,16 @@ function sqlBranch(go){
   const br=document.getElementById('branch');
   if(go==='direct'){
     br.innerHTML='<div class="tconn"></div>'+
+      '<div class="tnode lit"><div class="tt">Wer liest die Bytes? → HANA</div><div class="td">native HANA-View ODER HANA liest HDLF-Files via SQL-on-Files — beides ist GX-on-HANA, kein zweiter Executor</div></div>'+
+      '<div class="tconn"></div>'+
       '<div class="tnode term-ok lit"><div class="tt">✅ Direktes Enforcement</div><div class="td">GX-on-HANA gegen schema.object — Happy Path</div></div>'+
       boundaryBlock();
-    treeDetail.innerHTML='<h3 style="color:var(--green)">Direktes Enforcement (Zweig C)</h3>'+
-      '<p style="color:var(--muted);margin:0">Der Port liefert einen stabilen zweiteiligen Namen. Studio exponiert z.B. <code>SALES."ORDERS_CURATED"</code> als SQL-on-Files-Sicht. '+
-      'Alle 20 Bibliotheks-Checks (row_count, freshness, schema-closed, Ref-Integrität) laufen ohne Engine-Änderung.</p>';
+    treeDetail.innerHTML='<h3 class="ok">Direktes Enforcement (Zweig C)</h3>'+
+      '<p style="color:var(--muted);margin:0">Der Port liefert einen stabilen zweiteiligen Namen — entweder als native HANA-View ODER als SQL-on-Files-Sicht, bei der <strong>HANA</strong> die HDLF-Files liest (z. B. <code>SALES."ORDERS_CURATED"</code>). In beiden Fällen liest HANA, Signal spricht nur SQL — kein Signal-eigener Reader. Alle 20 Bibliotheks-Checks laufen ohne Engine-Änderung.</p>';
     wireBoundary();
   } else {
     br.innerHTML='<div class="tconn"></div>'+
-      '<div class="tnode q" id="q-repr"><div class="tt">SQL-erreichbare Repräsentation desselben Inhalts?</div><div class="td">SQL-on-Files-Projektion oder HANA-Upstream?</div></div>'+
+      '<div class="tnode q" id="q-repr"><div class="tt">SQL-erreichbare Repräsentation desselben Inhalts?</div><div class="td">SQL-on-Files-Projektion oder HANA-Upstream, aus dem der Share gespeist wird?</div></div>'+
       '<div class="choice" id="c-repr">'+
         '<button data-go="trans">ja</button>'+
         '<button data-go="oos">nein</button>'+
@@ -658,8 +713,8 @@ function sqlBranch(go){
     document.getElementById('c-repr').addEventListener('click',e=>{
       const b=e.target.closest('button'); if(!b) return; reprBranch(b.dataset.go);
     });
-    treeDetail.innerHTML='<h3 style="color:var(--amber)">Delta Share ist kein SQL-Endpoint</h3>'+
-      '<p style="color:var(--muted);margin:0">Direkt nicht prüfbar. Deklaration ≠ Enforcement: Signal setzt am SQL-erreichbaren Repräsentanten <em>desselben</em> Inhalts an — gibt es den?</p>';
+    treeDetail.innerHTML='<h3 class="warn">Delta Share ist kein SQL-Endpoint</h3>'+
+      '<p style="color:var(--muted);margin:0">Der Delta Share bleibt ein gültiger Output-Port — Signal kann ihn nur nicht direkt testen (Spark-/Databricks-Konsum, kein SQL). Deklaration ≠ Enforcement: Signal setzt am SQL-erreichbaren Repräsentanten <em>desselben</em> Inhalts an — gibt es den?</p>';
   }
 }
 function reprBranch(go){
@@ -669,15 +724,15 @@ function reprBranch(go){
     br.innerHTML='<div class="tconn"></div>'+
       '<div class="tnode term-ok lit"><div class="tt">✅ Transitives Enforcement</div><div class="td">an der SQL-Repräsentation (Deklaration ≠ Enforcement)</div></div>'+
       boundaryBlock();
-    treeDetail.innerHTML='<h3 style="color:var(--green)">Transitives Enforcement (Zweig E)</h3>'+
+    treeDetail.innerHTML='<h3 class="ok">Transitives Enforcement (Zweig E)</h3>'+
       '<p style="color:var(--muted);margin:0">Existiert eine HANA-Upstream-Tabelle, aus der der Share gespeist wird, prüft Signal dort. Transport-Äquivalenz (V6): die SQL-seitige Prüfung deckt den Share mit ab.</p>';
     wireBoundary();
   } else {
     br.innerHTML='<div class="tconn"></div>'+
       '<div class="tnode term-warn lit"><div class="tt">⛔ Out-of-scope für den Executor</div><div class="td">KEIN zweiter Executor (Gate G7) · ehrlich „nicht überwacht"</div></div>';
-    treeDetail.innerHTML='<h3 style="color:var(--red)">Out-of-scope (Zweig F)</h3>'+
+    treeDetail.innerHTML='<h3 class="bad">Out-of-scope (Zweig F)</h3>'+
       '<p style="color:var(--muted);margin:0">Reine Delta-Share-/Object-Store-Auslieferung ohne SQL-Sicht. Governance-seitig <em>kann</em> es ein Tier-2-Outbound-Contract sein — '+
-      'aber Signal kann ihn nicht erzwingen. Ehrlich als „nicht überwacht" in der Coverage-Map ausweisen, NICHT grün vortäuschen. Kunden-Framing: „Tier-2 ⇒ gib dem Produkt einen SQL-Output-Port."</p>';
+      'aber Signal kann ihn nicht erzwingen und heilt das NICHT durch einen Signal-eigenen Delta-/Spark-Reader (G7, single executor). Ehrlich als „nicht überwacht" in der Coverage-Map ausweisen, NICHT grün vortäuschen. Kunden-Framing: „Tier-2 ⇒ gib dem Produkt einen SQL-Output-Port."</p>';
   }
 }
 function boundaryBlock(){
