@@ -285,13 +285,25 @@ Ein File-Zwischenschritt oder ein Delta-Share-Output ist also **nicht „unsicht
 - **Fall 1 (HDLF-Space):** Input und Transform-Schritte sind oft Files. Das Manifest deklariert den Output-Port; Signal prüft ihn, sobald er eine SQL-on-Files-Sicht hat; die File-Zwischenschritte sind sichtbar, aber nicht prüfbar. Greifen zwei Produkte auf dasselbe Roh-File zu, meldet ADR-0004 es als Foundation-Product-Kandidat (§6, Contested-Interieur).
 - **Fall 2 (SQL-Output-Port):** Happy Path. Der `output_ports`-Eintrag ist genau die SQL-Stelle, an der Signal prüft. Konsumiert das Produkt ein SAP-Standard-Produkt als Input, trägt das Manifest ein `inbound: depends_on` — und die Ampel trennt **eigenes Versprechen** (eigene Checks am Port) vom **Upstream-Risiko** (gepinntes SAP-Produkt bricht → nicht automatisch rot, ADR-0004 §7).
 
-### 12.5 — Voraussetzung (der teure Posten bleibt Wissen, nicht Code)
+### 12.5 — Voraussetzung: wie die Objekte überhaupt in den Graph kommen (CLI-Permission-Gap)
 
-Damit der Rückwärts-Lauf etwas zu laufen hat, müssen die HDLF-/Studio-Objekte **im Lineage-Graph stehen** (heute HANA-Katalog-getrieben, `inventory.py`). Das ist Gap **G-7 / V5**: ohne Knoten kein Fluss, kein Aggregat. Zusätzlich braucht der Walk eine **Owner-Attribution** als Stopp-Bedingung (V8) — die Owner-Hülle schneidet in BDC quer durch HDLF- und HANA-Spaces (ADR-0004 §2, „Hülle ≠ Space"). Code-seitig ist die Umsetzung klein und additiv (Read-Side, Engine `[ENGINE-FROZEN]`); der kritische Pfad ist die HDLF-Discovery.
+Damit der Rückwärts-Lauf etwas zu laufen hat, müssen die HDLF-/Studio-Objekte **im Lineage-Graph stehen**. Die Sorge „die CLI kann die Spaces nicht lesen (Permission-Gap, R7)" ist **bereits adressiert** — es gibt zwei getrennte Extraktionspfade (`services/api/extraction.py`):
+
+| Pfad | liefert | CLI nötig? |
+|---|---|---|
+| **Datasphere Catalog REST API** (`datasphere_catalog.py`, OAuth2-Tech-User) | Spaces + Objekt-**Listing + Metadaten** (`technicalName`, `objectType`, `status`) | **nein** — headless, ist der **Default-Pfad** |
+| **Datasphere CLI** | zusätzlich volles **CSN** (Voraussetzung für **Spalten**-Lineage) | ja — nur als *Aufwertung* bevorzugt |
+
+`build_lineage_graph(objects)` baut die Lineage aus diesen **extrahierten** Objekten, nicht aus einem direkten HANA-SYS-Read. Damit zerfällt der Gap:
+
+- **Knoten-Ebene (welche Objekte existieren) → headless gelöst.** Der Owner-Walk bekommt seine Knoten über die REST-Katalog-API **ohne** CLI. „Kein Knoten ohne CLI" gilt nicht mehr.
+- **Was offen bleibt:** (a) ob die Catalog-REST-API **HDLF-Space-Objekte** (SAPs ersten Weg) überhaupt mit-enumeriert — das ist der eigentliche Verifikationspunkt (verschärft V5); (b) **Spalten**-Lineage braucht CSN, das der REST-Pfad oft nicht liefert (`read_object_definition` → `None`) → dafür wäre die CLI nötig, und dort sitzt der Permission-Gap. Das kostet nur die *feine* Lineage, nicht die *Existenz* des Knotens — der Owner-gegatete Walk (ADR-0004 §4) arbeitet objekt-, nicht spaltengranular und kommt daher mit dem REST-Pfad aus.
+
+Zusätzlich braucht der Walk eine **Owner-Attribution** als Stopp-Bedingung (V8) — die Owner-Hülle schneidet in BDC quer durch HDLF- und HANA-Spaces (ADR-0004 §2, „Hülle ≠ Space"). Code-seitig ist die Umsetzung klein und additiv (Read-Side, Engine `[ENGINE-FROZEN]`); der kritische Pfad ist die HDLF-Discovery, **nicht** der CLI-Zugang.
 
 ### 12.6 — Faustregeln (Ergänzung zu §11)
 
 8. **Derive überall, enforce nur an SQL.** Der ganze Fluss wird abgeleitet; geprüft wird nur, wo ein Objekt SQL spricht — am Output-Port und an jedem Zwischenschritt.
 9. **Out-of-scope für den Executor ≠ out-of-scope für Governance.** Ein Delta-Share-Output ist nicht prüfbar, aber das stärkste Discovery-Signal — deklariert, entdeckt, „monitored = no", nicht weiß.
 10. **Das Manifest deklariert nur Anfang und Ende.** Output-Port(s) und (bei fremder Quelle) Input; die Transformationen leitet die Lineage ab.
-11. **Der Walk ist nur so gut wie die HDLF-Discovery.** Kein Inventar-Knoten, kein Aggregat — der teuerste Posten ist Wissen (G-7/V5), nicht Code.
+11. **Der CLI-Permission-Gap blockiert die Knoten nicht.** Der headless REST-Katalog-Pfad listet Objekte ohne CLI; die CLI fehlt nur fürs CSN (Spalten-Lineage). Offen bleibt allein, ob der Katalog HDLF-Space-Objekte enumeriert (V5) — der teuerste Posten ist Wissen, nicht Code.
