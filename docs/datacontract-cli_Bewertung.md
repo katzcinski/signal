@@ -241,6 +241,18 @@ Lakehouse-Objektspeicher (B) liegt: die CLI deckt beide Fälle ab. **HANA hat
 keinen Connector** (`type: hana` existiert nicht), die HANA-Plane-Aussage oben
 bleibt unberührt.
 
+> **Vorbehalt — CLI vs. Eigenbau für Delta (vgl.
+> [`datacontract-cli_Hypothese_VollerErsatz.md`](datacontract-cli_Hypothese_VollerErsatz.md)
+> §6.6):** „CLI als Delta-Executor" ist nicht alternativlos. Sobald Signal
+> Delta/HDLF *governt*, fallen read-only/PII/Gating **so oder so** an — und die
+> *Plattform*-Garantien (Store/Compliance/Cockpit/G1-Authoring) werden ohnehin
+> wiederverwendet, nicht neu gebaut. Damit schrumpft der CLI-Vorteil auf den
+> mitgelieferten **Connector**; demgegenüber steht der Eigenbau-Weg (DuckDB/ibis-
+> Adapter in `connect/` + `sqlglot`-Transpile der HANA-Templates), der die
+> Guardrails **nativ** wiederverwendet und den Dual-Engine-Split auflöst. Welcher
+> Weg billiger ist, ist eine Abwägung „gesparter Connector vs. Fremdprozess +
+> Mapper + zweite Engine" — siehe §6.6 für die A/B-Gegenüberstellung.
+
 > Offen (vgl. Zusatz-Doc R2/R7): wie Datasphere/BDC die ORD-Dokumente eines
 > Data Products emittiert — und ob BDC-Produkte **überhaupt** als Delta
 > materialisieren (dann greift Pfad A *oder* B) oder teils HANA-nativ bleiben
