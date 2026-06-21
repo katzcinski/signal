@@ -95,7 +95,20 @@ guarantees:
 | `freshness` | `freshness` | `< max_age` (Sekunden) | warn |
 | `volume.min_rows` | `row_count` | `>= min_rows` | warn |
 
-`volume.baseline: rolling` ist Observability-Konfiguration (Baselines), kein kompilierbarer Check. Der Compiler ist **deterministisch**: Header-Hash = f(Contract-Hash, Library-Version); gleicher Input ⇒ byte-identische `checks.yml`. Merge mit handgepflegten Suiten ist **existing-wins**.
+Die Check-Library stellt zusätzlich generische Templates für Standard-Lücken bereit. Sie sind aber nicht automatisch Contract-Garantien:
+
+| Template | Status | Begründung |
+|---|---|---|
+| `duplicate_composite` | Contract-Garantie über `keys.columns` | Der deklarierte Grain/Key ist eine konsumierbare Zusage. |
+| `volume_anomaly` | Internal Observability-Check | Baseline-Drift ist laufzeit- und historienabhängig; Contract bleibt `volume.min_rows`. |
+| `cross_field_consistency` | Internal/manueller Check | Fachliche Mehrspaltenregeln brauchen erst eine SQL-freie DSL, bevor sie Contract-Garantien werden. |
+| `type_conformance` | später Contract-Garantie | Erst wenn das Contract-Schema deklarierte Spaltentypen trägt. |
+
+`volume.baseline: rolling` bleibt Observability-Konfiguration; die Runtime-Zeitreihe und Baseline-Pflege liefern die Historie, auf die `volume_anomaly` zielt.
+
+Bewusst **nicht** in der Runtime-Library: Reconciliation / Control-Total gegen eine externe Quelle. Das ist ein Accuracy-Check mit Cross-System-Runtime und gehört als eigener Integrationspfad dokumentiert, nicht als generisches HANA-Template.
+
+Der Compiler ist **deterministisch**: Header-Hash = f(Contract-Hash, Library-Version); gleicher Input ⇒ byte-identische `checks.yml`. Merge mit handgepflegten Suiten ist **existing-wins**.
 
 ### 3.3 Expectation-Grammatik (eingefroren)
 

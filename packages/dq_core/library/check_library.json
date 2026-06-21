@@ -1,12 +1,12 @@
 {
-  "version": 3,
+  "version": 4,
   "families": ["observability", "quality"],
   "categories": [
     "Vollständigkeit",
     "Konsistenz",
     "Verteilung & Aggregate",
     "Aktualität & Sonstiges",
-    "SAP / BDC"
+    "Schema & Vertrag"
   ],
   "checks": [
     {
@@ -23,6 +23,21 @@
       "default_expect": "> 0",
       "default_severity": "critical",
       "unit": ""
+    },
+    {
+      "id": "volume_anomaly",
+      "family": "observability",
+      "gating": "gate",
+      "label": "Volume Anomaly",
+      "category": "Verteilung & Aggregate",
+      "short": "Zeilenanzahl gegen Baseline",
+      "help": "Zählt alle Zeilen der Tabelle und bewertet die Abweichung gegen den vorherigen Istwert bzw. die rollierende Baseline-Zeitreihe. Erkennt plötzliche Volumenabbrüche oder -spitzen.",
+      "example": "Erwartung \"DELTA <= 40%\" → aktuelle Zeilenanzahl darf höchstens 40 % vom Vergleichswert abweichen.",
+      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\"",
+      "params": [],
+      "default_expect": "DELTA <= 40%",
+      "default_severity": "warn",
+      "unit": "rows"
     },
     {
       "id": "missing",
@@ -110,6 +125,21 @@
       "example": "Erwartung \"= 0\" → keine ungültigen Werte.",
       "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" < 0",
       "params": [{ "token": "<SPALTE>", "label": "Spalte", "hint": "Spalte mit fachlicher Regel" }],
+      "default_expect": "= 0",
+      "default_severity": "fail",
+      "unit": ""
+    },
+    {
+      "id": "cross_field_consistency",
+      "family": "quality",
+      "gating": "standard",
+      "label": "Cross-Field Consistency",
+      "category": "Konsistenz",
+      "short": "Mehrspaltige Zeilenregel",
+      "help": "Zählt Zeilen, die eine Regel zwischen mehreren Spalten verletzen. Die Bedingung beschreibt den gültigen Zustand; gezählt wird NOT (Bedingung).",
+      "example": "z.B. \"END_DATE\" >= \"START_DATE\" oder \"GROSS\" = \"NET\" + \"TAX\", Erwartung \"= 0\".",
+      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE NOT (<REGEL>)",
+      "params": [{ "token": "<REGEL>", "label": "Regel", "hint": "SQL-Prädikat, das für gültige Zeilen wahr ist" }],
       "default_expect": "= 0",
       "default_severity": "fail",
       "unit": ""
@@ -242,13 +272,31 @@
       "family": "observability",
       "gating": "standard",
       "label": "Schema Change",
-      "category": "Aktualität & Sonstiges",
+      "category": "Schema & Vertrag",
       "short": "Objekt/Spalten vorhanden",
       "help": "Prüft anhand der HANA-Systemsicht, ob das Objekt (und seine Spalten) existiert. Erkennt versehentliche Drops.",
       "example": "Erwartung \"> 0\" → Tabelle existiert mit Spalten.",
       "sql_template": "SELECT COUNT(*) FROM \"SYS\".\"TABLE_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}'",
       "params": [],
       "default_expect": "> 0",
+      "default_severity": "critical",
+      "unit": ""
+    },
+    {
+      "id": "type_conformance",
+      "family": "observability",
+      "gating": "standard",
+      "label": "Type Conformance",
+      "category": "Schema & Vertrag",
+      "short": "Deklarierter Spaltentyp stimmt",
+      "help": "Prüft SYS.TABLE_COLUMNS.DATA_TYPE_NAME für eine Contract-Spalte. Fehlende Spalte oder abweichender HANA-Datentyp zählt als Verletzung.",
+      "example": "Erwartung \"= 0\" → ORDER_DATE ist weiterhin DATE, NET_AMOUNT weiterhin DECIMAL.",
+      "sql_template": "SELECT CASE WHEN COUNT(*) = 0 THEN 1 WHEN MAX(DATA_TYPE_NAME) <> '<DATA_TYPE_NAME>' THEN 1 ELSE 0 END FROM \"SYS\".\"TABLE_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}' AND COLUMN_NAME = '<SPALTE>'",
+      "params": [
+        { "token": "<SPALTE>", "label": "Spalte", "hint": "Contract-Spalte" },
+        { "token": "<DATA_TYPE_NAME>", "label": "HANA-Typ", "hint": "Erwarteter DATA_TYPE_NAME, z.B. NVARCHAR, DATE, DECIMAL" }
+      ],
+      "default_expect": "= 0",
       "default_severity": "critical",
       "unit": ""
     },
@@ -268,65 +316,11 @@
       "unit": ""
     },
     {
-      "id": "sap_bseg_balance",
-      "family": "quality",
-      "gating": "expensive",
-      "label": "BSEG Balance",
-      "category": "SAP / BDC",
-      "short": "Soll = Haben (HSL)",
-      "help": "Prüft die Soll/Haben-Balance je Buchungskreis und Geschäftsjahr. Die Summe muss (bis auf Rundung) 0 sein.",
-      "example": "Erwartung \"< 0.01\" → Beleg ist ausgeglichen.",
-      "sql_template": "SELECT ABS(SUM(CASE WHEN SHKZG='S' THEN HSL ELSE -HSL END))\nFROM \"{schema}\".\"{dataset}\"\nWHERE RYEAR = :<YEAR> AND RBUKRS = :<BUKRS>",
-      "params": [
-        { "token": ":<YEAR>", "label": "Geschäftsjahr", "hint": "Input-Parameter Geschäftsjahr" },
-        { "token": ":<BUKRS>", "label": "Buchungskreis", "hint": "Input-Parameter Buchungskreis" }
-      ],
-      "default_expect": "< 0.01",
-      "default_severity": "critical",
-      "unit": ""
-    },
-    {
-      "id": "sap_bkpf_orphan",
-      "family": "quality",
-      "gating": "expensive",
-      "label": "BKPF Orphan",
-      "category": "SAP / BDC",
-      "short": "BSEG ohne BKPF-Kopfsatz",
-      "help": "Zählt Belegpositionen (BSEG) ohne zugehörigen Belegkopf (BKPF). Erkennt unvollständige Replikation.",
-      "example": "Erwartung \"= 0\" → kein Positionssatz ohne Kopf.",
-      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"<BSEG>\" b\nLEFT JOIN \"{schema}\".\"<BKPF>\" h ON b.MANDT=h.MANDT AND b.BUKRS=h.BUKRS AND b.BELNR=h.BELNR AND b.GJAHR=h.GJAHR\nWHERE h.BELNR IS NULL",
-      "params": [
-        { "token": "<BSEG>", "label": "BSEG-Tabelle", "hint": "Positionstabelle" },
-        { "token": "<BKPF>", "label": "BKPF-Tabelle", "hint": "Belegkopftabelle" }
-      ],
-      "default_expect": "= 0",
-      "default_severity": "critical",
-      "unit": ""
-    },
-    {
-      "id": "sap_fiscal_completeness",
-      "family": "quality",
-      "gating": "expensive",
-      "label": "Fiscal Completeness",
-      "category": "SAP / BDC",
-      "short": "Keine Periodensprünge",
-      "help": "Zählt die vorhandenen Buchungsperioden je Jahr/Buchungskreis. Erkennt fehlende Perioden.",
-      "example": "Erwartung \">= 12\" → alle 12 Perioden vorhanden.",
-      "sql_template": "SELECT COUNT(DISTINCT POPER) FROM \"{schema}\".\"{dataset}\"\nWHERE RYEAR = :<YEAR> AND RBUKRS = :<BUKRS>",
-      "params": [
-        { "token": ":<YEAR>", "label": "Geschäftsjahr", "hint": "Input-Parameter Geschäftsjahr" },
-        { "token": ":<BUKRS>", "label": "Buchungskreis", "hint": "Input-Parameter Buchungskreis" }
-      ],
-      "default_expect": ">= 12",
-      "default_severity": "warn",
-      "unit": ""
-    },
-    {
       "id": "sap_replication_lag",
       "family": "observability",
       "gating": "gate",
       "label": "Replication Lag",
-      "category": "SAP / BDC",
+      "category": "Aktualität & Sonstiges",
       "short": "Replikationsalter in Sekunden",
       "help": "Sekunden seit dem jüngsten replizierten Satz. Überwacht die Aktualität von Replication Flows.",
       "example": "Erwartung \"< 3600\" → Replikation nicht älter als 1 Stunde.",
@@ -335,21 +329,6 @@
       "default_expect": "< 3600",
       "default_severity": "warn",
       "unit": "s"
-    },
-    {
-      "id": "sap_key_plausibility",
-      "family": "quality",
-      "gating": "standard",
-      "label": "Key Figure Sign",
-      "category": "SAP / BDC",
-      "short": "Kennzahl nicht negativ",
-      "help": "Zählt Zeilen mit unplausibel negativer Kennzahl. Passe die Spalte/Regel an den fachlichen Kontext an.",
-      "example": "Erwartung \"= 0\" → keine negativen Kennzahlen.",
-      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<KENNZAHL>\" < 0",
-      "params": [{ "token": "<KENNZAHL>", "label": "Kennzahl", "hint": "Spalte mit Mengen-/Wertkennzahl" }],
-      "default_expect": "= 0",
-      "default_severity": "fail",
-      "unit": ""
     }
   ]
 }

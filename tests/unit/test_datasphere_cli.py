@@ -11,6 +11,7 @@ kanonisierte stdout/stderr-Ergebnisse ersetzt. Abgedeckt:
   - read_object accept='csn' → CSN-Header
 Synthetische Fixtures only (Sales_Orders, v_Demo) — keine Kundendaten.
 """
+import ntpath
 import subprocess
 
 import pytest
@@ -103,12 +104,16 @@ def test_resolve_cli_uses_which_then_comspec_wrap_on_win32(monkeypatch):
 
 def test_resolve_cli_falls_back_to_appdata_npm_on_win32(monkeypatch):
     monkeypatch.setattr(datasphere_cli.os, "name", "nt")
+    # Faithfully simulate Windows path semantics: os.path.join must emit
+    # backslashes, otherwise on a POSIX runner the candidate never matches the
+    # monkeypatched exists() and resolution wrongly falls through.
+    monkeypatch.setattr(datasphere_cli.os, "path", ntpath)
     monkeypatch.delenv("DSP_CLI_PATH", raising=False)
     monkeypatch.setenv("COMSPEC", "cmd.exe")
     monkeypatch.setenv("APPDATA", r"C:\Users\demo\AppData\Roaming")
     monkeypatch.setattr(datasphere_cli.shutil, "which", lambda name: None)
     monkeypatch.setattr(
-        datasphere_cli.os.path,
+        ntpath,
         "exists",
         lambda p: p == r"C:\Users\demo\AppData\Roaming\npm\datasphere.cmd",
     )

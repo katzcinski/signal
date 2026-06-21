@@ -156,7 +156,7 @@ def compile_contract(
                           name="volume_min_rows", expect=f">= {min_rows}",
                           severity=_severity(vol, "warn"), owner=owner))
     # volume.baseline=rolling ist Observability-Konfiguration (dq_baselines),
-    # kein kompilierbarer Check — bewusst kein Output hier.
+    # kein Contract-Check. volume_anomaly bleibt ein interner Runtime-Check.
 
     for i, comp in enumerate(g.get("completeness") or []):
         col = _ident(comp.get("column"), f"guarantees.completeness[{i}].column", cols)

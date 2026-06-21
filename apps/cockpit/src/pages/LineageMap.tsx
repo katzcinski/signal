@@ -38,6 +38,21 @@ const COVERAGE_LABEL: Record<string, string> = {
   [FLAG_OUT]: t.lineage.outOfScope,
 };
 
+const COVERAGE_TOOLTIP: Record<string, string> = {
+  [FLAG_COVERED]: t.lineage.tooltips.covered,
+  [FLAG_PARTIAL]: t.lineage.tooltips.partial,
+  [FLAG_GAP]: t.lineage.tooltips.gap,
+  [FLAG_OUT]: t.lineage.tooltips.outOfScope,
+};
+
+const legendItemStyle: CSSProperties = {
+  fontSize: 11,
+  color: 'var(--fg-3)',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 5,
+};
+
 const OBJECT_EDGE_FALLBACK = '#8b949e';
 
 interface ResolvedTheme {
@@ -279,6 +294,12 @@ function ObjectSidePanel({
   const navigate = useNavigate();
   const flag = node.coverage_flag ?? FLAG_OUT;
   const lane = deriveLane(node);
+  const coverageLabel = COVERAGE_LABEL[flag] ?? t.lineage.outOfScope;
+  const coverageTooltip = COVERAGE_TOOLTIP[flag] ?? t.lineage.tooltips.outOfScope;
+  const kindLabel = node.kind === 'internal_gate' ? t.gateSignal : t.governanceBreach;
+  const kindTooltip = node.kind === 'internal_gate'
+    ? t.lineage.tooltips.gateSignal
+    : t.lineage.tooltips.governanceBreach;
   return (
     <div style={{
       position: 'absolute', top: 0, right: 0, width: 300, height: '100%',
@@ -302,13 +323,21 @@ function ObjectSidePanel({
           Confidence: <strong style={{ color: 'var(--fg)' }}>{Math.round(node.confidence * 100)}%</strong>
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <img src={coverageIconDataUri(flag)} width={16} height={16} alt={COVERAGE_LABEL[flag]} style={{ display: 'block' }} />
-        <span style={{ fontSize: 12 }}>{COVERAGE_LABEL[flag]}</span>
+      <div
+        title={coverageTooltip}
+        aria-label={`${coverageLabel}: ${coverageTooltip}`}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}
+      >
+        <img src={coverageIconDataUri(flag)} width={16} height={16} alt={coverageLabel} style={{ display: 'block' }} />
+        <span style={{ fontSize: 12 }}>{coverageLabel}</span>
       </div>
       {node.kind && (
-        <div style={{ fontSize: 12, color: 'var(--fg-3)', marginBottom: 8 }}>
-          {t.incidents.filterKind}: <strong style={{ color: 'var(--fg)' }}>{node.kind === 'internal_gate' ? t.gateSignal : t.governanceBreach}</strong>
+        <div
+          title={kindTooltip}
+          aria-label={`${kindLabel}: ${kindTooltip}`}
+          style={{ fontSize: 12, color: 'var(--fg-3)', marginBottom: 8 }}
+        >
+          {t.incidents.filterKind}: <strong style={{ color: 'var(--fg)' }}>{kindLabel}</strong>
         </div>
       )}
       {node.dq_status && (
@@ -807,21 +836,34 @@ function ObjectLineageGraph({
           ))}
           <span style={{ width: 1, height: 16, background: 'var(--line)' }} />
           {Object.entries(COVERAGE_LABEL).map(([flag, label]) => (
-            <span key={flag} style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span
+              key={flag}
+              title={COVERAGE_TOOLTIP[flag]}
+              aria-label={`${label}: ${COVERAGE_TOOLTIP[flag]}`}
+              style={legendItemStyle}
+            >
               <img src={coverageIconDataUri(flag)} width={14} height={14} alt="" style={{ display: 'block' }} /> {label}
             </span>
           ))}
           <span style={{ width: 1, height: 16, background: 'var(--line)' }} />
-          <span style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span
+            title={t.lineage.tooltips.gateSignal}
+            aria-label={`${t.gateSignal}: ${t.lineage.tooltips.gateSignal}`}
+            style={legendItemStyle}
+          >
             <span style={{ width: 18, height: 12, border: '1px dashed var(--line-2)', borderRadius: 3, display: 'inline-block' }} />
             {t.gateSignal}
           </span>
-          <span style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span
+            title={t.lineage.tooltips.governanceBreach}
+            aria-label={`${t.governanceBreach}: ${t.lineage.tooltips.governanceBreach}`}
+            style={legendItemStyle}
+          >
             <span style={{ width: 18, height: 12, border: '1px solid var(--line-2)', borderRadius: 3, display: 'inline-block' }} />
             {t.governanceBreach}
           </span>
           {edgeKinds.map(kind => (
-            <span key={kind} style={{ fontSize: 11, color: 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span key={kind} style={legendItemStyle}>
               <span style={{ width: 18, height: 3, borderRadius: 2, background: objectEdgeColor(kind), display: 'inline-block' }} />
               {kind}
             </span>
