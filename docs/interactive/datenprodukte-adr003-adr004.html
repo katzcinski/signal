@@ -209,7 +209,6 @@
       <span style="font-size:11.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px;font-weight:700;align-self:center">Produkt-Typ</span>
       <div class="seg" id="archSeg">
         <button data-arch="source">Source-aligned · Port @ Raw</button>
-        <button data-arch="aggregate">Aggregate · Port @ Core</button>
         <button data-arch="consumer" class="on">Consumer-aligned · Port @ Serving</button>
       </div>
     </div>
@@ -297,8 +296,8 @@
     <div class="toolbar" style="margin-bottom:6px">
       <span style="font-size:11.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px;font-weight:700;align-self:center">Port-Lage</span>
       <div class="seg" id="walkSeg">
-        <button data-sc="serving" class="on">Port @ Serving</button>
-        <button data-sc="core">Port @ Core (Foundation)</button>
+        <button data-sc="source">Source-aligned · Port @ Raw</button>
+        <button data-sc="serving" class="on">Consumer-aligned · Port @ Serving</button>
       </div>
     </div>
     <div class="callout" id="walkCaption" style="margin:0 0 14px"></div>
@@ -486,12 +485,10 @@ const lyrChain = [
 ];
 const lyrArch = {
   source:    {port:'raw',   cap:'<strong>Source-aligned:</strong> Output-Port @ Raw — ein leicht aufbereiteter, gelandeter Extrakt wird selbst als Produkt publiziert. Die Grenze (und der Contract) liegt hier ganz früh in der Lineage.'},
-  aggregate: {port:'icore', cap:'<strong>Aggregate / Foundation:</strong> Output-Port @ Integrated Core — z. B. eine konforme Dimension (kunde), die andere Domänen konsumieren (Fall B → gekettete Contracts). Layer = Core, Grenze = outbound.'},
-  consumer:  {port:'serve', cap:'<strong>Consumer-aligned:</strong> Output-Port @ Serving — die klassische Fact View / Analytic Model. Nur EINE von drei Möglichkeiten, nicht die Regel.'},
+  consumer:  {port:'serve', cap:'<strong>Consumer-aligned:</strong> Output-Port @ Serving — die klassische Fact View / Analytic Model. Nur eine von mehreren Möglichkeiten, nicht die Regel.'},
 };
 const portRole = {
   raw:   'Source-aligned: der gelandete Extrakt IST das Produkt — Output-Port @ Raw. Misch-Fall (ADR-0001 OP-2): boundary je Garantie — dasselbe Objekt wird inbound getestet UND outbound versprochen.',
-  icore: 'Aggregate/Foundation: z. B. konforme Dimension. Output-Port @ Integrated Core, grenzüberschreitend konsumiert (Fall B). Layer ist Core — die Grenze ist trotzdem outbound.',
   serve: 'Consumer-aligned: klassische Fact View / Analytic Model. Output-Port @ Serving. Hier fallen Layer und Port zusammen — aber nicht zwangsläufig.',
 };
 function buildLayerNodes(archKey){
@@ -573,7 +570,7 @@ const walkScenarios = {
       {id:'csrc', layer:'Source · extern', name:'S/4HANA', tech:'ext. System', boundary:'external'},
       {id:'craw', layer:'Raw', name:'Raw Sales', tech:'RAW.SALES', boundary:'inbound', tags:['in']},
       {id:'cicore', layer:'Integrated Core', name:'Integrated Core', tech:'CORE.SALES_INT', boundary:'internal', tags:['gate']},
-      {id:'cdim', layer:'Fremd-Produkt', name:'Foundation: kunde', tech:'kunde@1.2 · Team K', boundary:'external', tags:['foreign']},
+      {id:'cdim', layer:'Fremd-Produkt', name:'kunde', tech:'kunde@1.2 · Team K', boundary:'external', tags:['foreign']},
       {id:'cbcore', layer:'Business Core', name:'Business Core (Join)', tech:'CORE.SALES_BUS', boundary:'internal', tags:['gate']},
       {id:'cserve', layer:'Output-Port · Serving', name:'sales_overview', tech:'DS_REVENUE_SUMMARY', boundary:'outbound', tags:['contract']},
       {id:'ccons', layer:'Consumer', name:'FIN-Reporting', tech:'anderes Team', boundary:'external', tags:['down']},
@@ -593,23 +590,20 @@ const walkScenarios = {
        text:'Externer Source-Node (S/4HANA) → Walk stoppt → Inbound-Source (Kandidat für Inbound-Contract). Walk abgeschlossen.'},
     ]
   },
-  core: {
-    cap:'<strong>Aggregate / Foundation · Port @ Core:</strong> kunde — der Output-Port liegt im Integrated Core (konforme Dimension). Derselbe Walk, nur früher angesetzt: Layer ist egal. Die Downstream-Konsumenten gehören NICHT zum Produkt (für sie ist das Fall B).',
-    hull:['kraw','kcore'],
+  source: {
+    cap:'<strong>Source-aligned · Port @ Raw:</strong> orders_landed — ein gelandeter Extrakt wird selbst als Produkt publiziert. Der Output-Port liegt ganz früh in der Lineage; das Produkt hat fast kein Interieur. Alles stromabwärts sind Konsumenten (für sie Fall B).',
+    hull:['sraw'],
     nodes:[
-      {id:'ksrc', layer:'Source · extern', name:'MDG / CRM', tech:'ext. System', boundary:'external'},
-      {id:'kraw', layer:'Raw', name:'Raw Kunde', tech:'RAW.KUNDE', boundary:'inbound', tags:['in']},
-      {id:'kcore', layer:'Output-Port · Core', name:'kunde (konforme Dim)', tech:'CORE.DIM_KUNDE', boundary:'outbound', tags:['contract']},
-      {id:'kc1', layer:'Consumer', name:'sales_overview', tech:'Team S · Fall B', boundary:'external', tags:['down']},
-      {id:'kc2', layer:'Consumer', name:'CRM-Analytics', tech:'anderes Team', boundary:'external', tags:['down']},
+      {id:'ssrc', layer:'Source · extern', name:'S/4HANA', tech:'ext. System', boundary:'external'},
+      {id:'sraw', layer:'Output-Port · Raw', name:'orders_landed', tech:'RAW.ORDERS', boundary:'outbound', tags:['in','contract']},
+      {id:'sc1', layer:'Consumer / Core', name:'FIN Integrated Core', tech:'Team F · Fall B', boundary:'external', tags:['down']},
+      {id:'sc2', layer:'Consumer', name:'Data Science', tech:'anderes Team', boundary:'external', tags:['down']},
     ],
     steps:[
-      {ids:['kcore'], cls:'walk-port', title:'Start: Output-Port @ Integrated Core',
-       text:'Eine konforme Dimension wird grenzüberschreitend konsumiert → der Port liegt im Core, NICHT im Serving. Der Walk startet trotzdem identisch am Port aus dem Manifest.'},
-      {ids:['kraw'], cls:'walk-interior', title:'Interieur — Raw (Inbound-Seite)',
-       text:'Upstream im eigenen Owner-Set (team-kunde) → Interieur → internes Gate. Die Raw-Tabelle gehört zur Inbound-Seite.'},
-      {ids:['ksrc'], cls:'walk-stop', title:'Stopp (b): externe Source',
-       text:'Externer Source-Node (MDG/CRM) → Stopp → Inbound-Source. Walk abgeschlossen. Die Downstream-Knoten (sales_overview, CRM-Analytics) gehören NICHT zum Produkt — sie konsumieren den Port (aus ihrer Sicht Fall B).'},
+      {ids:['sraw'], cls:'walk-port', title:'Start: Output-Port @ Raw',
+       text:'Der gelandete Extrakt IST das Produkt — Output-Port @ Raw. Misch-Fall (ADR-0001 OP-2): dasselbe Objekt wird inbound getestet UND outbound versprochen.'},
+      {ids:['ssrc'], cls:'walk-stop', title:'Stopp (b): externe Source',
+       text:'Direkt upstream liegt nur die externe Source → Stopp → Inbound-Source. Das Produkt hat (fast) kein Interieur. Die Downstream-Knoten konsumieren den Port (aus ihrer Sicht Fall B).'},
     ]
   }
 };
