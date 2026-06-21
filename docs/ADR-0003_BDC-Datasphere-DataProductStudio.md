@@ -59,6 +59,47 @@ Der Auftraggeber nennt drei Hypothesen. Bewertung jeder einzelnen aus Signal-Sic
 
 > **Verifikationspunkt V1 [H]:** SQL-on-Files / HDLF-Virtual-Table — liefert das HANA-SQL-Interface den Produkt-Inhalt unter einem **stabilen, zweiteiligen** Namen (`schema.object`), oder braucht es eine andere Adressierung (Catalog-präfix, Virtual-Table-Wrapper, Remote-Table)? Das entscheidet, ob die Template-Anpassung in §8 *null* oder *gering* ist.
 
+### 3.1 — Entscheidungsbaum: Wo enforced Signal bei einem Studio-Produkt?
+
+Die ganze ADR lässt sich auf **eine** operative Frage je Datenprodukt verdichten: *Gibt es eine SQL-erreichbare Oberfläche desselben Inhalts?* Daran hängt, ob Signal direkt, transitiv oder gar nicht prüft.
+
+```mermaid
+flowchart TD
+    A["Studio-Datenprodukt<br/>(Custom, BDC)"] --> B{"Output-Port<br/>spricht SQL?"}
+    B -- "ja: HANA-View / SQL-on-Files / ODBC" --> C["Direktes Enforcement<br/>GX-on-HANA gegen schema.object"]
+    B -- "nein: nur Delta Share / Object Store" --> D{"SQL-erreichbare<br/>Repräsentation<br/>desselben Inhalts?"}
+    D -- "ja: SQL-on-Files-Projektion<br/>oder HANA-Upstream" --> E["Transitives Enforcement<br/>an der SQL-Repräsentation<br/>(Deklaration != Enforcement)"]
+    D -- "nein" --> F["Out-of-scope für den Executor<br/>KEIN zweiter Executor (G7)"]
+
+    C --> G{"boundary?"}
+    E --> G
+    G -- "outbound (Konsum-Grenze)" --> H["Outbound-Contract<br/>Lite/Full nach Tier (ADR-0001 §11)"]
+    G -- "internal (kein externer Consumer)" --> I["Internes Quality Gate<br/>keine Contract-Zeremonie"]
+
+    classDef ok fill:#dfe,stroke:#3a3,stroke-width:1px;
+    classDef warn fill:#fee,stroke:#c33,stroke-width:1px;
+    classDef seam fill:#fde,stroke:#c39,stroke-width:2px;
+    class C,E ok;
+    class F warn;
+    class H,I seam;
+```
+
+Lesehilfe: Die **obere** Hälfte (B/D) ist die **technische** Reichweiten-Entscheidung (Executor-Naht, §4/§5); die **untere** Hälfte (G) ist die **governance**-seitige Klassifikation, die unverändert aus ADR-0001 stammt (§6 dieser ADR). Beide sind orthogonal: Ein out-of-scope-Produkt (F) kann governance-seitig sehr wohl ein Tier-2-Outbound-Contract *sein* — nur kann Signal ihn dann nicht *erzwingen*. Das ist der Punkt, an dem das Kunden-Framing greift: „Tier-2 ⇒ gib dem Produkt einen SQL-Output-Port."
+
+### 3.2 — Durchgespielt: ein HDLF-Custom-Produkt
+
+Beispiel `sales_orders_curated`, im Data Product Studio auf einem **HDLF-Space** als Delta-Tabelle gebaut, von einem anderen Team (FIN-Reporting) konsumiert.
+
+| Schritt | Frage | Ergebnis |
+|---|---|---|
+| 1 | Output-Port spricht SQL? | Studio exponiert eine **SQL-on-Files-Sicht** `SALES."ORDERS_CURATED"` → **ja** (Zweig C) |
+| 2 | boundary? | Konsum durch **anderes Team** über Grenze → `outbound` (Zweig H) |
+| 3 | Tier? | mehrere abhängige FIN-Reports → **Tier 2 / Full** (SemVer, Approval) |
+| 4 | Enforcement | 20 Bibliotheks-Checks gegen `SALES.ORDERS_CURATED` — `row_count`, `freshness` (über Lade-/Partitionsspalte, V3), `schema`-Closed-Mode, Ref-Integrität — **ohne Engine-Änderung** |
+| 5 | Deklaration | Outbound-Contract-YAML (Source of Truth); ORD/CSN als einseitige Derivate (Zusatz §5) |
+
+**Gegenprobe — derselbe Inhalt nur als Delta Share, ohne SQL-Sicht:** Schritt 1 → Zweig D. Existiert eine HANA-Upstream-Tabelle, aus der der Share gespeist wird → transitives Enforcement dort (Zweig E). Existiert sie nicht → Zweig F: governance-seitig bleibt es ein Outbound-Contract, aber Signal kann ihn nicht erzwingen → ehrlich als „nicht überwacht" in der Coverage-Map ausweisen, **nicht** grün vortäuschen.
+
 ---
 
 ## 4 — Fall 1: Datenprodukt auf HDLF-Space (SAPs erster Weg)
@@ -132,8 +173,9 @@ Unabhängig von HDLF vs. SQL-Port bleibt **alles aus ADR-0001 / dem Briefing gü
 | G-4 | Delta-Share-only-Produkte (keine SQL-Sicht) | mittel | Doku-Regel „transitiv prüfen oder out-of-scope"; **kein** Code | 0,25 |
 | G-5 | ORD-Port-Topologie für HDLF (R1/R2) verifizieren | hoch (Wissen) | Spec-/Produkt-Verifikation, nicht Code | — |
 | G-6 | Catalog-/HDLF-Metadaten programmatisch lesen (R7) | mittel (Wissen) | an bekannte Risiken gekoppelt (DWC_GLOBAL, HDLF-CLI-Permission-Gap) | — |
+| G-7 | **Discovery**: Signals Inventar (`data/inventory.json`-Snapshot, Schema-Drift-Check O3) erfasst heute HANA-Kataloge — HDLF-Produkte/Virtual-Tables müssen erst hineinfinden | mittel | Inventar-Extrakt um die SQL-on-Files-/Studio-Objekte erweitern (welche Virtual-Tables sind „Produkte"?); koppelt an V5 | 1–2 |
 
-Kernbotschaft der Tabelle: **Der teuerste Posten ist Wissen (G-5/G-6), nicht Code.** Auf der Code-Seite ist der wahrscheinliche Gesamteingriff klein und additiv — die Engine bleibt unangetastet.
+Kernbotschaft der Tabelle: **Der teuerste Posten ist Wissen (G-5/G-6), nicht Code.** Auf der Code-Seite ist der wahrscheinliche Gesamteingriff klein und additiv — die Engine bleibt unangetastet. G-7 (Discovery) ist die stillste Lücke: Erreichbar zu *sein* genügt nicht, Signal muss das Produkt im Inventar auch *finden*.
 
 ---
 
