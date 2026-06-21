@@ -1,9 +1,10 @@
 product: DEMO_SRC_01
+kind: internal_gate
 dataset: DEMO_SRC_01
 owned_by: platform
 owners: []
 version: 0.1.0
-lifecycle: draft
+description: ''
 guarantees:
   schema:
     columns:
@@ -24,3 +25,10 @@ guarantees:
     baseline: rolling
     bounds: auto
     severity: warn
+checks:
+- id: invalid
+  params:
+    <SPALTE>: SRC_COL_01
+  expect: < 10
+  severity: fail
+lifecycle: active
