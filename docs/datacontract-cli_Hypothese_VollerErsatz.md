@@ -134,6 +134,36 @@ contracts/*.dcs.yaml    NEU: signal_harness/                       datacontract-
 > wiederherzustellen (G1, G6, G8, Read-only), die die native Engine *gratis*
 > mitbringt. Der gelöschte Teil kehrt als Security-/Governance-Schicht zurück.
 
+#### Warum der read-only/PII-Shim *strukturell schwächer* ist (nicht nur mehr Arbeit)
+
+Beide Garantien sind nativ **bauartbedingt**; als Shim werden sie zu
+**nachgelagerten, extern zu auditierenden** Zusicherungen — beim PII-Gate sogar zu
+einer prinzipiell unterlegenen.
+
+- **Read-only — von Architektur zu Konvention.** Nativ gibt es **keinen
+  Schreibpfad**: `compiler.py` erzeugt nur SELECT/COUNT aus Library-Templates, G1
+  verbietet beliebiges SQL, der HANA-User ist read-only, `statementTimeout` deckelt
+  Runaways — drei unabhängige Sperren. Mit der CLI erlaubt `quality.type: sql`
+  beliebiges SQL → die *architektonische* „kein Schreibpfad"-Garantie entfällt;
+  read-only ist nur noch eine **betriebliche** Zusage (TU-Rechte + Audit des
+  generierten SQL), keine Bauart mehr.
+
+- **PII — Prävention statt Nachreinigung.** Das native Gate ist **Default-Deny in
+  vier Schichten**: (1) Rohzeilen werden *an der Quelle* nur bei
+  `diagnostics_enabled` geholt (Normalfall = nur ein Skalar) + Spalten-Allowlist;
+  (2) der Store persistiert sie nur mit `allow_diagnostics`; (3) TTL-Verfall;
+  (4) API-Sicht nur für `steward+`. datacontract-cli v1.0.0 hat „bad row"-Diagnostik
+  dagegen **ausgebaut** (gegenteiliges Default) und hat weder Store noch Rollen.
+  Entscheidend: bis die CLI-Ausgabe existiert, haben die Zeilen **HANA schon
+  verlassen** — der Shim kann nur **nachreinigen** (holen, dann strippen), während
+  die Engine **präveniert** (nie holen). *Prävention > Nachreinigung* — der Ersatz
+  ist nicht bloß teurer, sondern schwächer.
+
+> **Merksatz:** Nativ sind read-only und PII *bauartbedingt* (kein Schreibpfad;
+> Rohzeilen werden an der Quelle gar nicht erst geholt). Als Shim werden sie
+> *nachgelagert* — und für PII heißt das prinzipiell unterlegen, weil die Daten die
+> Quelle bereits verlassen haben.
+
 ---
 
 ## 3. Datenfluss im Detail — ein Run unter der Hypothese
