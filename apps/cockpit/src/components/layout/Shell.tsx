@@ -32,11 +32,13 @@ export function Shell({ children }: Props) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const connect = useSseStore(s => s.connect);
   const density = useUIStore(s => s.density);
+  const theme = useUIStore(s => s.theme);
 
   useEffect(() => { connect(); }, [connect]);
 
   // R6-7: drive density tokens off a root data attribute.
   useEffect(() => { document.documentElement.dataset.density = density; }, [density]);
+  useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

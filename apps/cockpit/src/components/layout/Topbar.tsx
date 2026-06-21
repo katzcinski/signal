@@ -1,11 +1,47 @@
 import { useNavigate } from 'react-router-dom';
 import { t } from '@/i18n/de';
-import { useUIStore } from '@/store/ui';
+import { useUIStore, THEMES, type Theme } from '@/store/ui';
 import { useRoleStore, ROLES, ROLE_META, type Role } from '@/store/role';
 
 interface Props {
   onToggleSidebar: () => void;
   onOpenPalette: () => void;
+}
+
+const THEME_ACCENT: Record<Theme, string> = {
+  classic: '#7B6FEE',
+  signal: '#7AEA7A',
+  blueprint: '#00B8D4',
+  daylight: '#C4541A',
+  amber: '#FFB830',
+};
+
+function ThemeSwitcher() {
+  const theme = useUIStore(s => s.theme);
+  const setTheme = useUIStore(s => s.setTheme);
+  return (
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ fontSize: 10, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        {t.theme.label}
+      </span>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: THEME_ACCENT[theme], flexShrink: 0 }} />
+      <select
+        value={theme}
+        onChange={e => setTheme(e.target.value as Theme)}
+        aria-label={t.theme.label}
+        style={{
+          background: 'var(--cont)22', border: '1px solid var(--cont)55', color: 'var(--cont)',
+          borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer',
+        }}
+      >
+        {THEMES.map(th => (
+          <option key={th} value={th} style={{ background: 'var(--bg-2)', color: 'var(--fg)' }}>
+            {t.theme[th]}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 // UX-F1: role switcher. Changing role updates the X-DQ-Role header (api/client.ts)
@@ -91,6 +127,7 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
       >
         ↕ {density === 'compact' ? t.density.compact : t.density.comfortable}
       </button>
+      <ThemeSwitcher />
       <RoleSwitcher />
     </header>
   );

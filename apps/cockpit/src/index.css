@@ -61,6 +61,64 @@
   --cell-fs: 13px;
 }
 
+/* Theme: Signal — phosphor lime identity */
+[data-theme="signal"] {
+  --bg-0: #070D07;
+  --bg-1: #0D1A0D;
+  --bg-2: #182618;
+  --bg-3: #1F3020;
+  --line: #2A402A;
+  --line-2: #3A5A3A;
+  --fg: #D6F0D6;
+  --fg-2: #8ABF8A;
+  --fg-3: #628062;
+  --cont: #7AEA7A;
+}
+
+/* Theme: Blueprint — cyanotype/technical drawing */
+[data-theme="blueprint"] {
+  --bg-0: #050D18;
+  --bg-1: #0A1525;
+  --bg-2: #102030;
+  --bg-3: #162A3D;
+  --line: #1E3A50;
+  --line-2: #2B4F6A;
+  --fg: #D0E8F8;
+  --fg-2: #7FBCD8;
+  --fg-3: #5090A8;
+  --cont: #00B8D4;
+}
+
+/* Theme: Daylight — Swiss-editorial light theme */
+[data-theme="daylight"] {
+  --bg-0: #F5F0EB;
+  --bg-1: #FFFFFF;
+  --bg-2: #F0EBE4;
+  --bg-3: #E8E2DA;
+  --line: #D5CEC5;
+  --line-2: #BFB6AB;
+  --fg: #1A1614;
+  --fg-2: #5C534A;
+  --fg-3: #8A7F74;
+  --cont: #C4541A;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Theme: Amber — phosphor CRT terminal */
+[data-theme="amber"] {
+  --bg-0: #0A0700;
+  --bg-1: #120E00;
+  --bg-2: #1A1400;
+  --bg-3: #221B00;
+  --line: #2E2400;
+  --line-2: #403400;
+  --fg: #FFB830;
+  --fg-2: #C68A00;
+  --fg-3: #8A6000;
+  --cont: #FFB830;
+}
+
 /* R6-7 compact density: denser rows, slightly smaller text. */
 [data-density="compact"] {
   --row-pad-y: 3px;
