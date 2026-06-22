@@ -20,5 +20,9 @@ guarantees:
     baseline: rolling
     bounds: auto
     severity: warn
+  freshness:
+    column: SRC_COL_01
+    max_age: PT24H
+    severity: warn
 checks: []
 lifecycle: active
