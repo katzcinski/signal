@@ -16,7 +16,7 @@ def stream_events(run_id: str, store: StoreDep = ...):
     if not run_id:
         raise HTTPException(status_code=422, detail="run_id is required")
     return StreamingResponse(
-        sse_generator(store.db_path, run_id),
+        sse_generator(store, run_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

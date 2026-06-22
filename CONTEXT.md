@@ -39,6 +39,16 @@ automatically a port). Signal enforces at the SQL-reachable port.
 A guarantee-set with no agreed counterparty (`kind: internal_gate`). Produces team
 incidents only — never a governance compliance state.
 
+**DQ Run**:
+An execution of a product/object's quality checks against a configured data surface.
+It produces check results and may update compliance or incident state.
+_Avoid_: "Operation" when persisted quality-check results are meant.
+
+**Operation**:
+A user-triggered background action in Signal that reports progress and produces a
+verdict, but is not itself a quality-check execution.
+_Avoid_: "Run" when no quality-check results are produced.
+
 **boundary**:
 The party-grenze classification of a guarantee-set: `internal | inbound | outbound`.
 A *derived, read-side* attribute — computed from manifest intent ⋈ lineage reality

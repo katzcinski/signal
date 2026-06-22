@@ -345,6 +345,7 @@ def trigger_run(
                 config = DatasetConfig(dataset=object_id, schema=resolved_schema)
 
             bind_schema(config, resolved_schema)  # [SCHEMA-MAP]
+            callback = make_progress_callback(run_id, store)
 
             if env_cfg is not None:
                 conn = get_connection(
@@ -353,11 +354,11 @@ def trigger_run(
                     user=env_cfg.get("user", ""),
                     password=env_cfg.get("password", ""),
                     schema=resolved_schema,
+                    on_progress=callback,
                 )
             else:
                 conn = MockConnection()  # explizit erlaubt via ALLOW_MOCK_CONNECTION
 
-            callback = make_progress_callback(run_id, store)
             summary = run_checks(
                 config,
                 conn,

@@ -541,6 +541,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/environments/{name}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Environment Connection
+         * @description Start a live HANA/Datasphere connection test for an environment.
+         */
+        post: operations["test_environment_connection_api_environments__name__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/extract": {
         parameters: {
             query?: never;
@@ -1024,6 +1044,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/operations/{op_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Operation */
+        get: operations["get_operation_api_operations__op_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/operations/{op_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Operation Events */
+        get: operations["get_operation_events_api_operations__op_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/proposals": {
         parameters: {
             query?: never;
@@ -1388,6 +1442,13 @@ export interface components {
          */
         ContractIn: {
             /**
+             * Checks
+             * @default []
+             */
+            checks: {
+                [key: string]: unknown;
+            }[];
+            /**
              * Dataset
              * @default
              */
@@ -1434,6 +1495,13 @@ export interface components {
              * @default false
              */
             certified: boolean;
+            /**
+             * Checks
+             * @default []
+             */
+            checks: {
+                [key: string]: unknown;
+            }[];
             /** Compliance */
             compliance?: string | null;
             /**
@@ -2801,6 +2869,40 @@ export interface operations {
             };
         };
     };
+    test_environment_connection_api_environments__name__test_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     trigger_extract_api_extract_post: {
         parameters: {
             query?: {
@@ -3596,6 +3698,74 @@ export interface operations {
             header?: never;
             path: {
                 object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_operation_api_operations__op_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                op_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_operation_events_api_operations__op_id__events_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                op_id: string;
             };
             cookie?: never;
         };

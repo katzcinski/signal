@@ -1,3 +1,3 @@
-from .db_connection import get_connection, MockConnection
+from .db_connection import check_connection, get_connection, MockConnection
 
-__all__ = ["get_connection", "MockConnection"]
+__all__ = ["check_connection", "get_connection", "MockConnection"]

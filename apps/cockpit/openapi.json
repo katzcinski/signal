@@ -288,6 +288,15 @@
       "ContractIn": {
         "description": "Lifecycle ist bewusst KEIN Eingabefeld \u2014 \u00dcberg\u00e4nge laufen nur \u00fcber\napprove/deprecate; PUT erzwingt draft (S-2).",
         "properties": {
+          "checks": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
           "dataset": {
             "default": "",
             "title": "Dataset",
@@ -344,6 +353,15 @@
             "default": false,
             "title": "Certified",
             "type": "boolean"
+          },
+          "checks": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Checks",
+            "type": "array"
           },
           "compliance": {
             "anyOf": [
@@ -2733,6 +2751,79 @@
         ]
       }
     },
+    "/api/environments/{name}/test": {
+      "post": {
+        "description": "Start a live HANA/Datasphere connection test for an environment.",
+        "operationId": "test_environment_connection_api_environments__name__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Environment Connection",
+        "tags": [
+          "extract"
+        ]
+      }
+    },
     "/api/extract": {
       "post": {
         "description": "Extract inventory/lineage from Datasphere (when configured) and report counts.\n\nTier-2: when a live source (REST catalog or the @sap/datasphere-cli) is\nconfigured, run the real extraction \u2014 pull objects with columns + CSN,\nassemble the inventory, build the object + column lineage, and write the\nMeridian-shaped snapshots. FastAPI runs this sync handler in a threadpool,\nso the blocking I/O does not stall the event loop.\n\nF5 fallback: with no connectivity configured (local mode), touch the\nsnapshot files to reset the mtime-based staleness clock. Either way the\nresponse carries the new extraction timestamp for the staleness indicator.",
@@ -4233,6 +4324,150 @@
         "summary": "Get Object Timeseries",
         "tags": [
           "objects"
+        ]
+      }
+    },
+    "/api/operations/{op_id}": {
+      "get": {
+        "operationId": "get_operation_api_operations__op_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "op_id",
+            "required": true,
+            "schema": {
+              "title": "Op Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Operation",
+        "tags": [
+          "operations"
+        ]
+      }
+    },
+    "/api/operations/{op_id}/events": {
+      "get": {
+        "operationId": "get_operation_events_api_operations__op_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "op_id",
+            "required": true,
+            "schema": {
+              "title": "Op Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Operation Events",
+        "tags": [
+          "operations"
         ]
       }
     },

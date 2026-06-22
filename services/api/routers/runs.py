@@ -181,16 +181,4 @@ def get_run_diagnostics(
 @router.get("/{run_id}/events")
 def get_run_events(run_id: str, store: StoreDep = ...):
     """Polling fallback for SSE (A5): returns persisted progress lines."""
-    import sqlite3
-    from pathlib import Path
-    db_path = store.db_path
-    if not Path(db_path).exists():
-        return []
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT ts, line FROM dq_run_progress WHERE run_id=? ORDER BY id",
-        (run_id,),
-    ).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    return store.get_progress(run_id)

@@ -87,7 +87,7 @@ def test_sse_streams_progress_written_by_other_worker(tmp_path):
     async def drain() -> list[dict]:
         import json
         events = []
-        gen = sse_generator(consumer_store.db_path, "r1")
+        gen = sse_generator(consumer_store, "r1")
         # sse_generator endet selbst bei Terminalzustand (finished) → kein Timeout nötig.
         async for chunk in gen:
             if chunk.startswith("data: "):

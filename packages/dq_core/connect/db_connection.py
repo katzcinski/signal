@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Callable, Protocol
+
+from .query_helpers import qualified
 
 # Substrings that mark a *transient* connect failure worth retrying (network
 # blips, dropped/expired sessions). Deliberately excludes the bare word
@@ -16,6 +18,28 @@ TRANSIENT_ERROR_MARKERS = (
     "temporarily unavailable",
     "network",
 )
+
+ProgressCallback = Callable[[str], None]
+
+
+class DbCursor(Protocol):
+    description: Any
+
+    def execute(self, sql: str, params: Any = None) -> Any: ...
+
+    def fetchone(self) -> Any: ...
+
+    def fetchmany(self, size: int = 100) -> list: ...
+
+    def fetchall(self) -> list: ...
+
+    def close(self) -> None: ...
+
+
+class DbConnection(Protocol):
+    def cursor(self) -> DbCursor: ...
+
+    def close(self) -> None: ...
 
 
 def _is_transient_error(exc: Exception) -> bool:
@@ -83,6 +107,7 @@ def get_connection(
     validate_cert: bool = True,
     statement_timeout_ms: int = 120_000,
     max_retry_attempts: int = 3,
+    on_progress: ProgressCallback | None = None,
 ) -> Any:
     """Return a hdbcli connection.
 
@@ -105,6 +130,8 @@ def get_connection(
         ) from exc
 
     def _connect() -> Any:
+        if on_progress:
+            on_progress("HANA-Verbindung wird aufgebaut ...")
         conn = dbapi.connect(
             address=host,
             port=port,
@@ -120,6 +147,8 @@ def get_connection(
                 cursor.execute(f"SET 'statementTimeout' = '{int(statement_timeout_ms)}'")
             finally:
                 cursor.close()
+        if on_progress:
+            on_progress("HANA-Verbindung hergestellt.")
         return conn
 
     attempt = 1
@@ -129,5 +158,200 @@ def get_connection(
         except Exception as exc:  # noqa: BLE001 — retry only transient connect errors
             if attempt >= max_retry_attempts or not _is_transient_error(exc):
                 raise
+            if on_progress:
+                on_progress(
+                    f"Transienter Verbindungsfehler - Versuch {attempt + 1}/{max_retry_attempts} ..."
+                )
             time.sleep(2.0 * (2 ** (attempt - 1)))
             attempt += 1
+
+
+def check_connection(
+    host: str,
+    port: int,
+    user: str,
+    password: str,
+    schema: str,
+    *,
+    probe_object: str | None = None,
+    on_progress: ProgressCallback | None = None,
+    environment_name: str | None = None,
+) -> dict[str, Any]:
+    """Check whether a configured HANA/Datasphere environment is usable.
+
+    Expected HANA failures return a verdict instead of raising. The returned
+    error string is safe for API clients and intentionally does not include raw
+    driver details, SQL text, stack traces, or credentials.
+    """
+    conn: DbConnection | None = None
+    started = time.perf_counter()
+    server_version: str | None = None
+
+    def _latency_ms() -> int:
+        return int((time.perf_counter() - started) * 1000)
+
+    if on_progress:
+        if environment_name:
+            on_progress(f'Verbinde mit Environment "{environment_name}" ...')
+        else:
+            on_progress("Verbinde mit HANA ...")
+
+    try:
+        conn = get_connection(
+            host,
+            port,
+            user,
+            password,
+            schema,
+            on_progress=on_progress,
+        )
+    except Exception as exc:  # noqa: BLE001 - return a safe verdict
+        stage, message = _safe_connect_failure(exc)
+        return _connection_result(
+            ok=False,
+            latency_ms=_latency_ms(),
+            server_version=None,
+            schema_visible=False,
+            failure_stage=stage,
+            error=message,
+        )
+
+    try:
+        if on_progress:
+            on_progress("Liveness pruefen ...")
+        _execute_scalar(conn, "SELECT 1 FROM DUMMY")
+    except Exception:  # noqa: BLE001 - safe verdict, no raw DB details
+        _close_connection(conn)
+        return _connection_result(
+            ok=False,
+            latency_ms=_latency_ms(),
+            server_version=None,
+            schema_visible=False,
+            failure_stage="liveness",
+            error="Liveness check failed.",
+        )
+
+    if on_progress:
+        on_progress("Serverversion pruefen ...")
+    try:
+        server_version = _read_server_version(conn)
+    except Exception:  # noqa: BLE001 - version is diagnostic metadata only
+        server_version = None
+        if on_progress:
+            on_progress("Version konnte nicht gelesen werden.")
+
+    if on_progress:
+        on_progress(f'Schema "{schema}" pruefen ...')
+    schema_visible = (
+        _probe_object_access(conn, schema, probe_object)
+        if probe_object
+        else _schema_is_visible(conn, schema)
+    )
+    if not schema_visible:
+        _close_connection(conn)
+        return _connection_result(
+            ok=False,
+            latency_ms=_latency_ms(),
+            server_version=server_version,
+            schema_visible=False,
+            failure_stage="schema",
+            error="Configured schema is not visible to this user.",
+        )
+
+    if on_progress:
+        on_progress("Connection-Test abgeschlossen.")
+    try:
+        return _connection_result(
+            ok=True,
+            latency_ms=_latency_ms(),
+            server_version=server_version,
+            schema_visible=True,
+            failure_stage=None,
+            error=None,
+        )
+    finally:
+        _close_connection(conn)
+
+
+def _connection_result(
+    *,
+    ok: bool,
+    latency_ms: int,
+    server_version: str | None,
+    schema_visible: bool,
+    failure_stage: str | None,
+    error: str | None,
+) -> dict[str, Any]:
+    return {
+        "ok": ok,
+        "latency_ms": latency_ms,
+        "server_version": server_version,
+        "schema_visible": schema_visible,
+        "failure_stage": failure_stage,
+        "error": error,
+    }
+
+
+def _safe_connect_failure(exc: Exception) -> tuple[str, str]:
+    message = " ".join(str(part) for part in exc.args if part).strip().lower()
+    if isinstance(exc, RuntimeError) and "hdbcli" in message:
+        return "driver", "HANA driver is not installed."
+    auth_markers = ("auth", "credential", "password", "invalid user", "invalid username")
+    if any(marker in message for marker in auth_markers):
+        return "connect", "Authentication failed or credentials are not valid."
+    return "connect", "HANA connection could not be established."
+
+
+def _execute_scalar(conn: DbConnection, sql: str, params: Any = None) -> Any:
+    cursor = conn.cursor()
+    try:
+        if params is None:
+            cursor.execute(sql)
+        else:
+            cursor.execute(sql, params)
+        row = cursor.fetchone()
+        return row[0] if row else None
+    finally:
+        cursor.close()
+
+
+def _read_server_version(conn: DbConnection) -> str | None:
+    value = _execute_scalar(conn, "SELECT VERSION FROM SYS.M_DATABASE")
+    return str(value) if value is not None else None
+
+
+def _schema_is_visible(conn: DbConnection, schema: str) -> bool:
+    if not str(schema or "").strip():
+        return False
+    try:
+        value = _execute_scalar(
+            conn,
+            "SELECT COUNT(*) FROM SYS.SCHEMAS WHERE SCHEMA_NAME = ?",
+            (schema,),
+        )
+        return bool(int(value or 0) > 0)
+    except Exception:  # noqa: BLE001 - if we cannot prove it, fail closed
+        return False
+
+
+def _probe_object_access(conn: DbConnection, schema: str, probe_object: str | None) -> bool:
+    if not probe_object:
+        return False
+    cursor = conn.cursor()
+    try:
+        cursor.execute(f"SELECT * FROM {qualified(schema, probe_object)} WHERE 1 = 0")
+        cursor.fetchall()
+        return True
+    except Exception:  # noqa: BLE001 - if we cannot prove it, fail closed
+        return False
+    finally:
+        cursor.close()
+
+
+def _close_connection(conn: DbConnection | None) -> None:
+    if conn is None:
+        return
+    try:
+        conn.close()
+    except Exception:
+        pass

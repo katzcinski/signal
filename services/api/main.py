@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 
 from .middleware import ObservabilityMiddleware
 from .settings import get_settings
-from .routers import library, objects, runs, lineage, contracts, incidents, proposals, stream, checks, extract, metrics, data_loads, activity, notifications, profile
+from .routers import library, objects, runs, lineage, contracts, incidents, proposals, stream, checks, extract, metrics, data_loads, activity, notifications, profile, operations
 
 logging.basicConfig(
     level=logging.INFO,
@@ -100,7 +100,7 @@ def create_app() -> FastAPI:
     for router in [library.router, objects.router, runs.router, lineage.router,
                    contracts.router, incidents.router, proposals.router, stream.router,
                    checks.router, extract.router, metrics.router, data_loads.router,
-                   activity.router, notifications.router, profile.router]:
+                   activity.router, notifications.router, profile.router, operations.router]:
         app.include_router(router)
 
     @app.get("/api/health")

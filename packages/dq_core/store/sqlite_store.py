@@ -238,6 +238,73 @@ class ResultStore:
         except sqlite3.IntegrityError:
             return False
 
+    def append_progress(self, stream_id: str, line: str) -> int:
+        """Append one progress line to the generic stream and return its row id."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO dq_progress(stream_id, ts, line) VALUES (?,?,?)",
+                (stream_id, now, line),
+            )
+            return int(cur.lastrowid)
+
+    def get_progress(self, stream_id: str, after_id: int = 0) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT id, stream_id, ts, line FROM dq_progress "
+                "WHERE stream_id=? AND id>? ORDER BY id",
+                (stream_id, int(after_id or 0)),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def begin_operation(self, op_id: str, kind: str, created_by: str = "") -> bool:
+        """Register a background operation once; duplicate op_ids are rejected."""
+        try:
+            with self._conn() as conn:
+                conn.execute(
+                    """INSERT INTO dq_operations
+                       (op_id, kind, state, created_by, started_at)
+                       VALUES (?,?,?,?,?)""",
+                    (
+                        op_id,
+                        kind,
+                        "running",
+                        created_by,
+                        datetime.now(timezone.utc).isoformat(),
+                    ),
+                )
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def finish_operation(
+        self,
+        op_id: str,
+        state: str,
+        result_json: str | None = None,
+        error: str | None = None,
+    ) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                """UPDATE dq_operations
+                   SET state=?, finished_at=?, result_json=?, error=?
+                   WHERE op_id=?""",
+                (
+                    state,
+                    datetime.now(timezone.utc).isoformat(),
+                    result_json,
+                    error,
+                    op_id,
+                ),
+            )
+
+    def get_operation(self, op_id: str) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_operations WHERE op_id=?", (op_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
     # ------------------------------------------------------------------
     # Incidents (R4-1) — persistente Breach-Episoden mit Timeline
     # ------------------------------------------------------------------

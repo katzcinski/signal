@@ -7,9 +7,10 @@ served by the dedicated `lineage` router.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..deps import StoreDep, get_inventory, get_lineage
+from ..auth.provider import PrincipalDep
+from ..deps import StoreDep, get_environment, get_inventory, get_lineage
 
 router = APIRouter(prefix="/api", tags=["extract"])
 
@@ -106,3 +107,52 @@ def list_environments():
             for name, cfg in envs.items()
         ]
     }
+
+
+@router.post("/environments/{name}/test", status_code=status.HTTP_202_ACCEPTED)
+def test_environment_connection(
+    name: str,
+    principal: PrincipalDep,
+    store: StoreDep = ...,
+):
+    """Start a live HANA/Datasphere connection test for an environment."""
+    import json
+    import threading
+    import uuid
+
+    from dq_core.connect.db_connection import check_connection
+    from ..sse import make_progress_callback
+
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Connection tests require steward role or higher.")
+
+    env_cfg = get_environment(name)
+    if env_cfg is None:
+        raise HTTPException(status_code=422, detail=f"Unknown environment {name!r}")
+
+    op_id = str(uuid.uuid4())
+    if not store.begin_operation(op_id, "connection_test", created_by=principal.sub):
+        raise HTTPException(status_code=409, detail="Operation already exists.")
+
+    def _worker() -> None:
+        callback = make_progress_callback(op_id, store)
+        try:
+            result = check_connection(
+                host=env_cfg.get("host", ""),
+                port=int(env_cfg.get("port", 443)),
+                user=env_cfg.get("user", ""),
+                password=env_cfg.get("password", ""),
+                schema=env_cfg.get("schema", ""),
+                on_progress=callback,
+                environment_name=name,
+            )
+            store.finish_operation(op_id, "finished", result_json=json.dumps(result))
+        except Exception:  # noqa: BLE001 - internals stay out of the API result
+            store.finish_operation(
+                op_id,
+                "error",
+                error="Connection test failed to complete.",
+            )
+
+    threading.Thread(target=_worker, daemon=True).start()
+    return {"op_id": op_id}

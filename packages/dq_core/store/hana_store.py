@@ -41,6 +41,27 @@ class HanaStore:
     def set_run_state(self, run_id: str, state: str, finished_at: str | None = None) -> None:
         raise NotImplementedError
 
+    def append_progress(self, stream_id: str, line: str) -> int:
+        raise NotImplementedError
+
+    def get_progress(self, stream_id: str, after_id: int = 0) -> list[dict[str, Any]]:
+        raise NotImplementedError
+
+    def begin_operation(self, op_id: str, kind: str, created_by: str = "") -> bool:
+        raise NotImplementedError
+
+    def finish_operation(
+        self,
+        op_id: str,
+        state: str,
+        result_json: str | None = None,
+        error: str | None = None,
+    ) -> None:
+        raise NotImplementedError
+
+    def get_operation(self, op_id: str) -> Optional[dict]:
+        raise NotImplementedError
+
     def get_compliance(self, product: str) -> Optional[dict]:
         raise NotImplementedError
 
