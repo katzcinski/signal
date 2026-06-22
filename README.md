@@ -13,7 +13,8 @@ Aus semantischen Garantien (Schema, Schlüssel, Freshness, Volumen, Vollständig
 ## Auf einen Blick
 
 - **Data Contracts** als SQL-freies YAML mit Garantie-Familien → Compiler → Checks.
-- **Zwei Betriebsmodi** auf einem Unterbau: **Lite** (Verbindlichkeit ohne Versions-/Approval-Zeremonie) und **Full** (SemVer, Approval, Breaking-Schutz). Siehe [`docs/Betriebsmodi_Lite_und_Full.md`](docs/Betriebsmodi_Lite_und_Full.md).
+- **`kind` trennt Gate von Contract** (ADR-0001): „Checks überall, Contracts nur an den Parteigrenzen." Ein `internal_gate`-Fehler ist ein Engineering-Signal, ein `*_contract`-Fehler ein governance-relevanter Breach. Siehe [`docs/ADR-0001_Quality-Gates_vs_Contracts.md`](docs/ADR-0001_Quality-Gates_vs_Contracts.md).
+- **Zwei Betriebsmodi** auf einem Unterbau: **Lite** (Verbindlichkeit ohne Versions-/Approval-Zeremonie) und **Full** (SemVer, Approval, Breaking-Schutz) — orthogonal zu `kind`, Default folgt dem `kind`. Siehe [`docs/Betriebsmodi_Lite_und_Full.md`](docs/Betriebsmodi_Lite_und_Full.md).
 - **Cockpit** (React 18 + TS): Status-Grid, Lineage-/Coverage-Map, Contract-Workbench, Runs, Incidents, Proposals.
 - **Compliance & SLA**: automatische `compliant/breached`-Transition, SLA-Fenster, Incident-Timeline.
 - **Observability**: Rolling-Baselines + datengetriebene Garantie-Vorschläge (Miner).
@@ -57,10 +58,12 @@ packages/dq_core/      # Framework-freie Engine (pip-installierbar)
   engine/              #   Check-Ausführung, Expectation-Grammatik, Dataclasses  [ENGINE-FROZEN]
   store/               #   Result-Store (SQLite/HANA) + nummerierte Migrationen
   connect/             #   HANA-Verbindung (hdbcli) + MockConnection
-  contract/            #   Modell, Validator, Compiler, Diff, Seed, ODCS-Export
+  contract/            #   Modell (kind), Validator, Compiler, Diff, Gate-G3, Compliance, Seed, ODCS-Export
+  validator/           #   geteilte Validierungsbausteine
   library/             #   Check-Bibliothek (sql_template-Katalog)
   lineage/             #   Lineage-/CSN-Analyse
   obs/                 #   Baselines + Proposal-Miner
+  profile/             #   Spaltenprofil, PK-Kandidaten, Sample Rows  [PII-GATE]
 services/api/          # FastAPI — Router, Auth, Settings, SSE, Git-Writer
 apps/cockpit/          # Vite + React 18 + TS (strict) Frontend
 cli/                   # dq_check_runner.py — Engine ohne API (Cron/Task-Chain)
@@ -74,18 +77,46 @@ tests/                 # pytest (unit + api)
 
 ## Dokumentation
 
+**Referenz & Betrieb** (was Signal heute ist)
+
 | Dokument | Inhalt |
 |---|---|
-| [`docs/Tooldokumentation.md`](docs/Tooldokumentation.md) | **Vollständige Referenz**: Architektur, Datenmodell, API, Konfiguration, Security, Deployment, Entwicklung |
+| [`docs/Tooldokumentation.md`](docs/Tooldokumentation.md) | **Vollständige Referenz des implementierten Stands**: Architektur, Datenmodell, API, Konfiguration, Security, Deployment, Entwicklung |
 | [`docs/Betriebsmodi_Lite_und_Full.md`](docs/Betriebsmodi_Lite_und_Full.md) | Lite vs. Full — Prozess, Personas, Tooling |
+| [`docs/Konzept_DQ_Observability_Cockpit.md`](docs/Konzept_DQ_Observability_Cockpit.md) · [`docs/Konzept_DQ_Cockpit_UIUX.md`](docs/Konzept_DQ_Cockpit_UIUX.md) | Fachliches Gesamtkonzept · UI/UX-Zielbild |
+
+**Architektur-Entscheidungen (ADRs)**
+
+| Dokument | Inhalt |
+|---|---|
+| [`docs/ADR-0001_Quality-Gates_vs_Contracts.md`](docs/ADR-0001_Quality-Gates_vs_Contracts.md) | Trennung interner Quality Gates von Contracts via `kind` — **umgesetzt** (Batch 1–5) |
+| [`docs/ADR-0002_Editor-Modus_aus_Kind.md`](docs/ADR-0002_Editor-Modus_aus_Kind.md) | Editor-Modus (Lite/Full) aus dem `kind` ableiten — umgesetzt (Batch 6) |
+| [`docs/ADR-0003_BDC-Datasphere-DataProductStudio.md`](docs/ADR-0003_BDC-Datasphere-DataProductStudio.md) | Signal in einem BDC/Datasphere-Setup (HDLF-Spaces vs. SQL-Output-Port) |
+| [`docs/ADR-0004_DataProduct-als-Komposition.md`](docs/ADR-0004_DataProduct-als-Komposition.md) | Datenprodukt als Komposition über Lineage — Manifest + abgeleitetes Interieur |
+
+**Offene Punkte & Status** (was noch aussteht)
+
+| Dokument | Inhalt |
+|---|---|
+| [`docs/OPEN_TASKS_UIUX.md`](docs/OPEN_TASKS_UIUX.md) | Status-Matrix UI/UX + verbleibende offene Punkte |
+| [`docs/REVIEW_Tool_v2_Status.md`](docs/REVIEW_Tool_v2_Status.md) | Remediation-Status v2 + offene Backend-Punkte |
+
+**Planungs- & Review-Historie** (wie es dahin kam — bei Konflikt gewinnt der Code/`Tooldokumentation.md`)
+
+| Dokument | Inhalt |
+|---|---|
+| [`docs/HANDOVER.md`](docs/HANDOVER.md) | Ursprünglicher Implementierungsplan (Workstreams, Gates) |
+| [`docs/PLAN_Remediation_v2.md`](docs/PLAN_Remediation_v2.md) | Remediation-Plan R0–R6 (umgesetzt) |
+| [`docs/REVIEW_Tool_v1_Befunde.md`](docs/REVIEW_Tool_v1_Befunde.md) · [`docs/REVIEW_Implementierungsplan.md`](docs/REVIEW_Implementierungsplan.md) | Kritische Tool-/Plan-Reviews (historisch) |
+| `docs/Implementation_Batch3…6_*.md` | Implementierungs-Batches zum `kind`-Diskriminator (Coverage/Promotion, Compliance/Incident-Split, Lifecycle-Zeremonie, Mode-Defaulting) |
+| [`docs/Zusatz_ContractLifecycle_ORDBDCIntegration.md`](docs/Zusatz_ContractLifecycle_ORDBDCIntegration.md) · [`docs/Spec_Lineage_UX_Redesign.md`](docs/Spec_Lineage_UX_Redesign.md) | ORD/ODCS-Seam · Lineage-UX-Spec |
+
+**Pitch & Vortrag**
+
+| Dokument | Inhalt |
+|---|---|
 | [`docs/Kundendeck_DataProducts_Lite.md`](docs/Kundendeck_DataProducts_Lite.md) | Präsentations-Gerüst für den Kundenpitch |
-| [`docs/Konzept_DQ_Observability_Cockpit.md`](docs/Konzept_DQ_Observability_Cockpit.md) | Fachliches Gesamtkonzept |
-| [`docs/ADR-0001_Quality-Gates_vs_Contracts.md`](docs/ADR-0001_Quality-Gates_vs_Contracts.md) | ADR: Trennung interner Quality Gates von Contracts (umgesetzt) |
-| [`docs/ADR-0002_Editor-Modus_aus_Kind.md`](docs/ADR-0002_Editor-Modus_aus_Kind.md) | ADR: Editor-Modus (Lite/Full) aus dem Artifact-`kind` ableiten (angenommen) |
-| [`docs/ADR-0003_BDC-Datasphere-DataProductStudio.md`](docs/ADR-0003_BDC-Datasphere-DataProductStudio.md) | ADR: Signal in einem BDC/Datasphere-Setup mit Data-Product-Studio-Produkten (HDLF-Spaces vs. SQL-Output-Port) |
-| [`docs/ADR-0004_DataProduct-als-Komposition.md`](docs/ADR-0004_DataProduct-als-Komposition.md) | ADR: Datenprodukt als Komposition über Lineage — Manifest + abgeleitetes Interieur (Vorschlag) |
-| [`docs/Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md`](docs/Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md) | Briefing/Übergabe für einen Vortrag zu Datenprodukten & Data Contracts in DSP/BDC |
-| [`docs/HANDOVER.md`](docs/HANDOVER.md) | Technischer Implementierungsplan (Workstreams, Gates) |
+| [`docs/Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md`](docs/Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md) | Briefing für einen Vortrag zu Datenprodukten & Data Contracts in DSP/BDC |
 
 ---
 

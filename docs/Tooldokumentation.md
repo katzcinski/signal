@@ -1,8 +1,8 @@
 # Signal — Tooldokumentation (vollständige Referenz)
 
-**Stand:** 2026-06-15 · **Komponente:** Data Quality & Observability Cockpit für SAP Datasphere
+**Stand:** 2026-06-22 · **Komponente:** Data Quality & Observability Cockpit für SAP Datasphere
 
-Diese Datei ist die zusammenhängende technische Referenz. Einstieg und Schnellstart: [`../README.md`](../README.md). Betriebsmodi/Personas: [`Betriebsmodi_Lite_und_Full.md`](Betriebsmodi_Lite_und_Full.md). Fachliches Konzept: [`Konzept_DQ_Observability_Cockpit.md`](Konzept_DQ_Observability_Cockpit.md). Implementierungsplan & Gates: [`HANDOVER.md`](HANDOVER.md).
+Diese Datei ist die zusammenhängende technische Referenz und beschreibt den **implementierten Stand**. Einstieg und Schnellstart: [`../README.md`](../README.md). Betriebsmodi/Personas: [`Betriebsmodi_Lite_und_Full.md`](Betriebsmodi_Lite_und_Full.md). Gate-vs-Contract-Klassifikation (`kind`): [`ADR-0001_Quality-Gates_vs_Contracts.md`](ADR-0001_Quality-Gates_vs_Contracts.md). Fachliches Konzept: [`Konzept_DQ_Observability_Cockpit.md`](Konzept_DQ_Observability_Cockpit.md). Implementierungs-/Planungshistorie & Gates: [`HANDOVER.md`](HANDOVER.md), [`PLAN_Remediation_v2.md`](PLAN_Remediation_v2.md).
 
 ## Inhalt
 
@@ -30,6 +30,7 @@ Signal verwandelt **semantische Garantien** über Datasphere-Objekte in **determ
 - **Contracts tragen Garantien, nie SQL** (Gate G1). Der einzige Ort, an dem SQL entsteht, ist der Compiler.
 - **Engine ist eingefroren & frameworkfrei** (`dq_core` importiert nie FastAPI). Erweitern statt ändern.
 - **Drei Zustands-Achsen sind getrennt**: Lifecycle (Erstellung) · Compliance (Halten der Zusage) · Coverage (Abdeckung).
+- **`kind` trennt Quality Gate von Contract** (ADR-0001): „Checks überall, Contracts nur an den Parteigrenzen." Gleiche Engine/Regel, unterschiedliche Konsequenz — ein `internal_gate`-Fehler ist ein Engineering-Signal, ein `*_contract`-Fehler ein governance-relevanter Compliance-Breach.
 - **Ein Code, zwei Deployments**: lokal (SQLite/NoAuth) und Kunde (HANA/OIDC) über Auth-/Store-Abstraktion, ohne Code-Zweige.
 
 ---
@@ -51,12 +52,14 @@ Signal verwandelt **semantische Garantien** über Datasphere-Objekte in **determ
 | Modul | Inhalt |
 |---|---|
 | `engine/` | `check_engine.py` (run_checks), `expectation.py` (Grammatik), `models.py` (Dataclasses) — `[ENGINE-FROZEN]` |
-| `contract/` | `model.py`, `validator.py` (G1), `compiler.py` (G1/G2/S2), `diff.py` (Breaking), `seed.py`, `odcs_export.py` |
+| `contract/` | `model.py` (inkl. `kind`), `validator.py` (G1, `VALID_KINDS`), `compiler.py` (G1/G2/S2), `diff.py` (Breaking), `gate_g3.py` (CI-Shim, kind-gegated), `compliance.py` (pass/fail-Orakel), `seed.py`, `odcs_export.py` (nur `*_contract`) |
+| `validator/` | `core.py` — eigenständige Validierungsbausteine (geteilt von Contract-Validator und API) |
 | `store/` | `base.py` (Protocol), `sqlite_store.py`, `hana_store.py`, `migrations/NNN_*.sql` |
 | `connect/` | `db_connection.py` (hdbcli + Retry, `MockConnection`) |
 | `library/` | `check_library.py` + `check_library.json` (versionierter `sql_template`-Katalog) |
-| `lineage/` | Analyzer-Loader, Spalten-Lineage, CSN-Rekonstruktor |
-| `obs/` | `baselines.py` (Rolling-Stats), `miner.py` (Proposal-Mining) |
+| `lineage/` | Analyzer-Loader, Spalten-Lineage, CSN-Rekonstruktor, kind-aware `get_coverage` |
+| `obs/` | `baselines.py` (Rolling-Stats), `miner.py` (Proposal-Mining, inkl. `kind`) |
+| `profile/` | `profiler.py`, `heuristics.py`, `pk_detection.py` — Spaltenstatistik, PK-Kandidaten, optionale Sample Rows `[PII-GATE]` |
 
 ---
 
@@ -66,6 +69,7 @@ Signal verwandelt **semantische Garantien** über Datasphere-Objekte in **determ
 
 ```yaml
 product: DS_SALES_ORDERS         # Identifier, = Dateiname & Join-Key
+kind: consumer_contract          # internal_gate | consumer_contract | provider_contract (default: internal_gate)
 dataset: DS_SALES_ORDERS         # Datasphere-Objekt; Schema wird NICHT hier gebunden
 owned_by: product                # platform | product
 owners: ["grp:data-platform"]    # optionale ACL (sub oder grp:)
@@ -81,7 +85,7 @@ guarantees:
   volume:       { min_rows: 1000, severity: warn }
 ```
 
-`compliance` und `schema_ref` stehen **nicht** im YAML: Compliance lebt im Store (A1), das Schema wird zur Laufzeit aus dem Environment gebunden (A2/G2).
+`compliance` und `schema_ref` stehen **nicht** im YAML: Compliance lebt im Store (A1), das Schema wird zur Laufzeit aus dem Environment gebunden (A2/G2). `kind` fehlt → Default `internal_gate` (der ehrliche Default: ohne zugestimmte Gegenpartei ist ein Set ein internes Gate, kein Contract).
 
 ### 3.2 Garantie-Familien → Checks (Compiler)
 
@@ -117,18 +121,30 @@ Der Compiler ist **deterministisch**: Header-Hash = f(Contract-Hash, Library-Ver
 ### 3.4 Lifecycle, Compliance, Coverage
 
 - **Lifecycle** (YAML): `draft → active → deprecated`. PUT erzeugt immer einen Draft; `approve`/`certify` aktivieren.
-- **Compliance** (Store): `unknown → compliant | breached`. `breached` bei ≥1 nicht bestandenem Check ≥ `fail` der aktiven Version; Auto-Recovery bei grünem Folgelauf. Übergänge sind Events (`since`, `last_run_id`); Neu-Breach öffnet ein Incident.
-- **Coverage** (abgeleitet): `covered` (active + kompilierte Checks) · `partial` (active, keine Checks) · `gap` (Contract, nicht active) · `out_of_scope` (kein Contract).
+- **Compliance** (Store, **nur `*_contract`**): `unknown → compliant | breached`. `breached` bei ≥1 nicht bestandenem Check ≥ `fail` der aktiven Version; Auto-Recovery bei grünem Folgelauf. Übergänge sind Events (`since`, `last_run_id`); Neu-Breach öffnet ein **Contract-Breach**-Incident. Ein `internal_gate` schreibt **keine** Compliance/SLA, sondern öffnet bei Fehler ein **Engineering-Signal**-Incident (Team-Routing).
+- **Coverage** (abgeleitet, kind-aware): `covered` (active + kompilierte Checks) · `partial` (active, keine Checks) · `gap` (Set, nicht active) · `out_of_scope` (kein Set). Die Coverage-Map unterscheidet zusätzlich `has_internal_gate` vs. `has_boundary_contract`.
 
-### 3.5 Lite vs. Full
+### 3.5 `kind` — Quality Gate vs. Contract (ADR-0001)
+
+`kind` ist der Klassifikations-Diskriminator je Set/File (validiert in `dq_core/contract/validator.py`, `VALID_KINDS`):
+
+| `kind` | Bedeutung | Konsequenz bei Verletzung | Lifecycle-Zeremonie | ODCS-Export |
+|---|---|---|---|---|
+| `internal_gate` | internes Quality Gate, keine Gegenpartei (**Default**) | Engineering-Signal (Team-intern), **keine** Ampel/SLA | frei änderbar, zeremonielos | nie (409) |
+| `consumer_contract` | Versprechen an den Consumer | Contract-Breach, Compliance-Ampel + SLA | SemVer, Approval, Breaking-Schutz (G3) | ja |
+| `provider_contract` | Versprechen der Quelle/des Providers | wie consumer | wie consumer | ja |
+
+**„Gleiche Regel, zwei Artefakte"** — Engine, Compiler, Store und Check-Library bleiben kategorie-agnostisch; nur der Governance-Mantel folgt dem `kind`. Die **Promotion** `internal_gate → consumer_contract` (`POST …/promote`, Copy-Semantik) ist der explizite Governance-Akt, an dem aus interner Kontrolle ein Versprechen wird. Gates G1/G2/G6/G7/G8 bleiben für alle `kind` scharf. Vollständige Begründung und Komposition über Produktgrenzen: [`ADR-0001_Quality-Gates_vs_Contracts.md`](ADR-0001_Quality-Gates_vs_Contracts.md).
+
+### 3.6 Lite vs. Full
 
 | | Lite | Full |
 |---|---|---|
 | Aktivierung | `POST …/certify` (ein Schritt) | `PUT` → `approve` → `compile` |
 | Versionierung | keine Pflicht | SemVer, Breaking ⇒ Major (G3) |
-| Breaking-Gate | nur für bereits zertifizierte Produkte | immer blockierend |
+| Breaking-Gate | nur für bereits zertifizierte `*_contract` | immer blockierend (nur `*_contract`) |
 
-Vollständig in [`Betriebsmodi_Lite_und_Full.md`](Betriebsmodi_Lite_und_Full.md).
+Lite/Full beschreibt die **Prozess-Zeremonie** und ist **orthogonal** zu `kind` (Grenz-Klassifikation). Der Editor-**Default**-Modus wird aus dem `kind` abgeleitet (`internal_gate` → Lite/„Schnell zertifizieren", `*_contract` → Full/„Freigabe-Workflow"); der Override entfällt auf bereits zertifizierten Contracts (ADR-0002). Vollständig in [`Betriebsmodi_Lite_und_Full.md`](Betriebsmodi_Lite_und_Full.md) und [`ADR-0002_Editor-Modus_aus_Kind.md`](ADR-0002_Editor-Modus_aus_Kind.md).
 
 ---
 
@@ -143,6 +159,9 @@ Result-Store-Schema über nummerierte, idempotente Migrationen (`packages/dq_cor
 | `003_compliance_events_run_guard` | Compliance-Event-Log + Doppellauf-Guard |
 | `004_incident_lifecycle` | Incident-Tabellen + Timeline |
 | `005_notification_routing` | Notification-Kanäle/Regeln/Mutes |
+| `007_incident_kind` | `dq_incidents.kind` (Engineering-Signal vs. Contract-Breach, Backfill `consumer_contract`) + `dq_notification_rules.match_kind` (Wildcard wenn leer) |
+
+> Nummer 006 ist im Repo nicht belegt (übersprungen): Der `kind`-Diskriminator (Batch 2) lebt als Contract-Metadatum im YAML/Git und brauchte keine Store-Migration. Der Runner gleicht per Dateiname gegen `schema_migrations` ab; Lücken in der Nummerierung sind unkritisch.
 
 **Zentrale Tabellen (Auszug):**
 
@@ -174,9 +193,9 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | GET | `/api/objects/{id}/timeseries` | aggregierte Zeitreihen |
 | POST | `/api/objects/{id}/run` | Lauf auslösen → `202 {run_id}` `[AUTHZ]` |
 | POST | `/api/objects/{id}/profile` | Profil-Lauf (Stats-Tuple) |
-| GET | `/api/runs` · `/api/runs/{id}` | Läufe / Detail |
+| GET | `/api/runs` · `/api/runs/{id}` | Läufe (paginiert `limit/offset`) / Detail |
 | GET | `/api/runs/{id}/results` · `/diagnostics` · `/events` | Ergebnisse · PII-gated Rohzeilen · SSE |
-| GET | `/api/runs/compare` | Lauf-/Versions-Vergleich |
+| GET | `/api/runs/compare?base=&head=` | Lauf-/Versions-Vergleich (Statuswechsel je Check) |
 
 ### Contracts
 
@@ -185,13 +204,14 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | GET | `/api/contracts` | Liste aus `contract_index` (Filter lifecycle) |
 | GET/PUT | `/api/contracts/{product}` | Lesen / Draft schreiben (G1) `[AUTHZ]` |
 | POST | `/api/contracts/{product}/seed` | Draft aus Inventar erzeugen |
-| POST | `/api/contracts/{product}/diff` · GET `/version-diff` | Breaking-Report gegen aktive Version |
-| POST | `/api/contracts/{product}/approve` | Full-Modus: Draft → active (G3 + 1 Commit) `[AUTHZ]` |
+| POST | `/api/contracts/{product}/promote` | `internal_gate` → `consumer_contract`-Draft (Copy-Semantik) `[AUTHZ]` |
+| POST | `/api/contracts/{product}/diff` · GET `/diff/active` · `/version-diff` | Breaking-Report (liefert `kind`, `ceremony_required`, `blocking`) |
+| POST | `/api/contracts/{product}/approve` | Full-Modus: Draft → active (G3 nur `*_contract` + 1 Commit) `[AUTHZ]` |
 | POST | `/api/contracts/{product}/certify` | **Lite-Modus: save → active → compile in einem Schritt** `[AUTHZ]` |
 | POST | `/api/contracts/{product}/compile?dry_run=` | Garantien → Checks (persistiert nur `active`) |
 | POST | `/api/contracts/{product}/deprecate` | active → deprecated |
-| GET | `/api/contracts/{product}/sla` | SLA-%-Fenster (7/30/90 d) |
-| GET | `/api/contracts/{product}/export/odcs` · POST `/export/bdc` | ODCS-3.1 · CSN/ORD-Fragmente |
+| GET | `/api/contracts/{product}/sla` | SLA-%-Fenster (7/30/90 d); für `internal_gate` leer (`null`) |
+| GET | `/api/contracts/{product}/export/odcs` · POST `/export/bdc` | ODCS-3.1 (nur `*_contract`, sonst 409) · CSN/ORD-Fragmente |
 | POST | `/api/contracts/reindex` | Index-Rebuild nach externem `git pull` `[AUTHZ]` |
 
 ### Checks, Extrakt, Inventar
@@ -207,11 +227,13 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| GET | `/api/lineage/graph` · `/coverage/summary` · `/coverage/heatmap` · `/coverage/health` | Graph & Coverage-Aggregate |
-| GET | `/api/incidents` · `/{id}` · POST `/{id}/transition` | Breach-Incidents + Timeline |
-| GET | `/api/proposals` · POST `/{id}/accept|reject|snooze` | Miner-Vorschläge |
+| GET | `/api/lineage/graph` · `/coverage/summary` · `/coverage/heatmap` · `/coverage/health` | Graph & Coverage-Aggregate; `summary` enthält `with_internal_gate`/`with_contract_checks`/`contracts_breached`/`gates_failing` |
+| GET | `/api/incidents` · `/{id}` · POST `/{id}/transition` | Incidents (Filter `status/severity/kind`, paginiert) + Timeline; `kind` trennt Engineering-Signal von Contract-Breach |
+| GET | `/api/proposals` · POST `/{id}/accept|reject|snooze` | Miner-Vorschläge (mit `kind`) |
+| GET | `/api/activity` | Activity-/Audit-Feed (Approvals, Incident-Transitions, Läufe) |
+| POST | `/api/objects/{id}/profile` | Profil-Lauf: Spaltenstatistik, PK-Kandidaten, optionale Sample Rows `[PII-GATE]` |
 | GET | `/api/metrics/health` · `/api/datasphere/*` · `/api/data-loads` | Betriebs-/Lastmetadaten |
-| GET | `/api/notifications/...` · POST/PATCH/DELETE `channels|rules|mutes` | Notification-Routing |
+| GET | `/api/notifications/...` · POST/PATCH/DELETE `channels|rules|mutes` | Notification-Routing (Regeln optional kind-gefiltert via `match_kind`) |
 | GET | `/api/badge/{product}` | einbettbares Status-Badge |
 
 > Die vollständige, immer aktuelle Liste ist die generierte OpenAPI unter `/api/openapi.json`; das Frontend bezieht daraus seine Typen (`openapi-typescript`, Gate G4).
@@ -236,11 +258,14 @@ Settings über `pydantic-settings` (`services/api/settings.py`). Auszug:
 | `ENVIRONMENTS_FILE` | `environments.yml` | `name → {host, port, schema, secret_ref}` |
 | `ALLOW_LOCAL_DIAGNOSTICS` | `false` | PII-Gate: Rohzeilen lokal zulassen |
 | `DIAGNOSTICS_TTL_DAYS` | `7` | Retention der Diagnostics |
+| `ALLOW_PROFILE_SAMPLES` | `false` | PII-Gate für den Profiler: Sample Rows nur mit Flag |
+| `PROFILE_SAMPLE_COLUMNS` | `[]` | Allowlist der im Profil zulässigen Sample-Spalten |
 | `EXTRACT_STALE_DAYS` | `7` | Staleness-Schwelle für Extrakt-Alter |
 | `ALLOW_MOCK_CONNECTION` | `true` | Läufe ohne Environment via MockConnection |
 | `CORS_ORIGINS` | localhost:5173/3000 | erlaubte Frontends |
 | `WEBHOOK_URL` / `WEBHOOK_ALLOWLIST` | — | Breach-Webhook (SSRF-Allowlist) |
-| `DATASPHERE_*` | — | Datasphere-API/CLI-Zugang (Lastmetadaten) |
+| `NOTIFICATIONS_FILE` | `notifications.yml` | YAML-Fallback für Kanäle/Regeln (DB schlägt YAML) |
+| `DATASPHERE_*` / `DATASPHERE_USE_CLI` | — / `false` | Datasphere-API/CLI-Zugang (Lastmetadaten) |
 
 Environments-Datei bindet das `{schema}` zur Laufzeit — Contracts bleiben environment-frei.
 
@@ -271,17 +296,17 @@ Vite + React 18 + TS strict, TanStack Query v5, React Router, Tailwind (Design-T
 
 | Route | Screen | Zweck |
 |---|---|---|
-| `/` | Cockpit | Status-Grid (Objekt × Familie), stale sichtbar (G6) |
-| `/my` | MyWork | persönliche Sicht |
-| `/objects`, `/objects/:id` | Katalog/Detail | Checks, Sparkline, Run-Trigger |
-| `/contracts` | Contract-Workbench | Garantie-Editor (Lite-/Voll-Modus), Compile, Diff |
-| `/lineage`, `/coverage` | Lineage-/Coverage-Map | Cytoscape, Coverage-Status je Node |
-| `/incidents` | Incidents | Breach-Episoden + Timeline |
-| `/proposals` | Proposals | Miner-Vorschläge (Inbox) |
-| `/runs/:id`, `/runs/compare` | Run-Detail/-Vergleich | Live-Log (SSE) + Polling |
-| `/governance`, `/library`, `/notifications` | Verwaltung | ACLs, Check-Bibliothek, Routing |
+| `/` | Cockpit | Status-Grid (Objekt × Familie), Health-Gauge mit Trend, SLA-Panel (nur Contracts) + Gate-Signal-Stat, Heatmap, Activity-Feed |
+| `/my` | MyWork | Rollen-Landing; Incidents nach `kind` getrennt (Contract-Breach vs. Engineering-Signal) |
+| `/objects`, `/objects/:id` | Katalog/Detail | Faceted Search; Checks, Sparkline, „Verlauf"-Tab (Zeitreihen), Profiling-Drawer, Run-Trigger |
+| `/contracts` | Contract-Workbench | Garantie-Editor (Modus aus `kind`), Compile, Breaking-Diff, Promotion-Flow, Govern-Onboarding |
+| `/lineage`, `/coverage` | Lineage-/Coverage-Map | Cytoscape; Coverage-Status je Node, Dimension-Switcher (Internal\|Contract\|All), Gate = gestrichelt |
+| `/incidents` | Incidents | Incident-Inbox + Timeline; `kind`-Badge & -Filter (Engineering-Signal vs. Contract-Breach) |
+| `/proposals` | Proposals | Miner-Vorschläge (Inbox), kind-Badge |
+| `/runs/:id`, `/runs/compare` | Run-Detail/-Vergleich | Live-Log (SSE) + Polling; Regressions-Diff zweier Runs |
+| `/governance`, `/library`, `/notifications` | Verwaltung | ACLs/Compliance-Ampel (nur Contracts), Check-Library-Browser, Routing (inkl. `match_kind`) |
 
-UI-Regeln: Status-Ampel (grün/gelb/rot/grau) ist **exklusiv**; Familienfarben nur für Dekor/Diagramme. Alle Strings zentral in `i18n/de.ts`. CSP gesetzt, `dangerouslySetInnerHTML` per Lint verboten (S8).
+UI-Regeln: Status-Ampel (grün/gelb/rot/grau) ist **exklusiv**; Familienfarben nur für Dekor/Diagramme. Status-Encoding ≥3-von-4 (Farbe + Form/Glyph + Label, Carbon). Alle Strings zentral in `i18n/de.ts` (de-only). CSP gesetzt, ESLint mit `react/no-danger`; `dangerouslySetInnerHTML` verboten (S8).
 
 ---
 
@@ -340,6 +365,10 @@ make lint           # py_compile + tsc --noEmit
 | Begriff | Bedeutung |
 |---|---|
 | **Contract** | SQL-freies YAML mit Garantien über ein Datasphere-Objekt |
+| **`kind`** | Klassifikation des Sets: `internal_gate` (Quality Gate) · `consumer_contract`/`provider_contract` (Versprechen an einer Parteigrenze) |
+| **Quality Gate** | interner Check ohne Gegenpartei (`internal_gate`); Fehler = Engineering-Signal, keine Governance-Ampel |
+| **Engineering-Signal** | Team-internes Incident aus einem fehlgeschlagenen `internal_gate` (kein Compliance-/SLA-Effekt) |
+| **Promotion** | Governance-Akt `internal_gate → consumer_contract` (Copy-Semantik, neues Artefakt) |
 | **Garantie** | semantische Zusage (Familie: schema/keys/referential/not_null/completeness/freshness/volume) |
 | **Compiler** | übersetzt Garantien deterministisch in `CheckDef`s (`{schema}`-Platzhalter) |
 | **Check** | ausführbarer SQL-Ausdruck + Expectation, gegen HANA gefahren |
