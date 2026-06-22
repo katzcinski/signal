@@ -3,16 +3,20 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ContractWorkbench from '@/pages/ContractWorkbench';
 import { t } from '@/i18n/de';
-import type { ContractOut } from '@/types';
+import type { ContractOut, DiffReport } from '@/types';
 
 let currentContract: ContractOut;
 // When a test needs more than the single selected contract (e.g. to exercise the
 // frame split), it sets currentList; otherwise the list mirrors currentContract.
 let currentList: ContractOut[] | null;
+let currentDiff: DiffReport | null;
+let mutations: Record<string, ReturnType<typeof vi.fn>>;
 
-function mutation() {
+function mutation(name?: string) {
+  const mutate = name && mutations[name] ? mutations[name] : vi.fn();
+  if (name) mutations[name] = mutate;
   return {
-    mutate: vi.fn(),
+    mutate,
     isPending: false,
     isError: false,
     isSuccess: false,
@@ -35,19 +39,19 @@ vi.mock('@/api/contracts', () => ({
     refetch: vi.fn(),
   }),
   useInventory: () => ({ data: { datasets: [] } }),
-  usePutContract: mutation,
-  useCertifyContract: mutation,
-  useApproveContract: mutation,
-  useDeprecateContract: mutation,
+  usePutContract: () => mutation('put'),
+  useCertifyContract: () => mutation('certify'),
+  useApproveContract: () => mutation('approve'),
+  useDeprecateContract: () => mutation('deprecate'),
   useCompileContractDryRun: mutation,
   useDryRunChecks: mutation,
   useRevertChecks: mutation,
   useExportBdc: mutation,
-  usePromoteContract: mutation,
+  usePromoteContract: () => mutation('promote'),
   useSeedContract: mutation,
   useDiffContract: () => ({
     ...mutation(),
-    data: { ceremony_required: currentContract.kind !== 'internal_gate', entries: [] },
+    data: currentDiff ?? { ceremony_required: currentContract.kind !== 'internal_gate', entries: [] },
   }),
   useContractSla: () => ({
     data: {
@@ -114,64 +118,102 @@ function renderWorkbench(route = '/contracts?product=P_MODE') {
   );
 }
 
-describe('ContractWorkbench mode derivation', () => {
-  beforeEach(() => {
-    currentContract = contract();
-    currentList = null;
-  });
+beforeEach(() => {
+  currentContract = contract();
+  currentList = null;
+  currentDiff = null;
+  mutations = {};
+});
 
-  it('defaults internal gates to quick certification and keeps the gate hint visible', () => {
+describe('ContractWorkbench primary action derivation', () => {
+  it('uses one-click activation for internal gates', () => {
     renderWorkbench();
 
-    expect(screen.getByRole('button', { name: t.workbench.fullMode })).toBeInTheDocument();
-    expect(screen.getByText(t.workbench.gateChangeHint)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: t.workbench.activate }));
+
+    expect(mutations.certify).toHaveBeenCalledWith(expect.objectContaining({ product: 'P_MODE', kind: 'internal_gate' }));
+    const buttonLabels = screen.getAllByRole('button').map(button => button.textContent ?? '');
+    expect(buttonLabels.some(label => /zertifizieren|workflow/i.test(label))).toBe(false);
   });
 
-  it('lets lite=0 override the gate default', () => {
-    renderWorkbench('/contracts?product=P_MODE&lite=0');
-
-    expect(screen.getByRole('button', { name: t.workbench.liteMode })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.workbench.fullMode })).not.toBeInTheDocument();
-  });
-
-  it('does not offer quick certification for certified governance contracts', () => {
+  it('uses one-click activation for never-live contract drafts', () => {
     currentContract = contract({
       kind: 'consumer_contract',
-      owned_by: 'product',
-      certified: true,
-      compliance: 'unknown',
+      owned_by: 'platform',
+      lifecycle: 'draft',
+      certified: false,
     });
 
     renderWorkbench();
+    fireEvent.click(screen.getByRole('button', { name: t.workbench.activate }));
 
-    expect(screen.queryByRole('button', { name: t.workbench.liteMode })).not.toBeInTheDocument();
+    expect(mutations.certify).toHaveBeenCalledWith(expect.objectContaining({ product: 'P_MODE', kind: 'consumer_contract' }));
+    expect(mutations.approve).not.toHaveBeenCalled();
   });
 
-  it('does not render SLA bars for active internal gates in full mode', () => {
-    renderWorkbench('/contracts?product=P_MODE&lite=0');
+  it('uses release ceremony for certified draft amendments', () => {
+    currentContract = contract({
+      kind: 'consumer_contract',
+      owned_by: 'platform',
+      lifecycle: 'draft',
+      certified: true,
+      version: '1.1.0',
+    });
+
+    renderWorkbench();
+    fireEvent.click(screen.getByRole('button', { name: `${t.workbench.release} (v1.1.0)` }));
+    expect(screen.getByText(t.workbench.approveConfirm)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: t.common.confirm }));
+
+    expect(mutations.approve).toHaveBeenCalledTimes(1);
+    expect(mutations.certify).not.toHaveBeenCalled();
+  });
+
+  it('blocks release ceremony when the breaking gate blocks it', () => {
+    currentContract = contract({
+      kind: 'consumer_contract',
+      owned_by: 'platform',
+      lifecycle: 'draft',
+      certified: true,
+      version: '1.1.0',
+    });
+    currentDiff = {
+      ceremony_required: true,
+      active_version: '1.1.0',
+      blocking: true,
+      breaking: true,
+      entries: [{ kind: 'breaking', path: 'guarantees.keys', breaking: true }],
+    };
+
+    renderWorkbench();
+    const release = screen.getByRole('button', { name: `${t.workbench.release} (v1.1.0)` });
+
+    expect(release).toBeDisabled();
+    expect(screen.getAllByRole('tooltip').some(el => el.textContent === t.workbench.breakingBlocked)).toBe(true);
+  });
+
+  it('uses deprecation as the primary action for active governance contracts', () => {
+    currentContract = contract({
+      kind: 'consumer_contract',
+      owned_by: 'platform',
+      lifecycle: 'active',
+      certified: true,
+    });
+
+    renderWorkbench();
+    fireEvent.click(screen.getByRole('button', { name: t.workbench.deprecate }));
+    expect(screen.getByText(t.workbench.deprecateConfirm)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: t.common.confirm }));
+
+    expect(mutations.deprecate).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render SLA bars for active internal gates', () => {
+    renderWorkbench();
 
     expect(screen.queryByText(t.workbench.slaTitle)).not.toBeInTheDocument();
-  });
-
-  it('does not offer approval ceremony for internal gate drafts', () => {
-    currentContract = contract({ lifecycle: 'draft' });
-
-    renderWorkbench('/contracts?product=P_MODE&lite=0');
-
-    expect(screen.queryByRole('button', { name: t.workbench.approve })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.workbench.liteMode })).toBeInTheDocument();
-  });
-
-  it('keeps approval ceremony available for governance contract drafts', () => {
-    currentContract = contract({
-      kind: 'consumer_contract',
-      owned_by: 'product',
-      lifecycle: 'draft',
-    });
-
-    renderWorkbench();
-
-    expect(screen.getByRole('button', { name: t.workbench.approve })).toBeInTheDocument();
   });
 });
 
@@ -212,6 +254,8 @@ describe('ContractWorkbench frame split', () => {
 
   it('offers in-place promotion for an internal gate', () => {
     renderWorkbench('/contracts?product=P_MODE');
+
+    fireEvent.click(screen.getByTitle(t.workbench.moreActions));
 
     expect(screen.getByRole('button', { name: t.workbench.promote })).toBeInTheDocument();
   });

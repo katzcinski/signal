@@ -1,12 +1,14 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { CovFlag } from '@/components/ui/CovFlag';
+import { t } from '@/i18n/de';
 
 describe('CovFlag', () => {
-  it('renders the covered symbol with a title', () => {
+  it('renders the covered symbol with a tooltip', () => {
     const { container } = render(<CovFlag flag="covered" />);
-    const span = container.querySelector('span');
-    expect(span?.getAttribute('title')).toBe('covered');
+    expect(container.querySelector('[role="tooltip"]')?.textContent).toBe(t.lineage.tooltips.covered);
+    const span = container.querySelector('[role="img"]');
+    expect(span?.getAttribute('aria-label')).toContain(t.lineage.tooltips.covered);
     expect(span?.textContent).toContain('●');
   });
 

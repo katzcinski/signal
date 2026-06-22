@@ -1,9 +1,9 @@
-product: DEMO_SRC_04
-kind: internal_gate
+product: DEMO_SRC_04_contract
+kind: consumer_contract
 dataset: DEMO_SRC_04
 owned_by: product
 owners: []
-version: 0.1.0
+version: 1.0.0
 description: ''
 guarantees:
   schema:

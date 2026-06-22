@@ -31,4 +31,4 @@ checks:
     <SPALTE>: SRC_COL_01
   expect: < 10
   severity: fail
-lifecycle: active
+lifecycle: deprecated

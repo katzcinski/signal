@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   options: string[];
@@ -18,7 +19,9 @@ export function Combobox({ options, value, onChange, placeholder, ariaLabel, wid
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(value);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [listboxStyle, setListboxStyle] = useState<React.CSSProperties | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const listboxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setText(value); }, [value]);
 
@@ -36,14 +39,60 @@ export function Combobox({ options, value, onChange, placeholder, ariaLabel, wid
     setOpen(false);
   };
 
+  const updateListboxPosition = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const rect = root.getBoundingClientRect();
+    const gutter = 8;
+    const gap = 2;
+    const maxMenuHeight = 200;
+    const minMenuHeight = 80;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const menuWidth = Math.min(rect.width, Math.max(0, viewportWidth - gutter * 2));
+    const left = Math.min(
+      Math.max(rect.left, gutter),
+      Math.max(gutter, viewportWidth - menuWidth - gutter),
+    );
+    const roomBelow = Math.max(0, viewportHeight - rect.bottom - gutter - gap);
+    const roomAbove = Math.max(0, rect.top - gutter - gap);
+    const openUp = roomBelow < minMenuHeight && roomAbove > roomBelow;
+    const availableHeight = openUp ? roomAbove : roomBelow;
+    const menuHeight = Math.min(maxMenuHeight, Math.max(minMenuHeight, availableHeight));
+    const top = openUp
+      ? Math.max(gutter, rect.top - gap - menuHeight)
+      : Math.min(rect.bottom + gap, Math.max(gutter, viewportHeight - gutter - menuHeight));
+
+    setListboxStyle({ position: 'fixed', top, left, width: menuWidth, maxHeight: menuHeight });
+  }, []);
+
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) revert();
+      const target = e.target as Node;
+      const inRoot = rootRef.current?.contains(target);
+      const inListbox = listboxRef.current?.contains(target);
+      if (!inRoot && !inListbox) revert();
     };
     if (open) document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, value]);
+
+  useEffect(() => {
+    if (!open) {
+      setListboxStyle(null);
+      return;
+    }
+
+    updateListboxPosition();
+    window.addEventListener('resize', updateListboxPosition);
+    window.addEventListener('scroll', updateListboxPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateListboxPosition);
+      window.removeEventListener('scroll', updateListboxPosition, true);
+    };
+  }, [open, updateListboxPosition]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -79,13 +128,14 @@ export function Combobox({ options, value, onChange, placeholder, ariaLabel, wid
           fontFamily: 'var(--font-mono)', outline: 'none',
         }}
       />
-      {open && (
+      {open && listboxStyle && createPortal(
         <div
+          ref={listboxRef}
           role="listbox"
           style={{
-            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+            ...listboxStyle, zIndex: 10000,
             background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 5,
-            marginTop: 2, maxHeight: 200, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
           }}
         >
           {filtered.length === 0 ? (
@@ -108,7 +158,8 @@ export function Combobox({ options, value, onChange, placeholder, ariaLabel, wid
               {o}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

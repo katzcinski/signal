@@ -1,5 +1,6 @@
 import type { CheckState, Severity } from '@/types';
 import { StatusPill } from './StatusPill';
+import { Tooltip } from './Tooltip';
 import { t } from '@/i18n/de';
 
 // G6: gating states must render as neutral state pills, never as pass/fail.
@@ -23,16 +24,18 @@ export function StatePill({ state, size = 'md' }: Props) {
   const label = t.status[state] ?? state;
   const hint = t.stateHint[state] ?? label;
   return (
-    <span title={hint} aria-label={hint} style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      background: 'transparent',
-      borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--fg-3)',
-      color: 'var(--fg-3)', borderRadius: 4, padding: pad, fontSize: fs,
-      fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap',
-    }}>
-      <span aria-hidden>{GLYPH[state]}</span>
-      {label}
-    </span>
+    <Tooltip content={hint}>
+      <span aria-label={hint} style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        background: 'transparent',
+        borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--fg-3)',
+        color: 'var(--fg-3)', borderRadius: 4, padding: pad, fontSize: fs,
+        fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap',
+      }}>
+        <span aria-hidden>{GLYPH[state]}</span>
+        {label}
+      </span>
+    </Tooltip>
   );
 }
 

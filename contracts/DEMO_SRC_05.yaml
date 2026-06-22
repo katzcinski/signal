@@ -1,10 +1,9 @@
-product: DEMO_SRC_04
-kind: internal_gate
-dataset: DEMO_SRC_04
-owned_by: product
+product: DEMO_SRC_05
+dataset: DEMO_SRC_05
+owned_by: platform
 owners: []
 version: 0.1.0
-description: ''
+lifecycle: draft
 guarantees:
   schema:
     columns:
@@ -20,9 +19,3 @@ guarantees:
     baseline: rolling
     bounds: auto
     severity: warn
-  freshness:
-    column: SRC_COL_01
-    max_age: PT24H
-    severity: warn
-checks: []
-lifecycle: draft

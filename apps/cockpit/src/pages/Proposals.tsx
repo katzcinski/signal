@@ -1,6 +1,7 @@
 import { useProposals, useProposalAction } from '@/api/proposals';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { t } from '@/i18n/de';
 import { diffExpect, OP_SYMBOL } from '@/lib/diff';
 import { useRoleStore, canAcceptProposal } from '@/store/role';
@@ -135,23 +136,25 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       <div style={{ fontSize: 11, color: 'var(--fg-3)', fontStyle: 'italic' }}>{proposal.rationale}</div>
 
       {proposal.status === 'open' && (
-        <div style={{ display: 'flex', gap: 8 }} title={proposal.kind === 'internal_gate' && !canWrite ? t.role.noWriteAction : undefined}>
-          {proposal.kind !== 'internal_gate' ? (
-            <button onClick={() => navigate(`/contracts?product=${encodeURIComponent(proposal.product)}`)} style={{ flex: 1, background: 'var(--cont)22', border: '1px solid var(--cont)', color: 'var(--cont)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
-              Im Contract pruefen {'->'}
+        <Tooltip content={proposal.kind === 'internal_gate' && !canWrite ? t.role.noWriteAction : undefined} focusable={!canWrite} className="tooltip-full">
+          <span style={{ display: 'flex', gap: 8 }}>
+            {proposal.kind !== 'internal_gate' ? (
+              <button onClick={() => navigate(`/contracts?product=${encodeURIComponent(proposal.product)}`)} style={{ flex: 1, background: 'var(--cont)22', border: '1px solid var(--cont)', color: 'var(--cont)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
+                Im Contract pruefen {'->'}
+              </button>
+            ) : (
+              <button onClick={() => act('accept')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
+                {t.proposals.accept}
+              </button>
+            )}
+            <button onClick={() => act('snooze')} disabled={!canWrite} style={{ flex: 1, background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
+              {t.proposals.snooze}
             </button>
-          ) : (
-            <button onClick={() => act('accept')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
-              {t.proposals.accept}
+            <button onClick={() => act('reject')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', color: 'var(--status-fail)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
+              {t.proposals.reject}
             </button>
-          )}
-          <button onClick={() => act('snooze')} disabled={!canWrite} style={{ flex: 1, background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
-            {t.proposals.snooze}
-          </button>
-          <button onClick={() => act('reject')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', color: 'var(--status-fail)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
-            {t.proposals.reject}
-          </button>
-        </div>
+          </span>
+        </Tooltip>
       )}
     </div>
   );

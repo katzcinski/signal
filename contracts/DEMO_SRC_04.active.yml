@@ -25,4 +25,4 @@ guarantees:
     max_age: PT24H
     severity: warn
 checks: []
-lifecycle: draft
+lifecycle: active

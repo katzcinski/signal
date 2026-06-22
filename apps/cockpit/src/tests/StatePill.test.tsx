@@ -6,8 +6,7 @@ import { t } from '@/i18n/de';
 describe('StatePill', () => {
   it('renders a neutral pill with glyph, label and tooltip for skipped_stale', () => {
     const { container } = render(<StatePill state="skipped_stale" />);
-    const span = container.querySelector('span');
-    expect(span?.getAttribute('title')).toBe(t.stateHint.skipped_stale);
+    expect(container.querySelector('[role="tooltip"]')?.textContent).toBe(t.stateHint.skipped_stale);
     expect(container.textContent).toContain('⏸');
     expect(container.textContent).toContain(t.status.skipped_stale);
   });
@@ -25,12 +24,13 @@ describe('CheckStatusCell (G6 gating)', () => {
     );
     // Neutral state pill: dashed border, dim color, no status colors.
     const html = container.innerHTML;
-    expect(container.textContent).toContain(t.status.skipped_stale);
+    const pill = container.querySelector('[aria-label]') as HTMLElement;
+    expect(pill.textContent).toContain(t.status.skipped_stale);
     expect(html).toContain('dashed');
     expect(html).not.toContain('var(--status-ok)');
     expect(html).not.toContain('var(--status-fail)');
     // No pass/fail label leaks through.
-    expect(container.textContent).not.toMatch(/pass|fail/i);
+    expect(pill.textContent).not.toMatch(/pass|fail/i);
   });
 
   it('renders the pass/fail StatusPill for an executed result', () => {

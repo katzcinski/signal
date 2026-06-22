@@ -1,9 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Combobox } from '@/components/ui/Combobox';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 describe('UI primitives (UX-F6)', () => {
   it('Button pulls radius from the token and reflects disabled state', () => {
@@ -43,5 +45,26 @@ describe('UI primitives (UX-F6)', () => {
   it('SectionHeader shows the title and count', () => {
     render(<SectionHeader title="Channels" count={3} />);
     expect(screen.getByText('Channels (3)')).toBeInTheDocument();
+  });
+
+  it('Tooltip renders hover content without replacing the trigger', () => {
+    render(<Tooltip content="More context"><button>Info</button></Tooltip>);
+    expect(screen.getByRole('button', { name: 'Info' })).toBeInTheDocument();
+    expect(screen.getByRole('tooltip')).toHaveTextContent('More context');
+  });
+
+  it('Combobox listbox escapes clipping containers', () => {
+    render(
+      <div data-testid="clip" style={{ overflow: 'hidden' }}>
+        <Combobox options={['alpha', 'beta']} value="" onChange={() => {}} placeholder="Pick" />
+      </div>,
+    );
+
+    fireEvent.focus(screen.getByRole('combobox', { name: 'Pick' }));
+
+    const listbox = screen.getByRole('listbox');
+    expect(screen.getByTestId('clip')).not.toContainElement(listbox);
+    expect(listbox.parentElement).toBe(document.body);
+    expect(listbox.style.position).toBe('fixed');
   });
 });

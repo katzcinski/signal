@@ -17,6 +17,7 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { OwnershipTag } from '@/components/ui/OwnershipTag';
 import { Combobox } from '@/components/ui/Combobox';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
 import { useRoleStore, canWriteContract } from '@/store/role';
@@ -63,15 +64,17 @@ const sectionOfKind = (kind: ArtifactKind | undefined): Section =>
 
 function FrameTag({ internal }: { internal: boolean }) {
   return (
-    <span style={{
-      fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
-      background: internal ? 'var(--qual)22' : 'var(--cont)22',
-      border: `1px solid ${internal ? 'var(--qual)' : 'var(--cont)'}`,
-      color: internal ? 'var(--qual)' : 'var(--cont)',
-      whiteSpace: 'nowrap',
-    }}>
-      {internal ? t.workbench.frameInternal : t.workbench.frameContract}
-    </span>
+    <Tooltip content={internal ? t.workbench.frameInternalHint : t.workbench.frameContractHint}>
+      <span style={{
+        fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+        background: internal ? 'var(--qual)22' : 'var(--cont)22',
+        border: `1px solid ${internal ? 'var(--qual)' : 'var(--cont)'}`,
+        color: internal ? 'var(--qual)' : 'var(--cont)',
+        whiteSpace: 'nowrap',
+      }}>
+        {internal ? t.workbench.frameInternal : t.workbench.frameContract}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -239,10 +242,9 @@ interface GuaranteeEditorProps {
   columnOptions: string[];
   datasetOptions: string[];
   columnsOfDataset: (name: string) => string[];
-  lite: boolean;
 }
 
-function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, columnsOfDataset, lite }: GuaranteeEditorProps) {
+function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, columnsOfDataset }: GuaranteeEditorProps) {
   const g = guarantees;
   const set = (patch: Partial<ContractGuarantees>) => onChange({ ...g, ...patch });
   const unset = (key: keyof ContractGuarantees) => {
@@ -250,12 +252,6 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
     delete next[key];
     onChange(next);
   };
-
-  // Lite mode: one severity select per family (applies to all entries).
-  const listSeverity = (rows: { severity?: Severity }[] | undefined): Severity =>
-    rows?.[0]?.severity ?? 'warn';
-  const setListSeverity = <T extends { severity?: Severity }>(rows: T[], sev: Severity): T[] =>
-    rows.map(r => ({ ...r, severity: sev }));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -266,7 +262,7 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
         onToggle={on => on ? set({ schema: { columns: [], mode: 'closed', severity: 'fail' } }) : unset('schema')}
         headerExtra={g.schema && <SeveritySelect value={g.schema.severity} onChange={s => set({ schema: { ...g.schema!, severity: s } })} />}
       >
-        {!lite && g.schema && (
+        {g.schema && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={fieldLabel}>{t.workbench.fields.mode}</span>
@@ -297,9 +293,8 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
         familyKey="keys"
         enabled={!!g.keys}
         onToggle={on => on ? set({ keys: [{ columns: [], unique: true, severity: 'critical' }] }) : unset('keys')}
-        headerExtra={lite && g.keys ? <SeveritySelect value={listSeverity(g.keys)} onChange={s => set({ keys: setListSeverity(g.keys!, s) })} /> : undefined}
       >
-        {!lite && g.keys && (
+        {g.keys && (
           <>
             {g.keys.map((key: GuaranteeKey, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', borderBottom: i < g.keys!.length - 1 ? '1px solid var(--line)' : 'none', paddingBottom: 8 }}>
@@ -350,9 +345,8 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
         familyKey="referential"
         enabled={!!g.referential}
         onToggle={on => on ? set({ referential: [{ fk: [], parent: '', parent_key: [], severity: 'fail' }] }) : unset('referential')}
-        headerExtra={lite && g.referential ? <SeveritySelect value={listSeverity(g.referential)} onChange={s => set({ referential: setListSeverity(g.referential!, s) })} /> : undefined}
       >
-        {!lite && g.referential && (
+        {g.referential && (
           <>
             {g.referential.map((ref: GuaranteeReferential, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', borderBottom: i < g.referential!.length - 1 ? '1px solid var(--line)' : 'none', paddingBottom: 8 }}>
@@ -405,7 +399,7 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
         onToggle={on => on ? set({ freshness: { column: '', max_age: 'PT24H', severity: 'warn' } }) : unset('freshness')}
         headerExtra={g.freshness && <SeveritySelect value={g.freshness.severity} onChange={s => set({ freshness: { ...g.freshness!, severity: s } })} />}
       >
-        {!lite && g.freshness && (
+        {g.freshness && (
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
             <div>
               <div style={{ ...fieldLabel, marginBottom: 4 }}>{t.workbench.fields.column}</div>
@@ -439,7 +433,7 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
         onToggle={on => on ? set({ volume: { min_rows: 1, severity: 'warn' } }) : unset('volume')}
         headerExtra={g.volume && <SeveritySelect value={g.volume.severity} onChange={s => set({ volume: { ...g.volume!, severity: s } })} />}
       >
-        {!lite && g.volume && (
+        {g.volume && (
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--fg-3)' }}>
               {t.workbench.fields.minRows}
@@ -489,9 +483,8 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
         familyKey="completeness"
         enabled={!!g.completeness}
         onToggle={on => on ? set({ completeness: [{ column: '', min_pct: 95, severity: 'warn' }] }) : unset('completeness')}
-        headerExtra={lite && g.completeness ? <SeveritySelect value={listSeverity(g.completeness)} onChange={s => set({ completeness: setListSeverity(g.completeness!, s) })} /> : undefined}
       >
-        {!lite && g.completeness && (
+        {g.completeness && (
           <>
             {g.completeness.map((row: GuaranteeCompleteness, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
@@ -533,9 +526,8 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
         familyKey="not_null"
         enabled={!!g.not_null}
         onToggle={on => on ? set({ not_null: [{ columns: [], severity: 'fail' }] }) : unset('not_null')}
-        headerExtra={lite && g.not_null ? <SeveritySelect value={listSeverity(g.not_null)} onChange={s => set({ not_null: setListSeverity(g.not_null!, s) })} /> : undefined}
       >
-        {!lite && g.not_null && (
+        {g.not_null && (
           <>
             {g.not_null.map((row: GuaranteeNotNull, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
@@ -764,7 +756,12 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
           )}
           {compileData.yaml_preview && (
             <details style={{ marginTop: 12 }}>
-              <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.compile.yamlPreview}</summary>
+              <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--fg-3)' }}>
+                {t.workbench.compile.yamlPreview} <span style={monoStyle}>checks/{dataset}/checks.yml</span>
+              </summary>
+              <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 6, fontStyle: 'italic' }}>
+                {t.workbench.compile.yamlPreviewHint}
+              </div>
               <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 6, marginTop: 6, overflow: 'auto', maxHeight: 300, fontSize: 11 }}>
                 {compileData.yaml_preview}
               </pre>
@@ -1179,10 +1176,8 @@ function CheckBuilder({ checks, onChange, columnOptions }: CheckBuilderProps) {
 
 // ─── Editor pane ─────────────────────────────────────────────────────────────
 
-function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promotePending }: {
+function EditorPane({ product, onPromote, promotePending }: {
   product: string;
-  liteOverride: boolean | undefined;
-  onSetLiteOverride: (value: boolean) => void;
   onPromote: () => void;
   promotePending: boolean;
 }) {
@@ -1196,7 +1191,8 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
   const role = useRoleStore(s => s.role);
 
   const [draft, setDraft] = useState<ContractPutBody | null>(null);
-  const [confirmApprove, setConfirmApprove] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'release' | 'deprecate' | null>(null);
+  const [versioningOpen, setVersioningOpen] = useState(false);
 
   // Initialize the draft from the (full) contract; re-key on product change.
   useEffect(() => {
@@ -1208,22 +1204,14 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
 
   const draftJson = useMemo(() => draft ? JSON.stringify(draft) : '', [draft]);
   const draftKind = draft?.kind ?? contract?.kind ?? 'internal_gate';
-  const kindDefaultLite = contract?.kind === 'internal_gate' || !contract;
-  const lockedToFull = draftKind !== 'internal_gate' && contract?.certified === true;
-  const lite = lockedToFull ? false : liteOverride ?? kindDefaultLite;
 
-  const handleSetLite = (value: boolean) => {
-    if (value && lockedToFull) return;
-    onSetLiteOverride(value);
-  };
-
-  // BreakingDiffPanel: re-diff on every draft change, debounced (full mode only).
+  // BreakingDiffPanel: re-diff on every draft change, debounced.
   const diffMutate = diff.mutate;
   useEffect(() => {
-    if (!draft || lite) return;
+    if (!draft) return;
     const timer = setTimeout(() => diffMutate(JSON.parse(draftJson) as ContractPutBody), 600);
     return () => clearTimeout(timer);
-  }, [draftJson, lite, diffMutate, draft]);
+  }, [draftJson, diffMutate, draft]);
 
   // Inventory-backed picker sources.
   const datasets = useMemo(() => inventory.data?.datasets ?? [], [inventory.data]);
@@ -1244,6 +1232,20 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
     return [...new Set(datasets.flatMap(d => (d.columns ?? []).map(c => c.name)))].sort();
   }, [columnsOfDataset, draft?.dataset, datasets]);
 
+  const lifecycle = contract?.lifecycle ?? 'draft';
+  const report = diff.data;
+  const reportedActiveVersion = report && !Array.isArray(report)
+    ? (typeof report.active_version === 'string' ? report.active_version
+      : typeof report.from_version === 'string' ? report.from_version
+      : undefined)
+    : undefined;
+  const hasActiveBaseline = contract?.certified === true || !!reportedActiveVersion;
+  const canReleaseDraft = lifecycle === 'draft' && draftKind !== 'internal_gate' && hasActiveBaseline;
+
+  useEffect(() => {
+    if (canReleaseDraft) setVersioningOpen(true);
+  }, [canReleaseDraft]);
+
   if (isLoading || !draft) {
     return <div style={{ padding: 24, color: 'var(--fg-3)' }}>{t.common.loading}</div>;
   }
@@ -1251,19 +1253,17 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
     return <div style={{ flex: 1, padding: 24 }}><ErrorBanner onRetry={() => refetch()} /></div>;
   }
 
-  const lifecycle = contract?.lifecycle ?? 'draft';
   // [AUTHZ] FE mirror of can_write_contract_data — server stays authoritative on PUT.
   const canWrite = canWriteContract(role, contract?.owned_by);
   const writeTitle = canWrite ? undefined : t.role.noWriteContract;
 
   // Breaking gate (G3): breaking diff + draft major ≤ active major ⇒ block approve.
-  const report = diff.data;
   const entries: DiffEntry[] = Array.isArray(report)
     ? report as unknown as DiffEntry[]
     : (report?.entries ?? []);
   const hasBreaking = entries.some(e => e.breaking === true || /breaking/i.test(e.kind))
     || (!!report && !Array.isArray(report) && report.breaking === true);
-  const activeVersion = (report && !Array.isArray(report) && report.active_version) || contract?.version;
+  const activeVersion = reportedActiveVersion || contract?.version;
   const ceremonyRequired = report && !Array.isArray(report) && typeof report.ceremony_required === 'boolean'
     ? report.ceremony_required
     : draft.kind !== 'internal_gate';
@@ -1271,9 +1271,11 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
     ? report.blocking
     : ceremonyRequired && hasBreaking;
   const breakingBlocked = ceremonyBreaking && majorOf(draft.version) <= majorOf(String(activeVersion));
-  const canApproveDraft = lifecycle === 'draft' && draft.kind !== 'internal_gate';
 
-  const validationErrors = put.isError ? extractValidationErrors(put.error) : [];
+  const validationErrors = [
+    ...(put.isError ? extractValidationErrors(put.error) : []),
+    ...(certify.isError ? extractValidationErrors(certify.error) : []),
+  ];
 
   const yamlPreview = (() => {
     try {
@@ -1283,10 +1285,55 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
     }
   })();
 
-  const handleApprove = () => {
-    setConfirmApprove(false);
-    approve.mutate();
+  const draftBody = () => JSON.parse(draftJson) as ContractPutBody;
+
+  const handleConfirmAction = () => {
+    const action = confirmAction;
+    setConfirmAction(null);
+    if (action === 'release') approve.mutate();
+    if (action === 'deprecate') deprecate.mutate();
   };
+
+  const versionLabel = `v${String(draft.version || '').replace(/^v/i, '')}`;
+  const primaryAction = (() => {
+    if (draftKind === 'internal_gate' || (lifecycle === 'draft' && !hasActiveBaseline)) {
+      return {
+        kind: 'activate' as const,
+        label: t.workbench.activate,
+        pendingLabel: t.workbench.activating,
+        pending: certify.isPending,
+        disabled: !canWrite || certify.isPending,
+        title: writeTitle,
+        variant: 'primary' as const,
+        onClick: () => certify.mutate(draftBody()),
+      };
+    }
+    if (canReleaseDraft) {
+      return {
+        kind: 'release' as const,
+        label: `${t.workbench.release} (${versionLabel})`,
+        pendingLabel: t.workbench.releasing,
+        pending: approve.isPending,
+        disabled: !canWrite || breakingBlocked || approve.isPending,
+        title: !canWrite ? writeTitle : breakingBlocked ? t.workbench.breakingBlocked : undefined,
+        variant: 'primary' as const,
+        onClick: () => setConfirmAction('release'),
+      };
+    }
+    if (lifecycle === 'active') {
+      return {
+        kind: 'deprecate' as const,
+        label: t.workbench.deprecate,
+        pendingLabel: t.workbench.deprecating,
+        pending: deprecate.isPending,
+        disabled: !canWrite || deprecate.isPending,
+        title: writeTitle,
+        variant: 'danger' as const,
+        onClick: () => setConfirmAction('deprecate'),
+      };
+    }
+    return null;
+  })();
 
   const guaranteeEditor = (
     <GuaranteeEditor
@@ -1295,7 +1342,6 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
       columnOptions={columnOptions}
       datasetOptions={datasetOptions}
       columnsOfDataset={columnsOfDataset}
-      lite={lite}
     />
   );
 
@@ -1310,27 +1356,47 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
   ) : null;
 
   const saveButton = (
-    <button
-      onClick={() => put.mutate(JSON.parse(draftJson) as ContractPutBody)}
-      disabled={!canWrite || put.isPending}
-      title={writeTitle}
-      style={{ ...btnStyle(), opacity: canWrite ? 1 : 0.5, cursor: canWrite ? 'pointer' : 'not-allowed' }}
-    >
-      {put.isPending ? t.workbench.saving : lite ? t.common.save : t.workbench.saveDraft}
-    </button>
+    <Tooltip content={writeTitle} focusable={Boolean(writeTitle)}>
+      <button
+        onClick={() => put.mutate(draftBody())}
+        disabled={!canWrite || put.isPending}
+        style={{ ...btnStyle('ghost'), opacity: canWrite ? 1 : 0.5, cursor: canWrite ? 'pointer' : 'not-allowed' }}
+      >
+        {put.isPending ? t.workbench.saving : t.workbench.saveDraftSecondary}
+      </button>
+    </Tooltip>
   );
 
   // The bridge between frames: promote an internal gate in-place to a versioned
   // boundary contract (the page flips the frame on success). Only shown for gates.
-  const promoteButton = draftKind === 'internal_gate' && lifecycle !== 'deprecated' ? (
-    <button
-      onClick={onPromote}
-      disabled={!canWrite || promotePending}
-      title={canWrite ? t.workbench.promoteHint : writeTitle}
-      style={{ ...btnStyle('ghost'), fontSize: 12, opacity: canWrite ? 1 : 0.5, cursor: canWrite ? 'pointer' : 'not-allowed' }}
-    >
-      {promotePending ? t.workbench.promoting : t.workbench.promote}
-    </button>
+  const promoteMenu = draftKind === 'internal_gate' && lifecycle !== 'deprecated' ? (
+    <details style={{ position: 'relative' }}>
+      <summary
+        aria-label={t.workbench.moreActions}
+        title={t.workbench.moreActions}
+        style={{
+          ...btnStyle('ghost'), listStyle: 'none', width: 34, height: 32, padding: 0,
+          display: 'grid', placeItems: 'center', fontSize: 18, lineHeight: 1,
+        }}
+      >
+        ⋯
+      </summary>
+      <div style={{
+        position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 10,
+        minWidth: 220, background: 'var(--bg-1)', border: '1px solid var(--line)',
+        borderRadius: 6, padding: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+      }}>
+        <Tooltip content={canWrite ? t.workbench.promoteHint : writeTitle} focusable={!canWrite} className="tooltip-full">
+          <button
+            onClick={onPromote}
+            disabled={!canWrite || promotePending}
+            style={{ ...btnStyle('ghost'), width: '100%', opacity: canWrite ? 1 : 0.5, cursor: canWrite ? 'pointer' : 'not-allowed' }}
+          >
+            {promotePending ? t.workbench.promoting : t.workbench.promote}
+          </button>
+        </Tooltip>
+      </div>
+    </details>
   ) : null;
 
   const errorsBlock = validationErrors.length > 0 && (
@@ -1340,52 +1406,7 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
     </div>
   );
 
-  // ── Lite-Modus: toggles + severity + one "save & activate" button ──
-  // Save certifies in one step (active + compile) so guarantees become live
-  // cockpit checks immediately — no draft/version/approval ceremony.
-  if (lite) {
-    const certifyErrors = certify.isError ? extractValidationErrors(certify.error) : [];
-    return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 20, gap: 14, overflowY: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <FrameTag internal={draft.kind === 'internal_gate'} />
-          <span style={{ ...monoStyle, fontSize: 15, fontWeight: 700 }}>{draft.product}</span>
-          <OwnershipTag ownedBy={contract?.owned_by} />
-          <div style={{ flex: 1 }} />
-          {promoteButton}
-          <button onClick={() => handleSetLite(false)} style={{ ...btnStyle('ghost'), fontSize: 12 }}>{t.workbench.fullMode}</button>
-        </div>
-        {!canWrite && <ReadOnlyBanner hint={t.role.noWriteContract} />}
-        <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.noSql}</div>
-        <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.liteHint}</div>
-        {draft.kind === 'internal_gate' && (
-          <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.workbench.gateChangeHint}</div>
-        )}
-        {guaranteeEditor}
-        {checkBuilder}
-        {certifyErrors.length > 0 && (
-          <div style={{ background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 5, padding: '8px 12px' }}>
-            <div style={{ color: 'var(--status-fail)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t.workbench.validationErrors}</div>
-            {certifyErrors.map((e, i) => <div key={i} style={{ color: 'var(--status-fail)', fontSize: 12 }}>• {e}</div>)}
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button
-            onClick={() => certify.mutate(JSON.parse(draftJson) as ContractPutBody)}
-            disabled={!canWrite || certify.isPending}
-            title={writeTitle}
-            style={{ ...btnStyle(), opacity: canWrite ? 1 : 0.5, cursor: canWrite ? 'pointer' : 'not-allowed' }}
-          >
-            {certify.isPending ? t.workbench.certifying : t.workbench.certify}
-          </button>
-          {certify.isSuccess && <span style={{ color: 'var(--status-ok)', fontSize: 12 }}>{t.workbench.certified}</span>}
-          {certify.isError && certifyErrors.length === 0 && <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{t.workbench.saveError}</span>}
-        </div>
-      </div>
-    );
-  }
-
-  // ── Voll-Modus ──
+  // TODO: show an accepted-proposal release banner once ContractOut exposes quality_proposals.
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 20, gap: 14, overflowY: 'auto', minWidth: 0 }}>
       {!canWrite && <ReadOnlyBanner hint={t.role.noWriteContract} />}
@@ -1397,44 +1418,39 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
         <div style={{ flex: 1 }} />
         {lifecycle === 'active' && draft.kind !== 'internal_gate' && <SlaBars product={product} />}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {!lockedToFull && (
-            <button onClick={() => handleSetLite(true)} style={{ ...btnStyle('ghost'), fontSize: 12 }}>{t.workbench.liteMode}</button>
-          )}
-          {promoteButton}
           {saveButton}
-          {canApproveDraft && (
-            <button
-              style={{ ...btnStyle(), opacity: !canWrite || breakingBlocked || approve.isPending ? 0.5 : 1, cursor: canWrite ? 'pointer' : 'not-allowed' }}
-              disabled={!canWrite || breakingBlocked || approve.isPending}
-              title={!canWrite ? writeTitle : breakingBlocked ? t.workbench.breakingBlocked : undefined}
-              onClick={() => setConfirmApprove(true)}
-            >
-              {approve.isPending ? t.workbench.approving : t.workbench.approve}
-            </button>
-          )}
-          {lifecycle === 'active' && (
-            <button
-              style={{ ...btnStyle('danger'), opacity: canWrite ? 1 : 0.5, cursor: canWrite ? 'pointer' : 'not-allowed' }}
-              disabled={!canWrite || deprecate.isPending}
-              title={writeTitle}
-              onClick={() => deprecate.mutate()}
-            >
-              {deprecate.isPending ? t.workbench.deprecating : t.workbench.deprecate}
-            </button>
+          {promoteMenu}
+          {primaryAction && (
+            <Tooltip content={primaryAction.title} focusable={Boolean(primaryAction.title && primaryAction.disabled)}>
+              <button
+                style={{
+                  ...btnStyle(primaryAction.variant), opacity: primaryAction.disabled ? 0.5 : 1,
+                  cursor: primaryAction.disabled ? 'not-allowed' : 'pointer',
+                }}
+                disabled={primaryAction.disabled}
+                onClick={primaryAction.onClick}
+              >
+                {primaryAction.pending ? primaryAction.pendingLabel : primaryAction.label}
+              </button>
+            </Tooltip>
           )}
         </div>
         {put.isSuccess && <span style={{ color: 'var(--status-ok)', fontSize: 12 }}>{t.workbench.saved}</span>}
         {put.isError && validationErrors.length === 0 && <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{t.workbench.saveError}</span>}
+        {certify.isSuccess && <span style={{ color: 'var(--status-ok)', fontSize: 12 }}>{t.workbench.certified}</span>}
+        {certify.isError && validationErrors.length === 0 && <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{t.workbench.saveError}</span>}
         {approve.isError && <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{extractValidationErrors(approve.error).join(' · ') || t.common.error}</span>}
+        {deprecate.isError && <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{t.common.error}</span>}
       </div>
 
-      {/* Approve confirm dialog — approving is a deliberate action */}
-      {confirmApprove && canApproveDraft && (
-        <div style={{ ...cardStyle, border: '1px solid var(--cont)' }}>
-          <div style={{ fontSize: 13, marginBottom: 10 }}>{t.workbench.approveConfirm}</div>
+      {confirmAction && (
+        <div style={{ ...cardStyle, border: `1px solid ${confirmAction === 'deprecate' ? 'var(--status-fail)' : 'var(--cont)'}` }}>
+          <div style={{ fontSize: 13, marginBottom: 10 }}>
+            {confirmAction === 'deprecate' ? t.workbench.deprecateConfirm : t.workbench.approveConfirm}
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button style={btnStyle()} onClick={handleApprove}>{t.common.confirm}</button>
-            <button style={btnStyle('ghost')} onClick={() => setConfirmApprove(false)}>{t.common.cancel}</button>
+            <button style={btnStyle(confirmAction === 'deprecate' ? 'danger' : 'primary')} onClick={handleConfirmAction}>{t.common.confirm}</button>
+            <button style={btnStyle('ghost')} onClick={() => setConfirmAction(null)}>{t.common.cancel}</button>
           </div>
         </div>
       )}
@@ -1453,26 +1469,37 @@ function EditorPane({ product, liteOverride, onSetLiteOverride, onPromote, promo
           {errorsBlock}
         </div>
 
-        {/* Right: YAML preview + BreakingDiffPanel */}
+        {/* Right: progressive versioning disclosure */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
-          <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--line)', fontSize: 12, fontWeight: 600, color: 'var(--fg-2)' }}>
-              {t.workbench.yamlPreview}
+          <details
+            open={versioningOpen}
+            onToggle={e => setVersioningOpen(e.currentTarget.open)}
+            style={{ minWidth: 0 }}
+          >
+            <summary style={{ ...btnStyle('ghost'), display: 'inline-flex', cursor: 'pointer', listStyle: 'none' }}>
+              {t.workbench.showVersioning}
+            </summary>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 12, minWidth: 0 }}>
+              <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--line)', fontSize: 12, fontWeight: 600, color: 'var(--fg-2)' }}>
+                  {t.workbench.yamlPreview}
+                </div>
+                <pre style={{
+                  ...monoStyle, fontSize: 11, color: 'var(--fg-2)', padding: 14,
+                  margin: 0, overflow: 'auto', maxHeight: 360, whiteSpace: 'pre',
+                }}>
+                  {yamlPreview}
+                </pre>
+              </div>
+              <BreakingDiffPanel
+                entries={entries}
+                pending={diff.isPending}
+                isError={diff.isError}
+                blocking={breakingBlocked}
+                ceremonyRequired={ceremonyRequired}
+              />
             </div>
-            <pre style={{
-              ...monoStyle, fontSize: 11, color: 'var(--fg-2)', padding: 14,
-              margin: 0, overflow: 'auto', maxHeight: 360, whiteSpace: 'pre',
-            }}>
-              {yamlPreview}
-            </pre>
-          </div>
-          <BreakingDiffPanel
-            entries={entries}
-            pending={diff.isPending}
-            isError={diff.isError}
-            blocking={breakingBlocked}
-            ceremonyRequired={ceremonyRequired}
-          />
+          </details>
         </div>
       </div>
 
@@ -1491,7 +1518,6 @@ export default function ContractWorkbench() {
   const [productParam, setProduct] = useSearchParamState('product');
   const [promoteProduct, setPromoteProduct] = useSearchParamState('promote');
   const [compileParam] = useSearchParamState('compile');
-  const [liteParam, setLite] = useSearchParamState('lite');
   const [sectionParam] = useSearchParamState('section');
   const [, setSearchParams] = useSearchParams();
   const promote = usePromoteContract();
@@ -1513,7 +1539,6 @@ export default function ContractWorkbench() {
 
   // Honor the legacy /contracts?compile={id} deep link.
   const product = productParam || compileParam;
-  const liteOverride = liteParam === '1' ? true : liteParam === '0' ? false : undefined;
 
   const contracts = contractsQuery.data ?? [];
   const hasContracts = contracts.some(
@@ -1574,8 +1599,6 @@ export default function ContractWorkbench() {
           <EditorPane
             key={product}
             product={product}
-            liteOverride={liteOverride}
-            onSetLiteOverride={value => setLite(value ? '1' : '0')}
             onPromote={() => runPromote(product)}
             promotePending={promote.isPending}
           />

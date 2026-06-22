@@ -1,7 +1,8 @@
 # ADR-0004 — Datenprodukt als Komposition über Lineage (Manifest + abgeleitetes Interieur)
 
-**Adressat:** Beratung, Plattform-Team, Governance, Entwicklung · **Stand:** 2026-06-21
-**Status:** *Vorschlag* (proposed) — noch kein Code; konzeptionell abgestimmt.
+**Adressat:** Beratung, Plattform-Team, Governance, Entwicklung · **Stand:** 2026-06-22
+**Status:** *Beschlossen* (accepted) — gegen den Code gegrillt (2026-06-22); Umsetzung in [`PLAN_ADR-0003-0004_Implementation.md`](PLAN_ADR-0003-0004_Implementation.md).
+> **Umsetzungs-Schärfungen aus dem Grilling:** (1) `boundary` bleibt **entkoppelt** vom `kind`→`boundary`-Rename — abgeleitet/read-side, **nie persistiert**; `kind` und Manifest-Intent werden gegeneinander reconciliert. (2) Manifest-Laden **lenient/struktur-only**; referenzielle Lücken sind Findings, keine Ladefehler. (3) Walk: **Deklarierte-Port-Eigenschaft stoppt, Owner-Set klassifiziert**; **Multi-Claim** des Interieurs. (4) v1-Findings: **Dangling-Port, Contested-Interieur, cross-owner Boundary-Leak**; estate-leaving Leak/Over-Declaration/Orphan + Discovery + ORD-Export → **Phase 2**.
 **Zweck:** Festhalten, wie Signal das **Datenprodukt als Aggregat über mehrere Layer** modelliert — ein Produkt ist die Kombination aus Objekten des Raw-, Integrated-Core- und Business-Core-Layers mit den Serving-/Business-Layer-Objekten als Output. Bisher kennt das Modell dieses „Ganze" nicht; Contracts sind dataset-zentriert.
 
 > Verwandte Dokumente: `ADR-0001_Quality-Gates_vs_Contracts.md` (`boundary`-Diskriminator, Komposition §10, DSP-Tiering §11 — die direkte Grundlage) · `ADR-0002_Editor-Modus_aus_Kind.md` (Lite/Full ⊥ kind) · `Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md` (Konzept-Gerüst, §2 Data Product vs. Contract) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam) · `Konzept_DQ_Observability_Cockpit.md` (fachliches Konzept).

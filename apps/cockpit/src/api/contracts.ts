@@ -39,9 +39,9 @@ export const usePutContract = (id: string) => {
   });
 };
 
-// Lite-Modus: save → certify (active) → compile in one server round-trip, so
-// guarantees light up the cockpit (status, compliance, coverage) without the
-// full-mode version/approval ceremony.
+// Direct activation: save → certify (active) → compile in one server round-trip,
+// so guarantees light up the cockpit (status, compliance, coverage) without the
+// version-release ceremony.
 export const useCertifyContract = (id: string) => {
   const qc = useQueryClient();
   return useMutation({

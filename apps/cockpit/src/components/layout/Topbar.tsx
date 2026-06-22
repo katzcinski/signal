@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { t } from '@/i18n/de';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useUIStore, THEMES, type Theme } from '@/store/ui';
 import { useRoleStore, ROLES, ROLE_META, type Role } from '@/store/role';
 
@@ -56,29 +57,28 @@ function RoleSwitcher() {
   };
 
   return (
-    <label
-      title={ROLE_META[role].hint}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-    >
-      <span style={{ fontSize: 10, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-        {t.role.switchLabel}
-      </span>
-      <select
-        value={role}
-        onChange={e => onChange(e.target.value as Role)}
-        aria-label={t.role.switchLabel}
-        style={{
-          background: 'var(--cont)22', border: '1px solid var(--cont)55', color: 'var(--cont)',
-          borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600,
-        }}
-      >
-        {ROLES.map(r => (
-          <option key={r} value={r} style={{ background: 'var(--bg-2)', color: 'var(--fg)' }}>
-            {ROLE_META[r].label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Tooltip content={t.role.tooltips[role] ?? ROLE_META[role].hint}>
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 10, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {t.role.switchLabel}
+        </span>
+        <select
+          value={role}
+          onChange={e => onChange(e.target.value as Role)}
+          aria-label={t.role.switchLabel}
+          style={{
+            background: 'var(--cont)22', border: '1px solid var(--cont)55', color: 'var(--cont)',
+            borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600,
+          }}
+        >
+          {ROLES.map(r => (
+            <option key={r} value={r} style={{ background: 'var(--bg-2)', color: 'var(--fg)' }}>
+              {ROLE_META[r].label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </Tooltip>
   );
 }
 

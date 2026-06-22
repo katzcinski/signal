@@ -1,10 +1,9 @@
-product: DEMO_SRC_04
-kind: internal_gate
-dataset: DEMO_SRC_04
+product: DEMO_SRC_02_contract
+dataset: DEMO_SRC_02
 owned_by: product
 owners: []
-version: 0.1.0
-description: ''
+version: 1.0.0
+lifecycle: draft
 guarantees:
   schema:
     columns:
@@ -14,15 +13,9 @@ guarantees:
     - SRC_COL_04
     - SRC_COL_05
     - SRC_COL_06
-    - SRC_COL_07
     mode: closed
   volume:
     baseline: rolling
     bounds: auto
     severity: warn
-  freshness:
-    column: SRC_COL_01
-    max_age: PT24H
-    severity: warn
-checks: []
-lifecycle: draft
+kind: consumer_contract

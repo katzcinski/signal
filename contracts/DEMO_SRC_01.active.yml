@@ -1,7 +1,7 @@
-product: DEMO_SRC_04
+product: DEMO_SRC_01
 kind: internal_gate
-dataset: DEMO_SRC_04
-owned_by: product
+dataset: DEMO_SRC_01
+owned_by: platform
 owners: []
 version: 0.1.0
 description: ''
@@ -15,14 +15,20 @@ guarantees:
     - SRC_COL_05
     - SRC_COL_06
     - SRC_COL_07
+    - SRC_COL_08
+    - SRC_COL_09
+    - SRC_COL_10
+    - SRC_COL_11
+    - SRC_COL_12
     mode: closed
   volume:
     baseline: rolling
     bounds: auto
     severity: warn
-  freshness:
-    column: SRC_COL_01
-    max_age: PT24H
-    severity: warn
-checks: []
-lifecycle: draft
+checks:
+- id: invalid
+  params:
+    <SPALTE>: SRC_COL_01
+  expect: < 10
+  severity: fail
+lifecycle: active

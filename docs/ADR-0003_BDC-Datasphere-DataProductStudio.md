@@ -1,7 +1,7 @@
 # ADR-0003 — Signal in einem BDC/Datasphere-Setup mit Data-Product-Studio-Datenprodukten
 
-**Adressat:** Beratung, Plattform-Team, Governance, Entwicklung · **Stand:** 2026-06-21
-**Status:** *Analyse / Vorschlag* (proposed) — bewertet, wie Signals Konzept mit den kommenden Custom Data Products aus dem **Data Product Studio** (BDC) zusammenspielt; betrachtet beide Auslieferungspfade (HDLF-Spaces und SQL-Output-Port). Keine gesetzten Code-Entscheidungen; technische Verifikationspunkte explizit markiert.
+**Adressat:** Beratung, Plattform-Team, Governance, Entwicklung · **Stand:** 2026-06-22
+**Status:** *Beschlossen* (accepted) — bewertet, wie Signals Konzept mit den kommenden Custom Data Products aus dem **Data Product Studio** (BDC) zusammenspielt; betrachtet beide Auslieferungspfade (HDLF-Spaces und SQL-Output-Port). **V1 + V7 sind für die Topologie „HDLF-Objekt → in dedizierten Monitoring-Space geteilt → View darüber" gelöst** (Grilling 2026-06-22); Umsetzung in [`PLAN_ADR-0003-0004_Implementation.md`](PLAN_ADR-0003-0004_Implementation.md).
 **Zweck:** Festhalten, **wo** Signals konzeptionelle Ebene (boundary × Lite/Full) und Signals **technische** Ebene (GX-on-HANA-Executor) bei BDC-Custom-Datenprodukten greifen — und wo nicht — abhängig davon, ob ein Datenprodukt auf einem **HDLF-Space** (Object Store, Delta/Parquet) oder über einen **SQL-Output-Port** ausgeliefert wird.
 
 > Verwandte Dokumente: `ADR-0001_Quality-Gates_vs_Contracts.md` (boundary-Diskriminator, Komposition §10, DSP-Taxonomie-Tiering §11) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam, Port-Topologie, offene Punkte R1/R2/R7) · `Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md` (fünf Schichten, Output-Port = Delta Share **oder** exponierte View, §1.5) · `Betriebsmodi_Lite_und_Full.md` (Prozess-Zeremonie) · `Tooldokumentation.md` (Architektur, Executor).
@@ -167,8 +167,9 @@ Unabhängig von HDLF vs. SQL-Port bleibt **alles aus ADR-0001 / dem Briefing gü
 
 | # | Gap | Schwere | Maßnahme | Aufwand (PT) |
 |---|---|---|---|---|
-| G-1 | Adressierung `{schema}.{dataset}` auf SQL-on-Files-/HDLF-Objekt | gering–mittel | Adressierungs-Abstraktion im Compiler; abhängig von V1 ggf. **0** | 0–1,5 |
-| G-2 | `freshness` über Datei-/Partitions-Metadaten statt Daten-Spalte | mittel | optionaler Freshness-Modus „partition/file-timestamp"; Folge-Workstream | 1,5–2 |
+| G-1 | Adressierung `{schema}.{dataset}` auf SQL-on-Files-/HDLF-Objekt | — | **Durch V1 erledigt:** die Monitoring-Space-**View** ist nativ `"{schema}"."{view}"` erreichbar | **0** |
+| G-2 | Frische/Load-Recency, wo keine Business-Zeitstempelspalte existiert | mittel | **Load-Lag**-Check (Katalog-Modify-Time, `M_*`-Sicht, eigener Check in der Observability-Familie — **nicht** `freshness`); gated auf **V3a**. Nur für persistierte/replizierte Tabellen. | 1–1,5 |
+| **G-8** | **`schema`/`type_conformance` fragen nur `SYS.TABLE_COLUMNS`** → gegen eine **View** `COUNT=0` → **falscher critical-Breach** | **hoch** | View-aware machen (`TABLE_COLUMNS` ∪ `VIEW_COLUMNS`), analog `query_helpers.get_columns`; Library-`version`-Bump + Recompile. **Now-Fix, durch V7 verifiziert.** | 1–1,5 |
 | G-3 | `COUNT(*)`-Kosten bei großen Parquet-Beständen | gering | Partition-/Prädikat-Param im Check; Doku „teure Checks" | 0,5 |
 | G-4 | Delta-Share-only-Produkte (keine SQL-Sicht) | mittel | Doku-Regel „transitiv prüfen oder out-of-scope"; **kein** Code | 0,25 |
 | G-5 | ORD-Port-Topologie für HDLF (R1/R2) verifizieren | hoch (Wissen) | Spec-/Produkt-Verifikation, nicht Code | — |
@@ -205,7 +206,9 @@ Kernbotschaft der Tabelle: **Der teuerste Posten ist Wissen (G-5/G-6), nicht Cod
 
 > Priorität: **[H]** blockiert die Enforcement-Festlegung · **[M]** mittel · **[L]** später.
 
-- **V1 [H] — SQL-on-Files-Adressierung.** Liefert das HANA-SQL-Interface ein HDLF-Produkt unter stabilem `schema.object`? (entscheidet G-1: 0 vs. 1,5 PT) — verschärft R1.
+- **V1 [H] — SQL-on-Files-Adressierung. ✅ GELÖST** für die Topologie „HDLF → Monitoring-Space-Share → View darüber": die View ist nativ `"{schema}"."{view}"` erreichbar → G-1 = 0 PT.
+- **V7 [H] — Katalog-Sichtbarkeit der Spalten-Metadaten. ✅ GELÖST:** das Enforcement-Ziel ist eine **View**, deren Spalten in `SYS.VIEW_COLUMNS` (nicht `SYS.TABLE_COLUMNS`) liegen → die Checks `schema`/`type_conformance` sind heute view-blind (falscher Breach) → **G-8**.
+- **V3a [M] — Load-Lag-Quelle.** Welche `M_*`-Sicht/Spalte liefert eine belastbare Load-/Merge-Zeit für replizierte Monitoring-Tabellen (`M_TABLE_STATISTICS.LAST_MODIFY_TIME` vs. `M_CS_TABLES.LAST_MERGE_TIME`)? — Gate für G-2. **OFFEN.**
 - **V2 [H] — Output-Port-Typen je Studio-Produkt.** Welche Port-Typen bietet Data Product Studio konkret an (Delta Share, SQL-on-Files, HANA-View, ODBC), und sind sie pro Produkt **wählbar/kombinierbar**? Klärt, wie oft Fall 2 real verfügbar ist — verschärft R2.
 - **V3 [M] — Freshness-Quelle bei Files.** Existiert eine konventionelle Lade-/Partitionsspalte, oder muss Frische aus Partitions-/Datei-Metadaten kommen? (entscheidet G-2)
 - **V4 [M] — Delta-Share-only-Häufigkeit.** Wie verbreitet sind in SAPs erstem HDLF-Weg Produkte **ohne** SQL-Sicht? Bestimmt das Risiko aus §9.
