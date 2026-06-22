@@ -44,7 +44,7 @@
 | # | Entscheidung | Empfehlung |
 |---|---|---|
 | D1 | Dry-Run/Profile **async** (op_id + Stream) **oder** sync mit unbestimmtem Spinner? | **Async** — nur so gibt es echten Progress „überall wo eine Connection öffnet". Kostet G4-Regen + FE-Umbau, ist aber die Anforderung. |
-| D2 | Herkunft der **Result-Store-Connection** bei `STORE_BACKEND=hana` | Dedizierter Eintrag `dq_results_lt` in `environments.yml` (eigener technischer User, nur INSERT/SELECT auf `dq_results_lt`-Schema, S-4) statt Wiederverwendung der Lese-Connection. |
+| D2 | Herkunft + Ziel der **Result-Store-Connection** bei `STORE_BACKEND=hana` | **Ins Open SQL Schema des Datasphere-DB-Users schreiben** (der User hat dort DDL/DML — die Migrationen legen die wenigen Result-Tabellen selbst an). Vorteil: die Ergebnisse sind danach **in Datasphere weiterverarbeitbar** (Loop geschlossen — Quality-KPIs als DSP-Quelle für SAC/Modelle). Schema-Name kommt aus dem Environment (kein hartkodiertes `dq_results_lt`). Optional kann **derselbe** Datasphere-DB-User auch lesen (Space-exponierte Prüf-Objekte via „Enable read access"), wodurch Lese- und Schreib-Connection zu **einem** User kollabieren — abhängig von den Grants im Space (S-4). |
 | D3 | Environments **in der UI editierbar** oder read-only + Test? | **Read-only + Test** in v1 (Anlage via `environments.yml`/Secret-Store, Governance-Akt). UI-Editor (ohne Secret-Eingabe) als späteres Opt-in. |
 | D4 | **HANA-Testumgebung** für Verifikation | Klären: HANA Cloud Trial / `hanaexpress`-Container / Kunden-Sandbox. Ohne sie bleibt WS F „skipped" (env-gated), aber der Code ist fertig. |
 
@@ -132,16 +132,21 @@ Gemeinsames Muster (wie der bestehende Run): Endpoint legt `op_id` an (`begin_op
 
 ---
 
-## WS E — HanaResultStore (O6) *(parallel; nötig für Full-Deployment)*
+## WS E — HanaResultStore (O6) → Open SQL Schema *(parallel; nötig für Full-Deployment)*
+
+**Ziel (D2):** in das **Open SQL Schema des Datasphere-DB-Users** schreiben. Dort hat der User DDL/DML — die Migrationen legen die wenigen Result-Tabellen selbst an. Der Schema-Name wird zur Laufzeit aus dem Environment gebunden (`[SCHEMA-MAP]`, kein hartkodiertes `dq_results_lt`). Folge: die Ergebnis-Tabellen können als Quelle zurück in einen Datasphere-Space übernommen und dort weiterverarbeitet werden (geschlossener Loop — Quality-KPIs als DSP-Quelle für SAC/Modelle).
 
 **E1 HANA-Dialekt-Migrationen** `store/migrations/hana/NNN_*.sql` (oder Dialekt-Schalter im Runner)
-- SQLite-Spezifika übersetzen (`INTEGER PRIMARY KEY AUTOINCREMENT` → HANA-Identity/Sequence, `TEXT`→`NVARCHAR`, partieller Unique-Index für Run-Guard → HANA-Äquivalent). Ziel-Schema `dq_results_lt`.
+- SQLite-Spezifika übersetzen (`INTEGER PRIMARY KEY AUTOINCREMENT` → HANA-Identity/Sequence, `TEXT`→`NVARCHAR`, partieller Unique-Index für Run-Guard → HANA-Äquivalent).
+- `CREATE TABLE` **qualifiziert auf das Open-SQL-Schema** (Name aus dem Environment, `currentSchema`); Idempotenz wie bei SQLite über den Migration-Runner (`schema_migrations` im selben Schema).
 
-**E2 `HanaStore`** `store/hana_store.py` — alle `ResultStoreProtocol`-Methoden via hdbcli implementieren (inkl. `append_progress`/`get_progress`/`*_operation` aus WS B, `try_begin_run`/Run-Guard, `get_sla`, Heatmap/Trend/Series). Connection aus dem `dq_results_lt`-Environment (D2).
+**E2 `HanaStore`** `store/hana_store.py` — alle `ResultStoreProtocol`-Methoden via hdbcli implementieren (inkl. `append_progress`/`get_progress`/`*_operation` aus WS B, `try_begin_run`/Run-Guard, `get_sla`, Heatmap/Trend/Series). Connection + Ziel-Schema aus dem Datasphere-DB-User-Environment (D2).
 
-**E3 `deps.get_store()`** baut bei `STORE_BACKEND=hana` den `HanaStore` (Connection auflösen) statt zu werfen.
+**E3 `deps.get_store()`** baut bei `STORE_BACKEND=hana` den `HanaStore` (Connection + Open-SQL-Schema auflösen) statt zu werfen.
 
-*Acceptance E:* `ResultStoreProtocol`-Konformitätstest (`runtime_checkable`, `isinstance`) für `HanaStore`; die bestehende Store-Test-Suite läuft env-gated (`HANA_SMOKE=1`) auch gegen HANA grün; `STORE_BACKEND=hana` startet ohne Fehler.
+**E4 Re-Consumption (Doku, kein Code):** Damit die Result-Tabellen in Datasphere konsumierbar sind, muss der Space das Open SQL Schema als Quelle hinzufügen / die Tabellen importieren — ein Deployment-/Konfig-Schritt. In `Tooldokumentation.md` §10 festhalten.
+
+*Acceptance E:* `ResultStoreProtocol`-Konformitätstest (`runtime_checkable`, `isinstance`) für `HanaStore`; die bestehende Store-Test-Suite läuft env-gated (`HANA_SMOKE=1`) auch gegen das Open SQL Schema grün; `STORE_BACKEND=hana` legt die Tabellen im konfigurierten Schema an und startet ohne Fehler; die Result-Tabellen sind aus dem Space heraus lesbar (manuell verifiziert).
 
 ---
 
@@ -151,7 +156,7 @@ Gemeinsames Muster (wie der bestehende Run): Endpoint legt `op_id` an (`begin_op
 - Mit `HANA_SMOKE=1` + Env-Vars: `check_connection` grün; ein Mini-Contract Compile→Dry-Run→Run gegen echte HANA; Multi-Worker-Run (2 uvicorn) gegen denselben (HANA-)Store. Ohne Flag: `pytest.skip` (CI bleibt grün).
 - Reproduzierbares Ziel dokumentieren (HANA Cloud Trial / `hanaexpress`-Container).
 
-**F2 DB-User-Härtung (S-4)** in `Tooldokumentation.md` §9/§10 festhalten: Lese-User nur `SELECT` auf Prüf-Schemata; Result-User nur `INSERT/UPDATE/SELECT` auf `dq_results_lt`; nie Space-Admin; TLS bereits `encrypt`+Cert (verifiziert).
+**F2 DB-User-Härtung (S-4)** in `Tooldokumentation.md` §9/§10 festhalten: Lese-Zugriff nur `SELECT` auf die Space-exponierten Prüf-Objekte; Schreib-Zugriff der Result-Store-User **auf sein eigenes Open SQL Schema** (DDL/DML dort, sonst nichts); nie Space-Admin. Ob ein **einziger** Datasphere-DB-User beides abdeckt (lesen via „Enable read access", schreiben ins eigene Open-Schema) oder zwei getrennte User — abhängig von den Space-Grants; beide Varianten dokumentieren. TLS bereits `encrypt`+Cert (verifiziert).
 
 **F3 Doku nachziehen:** `Tooldokumentation.md` §5 (neue Operation-/Test-Endpoints), §6 (ggf. `RESULTS_ENVIRONMENT`-ENV), §8 (Connections-Screen, Progress in Dry-Run/Profile); `REVIEW_Tool_v2_Status.md` (HANA-Pfad/O6 von „verification-only/open" auf „done" ziehen, sobald F1/E grün).
 
