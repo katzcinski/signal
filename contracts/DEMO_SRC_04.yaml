@@ -1,9 +1,10 @@
 product: DEMO_SRC_04
+kind: internal_gate
 dataset: DEMO_SRC_04
 owned_by: product
 owners: []
 version: 0.1.0
-lifecycle: draft
+description: ''
 guarantees:
   schema:
     columns:
@@ -19,3 +20,5 @@ guarantees:
     baseline: rolling
     bounds: auto
     severity: warn
+checks: []
+lifecycle: active
