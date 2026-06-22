@@ -162,6 +162,22 @@ Gemeinsames Muster (wie der bestehende Run): Endpoint legt `op_id` an (`begin_op
 
 ---
 
+## WS G — Quarantäne / Reject-Store *(optional, nach E; durch In-HANA-Store erst sinnvoll)*
+
+**Idee:** zeilen-genaue Verstöße in eine Quarantäne-Tabelle **im selben Open SQL Schema** schreiben — per `INSERT … SELECT` **direkt in HANA**, sodass die Rohzeilen den App-Prozess **nie** berühren (E6 strikt eingehalten, stärker als der heutige `dq_diagnostics`-Pfad). Die Tabelle ist aus dem Space zurück-konsumierbar → Reject-/Remediation-Dashboards in SAC.
+
+- **Nur zeilen-identifizierbare Familien:** `not_null`, `completeness`, `keys`/Duplikate, `referential` (Orphans), `matches`/Regex, `cross_field`. **Nicht** `volume.min_rows`/`freshness`/`volume_anomaly` (keine Einzelzeilen).
+- **Compiler erweitern** (`dq_core/contract/compiler.py`): neben dem Aggregat-Check optional einen **Quarantäne-`SELECT`** mit demselben Verletzungs-Prädikat emittieren, projiziert auf **PK + Allowlist-Spalten**, mit `LIMIT N`. Opt-in je Garantie: `quarantine: { enabled, columns[], limit }`, **default off**.
+- **Tabelle** (Migration, HANA + SQLite): `dq_quarantine(id, run_id, dataset, check_name, captured_at, row_key, payload_json)` — `payload_json` nur Allowlist-Spalten. TTL-Cleanup wie `DIAGNOSTICS_TTL_DAYS`.
+- **PII-Disziplin = `dq_diagnostics`:** default-off, Spalten-Allowlist, TTL, restriktiver Zugriff. Verhältnis zu `dq_diagnostics` entscheiden (ablösen vs. zweite Stufe).
+- **Ausführung:** im Run-/Dry-Run-Thread nach einem fehlgeschlagenen, quarantäne-fähigen Check ein `INSERT … SELECT` ins Open-Schema absetzen (Progress-Zeile „Quarantäne: N Zeilen erfasst").
+
+*Acceptance G:* fehlschlagender `not_null`-Check mit `quarantine.enabled` schreibt **nur** Key+Allowlist-Spalten per `INSERT … SELECT`; der App-Prozess sieht **keine** Rohzeile; `volume`/`freshness` erzeugen **keine** Quarantäne; TTL löscht abgelaufene Zeilen; ohne `enabled` bleibt die Tabelle leer.
+
+*Aufwand:* 2–3 PT (Compiler-Paar-Query + Migration + Ausführungs-Hook + Tests).
+
+---
+
 ## Sequenz & Aufwand
 
 | WS | Inhalt | hängt ab von | Aufwand (PT) |
@@ -172,8 +188,9 @@ Gemeinsames Muster (wie der bestehende Run): Endpoint legt `op_id` an (`begin_op
 | D | FE: `useOperationStream`, `OperationProgress`, Connections-Screen, Dialoge | C | 3–4 |
 | E | `HanaResultStore` (O6) + HANA-Migrationen | B (Protocol) | 4–6 |
 | F | Smoke-Harness, DB-User-Härtung, Doku | A–E | 1,5–2 |
+| G | Quarantäne/Reject-Store (optional) | E | 2–3 |
 
-**Brutto ≈ 13,5–19,5 PT.** A→B→C→D ist der kritische Pfad für „Connection-UI + Progress überall". E (Result-Store) ist für den **reinen Lese-/Dry-Run-Pfad** entkoppelt (SQLite-Result-Store genügt dort) und kann parallel laufen — wird aber für das **Full-Customer-Deployment** gebraucht.
+**Brutto ≈ 13,5–19,5 PT** (ohne WS G; mit Quarantäne +2–3 PT). A→B→C→D ist der kritische Pfad für „Connection-UI + Progress überall". E (Result-Store) ist für den **reinen Lese-/Dry-Run-Pfad** entkoppelt (SQLite-Result-Store genügt dort) und kann parallel laufen — wird aber für das **Full-Customer-Deployment** gebraucht.
 
 ## Definition of Done
 
