@@ -202,6 +202,8 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | POST | `/api/checks/{dataset}/revert` | Git-Revert der kompilierten `checks.yml` `[AUTHZ]` |
 | POST | `/api/extract` | Analyzer-Kette → inventory/lineage |
 | GET | `/api/inventory` · `/api/environments` · `/api/library` | Objekt-Picker · Environments · Check-Bibliothek |
+| POST | `/api/environments/{name}/test` | Live-Verbindungstest (Operation + SSE) `[AUTHZ steward+]` |
+| GET/POST/PUT/DELETE | `/api/admin/environments[...]` | HANA-Verbindungen pflegen (Cockpit-Einstellungen) `[AUTHZ admin]` — nie Klartext-Passwort, nur `password_ref` |
 
 ### Lineage / Coverage / Incidents / Proposals / Observability
 

@@ -66,6 +66,45 @@ export interface EnvironmentsResponse {
   environments: Environment[];
 }
 
+// ---- Admin connection settings (GET /api/admin/environments) ----
+// The password value is never returned; `password_ref` is the secret reference
+// (e.g. "env:HANA_PW_PROD") and `password_set` mirrors whether it resolves.
+export interface AdminEnvironment {
+  name: string;
+  host: string;
+  port: number;
+  user: string;
+  schema: string;
+  password_ref: string;
+  password_set: boolean;
+  encrypt: boolean;
+  validate_cert: boolean;
+}
+
+export interface AdminEnvironmentsResponse {
+  environments: AdminEnvironment[];
+  can_edit: boolean;
+}
+
+// ---- Connection test (POST /api/environments/{name}/test → operation) ----
+export interface ConnectionTestResult {
+  ok: boolean;
+  latency_ms: number;
+  server_version: string | null;
+  schema_visible: boolean;
+  failure_stage: string | null;
+  error: string | null;
+}
+
+export interface OperationStatus {
+  op_id: string;
+  kind: string;
+  state: string; // running | finished | error
+  result: ConnectionTestResult | null;
+  error: string | null;
+  progress: { id?: number; ts: string; line: string }[];
+}
+
 // ---- Per-family status rollup ----
 export interface FamilyStatus {
   observability: string; // pass|warn|fail|critical|error|unknown

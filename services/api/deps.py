@@ -60,6 +60,42 @@ def get_lineage() -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def read_environments() -> dict[str, dict[str, Any]]:
+    """Load the full environments map from ENVIRONMENTS_FILE (raw, unresolved).
+
+    Returns a name → config mapping exactly as authored on disk. Secret values
+    are never resolved here (that happens lazily in ``get_environment`` for the
+    immediate connection consumer) so this stays safe to hand to admin-read
+    endpoints — provided the caller strips inline ``password`` before responding.
+    """
+    import yaml
+    settings = get_settings()
+    path = Path(settings.environments_file)
+    if not path.exists():
+        return {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): (v if isinstance(v, dict) else {}) for k, v in data.items()}
+
+
+def write_environments(envs: dict[str, dict[str, Any]]) -> None:
+    """Persist the full environments map to ENVIRONMENTS_FILE.
+
+    Writes deterministic, human-diffable YAML (sorted keys, block style). The
+    caller owns the per-entry shape; this helper only serialises. Secret values
+    must never be passed in here — only secret *references* (``password_ref``).
+    """
+    import yaml
+    settings = get_settings()
+    path = Path(settings.environments_file)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        yaml.safe_dump(envs, sort_keys=True, default_flow_style=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+
+
 def get_environment(name: str) -> dict[str, Any] | None:
     """[SCHEMA-MAP] Resolve environment name → {host, port, schema, ...} from ENVIRONMENTS_FILE.
 
