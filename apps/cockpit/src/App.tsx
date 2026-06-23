@@ -18,6 +18,7 @@ const Governance        = lazy(() => import('./pages/Governance'));
 const CheckLibrary      = lazy(() => import('./pages/CheckLibrary'));
 const Notifications     = lazy(() => import('./pages/Notifications'));
 const Settings          = lazy(() => import('./pages/Settings'));
+const Environments      = lazy(() => import('./pages/Environments'));
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -50,6 +51,7 @@ export default function App() {
               <Route path="/library"    element={<CheckLibrary />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/settings"    element={<Settings />} />
+              <Route path="/environments" element={<Environments />} />
             </Routes>
           </Suspense>
         </Shell>

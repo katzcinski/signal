@@ -84,6 +84,80 @@ def test_environments_no_secrets(api_client, tmp_path, monkeypatch):
     settings_mod._settings = None
 
 
+def test_environment_config_crud_masks_and_preserves_secret(api_client, tmp_path, monkeypatch):
+    env_file = tmp_path / "environments.yml"
+    monkeypatch.setenv("ENVIRONMENTS_FILE", str(env_file))
+    monkeypatch.setenv("HANA_PW_DEV", "secret-value")
+    import services.api.settings as settings_mod
+    settings_mod._settings = None
+
+    viewer = api_client.get(
+        "/api/environments/config",
+        headers={"X-DQ-Role": "viewer"},
+    )
+    assert viewer.status_code == 403
+
+    denied = api_client.put(
+        "/api/environments/config/dev",
+        headers={"X-DQ-Role": "steward"},
+        json={
+            "host": "hana.example.com",
+            "port": 443,
+            "user": "SIGNAL_TEST",
+            "schema": "DEV_SCHEMA",
+            "password_ref": "env:HANA_PW_DEV",
+        },
+    )
+    assert denied.status_code == 403
+
+    created = api_client.put(
+        "/api/environments/config/dev",
+        json={
+            "host": "hana.example.com",
+            "port": 443,
+            "user": "SIGNAL_TEST",
+            "schema": "DEV_SCHEMA",
+            "password_ref": "env:HANA_PW_DEV",
+        },
+    )
+    assert created.status_code == 200, created.text
+    body = created.json()
+    assert body["name"] == "dev"
+    assert body["password_ref"] == "env:HANA_PW_DEV"
+    assert body["secret_configured"] is True
+    assert body["secret_available"] is True
+    assert "secret-value" not in created.text
+
+    cfg = api_client.get(
+        "/api/environments/config",
+        headers={"X-DQ-Role": "steward"},
+    ).json()
+    assert cfg["can_edit"] is False
+    assert cfg["environments"][0]["user"] == "SIGNAL_TEST"
+    assert "secret-value" not in str(cfg)
+
+    updated = api_client.put(
+        "/api/environments/config/dev",
+        json={
+            "host": "hana2.example.com",
+            "port": 443,
+            "user": "SIGNAL_TEST",
+            "schema": "DEV_SCHEMA",
+        },
+    )
+    assert updated.status_code == 200
+    text = env_file.read_text(encoding="utf-8")
+    assert "hana2.example.com" in text
+    assert "password_ref: env:HANA_PW_DEV" in text
+    assert "secret-value" not in text
+
+    deleted = api_client.delete("/api/environments/config/dev")
+    assert deleted.status_code == 204
+    assert api_client.get("/api/environments").json() == {"environments": []}
+
+    settings_mod._settings = None
+
+
 def test_odcs_export_endpoint(api_client):
     _activate_contract(api_client)
     resp = api_client.get("/api/contracts/DS_SALES_ORDERS/export/odcs")

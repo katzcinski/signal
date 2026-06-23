@@ -63,6 +63,11 @@ export function canManageNotifications(role: Role): boolean {
   return role === 'admin';
 }
 
+/** HANA/Datasphere connection details may include credentials → admin only. */
+export function canManageEnvironments(role: Role): boolean {
+  return role === 'admin';
+}
+
 /** Accepting a proposal writes a guarantee → same gate as the contract. */
 export function canAcceptProposal(role: Role, ownedBy?: string): boolean {
   return canWriteContract(role, ownedBy);

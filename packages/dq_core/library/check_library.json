@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "families": ["observability", "quality"],
   "categories": [
     "Vollständigkeit",
@@ -274,9 +274,9 @@
       "label": "Schema Change",
       "category": "Schema & Vertrag",
       "short": "Objekt/Spalten vorhanden",
-      "help": "Prüft anhand der HANA-Systemsicht, ob das Objekt (und seine Spalten) existiert. Erkennt versehentliche Drops.",
-      "example": "Erwartung \"> 0\" → Tabelle existiert mit Spalten.",
-      "sql_template": "SELECT COUNT(*) FROM \"SYS\".\"TABLE_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}'",
+      "help": "Prüft anhand der HANA-Systemsichten (TABLE_COLUMNS ∪ VIEW_COLUMNS), ob das Objekt (und seine Spalten) existiert — Tabellen wie Views. Erkennt versehentliche Drops.",
+      "example": "Erwartung \"> 0\" → Tabelle/View existiert mit Spalten.",
+      "sql_template": "SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM \"SYS\".\"TABLE_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}' UNION ALL SELECT COLUMN_NAME FROM \"SYS\".\"VIEW_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = '{dataset}') catalog_columns",
       "params": [],
       "default_expect": "> 0",
       "default_severity": "critical",
@@ -289,9 +289,9 @@
       "label": "Type Conformance",
       "category": "Schema & Vertrag",
       "short": "Deklarierter Spaltentyp stimmt",
-      "help": "Prüft SYS.TABLE_COLUMNS.DATA_TYPE_NAME für eine Contract-Spalte. Fehlende Spalte oder abweichender HANA-Datentyp zählt als Verletzung.",
+      "help": "Prüft DATA_TYPE_NAME einer Contract-Spalte in SYS.TABLE_COLUMNS ∪ SYS.VIEW_COLUMNS (Tabellen wie Views). Fehlende Spalte oder abweichender HANA-Datentyp zählt als Verletzung.",
       "example": "Erwartung \"= 0\" → ORDER_DATE ist weiterhin DATE, NET_AMOUNT weiterhin DECIMAL.",
-      "sql_template": "SELECT CASE WHEN COUNT(*) = 0 THEN 1 WHEN MAX(DATA_TYPE_NAME) <> '<DATA_TYPE_NAME>' THEN 1 ELSE 0 END FROM \"SYS\".\"TABLE_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}' AND COLUMN_NAME = '<SPALTE>'",
+      "sql_template": "SELECT CASE WHEN COUNT(*) = 0 THEN 1 WHEN MAX(DATA_TYPE_NAME) <> '<DATA_TYPE_NAME>' THEN 1 ELSE 0 END FROM (SELECT DATA_TYPE_NAME FROM \"SYS\".\"TABLE_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}' AND COLUMN_NAME = '<SPALTE>' UNION ALL SELECT DATA_TYPE_NAME FROM \"SYS\".\"VIEW_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = '{dataset}' AND COLUMN_NAME = '<SPALTE>') catalog_columns",
       "params": [
         { "token": "<SPALTE>", "type": "identifier", "label": "Spalte", "hint": "Contract-Spalte" },
         { "token": "<DATA_TYPE_NAME>", "type": "string", "label": "HANA-Typ", "hint": "Erwarteter DATA_TYPE_NAME, z.B. NVARCHAR, DATE, DECIMAL" }

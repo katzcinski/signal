@@ -96,13 +96,22 @@ export interface ConnectionTestResult {
   error: string | null;
 }
 
-export interface OperationStatus {
+export interface OperationProgressLine {
+  id?: number;
+  ts: string;
+  line: string;
+}
+
+export interface OperationStatus<T = ConnectionTestResult> {
   op_id: string;
   kind: string;
-  state: string; // running | finished | error
-  result: ConnectionTestResult | null;
+  state: 'running' | 'finished' | 'error';
+  created_by?: string;
+  started_at: string | null;
+  finished_at: string | null;
+  result: T | null;
   error: string | null;
-  progress: { id?: number; ts: string; line: string }[];
+  progress: OperationProgressLine[];
 }
 
 // ---- Per-family status rollup ----

@@ -541,6 +541,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/environments/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Environment Config
+         * @description Editable environment config for the cockpit; never returns secret values.
+         */
+        get: operations["list_environment_config_api_environments_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/environments/config/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upsert Environment Config
+         * @description Create or update a configured environment. Admin-only because it writes credentials.
+         */
+        put: operations["upsert_environment_config_api_environments_config__name__put"];
+        post?: never;
+        /** Delete Environment Config */
+        delete: operations["delete_environment_config_api_environments_config__name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/environments/{name}/test": {
         parameters: {
             query?: never;
@@ -1576,6 +1617,35 @@ export interface components {
             status?: string | null;
             /** Triggered By */
             triggered_by?: string | null;
+        };
+        /** EnvironmentConfigIn */
+        EnvironmentConfigIn: {
+            /**
+             * Clear Secret
+             * @default false
+             */
+            clear_secret: boolean;
+            /** Host */
+            host: string;
+            /**
+             * Password
+             * @default
+             */
+            password: string;
+            /**
+             * Password Ref
+             * @default
+             */
+            password_ref: string;
+            /**
+             * Port
+             * @default 443
+             */
+            port: number;
+            /** Schema */
+            schema: string;
+            /** User */
+            user: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2865,6 +2935,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_environment_config_api_environments_config_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_environment_config_api_environments_config__name__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvironmentConfigIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_environment_config_api_environments_config__name__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

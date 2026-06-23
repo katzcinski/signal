@@ -462,8 +462,23 @@
   gap: var(--s4);
   align-items: start;
 }
+.env-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: var(--s4);
+  align-items: start;
+}
+.env-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: var(--s3);
+}
 @media (max-width: 980px) {
   .dash-hero, .dash-2col { grid-template-columns: minmax(0, 1fr); }
+  .env-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .env-form-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 html, body, #root {

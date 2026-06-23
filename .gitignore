@@ -19,6 +19,7 @@ env/
 .env
 .env.*
 !.env.example
+environments.yml
 secrets/
 *.pem
 *.key

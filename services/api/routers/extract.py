@@ -10,7 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..auth.provider import PrincipalDep
-from ..deps import StoreDep, get_environment, get_inventory, get_lineage
+from ..deps import StoreDep, get_environment, get_inventory, get_lineage, read_environments
 
 router = APIRouter(prefix="/api", tags=["extract"])
 
@@ -93,14 +93,7 @@ def list_inventory(inventory: list[dict] = Depends(get_inventory)):
 @router.get("/environments")
 def list_environments():
     """Environment-Namen für den RunTriggerDialog — NIE Credentials (S-13)."""
-    import yaml
-    from pathlib import Path
-    from ..settings import get_settings
-
-    path = Path(get_settings().environments_file)
-    if not path.exists():
-        return {"environments": []}
-    envs = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    envs = read_environments()
     return {
         "environments": [
             {"name": name, "schema": (cfg or {}).get("schema", "")}
