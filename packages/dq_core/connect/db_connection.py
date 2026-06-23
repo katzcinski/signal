@@ -173,6 +173,8 @@ def check_connection(
     password: str,
     schema: str,
     *,
+    encrypt: bool = True,
+    validate_cert: bool = True,
     probe_object: str | None = None,
     on_progress: ProgressCallback | None = None,
     environment_name: str | None = None,
@@ -203,6 +205,8 @@ def check_connection(
             user,
             password,
             schema,
+            encrypt=encrypt,
+            validate_cert=validate_cert,
             on_progress=on_progress,
         )
     except Exception as exc:  # noqa: BLE001 - return a safe verdict

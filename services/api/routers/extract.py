@@ -143,6 +143,8 @@ def test_environment_connection(
                 user=env_cfg.get("user", ""),
                 password=env_cfg.get("password", ""),
                 schema=env_cfg.get("schema", ""),
+                encrypt=bool(env_cfg.get("encrypt", True)),
+                validate_cert=bool(env_cfg.get("validate_cert", True)),
                 on_progress=callback,
                 environment_name=name,
             )

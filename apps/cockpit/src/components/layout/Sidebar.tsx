@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/ui';
 // symbols (⬡ ⊞ ⟁ …) that rendered inconsistently and carried no label. Each is
 // a 16px stroke icon; semantics come from the adjacent aria-label/title, so the
 // collapsed rail stays navigable for keyboard and screen-reader users.
-type IconKey = 'my' | 'cockpit' | 'objects' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'library' | 'notifications';
+type IconKey = 'my' | 'cockpit' | 'objects' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'library' | 'notifications' | 'settings';
 
 function Icon({ name }: { name: IconKey }) {
   const common = {
@@ -26,6 +26,7 @@ function Icon({ name }: { name: IconKey }) {
     case 'governance': return <svg {...common}><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6Z" /></svg>;
     case 'library':    return <svg {...common}><rect x="4" y="4" width="4" height="16" rx="1" /><rect x="10" y="4" width="4" height="16" rx="1" /><path d="M17 5l3 .8-3 14-2-.5" /></svg>;
     case 'notifications': return <svg {...common}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>;
+    case 'settings':   return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>;
   }
 }
 
@@ -45,10 +46,16 @@ const BASE: NavItem[] = [
   { to: '/notifications', label: t.nav.notifications, icon: 'notifications' },
 ];
 
+// Platform-administration. The page is server-gated to admin; the nav entry is
+// only offered to the admin role (FE mirror — a hidden link is a hint, not a gate).
+const SETTINGS: NavItem = { to: '/settings', label: t.nav.settings, icon: 'settings' };
+
 // UX-N3 / UX-F1: nav order follows the role. Stewards/owners lead with "My work"
-// (their default landing); viewers/admins lead with the global cockpit.
+// (their default landing); viewers/admins lead with the global cockpit. The
+// admin additionally gets the platform-settings entry at the foot of the rail.
 function navForRole(role: Role): NavItem[] {
   if (role === 'steward' || role === 'owner') return [MY_WORK, ...BASE];
+  if (role === 'admin') return [...BASE, SETTINGS];
   return BASE;
 }
 
