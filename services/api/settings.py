@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     git_remote: str = Field(default="")
     contracts_dir: str = Field(default="contracts")
     checks_dir: str = Field(default="checks")
+    products_dir: str = Field(default="products")
 
     # Data
     data_dir: str = Field(default="data")

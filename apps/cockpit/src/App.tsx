@@ -8,6 +8,8 @@ const Cockpit           = lazy(() => import('./pages/Cockpit'));
 const MyWork            = lazy(() => import('./pages/MyWork'));
 const ObjectCatalog     = lazy(() => import('./pages/ObjectCatalog'));
 const ObjectDetail      = lazy(() => import('./pages/ObjectDetail'));
+const Products          = lazy(() => import('./pages/Products'));
+const ProductDetail     = lazy(() => import('./pages/ProductDetail'));
 const ContractWorkbench = lazy(() => import('./pages/ContractWorkbench'));
 const LineageMap        = lazy(() => import('./pages/LineageMap'));
 const Incidents         = lazy(() => import('./pages/Incidents'));
@@ -39,6 +41,8 @@ export default function App() {
               <Route path="/my"          element={<MyWork />} />
               <Route path="/objects"     element={<ObjectCatalog />} />
               <Route path="/objects/:id" element={<ObjectDetail />} />
+              <Route path="/products"    element={<Products />} />
+              <Route path="/products/:name" element={<ProductDetail />} />
               <Route path="/contracts"   element={<ContractWorkbench />} />
               <Route path="/lineage"     element={<LineageMap />} />
               {/* Route alias (WS4): /coverage renders the same map */}

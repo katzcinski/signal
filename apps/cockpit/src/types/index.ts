@@ -328,6 +328,62 @@ export interface ObjectTimeseries {
   series: MetricSeries[];
 }
 
+// ---- Data products (GET /api/products) ----
+export interface ProductListItem {
+  product: string;
+  owners: string[];
+  port_count: number;
+  own_health: OverallStatus;
+  upstream_risk_count: number;
+  finding_count: number;
+  lifecycle: Lifecycle;
+}
+
+export interface ProductPort {
+  dataset: string;
+  kind: ArtifactKind | null;
+  lifecycle: Lifecycle | null;
+  compliance: string | null;
+  version: string | null;
+}
+
+export interface ProductInterior {
+  id: string;
+  layer: string | null;
+  role: string | null;
+  coverage_flag: string | null;
+}
+
+export interface ProductUpstreamRiskEntry {
+  product: string;
+  pinned_version: string;
+  current_version: string | null;
+  compliance: string | null;
+  upstream_breach: boolean;
+  version_drift: boolean;
+}
+
+export interface ProductFinding {
+  finding_type: 'dangling_port' | 'contested' | 'boundary_leak';
+  scope: 'port' | 'interior' | null;
+  object_id: string;
+  detail: string;
+}
+
+export interface ProductDetail {
+  product: string;
+  owners: string[];
+  lifecycle: Lifecycle;
+  own_health: OverallStatus;
+  ports: ProductPort[];
+  interior: ProductInterior[];
+  inbound_dependencies: ProductUpstreamRiskEntry[];
+  inbound_sources: string[];
+  upstream_risk: ProductUpstreamRiskEntry[];
+  findings: ProductFinding[];
+  subgraph: LineageGraph;
+}
+
 // ---- Contracts: canonical guarantee schema (§1.5) ----
 export interface GuaranteeSchema {
   columns: string[];

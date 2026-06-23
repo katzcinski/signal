@@ -3,8 +3,10 @@ import type { OverallStatus } from '@/types';
 const STATUS_COLOR: Record<string, string> = {
   pass:    'var(--status-ok)',
   ok:      'var(--status-ok)',
+  compliant: 'var(--status-ok)',
   warn:    'var(--status-warn)',
   fail:    'var(--status-fail)',
+  breached:'var(--status-fail)',
   critical:'var(--status-crit)',
   unknown: 'var(--status-unknown)',
   stale:   'var(--status-stale)',

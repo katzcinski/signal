@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/ui';
 // symbols (⬡ ⊞ ⟁ …) that rendered inconsistently and carried no label. Each is
 // a 16px stroke icon; semantics come from the adjacent aria-label/title, so the
 // collapsed rail stays navigable for keyboard and screen-reader users.
-type IconKey = 'my' | 'cockpit' | 'objects' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'library' | 'notifications' | 'settings';
+type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'library' | 'notifications' | 'settings';
 
 function Icon({ name }: { name: IconKey }) {
   const common = {
@@ -19,6 +19,7 @@ function Icon({ name }: { name: IconKey }) {
     case 'my':         return <svg {...common}><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></svg>;
     case 'cockpit':    return <svg {...common}><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>;
     case 'objects':    return <svg {...common}><path d="M12 3 4 7l8 4 8-4-8-4Z" /><path d="M4 12l8 4 8-4" /><path d="M4 17l8 4 8-4" /></svg>;
+    case 'products':   return <svg {...common}><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="9" y="14" width="6" height="6" rx="1" /><path d="M10 7h4M12 10v4" /></svg>;
     case 'contracts':  return <svg {...common}><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v4h4" /><path d="M10 13h6M10 17h6" /></svg>;
     case 'lineage':    return <svg {...common}><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="12" r="2.5" /><circle cx="6" cy="18" r="2.5" /><path d="M8.2 7.3 15.8 11M8.2 16.7 15.8 13" /></svg>;
     case 'incidents':  return <svg {...common}><path d="M5 21V4l13 .5L14 8l4 3.5L5 12" /></svg>;
@@ -37,6 +38,7 @@ const MY_WORK: NavItem = { to: '/my', label: t.nav.myWork, icon: 'my' };
 const BASE: NavItem[] = [
   { to: '/',           label: t.nav.cockpit,    icon: 'cockpit' },
   { to: '/objects',    label: t.nav.objects,    icon: 'objects' },
+  { to: '/products',   label: t.nav.products,   icon: 'products' },
   { to: '/contracts',  label: t.nav.contracts,  icon: 'contracts' },
   { to: '/lineage',    label: t.nav.lineage,    icon: 'lineage' },
   { to: '/incidents',  label: t.nav.incidents,  icon: 'incidents' },
