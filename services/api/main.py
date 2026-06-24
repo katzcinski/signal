@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 
 from .middleware import ObservabilityMiddleware
 from .settings import get_settings
-from .routers import library, objects, runs, lineage, contracts, incidents, proposals, stream, checks, extract, metrics, data_loads, activity, notifications, profile, operations, environments, products
+from .routers import library, objects, runs, lineage, contracts, incidents, proposals, stream, checks, extract, metrics, data_loads, activity, notifications, profile, operations, environments, products, schedules
 
 logging.basicConfig(
     level=logging.INFO,
@@ -101,12 +101,19 @@ def create_app() -> FastAPI:
                    contracts.router, incidents.router, proposals.router, stream.router,
                    checks.router, extract.router, metrics.router, data_loads.router,
                    activity.router, notifications.router, profile.router, operations.router,
-                   environments.router, products.router]:
+                   environments.router, products.router, schedules.router]:
         app.include_router(router)
 
     @app.get("/api/health")
     def health():
         return {"status": "ok"}
+
+    # Option E: start the in-process schedule poller when opted in. Each worker
+    # runs its own poller; claim + try_begin_run keep that duplicate-free.
+    if settings.scheduler_enabled:
+        from . import scheduler
+        scheduler.start(settings.scheduler_tick_seconds)
+        logger.info("Scheduler poller enabled (tick=%ss)", settings.scheduler_tick_seconds)
 
     return app
 

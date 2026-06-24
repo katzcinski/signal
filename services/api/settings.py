@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     # Environment mit echter HANA-Verbindung (kein stiller Fail-Open, S-13).
     allow_mock_connection: bool = Field(default=True)
 
+    # Scheduler (Option E) — in-process poller for internal schedules. Opt-in:
+    # off by default so the documented external-scheduler model is unchanged
+    # unless an operator turns the poller on. Tick is the poll cadence in
+    # seconds (how often due schedules are claimed), not the run interval.
+    scheduler_enabled: bool = Field(default=False)
+    scheduler_tick_seconds: int = Field(default=30, ge=5, le=3600)
+
     # CORS
     cors_origins: list[str] = Field(default=["http://localhost:5173", "http://localhost:3000"])
 
