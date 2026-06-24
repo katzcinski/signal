@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/ui';
 // symbols (⬡ ⊞ ⟁ …) that rendered inconsistently and carried no label. Each is
 // a 16px stroke icon; semantics come from the adjacent aria-label/title, so the
 // collapsed rail stays navigable for keyboard and screen-reader users.
-type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'library' | 'notifications' | 'settings';
+type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'library' | 'notifications' | 'settings' | 'schedules';
 
 function Icon({ name }: { name: IconKey }) {
   const common = {
@@ -22,6 +22,7 @@ function Icon({ name }: { name: IconKey }) {
     case 'products':   return <svg {...common}><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="9" y="14" width="6" height="6" rx="1" /><path d="M10 7h4M12 10v4" /></svg>;
     case 'contracts':  return <svg {...common}><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v4h4" /><path d="M10 13h6M10 17h6" /></svg>;
     case 'lineage':    return <svg {...common}><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="12" r="2.5" /><circle cx="6" cy="18" r="2.5" /><path d="M8.2 7.3 15.8 11M8.2 16.7 15.8 13" /></svg>;
+    case 'schedules':  return <svg {...common}><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 1.6" /></svg>;
     case 'incidents':  return <svg {...common}><path d="M5 21V4l13 .5L14 8l4 3.5L5 12" /></svg>;
     case 'proposals':  return <svg {...common}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" /></svg>;
     case 'governance': return <svg {...common}><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6Z" /></svg>;
@@ -52,12 +53,24 @@ const BASE: NavItem[] = [
 // only offered to the admin role (FE mirror — a hidden link is a hint, not a gate).
 const SETTINGS: NavItem = { to: '/settings', label: t.nav.settings, icon: 'settings' };
 
+// Scheduling overview is server-gated to steward+ (routers/schedules.py); the
+// nav entry is hidden from viewers as an FE mirror (a hint, not a gate). It sits
+// right after Incidents in the operational cluster of the rail.
+const SCHEDULES: NavItem = { to: '/schedules', label: t.nav.schedules, icon: 'schedules' };
+
+function withSchedules(items: NavItem[], role: Role): NavItem[] {
+  if (role === 'viewer') return items;
+  const i = items.findIndex(n => n.to === '/incidents');
+  if (i < 0) return [...items, SCHEDULES];
+  return [...items.slice(0, i + 1), SCHEDULES, ...items.slice(i + 1)];
+}
+
 // UX-N3 / UX-F1: nav order follows the role. Stewards/owners lead with "My work"
 // (their default landing); viewers/admins lead with the global cockpit. The
 // admin additionally gets the platform-settings entry at the foot of the rail.
 function navForRole(role: Role): NavItem[] {
-  if (role === 'steward' || role === 'owner') return [MY_WORK, ...BASE];
-  if (role === 'admin') return [...BASE, SETTINGS];
+  if (role === 'steward' || role === 'owner') return withSchedules([MY_WORK, ...BASE], role);
+  if (role === 'admin') return withSchedules([...BASE, SETTINGS], role);
   return BASE;
 }
 

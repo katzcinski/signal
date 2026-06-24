@@ -77,3 +77,9 @@ export function canAcceptProposal(role: Role, ownedBy?: string): boolean {
 export function canProfileObject(role: Role): boolean {
   return role !== 'viewer';
 }
+
+/** Managing schedules mirrors run-trigger authority — steward role or higher
+ *  (routers/schedules.py:_require_steward). */
+export function canManageSchedules(role: Role): boolean {
+  return role !== 'viewer';
+}
