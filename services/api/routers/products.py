@@ -53,19 +53,22 @@ def _load_contracts_by_dataset(contracts_dir: str | Path) -> dict[str, dict[str,
     if not base.exists():
         return {}
 
-    contracts: dict[str, dict[str, Any]] = {}
+    contracts: dict[str, tuple[int, dict[str, Any]]] = {}
     for path in sorted(base.glob("*.y*ml")):
-        if path.name.endswith(".active.yml"):
-            continue
         try:
             data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         except Exception:  # noqa: BLE001 - bad contracts are ignored by this read model
             continue
         if not isinstance(data, dict):
             continue
-        dataset = str(data.get("dataset") or path.stem)
-        contracts[dataset] = data
-    return contracts
+        active = path.name.endswith((".active.yml", ".active.yaml"))
+        stem = path.name.rsplit(".active.", 1)[0] if active else path.stem
+        dataset = str(data.get("dataset") or stem)
+        priority = 1 if active else 0
+        current = contracts.get(dataset)
+        if current is None or priority >= current[0]:
+            contracts[dataset] = (priority, data)
+    return {dataset: data for dataset, (_priority, data) in contracts.items()}
 
 
 def _graph_maps(lineage: dict[str, Any]) -> tuple[dict[str, dict], dict[str, list[str]], dict[str, list[str]]]:
@@ -101,6 +104,7 @@ def _build_context(lineage: dict[str, Any]) -> tuple[
     manifests = load_all_manifests(settings.products_dir)
     contracts = _load_contracts_by_dataset(settings.contracts_dir)
     node_data, upstream, downstream = _graph_maps(lineage)
+    port_index = build_port_index(manifests)
 
     def is_external(node_id: str) -> bool:
         return looks_external(node_id, node_data.get(node_id))
@@ -111,8 +115,8 @@ def _build_context(lineage: dict[str, Any]) -> tuple[
         downstream=downstream,
         node_data=node_data,
         is_external=is_external,
+        port_index=port_index,
     )
-    port_index = build_port_index(manifests)
     findings = reconcile(
         aggregates,
         port_index,
@@ -169,12 +173,13 @@ def _risk_entries(
 def _port_out(port_dataset: str, contracts: dict[str, Any], store) -> ProductPortOut:
     contract = contracts.get(port_dataset)
     compliance = store.get_compliance(port_dataset)
+    version = _field(contract, "version") if contract else None
     return ProductPortOut(
         dataset=port_dataset,
         kind=_field(contract, "kind") if contract else None,
         lifecycle=_field(contract, "lifecycle") if contract else None,
         compliance=compliance["compliance"] if compliance else None,
-        version=str(_field(contract, "version")) if contract else None,
+        version=str(version) if version is not None else None,
     )
 
 
@@ -251,7 +256,6 @@ def get_product(
         own_health=own_health(aggregate, contracts, store),
         ports=ports,
         interior=_interior_out(aggregate),
-        inbound_dependencies=risk_entries,
         inbound_sources=aggregate.inbound_sources,
         upstream_risk=risk_entries,
         findings=finding_entries,

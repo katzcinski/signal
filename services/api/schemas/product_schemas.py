@@ -58,7 +58,6 @@ class ProductDetailOut(BaseModel):
     own_health: str
     ports: list[ProductPortOut]
     interior: list[ProductInteriorOut]
-    inbound_dependencies: list[ProductInboundDependencyOut]
     inbound_sources: list[str]
     upstream_risk: list[ProductInboundDependencyOut]
     findings: list[ProductFindingOut]

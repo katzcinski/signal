@@ -76,6 +76,9 @@ observability signal, *not* a contract guarantee — green Load-Lag ≠ fresh bu
 The continuous comparison of *intent* (manifest ports + contract `kind`) against
 *reality* (the lineage walk). Its outputs are **findings** — deltas such as
 **Boundary-Leak** (reality has a cross-boundary consumer the intent never declared),
-**Contested-Interieur** (two products claim one interior object → Foundation-Product
-candidate), and **Dangling-Port** (a declared port with no object/contract behind it).
+**Contested** (two products claim the same object — `scope: port` when both declare
+it as an output port, `scope: interior` when the walk assigns it to both interiors →
+Foundation-Product candidate for the interior case), and **Dangling-Port** (a declared
+port with no governance contract or no lineage node behind it).
 _Avoid_: "validation" (that's the structural load gate, a different thing).
+_Avoid_: "Contested-Interieur" in code (use `scope: interior` on the unified Contested finding).

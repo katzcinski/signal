@@ -119,6 +119,58 @@ def test_product_detail_returns_full_shape(tmp_path, monkeypatch):
     assert data["subgraph"]["edges"]
 
 
+def test_products_prefer_certified_active_snapshot_over_working_draft(tmp_path, monkeypatch):
+    client = _client(tmp_path, monkeypatch)
+    contracts_dir = tmp_path / "contracts"
+    (contracts_dir / "DS_PRODUCT.yaml").write_text(
+        """
+product: DS_PRODUCT
+kind: provider_contract
+dataset: DS_PRODUCT
+version: 2.0.0
+lifecycle: draft
+guarantees: {}
+""".strip(),
+        encoding="utf-8",
+    )
+    (contracts_dir / "DS_PRODUCT.active.yml").write_text(
+        """
+product: DS_PRODUCT
+kind: provider_contract
+dataset: DS_PRODUCT
+version: 1.0.0
+lifecycle: active
+guarantees: {}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    listed = client.get("/api/products").json()[0]
+    detail = client.get("/api/products/sales_product").json()
+
+    assert listed["own_health"] == "pass"
+    assert listed["lifecycle"] == "active"
+    assert detail["ports"][0]["version"] == "1.0.0"
+
+
+def test_product_port_version_is_null_when_contract_has_no_version(tmp_path, monkeypatch):
+    client = _client(tmp_path, monkeypatch)
+    (tmp_path / "contracts" / "DS_PRODUCT.yaml").write_text(
+        """
+product: DS_PRODUCT
+kind: provider_contract
+dataset: DS_PRODUCT
+lifecycle: active
+guarantees: {}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    detail = client.get("/api/products/sales_product").json()
+
+    assert detail["ports"][0]["version"] is None
+
+
 def test_unknown_product_returns_404(tmp_path, monkeypatch):
     client = _client(tmp_path, monkeypatch)
 

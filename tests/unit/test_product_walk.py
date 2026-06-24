@@ -105,3 +105,14 @@ def test_external_sources_are_collected_without_becoming_interior():
 
     assert agg.inbound_sources == ["S4:ORDERS"]
     assert agg.interior == set()
+
+
+def test_missing_interior_node_still_appears_in_subgraph_nodes():
+    upstream, downstream = _maps([("MISSING_INTERIOR", "OUT")])
+    manifests = [_product("p", ["team-a"], ["OUT"])]
+
+    aggregates = walk_all(manifests, upstream, downstream, _nodes("OUT"), lambda _: False)
+    agg = _aggregate(aggregates, "p")
+
+    assert agg.interior == {"MISSING_INTERIOR"}
+    assert "MISSING_INTERIOR" in {node["id"] for node in agg.subgraph_nodes}

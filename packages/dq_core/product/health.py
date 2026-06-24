@@ -105,9 +105,13 @@ def upstream_risk(
             if not rec:
                 continue
             compliance = str(rec["compliance"])
+            version = rec.get("contract_version")
             if worst_compliance is None or _rank(compliance) > _rank(worst_compliance):
                 worst_compliance = compliance
-                worst_version = rec.get("contract_version")
+                if version is not None:
+                    worst_version = version
+            elif worst_version is None and version is not None:
+                worst_version = version
 
         entries.append(
             UpstreamRiskEntry(

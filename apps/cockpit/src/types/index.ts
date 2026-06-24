@@ -377,7 +377,6 @@ export interface ProductDetail {
   own_health: OverallStatus;
   ports: ProductPort[];
   interior: ProductInterior[];
-  inbound_dependencies: ProductUpstreamRiskEntry[];
   inbound_sources: string[];
   upstream_risk: ProductUpstreamRiskEntry[];
   findings: ProductFinding[];

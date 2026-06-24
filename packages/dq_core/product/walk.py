@@ -54,14 +54,31 @@ def _append_unique(items: list[str], value: str) -> None:
         items.append(value)
 
 
-def _append_edge(edges: list[dict[str, Any]], source: str, target: str) -> None:
+def _node_record(node_id: str, node_data: dict[str, dict]) -> dict[str, Any]:
+    return node_data.get(node_id) or {
+        "id": node_id,
+        "label": node_id,
+        "layer": "unknown",
+        "role": "unknown",
+    }
+
+
+def _append_edge(
+    edges: list[dict[str, Any]],
+    seen: set[tuple[str, str]],
+    source: str,
+    target: str,
+) -> None:
+    key = (source, target)
+    if key in seen:
+        return
+    seen.add(key)
     edge = {
         "id": f"{source}->{target}",
         "source": source,
         "target": target,
     }
-    if edge not in edges:
-        edges.append(edge)
+    edges.append(edge)
 
 
 def walk_all(
@@ -70,11 +87,12 @@ def walk_all(
     downstream: dict[str, list[str]],
     node_data: dict[str, dict],
     is_external: Callable[[str], bool],
+    port_index: dict[str, list[str]] | None = None,
 ) -> list[ProductAggregate]:
     del downstream  # retained in the signature for the caller's shared graph context
 
     manifests_by_name = {manifest.product: manifest for manifest in manifests}
-    ports = build_port_index(manifests)
+    ports = port_index if port_index is not None else build_port_index(manifests)
     clean_ports = clean_port_index(ports)
 
     aggregates: list[ProductAggregate] = []
@@ -84,6 +102,7 @@ def walk_all(
         resolved_inbound_deps: list[str] = []
         subgraph_nodes_by_id: dict[str, dict[str, Any]] = {}
         subgraph_edges: list[dict[str, Any]] = []
+        subgraph_edge_keys: set[tuple[str, str]] = set()
 
         visited: set[str] = set()
         queue = [port.dataset for port in manifest.output_ports]
@@ -107,18 +126,17 @@ def walk_all(
                             _append_unique(resolved_inbound_deps, up)
                     if up in node_data:
                         subgraph_nodes_by_id[up] = node_data[up]
-                    _append_edge(subgraph_edges, up, node_id)
+                    _append_edge(subgraph_edges, subgraph_edge_keys, up, node_id)
                     continue
 
                 if is_external(up):
                     _append_unique(inbound_sources, up)
-                    _append_edge(subgraph_edges, up, node_id)
+                    _append_edge(subgraph_edges, subgraph_edge_keys, up, node_id)
                     continue
 
                 interior.add(up)
-                if up in node_data:
-                    subgraph_nodes_by_id[up] = node_data[up]
-                _append_edge(subgraph_edges, up, node_id)
+                subgraph_nodes_by_id[up] = _node_record(up, node_data)
+                _append_edge(subgraph_edges, subgraph_edge_keys, up, node_id)
                 queue.append(up)
 
         aggregates.append(

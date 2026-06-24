@@ -111,5 +111,5 @@ def reconcile(
                         )
                     )
 
-    logger.info("Product reconcile v1 does not detect estate-leaving boundary leaks.")
+    logger.debug("Product reconcile v1 does not detect estate-leaving boundary leaks.")
     return findings

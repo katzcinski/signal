@@ -94,3 +94,18 @@ def test_upstream_risk_flags_version_drift_without_contaminating_own_health():
     assert entry.version_drift is True
     assert entry.upstream_breach is False
     assert own_health(_agg(consumer), {"OUT": _contract()}, store) == "pass"
+
+
+def test_upstream_risk_preserves_known_version_when_worst_port_has_none():
+    upstream = _product("up", ["U1", "U2"])
+    consumer = _product("consumer", ["OUT"], [InboundDep("up", "1.0.0")])
+    store = FakeStore({
+        "U1": {"compliance": "breached", "contract_version": "2.0.0"},
+        "U2": {"compliance": "critical", "contract_version": None},
+    })
+
+    [entry] = upstream_risk(_agg(consumer), [consumer, upstream], {}, store)
+
+    assert entry.compliance == "critical"
+    assert entry.current_version == "2.0.0"
+    assert entry.version_drift is True
