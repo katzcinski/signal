@@ -34,6 +34,58 @@ ohne SAP/BDC-spezifisches Wissen.
 
 ---
 
+## 1b — Wertbeitrag: Sales-/POC-Reibung sinkt
+
+Neben dem fachlichen Wert (Signal als *uniquely-qualified* DQ-Signal-Produzent für
+offene Kataloge) hat der Emitter einen **Go-to-Market-Wert**: er senkt die
+Reibung im Demo-/POC-Prozess deutlich. Ausdrücklich ein **Pre-Sales-/Evaluierungs**-
+Hebel, kein Laufzeit-Feature — ROI misst sich in kürzeren Sales-Zyklen und höherer
+Demo-Conversion, nicht in Kunden-Tagesnutzung.
+
+**Das heutige Problem — die Demo-Voraussetzungs-Wand.** Signals Kernstory ist
+„wir *führen* Checks gegen dein lebendes HANA/Datasphere aus und zeigen erzwungene
+Qualität + Lineage”. Um das *echt* zu zeigen, braucht es eine erreichbare
+HANA-Fläche und — für die Lineage-/Katalog-Story — idealerweise einen BDC-Tenant.
+Heißt: der Interessent sieht die überzeugende Version von Signal erst **nachdem**
+Tenant-Zugang gewährt, OAuth-Client-Credentials (`DATASPHERE_CLIENT_ID/SECRET`)
+eingerichtet und das Security-Review durch sind. Das sind Wochen Reibung **vor**
+dem „Aha”. Viele Deals versanden genau in dieser Lücke.
+
+**Was OpenLineage ändert.** Marquez (die OpenLineage-Referenz) läuft als einzelnes
+`docker compose up`. Mit dem Emitter zeigt Signals geseedete Demo (bzw.
+`MockConnection`) gegen ein lokales Marquez einen **eigenständigen Showcase**:
+echter Lineage-Graph + ausgeführte DQ-Assertions im Zeitverlauf, in einer echten
+Drittanbieter-Katalog-UI — **null** Kunden-Infrastruktur, **null** Tenant-Zugang,
+**null** Security-Review. Der Interessent sieht den Zielzustand am Tag null.
+
+**Vier konkrete Reibungs-Reduktionen:**
+
+1. **Zero-Infra-Demo.** Kein HANA, kein BDC-Tenant, kein OAuth — `compose up`, und
+   die Story steht auf dem Schirm. Verkürzt die erste belastbare Demo von Wochen
+   auf Minuten.
+2. **„Landet in *eurem* Katalog” wird *gezeigt*, nicht behauptet.** Statt „vertraut
+   uns, das integriert sich” erscheint Signals SAP-DQ-Ergebnis live in
+   DataHub/OpenMetadata — das mentale Modell des Interessenten rastet ein, weil er
+   sein *eigenes* Tool aufleuchten sieht.
+3. **Standard-Antwort auf den Lock-in-Einwand.** SAP-Buyer sind misstrauisch
+   gegenüber „noch einer proprietären Fläche auf BDC”. „Signal emittiert
+   OpenLineage — einen offenen Standard, den euer Katalog schon ingestiert” macht
+   aus einem Procurement-Einwand ein Häkchen und positioniert Signal als *guten
+   Plattform-Bürger* statt als Walled Garden.
+4. **Entkoppelt den POC von der BDC-Reife.** Ein Interessent mitten in der
+   BDC-Migration (2026 sehr häufig) kann einen belastbaren Signal-POC gegen das
+   fahren, was er *hat* (Nicht-SAP-Quellen → lokaler Katalog), **bevor** der
+   BDC-Tenant überhaupt provisioniert ist. Man verliert nicht mehr das Fenster, in
+   dem evaluiert, aber noch nicht BDC-live gearbeitet wird.
+
+**Ehrlicher Vorbehalt.** Dies ist ein Pre-Sales-/Evaluierungs-Beschleuniger, kein
+Produktiv-Laufzeit-Feature. Als solcher zu labeln, damit er nicht mit einer
+operativen Anforderung verwechselt wird. Der Showcase setzt P1 voraus
+(HTTP-Transport gegen Marquez); mit P0 allein (`console`/`file`-Transport) gibt es
+noch keine Katalog-UI zum Vorzeigen.
+
+---
+
 ## 2 — Architektur-Platzierung (G7 ist hier bindend)
 
 `dq_core` darf keine Tool-/Framework-Dependencies ziehen — `pyproject.toml`
