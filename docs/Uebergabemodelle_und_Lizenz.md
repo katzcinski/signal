@@ -60,6 +60,55 @@ betreuten Umgebung; bei **B/C** in der des Kunden.
 
 ---
 
+## 3a — Variante A1: Managed Service mit Betriebs-Split (+ Hybrid-Executor)
+
+Die in der Praxis häufigste Ausprägung von **Modell A**: *Ihr* betreibt Signal,
+*der Kunde* betreibt die Lösung **fachlich**. Der Trick ist, dass „betreiben” zwei
+Dinge meint — und die Trennung ist genau der `owned_by`-Split, den Signal ohnehin
+vorsieht.
+
+| „Betrieb” | Wer | Was konkret |
+|---|---|---|
+| **Technischer Betrieb** (Hosting/Ops) | **Beratung** | Deployment, Updates/Patches, `store_backend=hana`, OIDC, Secrets, Scheduler-Anbindung, Store |
+| **Fachlicher Betrieb** (Governance/Inhalt) | **Kunde** | Contracts authoren/pflegen (Workbench), Garantien als *seine* Zusage, auf Incidents/Ampel reagieren, Cockpit nutzen |
+
+Der Kunde loggt sich per **OIDC** in das gehostete Cockpit ein (Rollen
+`viewer\|steward\|owner\|admin`) und macht seine Governance-Arbeit; die Beratung
+hält die Plattform am Laufen. Multi-Tenant möglich: ein Hosting, je Kunde ein
+Tenant (OIDC + eigene `environments.yml`).
+
+**Einordnung:** Bleibt **Dienstleistung** — es wird *keine* betreibbare Instanz
+überlassen, sondern selbst betrieben und nur fachlicher Zugang gegeben. Die
+Softwareüberlassungs-Schwelle (§1) wird gar nicht erreicht.
+
+### Zwei Hürden, die A1 entscheiden (Prüfpunkte)
+
+1. **Konnektivität & Security zur produktiven HANA — meist *der* Knackpunkt.**
+   Läuft Signal bei der Beratung, muss der Executor von dort die **produktive
+   HANA/Datasphere des Kunden lesen**. Das Security-Team muss einem extern
+   gehosteten System Zugriff auf produktive ERP-Daten erlauben.
+   - *Argumente:* lesend, PII-Gate (G8), Rohzeilen verlassen HANA nie ohne Freigabe,
+     Ergebnisse getrennt.
+   - *Technisch:* VPN / Private Link / IP-Allowlisted-Tunnel.
+   - **Hybrid-Executor (Standard-Fallback):** der framework-freie Runner
+     (`cli/dq_check_runner.py`) läuft **im Netz des Kunden** nahe der HANA, nur die
+     **Ergebnisse** fließen in das gehostete Cockpit/Store. HANA-Zugriff bleibt in
+     der Kundenzone — oft genau das, was die Security durchwinkt.
+2. **Datenresidenz der Ergebnisse.** Hostet die Beratung, liegt der Result-Store
+   (DQ-Resultate, ggf. Diagnose-Zeilen) bei ihr. Die Data-Governance des Kunden
+   verlangt evtl. Verbleib *im* Kunden-Tenant → klären, ob Store bei der Beratung
+   zulässig ist, sonst Hybrid (Store/Runner in Kundenzone).
+
+> **Leitsatz A1:** Die Frage ist nie „können wir hosten”, sondern „lässt die
+> Security des Kunden den HANA-Zugriff von außen zu”. Fällt die Antwort „nein”, ist
+> der Hybrid-Executor die Standard-Antwort.
+
+**Kommerziell:** wiederkehrendes Managed-Service-Entgelt (Betrieb) + Rollout-/
+Härtungs-Engagements obendrauf — hebt die Marge des Tools, ohne ins Lizenzgeschäft
+zu kippen.
+
+---
+
 ## 4 — Checkliste: vor einer Selbstbetriebs-Übergabe (B/C) zu regeln
 
 1. **Lizenz / Nutzungsrechte.** Nutzungsrecht an Signals eigenem Code einräumen.
