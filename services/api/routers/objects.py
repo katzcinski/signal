@@ -278,11 +278,6 @@ def trigger_run(
     [SCHEMA-MAP] '{schema}' aus kompilierten Checks wird HIER gebunden (G2):
     aus dem Environment, sonst aus dem Inventar-Schema des Objekts.
     """
-    from dq_core.connect.db_connection import MockConnection, get_connection
-    from dq_core.contract.compiler import bind_schema
-    from dq_core.engine.check_engine import run_checks
-    from dq_core.engine.models import DatasetConfig, RunSummary
-
     if not principal.has_role("steward", "owner", "admin"):
         raise HTTPException(status_code=403, detail="Triggering runs requires steward role or higher.")
 
@@ -305,6 +300,47 @@ def trigger_run(
             detail="No environment given and ALLOW_MOCK_CONNECTION=false — runs require a configured environment.",
         )
 
+    return start_object_run(
+        object_id=object_id,
+        obj=obj,
+        env_cfg=env_cfg,
+        execution_mode=body.execution_mode,
+        triggered_by=principal.sub,
+        actor=principal.name,
+        store=store,
+        settings=settings,
+        inventory=inventory,
+    )
+
+
+def start_object_run(
+    *,
+    object_id: str,
+    obj: dict,
+    env_cfg: dict | None,
+    execution_mode: str,
+    triggered_by: str,
+    actor: str,
+    store,
+    settings,
+    inventory: list[dict],
+) -> dict:
+    """Launch a DQ run for an object in a background thread; return immediately.
+
+    Extracted from ``trigger_run`` so the HTTP route AND the scheduler
+    (``services/api/scheduler.py``) drive runs through one execution path —
+    identical compliance/incident/notification/baseline side-effects and the
+    same F2 double-run guard (``try_begin_run``). Callers own connection
+    resolution (``env_cfg``) and authorisation; this helper does neither.
+
+    Returns ``{"run_id", "status"}`` with status ``started`` or
+    ``already_running`` (F2 registry rejected the start).
+    """
+    from dq_core.connect.db_connection import MockConnection, get_connection
+    from dq_core.contract.compiler import bind_schema
+    from dq_core.engine.check_engine import run_checks
+    from dq_core.engine.models import DatasetConfig, RunSummary
+
     run_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     contract_version, contract_hash = _active_contract_for(object_id)
@@ -323,8 +359,8 @@ def trigger_run(
         passed=0,
         failed=0,
         warnings=0,
-        triggered_by=principal.sub,
-        actor=principal.name,
+        triggered_by=triggered_by,
+        actor=actor,
         run_state="running",
         contract_version=contract_version,
         contract_hash=contract_hash,
@@ -364,13 +400,13 @@ def trigger_run(
                 conn,
                 results_db=None,
                 on_progress=callback,
-                execution_mode=body.execution_mode,
-                triggered_by=principal.sub,
+                execution_mode=execution_mode,
+                triggered_by=triggered_by,
                 gating=True,  # G6: Frische-Gate produziert skipped_stale
             )
             summary.run_id = run_id
             summary.run_state = "finished"
-            summary.actor = principal.name
+            summary.actor = actor
             summary.contract_version = contract_version
             summary.contract_hash = contract_hash
             store.save_run(summary)

@@ -66,6 +66,37 @@ export interface EnvironmentsResponse {
   environments: Environment[];
 }
 
+// ---- Schedules (Option E, ADR-0005) ----
+// A per-object scheduling toggle: manual (no row), internal (Signal's poller
+// drives the cadence) or external (a Task Chain / cron → CLI drives it; the
+// poller never claims it).
+export type ScheduleMode = 'internal' | 'external';
+
+export interface Schedule {
+  schedule_id: string;
+  object_id: string;
+  mode: ScheduleMode;
+  environment: string;
+  execution_mode: string;
+  interval_seconds: number;
+  enabled: boolean;
+  next_due_at: string;
+  last_run_at?: string | null;
+  last_run_id?: string | null;
+  last_status?: string | null;
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
+export interface ScheduleUpsert {
+  mode: ScheduleMode;
+  interval_seconds: number;
+  environment?: string;
+  execution_mode?: string;
+  enabled?: boolean;
+}
+
 // ---- Admin connection settings (GET /api/admin/environments) ----
 // The password value is never returned; `password_ref` is the secret reference
 // (e.g. "env:HANA_PW_PROD") and `password_set` mirrors whether it resolves.

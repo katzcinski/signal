@@ -306,6 +306,151 @@ class ResultStore:
             return dict(row) if row else None
 
     # ------------------------------------------------------------------
+    # Schedules (Option E) — durable cadence + due-run claim queue
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _advance_due(observed_iso: str, interval_seconds: int, now_iso: str) -> str:
+        """Next due time after a claim.
+
+        Cadence is anchored on the previous due time (observed + interval) so a
+        steady tick does not drift. If the scheduler was down long enough that
+        the next slot is still in the past, skip ahead to now + interval — one
+        catch-up run, never a backfill burst.
+        """
+        from datetime import timedelta
+        observed = datetime.fromisoformat(observed_iso)
+        now = datetime.fromisoformat(now_iso)
+        candidate = observed + timedelta(seconds=interval_seconds)
+        if candidate <= now:
+            candidate = now + timedelta(seconds=interval_seconds)
+        return candidate.isoformat()
+
+    def create_schedule(
+        self,
+        *,
+        schedule_id: str,
+        object_id: str,
+        interval_seconds: int = 0,
+        mode: str = "internal",
+        environment: str = "",
+        execution_mode: str = "auto",
+        enabled: bool = True,
+        next_due_at: str | None = None,
+        created_by: str = "",
+    ) -> dict[str, Any]:
+        now = datetime.now(timezone.utc).isoformat()
+        # A new internal schedule is due immediately by default so the first run
+        # does not wait a full interval; callers may pin a later first slot.
+        # External schedules are never claimed, so the due time is inert.
+        due = next_due_at or now
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO dq_schedules
+                   (schedule_id, object_id, mode, environment, execution_mode,
+                    interval_seconds, enabled, next_due_at, created_by,
+                    created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    schedule_id, object_id, mode, environment, execution_mode,
+                    int(interval_seconds), 1 if enabled else 0, due,
+                    created_by, now, now,
+                ),
+            )
+        return self.get_schedule(schedule_id)  # type: ignore[return-value]
+
+    def get_schedule(self, schedule_id: str) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_schedules WHERE schedule_id=?", (schedule_id,)
+            ).fetchone()
+            return dict(row) if row else None
+
+    def list_schedules(self, object_id: str | None = None) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            if object_id:
+                rows = conn.execute(
+                    "SELECT * FROM dq_schedules WHERE object_id=? ORDER BY object_id, schedule_id",
+                    (object_id,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM dq_schedules ORDER BY object_id, schedule_id"
+                ).fetchall()
+            return [dict(r) for r in rows]
+
+    def update_schedule(self, schedule_id: str, **fields: Any) -> dict[str, Any] | None:
+        """Patch mutable columns. Unknown keys are ignored (fail-closed shape)."""
+        allowed = {"mode", "environment", "execution_mode", "interval_seconds", "enabled", "next_due_at"}
+        updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
+        if not updates:
+            return self.get_schedule(schedule_id)
+        if "enabled" in updates:
+            updates["enabled"] = 1 if updates["enabled"] else 0
+        if "interval_seconds" in updates:
+            updates["interval_seconds"] = int(updates["interval_seconds"])
+        updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+        cols = ", ".join(f"{k}=?" for k in updates)
+        with self._conn() as conn:
+            conn.execute(
+                f"UPDATE dq_schedules SET {cols} WHERE schedule_id=?",
+                (*updates.values(), schedule_id),
+            )
+        return self.get_schedule(schedule_id)
+
+    def delete_schedule(self, schedule_id: str) -> bool:
+        with self._conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM dq_schedules WHERE schedule_id=?", (schedule_id,)
+            )
+            return cur.rowcount > 0
+
+    def claim_due_schedules(self, now_iso: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Atomically claim enabled schedules whose next_due_at has passed.
+
+        For each due schedule we advance next_due_at under an optimistic guard
+        (``next_due_at = <observed>``). Whichever transaction commits first wins
+        the slot; a competing worker's guard no longer matches and it skips the
+        row. This is best-effort dedup only — the real duplicate-run guard is
+        try_begin_run's partial unique index, so a lost race never produces a
+        double run, just a wasted wake-up. Returns the claimed rows (with the
+        advanced next_due_at) for the caller to launch.
+        """
+        claimed: list[dict[str, Any]] = []
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM dq_schedules "
+                "WHERE mode='internal' AND enabled=1 AND next_due_at<=? "
+                "ORDER BY next_due_at LIMIT ?",
+                (now_iso, int(limit)),
+            ).fetchall()
+            for row in rows:
+                sched = dict(row)
+                observed = sched["next_due_at"]
+                new_due = self._advance_due(observed, int(sched["interval_seconds"]), now_iso)
+                cur = conn.execute(
+                    "UPDATE dq_schedules SET next_due_at=?, updated_at=? "
+                    "WHERE schedule_id=? AND next_due_at=? AND enabled=1",
+                    (new_due, now_iso, sched["schedule_id"], observed),
+                )
+                if cur.rowcount == 1:
+                    sched["next_due_at"] = new_due
+                    claimed.append(sched)
+        return claimed
+
+    def record_schedule_run(
+        self, schedule_id: str, run_id: str, status: str
+    ) -> None:
+        """Stamp the outcome of a triggered run onto its schedule (audit/UI)."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE dq_schedules SET last_run_at=?, last_run_id=?, last_status=?, "
+                "updated_at=? WHERE schedule_id=?",
+                (now, run_id, status, now, schedule_id),
+            )
+
+    # ------------------------------------------------------------------
     # Incidents (R4-1) — persistente Breach-Episoden mit Timeline
     # ------------------------------------------------------------------
 

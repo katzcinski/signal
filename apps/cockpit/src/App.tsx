@@ -16,6 +16,7 @@ const Incidents         = lazy(() => import('./pages/Incidents'));
 const Proposals         = lazy(() => import('./pages/Proposals'));
 const RunDetail         = lazy(() => import('./pages/RunDetail'));
 const RunCompare        = lazy(() => import('./pages/RunCompare'));
+const Schedules         = lazy(() => import('./pages/Schedules'));
 const Governance        = lazy(() => import('./pages/Governance'));
 const CheckLibrary      = lazy(() => import('./pages/CheckLibrary'));
 const Notifications     = lazy(() => import('./pages/Notifications'));
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="/lineage"     element={<LineageMap />} />
               {/* Route alias (WS4): /coverage renders the same map */}
               <Route path="/coverage"    element={<LineageMap />} />
+              <Route path="/schedules"   element={<Schedules />} />
               <Route path="/incidents"   element={<Incidents />} />
               <Route path="/proposals"   element={<Proposals />} />
               <Route path="/runs/compare" element={<RunCompare />} />

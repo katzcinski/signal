@@ -240,6 +240,8 @@ Settings über `pydantic-settings` (`services/api/settings.py`). Auszug:
 | `DIAGNOSTICS_TTL_DAYS` | `7` | Retention der Diagnostics |
 | `EXTRACT_STALE_DAYS` | `7` | Staleness-Schwelle für Extrakt-Alter |
 | `ALLOW_MOCK_CONNECTION` | `true` | Läufe ohne Environment via MockConnection |
+| `SCHEDULER_ENABLED` | `false` | Interner Schedule-Poller (ADR-0005, Option E) — opt-in |
+| `SCHEDULER_TICK_SECONDS` | `30` | Poll-Kadenz des Pollers (nicht das Lauf-Intervall) |
 | `CORS_ORIGINS` | localhost:5173/3000 | erlaubte Frontends |
 | `WEBHOOK_URL` / `WEBHOOK_ALLOWLIST` | — | Breach-Webhook (SSRF-Allowlist) |
 | `DATASPHERE_*` | — | Datasphere-API/CLI-Zugang (Lastmetadaten) |
@@ -314,9 +316,11 @@ UI-Regeln: Status-Ampel (grün/gelb/rot/grau) ist **exklusiv**; Familienfarben n
 | Auth | NoAuth (Admin-Principal) | OIDC |
 | Bind | `127.0.0.1` | `0.0.0.0` (nur mit Auth) |
 | Worker | 1 (uvicorn --reload) | ≥2 (Run-Registry im Store schützt vor Doppellauf) |
-| Scheduling | manuell/Cron | Cron/Task-Chain → CLI |
+| Scheduling | manuell/Cron · optional interner Poller | Cron/Task-Chain → CLI · optional interner Poller |
 
-Beide Profile laufen aus **demselben Code** über die Auth-/Store-Abstraktion — kein Code-Zweig. Die API triggert Läufe nur ad hoc; regelmäßige Läufe plant ein externer Scheduler über die CLI. Multi-Worker-Korrektheit (gemeinsamer Run-Status) ist mit ≥2 uvicorn-Workern verifiziert (F2).
+Beide Profile laufen aus **demselben Code** über die Auth-/Store-Abstraktion — kein Code-Zweig. Die API triggert Läufe ad hoc; regelmäßige Läufe plant entweder ein **externer** Scheduler über die CLI **oder** — opt-in via `SCHEDULER_ENABLED` — Signals **interner Poller** (ADR-0005, Option E). Multi-Worker-Korrektheit (gemeinsamer Run-Status) ist mit ≥2 uvicorn-Workern verifiziert (F2); der Poller stützt sich auf denselben Guard, sodass je Worker ein eigener Poller laufen darf, ohne Doppelläufe zu erzeugen.
+
+**Scheduling als pro-Objekt-Schalter (ADR-0005):** Jedes Objekt ist `manual` (kein Eintrag), `internal` (Poller fährt die Kadenz `interval_seconds`) oder `external` (Task-Chain/Cron→CLI fährt sie; der Poller rührt es nie an). Verwaltung über `PUT/GET/DELETE /api/objects/{id}/schedule` und die Ops-Sicht `GET /api/schedules` (steward+). Konfiguration liegt in der Store-Tabelle `dq_schedules`, **nicht** im Contract (operativ, nicht semantisch — G1). Tick-Kadenz des Pollers: `SCHEDULER_TICK_SECONDS` (Default 30 s).
 
 ---
 
