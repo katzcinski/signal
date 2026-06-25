@@ -97,6 +97,7 @@ describe('navForRole', () => {
     expect(entries).toEqual([
       '/',
       '/objects',
+      '/products',
       '/lineage',
       '/incidents',
       '/proposals',
@@ -112,6 +113,9 @@ describe('navForRole', () => {
   it('keeps role-specific entries around the shared blocks', () => {
     expect(navForRole('steward')[0]).toMatchObject({ to: '/my' });
     expect(navForRole('owner')[0]).toMatchObject({ to: '/my' });
-    expect(navForRole('admin').at(-1)).toMatchObject({ to: '/inventory-admin' });
+    // Admin schließt mit Inventory-Admin + Settings am Fuß der Leiste ab.
+    const adminNav = navForRole('admin');
+    expect(adminNav.at(-2)).toMatchObject({ to: '/inventory-admin' });
+    expect(adminNav.at(-1)).toMatchObject({ to: '/settings' });
   });
 });
