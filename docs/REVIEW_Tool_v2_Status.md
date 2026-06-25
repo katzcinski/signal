@@ -54,14 +54,25 @@ closed during the v2 pass:
 
 ## Open / remaining (prioritized)
 
+> **Update 2026-06-22:** items 2–4 below have since shipped (see strike-through).
+> Only column-level coverage remains open. Notification-on-transition is wired
+> (`notify_incident_transition`, `incidents.py:156`); `/api/incidents` and
+> `/api/runs` paginate (`limit/offset`, max 500); self-observability lives in
+> `services/api/middleware.py` (request-ID injection, access log, in-memory
+> metrics) + `GET /api/metrics/health`.
+
 1. **Column-level coverage** — coverage is object-level only; GX-style "% of
-   columns with guarantees" is still missing (v1 §7.2.4). *Medium.*
-2. **Richer notification triggers** — fires on breach/incident-open only; manual
-   incident transitions (assign/resolve) do not notify. *Small.*
-3. **Scale hardening** — pagination on `/api/incidents` and `/api/runs` list
-   endpoints (the virtualized FE table is ready; the APIs are not). *Small–medium.*
-4. **Tool self-observability** — structured logging + request IDs + a
-   Prometheus-style metrics endpoint. *Medium.*
+   columns with guarantees" is still missing (v1 §7.2.4). *Medium.* Tracked as
+   **UX-N7** in [`OPEN_TASKS_UIUX.md`](OPEN_TASKS_UIUX.md), blocked by O3
+   (`columnEdges` parser).
+2. ~~**Richer notification triggers**~~ — **Done.** Manual incident transitions
+   (assign/resolve) now notify via `notify_incident_transition`; routing is
+   kind-aware (`match_kind`, Batch 4).
+3. ~~**Scale hardening**~~ — **Done.** Pagination on `/api/incidents` and
+   `/api/runs`.
+4. ~~**Tool self-observability**~~ — **Done.** Request IDs + access logging +
+   in-memory metrics middleware + `/api/metrics/health`. (A Prometheus *exporter*
+   is still a nice-to-have; the in-memory counters are not scraped externally.)
 
 ### Verification-only (not code gaps, unproven in the sandbox)
 
