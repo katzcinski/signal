@@ -11,7 +11,7 @@ const ObjectDetail      = lazy(() => import('./pages/ObjectDetail'));
 const Products          = lazy(() => import('./pages/Products'));
 const ProductDetail     = lazy(() => import('./pages/ProductDetail'));
 const ContractWorkbench = lazy(() => import('./pages/ContractWorkbench'));
-const LineageMap        = lazy(() => import('./pages/LineageMap'));
+const Lineage           = lazy(() => import('@/components/lineage/schematic/SchematicLineage'));
 const Incidents         = lazy(() => import('./pages/Incidents'));
 const Proposals         = lazy(() => import('./pages/Proposals'));
 const RunDetail         = lazy(() => import('./pages/RunDetail'));
@@ -46,9 +46,9 @@ export default function App() {
               <Route path="/products"    element={<Products />} />
               <Route path="/products/:name" element={<ProductDetail />} />
               <Route path="/contracts"   element={<ContractWorkbench />} />
-              <Route path="/lineage"     element={<LineageMap />} />
-              {/* Route alias (WS4): /coverage renders the same map */}
-              <Route path="/coverage"    element={<LineageMap />} />
+              <Route path="/lineage"     element={<Lineage />} />
+              {/* Route alias (WS4): /coverage rendert dieselbe Lineage-Ansicht */}
+              <Route path="/coverage"    element={<Lineage />} />
               <Route path="/schedules"   element={<Schedules />} />
               <Route path="/incidents"   element={<Incidents />} />
               <Route path="/proposals"   element={<Proposals />} />
