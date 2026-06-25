@@ -4,7 +4,9 @@
 **Status:** *Beschlossen* (accepted) — bewertet, wie Signals Konzept mit den kommenden Custom Data Products aus dem **Data Product Studio** (BDC) zusammenspielt; betrachtet beide Auslieferungspfade (HDLF-Spaces und SQL-Output-Port). **V1 + V7 sind für die Topologie „HDLF-Objekt → in dedizierten Monitoring-Space geteilt → View darüber" gelöst** (Grilling 2026-06-22); Umsetzung in [`PLAN_ADR-0003-0004_Implementation.md`](PLAN_ADR-0003-0004_Implementation.md).
 **Zweck:** Festhalten, **wo** Signals konzeptionelle Ebene (boundary × Lite/Full) und Signals **technische** Ebene (GX-on-HANA-Executor) bei BDC-Custom-Datenprodukten greifen — und wo nicht — abhängig davon, ob ein Datenprodukt auf einem **HDLF-Space** (Object Store, Delta/Parquet) oder über einen **SQL-Output-Port** ausgeliefert wird.
 
-> Verwandte Dokumente: `ADR-0001_Quality-Gates_vs_Contracts.md` (boundary-Diskriminator, Komposition §10, DSP-Taxonomie-Tiering §11) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam, Port-Topologie, offene Punkte R1/R2/R7) · `Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md` (fünf Schichten, Output-Port = Delta Share **oder** exponierte View, §1.5) · `Betriebsmodi_Lite_und_Full.md` (Prozess-Zeremonie) · `Tooldokumentation.md` (Architektur, Executor).
+> Verwandte Dokumente: `ADR-0001_Quality-Gates_vs_Contracts.md` (boundary-Diskriminator, Komposition §10, DSP-Taxonomie-Tiering §11) · `ADR-0004_DataProduct-als-Komposition.md` (Manifest + aus Lineage abgeleitetes Interieur, `boundary` = Intent ⋈ Reality — **§12 dieser ADR bewertet ADR-0003 unter dieser Linse neu**) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam, Port-Topologie, offene Punkte R1/R2/R7) · `Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md` (fünf Schichten, Output-Port = Delta Share **oder** exponierte View, §1.5) · `Betriebsmodi_Lite_und_Full.md` (Prozess-Zeremonie) · `Tooldokumentation.md` (Architektur, Executor).
+>
+> **Nachtrag (Neubewertung):** §0–§11 behandeln ein Datenprodukt als *eine* SQL-Oberfläche (den Output-Port). Ein Custom Data Product aus dem Studio ist aber ein **Fluss aus mehreren Objekten** (Input → Transformation → Output). **§12** sagt konkret, wie ADR-0004 das umsetzt: Das Manifest deklariert nur Anfang und Ende des Flusses, die Transformationen leitet die Lineage ab — und Signal prüft nur die Stellen, die SQL sprechen (*derive überall, enforce nur an SQL*).
 
 ---
 
@@ -226,3 +228,91 @@ Kernbotschaft der Tabelle: **Der teuerste Posten ist Wissen (G-5/G-6), nicht Cod
 5. **Kein zweiter Executor.** Object-Store-/Spark-Enforcement wird abgelehnt; single executor, G7, `[ENGINE-FROZEN]` bleiben.
 6. **Der teure Posten ist Wissen, nicht Code.** Die Code-Anpassung ist klein und additiv; die Verifikationspunkte V1–V6 sind der eigentliche kritische Pfad.
 7. **„SQL-Output-Port = überwachbar."** Das ehrliche Kunden-Framing: Wo Governance zählt (Tier 2), gib dem Produkt einen SQL-Port.
+
+---
+
+## 12 — Neubewertung im Licht von ADR-0004 (Datenprodukt als Komposition)
+
+> Nachtrag. §0–§11 behandeln ein Datenprodukt als *eine* SQL-Oberfläche (den Output-Port). ADR-0004 sagt: ein Datenprodukt ist ein **Fluss aus mehreren Objekten** — Input → Transformation(en) → Output. Diese Sektion sagt konkret, wie ADR-0004 für die Custom Data Products aus dem Data Product Studio umgesetzt wird, und was das für ADR-0003 ändert.
+
+### 12.1 — Ein Custom Data Product ist ein Fluss, kein einzelnes Objekt
+
+Ein im Data Product Studio gebautes Produkt hat mehrere Objekte im Fluss:
+
+```
+ Input                Transformation(en)            Output
+ (inbound)            (Interieur)                   (output port)
+ SAP-Standard-     →  join / clean / aggregate   →  SALES.ORDERS_CURATED
+ produkt oder         Zwischen-Files / -Views        (SQL-on-Files oder
+ HDLF-Roh-File                                       HANA-View)
+```
+
+ADR-0004 bildet genau diesen Fluss ab — aber **ohne alle Objekte aufzuzählen**.
+
+### 12.2 — So wird ADR-0004 umgesetzt: nur Anfang und Ende deklarieren
+
+Man schreibt **ein dünnes Manifest** (`products/<name>.yaml`) und listet darin **nur die Ränder des Flusses** — den Output und (falls eine fremde Partei die Quelle besitzt) den Input:
+
+```yaml
+product: sales_orders_curated
+owners: [team-fin]
+output_ports:                 # das Ende des Flusses: der SQL-Port
+  - dataset: ORDERS_CURATED
+inbound:                      # der Anfang: nur wenn ein fremdes Team die Quelle besitzt
+  - depends_on: { product: kunde, version: "1.2.0" }
+# die Transformationen dazwischen werden NICHT gelistet
+```
+
+Die **Transformationen dazwischen** schreibt niemand auf. Signal **leitet sie aus der Lineage ab**: vom Output-Port rückwärts laufen, bis ein Ast bei einem fremden Produkt-Port oder einer externen Quelle endet. Alles dazwischen = Interieur.
+
+Daraus fällt automatisch:
+
+- **`boundary`** je Objekt — Output = `outbound`, Input vom fremden Team = `inbound`, Rest = `internal`. Abgeleitet, nicht handgesetzt.
+- **Befunde** (ADR-0004 §6) — z. B.: ein Transform-Zwischenobjekt wird heimlich von einem anderen Team konsumiert → undeklarierter Output-Port.
+
+### 12.3 — Was Signal davon prüfen kann: nur die SQL-Stellen im Fluss
+
+Hier greift ADR-0003. Merksatz: **abgeleitet wird der ganze Fluss, geprüft nur, wo SQL erreichbar ist.**
+
+| Stelle im Fluss | abgeleitet (sichtbar)? | geprüft (Checks laufen)? |
+|---|---|---|
+| Output-Port mit SQL (SQL-on-Files oder HANA-View) | ja | **ja** — 20 Checks unverändert |
+| Transform-Zwischenobjekt als HANA-View | ja | ja |
+| Transform-Zwischenobjekt als reines HDLF-File | ja | **nein** — sichtbar, aber kein SQL |
+| Output nur als Delta Share (keine SQL-Sicht) | ja (stärkstes Discovery-Signal) | **nein** — out-of-scope für den Executor |
+
+Ein File-Zwischenschritt oder ein Delta-Share-Output ist also **nicht „unsichtbar"** — er ist deklariert/entdeckt und wird mit „monitored = no" geführt, aber Signal fährt keinen Check darauf. Kein zweiter (Spark-)Executor (§7.5).
+
+### 12.4 — Konkret für die zwei Fälle dieser ADR
+
+- **Fall 1 (HDLF-Space):** Input und Transform-Schritte sind oft Files. Das Manifest deklariert den Output-Port; Signal prüft ihn, sobald er eine SQL-on-Files-Sicht hat; die File-Zwischenschritte sind sichtbar, aber nicht prüfbar. Greifen zwei Produkte auf dasselbe Roh-File zu, meldet ADR-0004 es als Foundation-Product-Kandidat (§6, Contested-Interieur).
+- **Fall 2 (SQL-Output-Port):** Happy Path. Der `output_ports`-Eintrag ist genau die SQL-Stelle, an der Signal prüft. Konsumiert das Produkt ein SAP-Standard-Produkt als Input, trägt das Manifest ein `inbound: depends_on` — und die Ampel trennt **eigenes Versprechen** (eigene Checks am Port) vom **Upstream-Risiko** (gepinntes SAP-Produkt bricht → nicht automatisch rot, ADR-0004 §7).
+
+### 12.5 — Voraussetzung: wie die Objekte überhaupt in den Graph kommen (CLI-Permission-Gap)
+
+Damit der Rückwärts-Lauf etwas zu laufen hat, müssen die HDLF-/Studio-Objekte **im Lineage-Graph stehen**. Es gibt zwei Extraktionspfade (`services/api/extraction.py`); `build_lineage_graph(objects)` baut die Lineage aus den **extrahierten** Objekten, nicht aus einem direkten HANA-SYS-Read:
+
+| Pfad | liefert | CLI nötig? |
+|---|---|---|
+| **Datasphere Catalog REST API** (`datasphere_catalog.py`, OAuth2-Tech-User) | Objekt-**Listing + Metadaten** (`technicalName`, `objectType`, `status`) | **nein** — headless, **Default-Pfad** |
+| **Datasphere CLI** | zusätzlich volles **CSN** (Voraussetzung für **Spalten**-Lineage) | ja — nur als *Aufwertung* bevorzugt |
+
+Der REST-Pfad nimmt der CLI also die **Knoten-Beschaffung** ab — aber er **holt nicht „alles".** Vier code-belegte Grenzen, die genau im HDLF-Fall beißen:
+
+| Grenze | Beleg | Folge |
+|---|---|---|
+| **Ein Space pro Lauf** | `run_extraction` liest `datasphere_space_id` (Singular); `_gather_via_catalog` ruft `list_objects(space)` für genau diesen Space — iteriert **nicht** über `list_spaces()` | Cross-Space-Produkte (HDLF-Interieur + HANA-Port) brauchen mehrere Läufe; nicht automatisch das ganze Estate |
+| **Typ-Filter auf 5 Enums** | `OBJECT_TYPES = views, local-tables, remote-tables, analytic-models, transformation-flows`; `_normalize_object_type` mappt Unbekanntes **best-effort auf `views`** | **keine** Kategorie für „HDLF-File" oder „SQL-on-Files-Virtual-Table" — solche Objekte fehlen oder werden fehlverbucht; explizit out-of-scope: replication-flows, task-chains, data-access-controls |
+| **Sichtbarkeit = Tech-User-Rechte** | `list_spaces`/`list_objects` liefern nur, was der OAuth-Tech-User sehen darf | Permission-Gap ist nicht weg, sondern **verlagert** (CLI → REST-Tech-User); ob er die HDLF-Spaces grantet, ist offen |
+| **Definition oft leer** | `read_object_definition` → häufig `None`/`{}` | kein CSN → keine **Spalten**-Lineage (der Owner-Walk arbeitet objekt-granular und kommt damit aus) |
+
+> **Ehrlicher Stand:** Der REST-Katalog beschafft *Listing + Metadaten der Repository-Objekte **eines** konfigurierten Space, gefiltert auf 5 bekannte Typen, im Rahmen der Tech-User-Rechte* — das ist deutlich weniger als „alles". Für HDLF bleibt der **eigentliche Verifikationspunkt (V5):** Erscheint ein HDLF-Roh-File / eine SQL-on-Files-Virtual-Table überhaupt als Catalog-Repository-Objekt — und falls ja, braucht der Typ-Filter eine neue Kategorie? Der CLI-Permission-Gap blockiert die Knoten zwar nicht prinzipiell (REST umgeht ihn), aber „REST holt die HDLF-Objekte" ist **nicht verifiziert**, nicht gelöst.
+
+Zusätzlich braucht der Walk eine **Owner-Attribution** als Stopp-Bedingung (V8) — die Owner-Hülle schneidet in BDC quer durch HDLF- und HANA-Spaces (ADR-0004 §2, „Hülle ≠ Space"). Code-seitig ist die Umsetzung klein und additiv (Read-Side, Engine `[ENGINE-FROZEN]`); der teuerste Posten bleibt die **HDLF-Discovery-Verifikation**, nicht Code.
+
+### 12.6 — Faustregeln (Ergänzung zu §11)
+
+8. **Derive überall, enforce nur an SQL.** Der ganze Fluss wird abgeleitet; geprüft wird nur, wo ein Objekt SQL spricht — am Output-Port und an jedem Zwischenschritt.
+9. **Out-of-scope für den Executor ≠ out-of-scope für Governance.** Ein Delta-Share-Output ist nicht prüfbar, aber das stärkste Discovery-Signal — deklariert, entdeckt, „monitored = no", nicht weiß.
+10. **Das Manifest deklariert nur Anfang und Ende.** Output-Port(s) und (bei fremder Quelle) Input; die Transformationen leitet die Lineage ab.
+11. **Der REST-Katalog umgeht die CLI, holt aber nicht „alles".** Headless-Listing nur pro *einem* Space, auf 5 Objekt-Typen gefiltert, im Rahmen der Tech-User-Rechte; keine Kategorie für HDLF-Files/Virtual-Tables; CSN oft fehlend. Ob HDLF-Objekte überhaupt als Catalog-Objekt erscheinen, ist **unverifiziert (V5)** — der teuerste Posten bleibt Wissen, nicht Code.
