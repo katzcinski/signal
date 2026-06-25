@@ -86,6 +86,10 @@ tests/                 # pytest (unit + api)
 | [`docs/ADR-0004_DataProduct-als-Komposition.md`](docs/ADR-0004_DataProduct-als-Komposition.md) | ADR: Datenprodukt als Komposition über Lineage — Manifest + abgeleitetes Interieur (Vorschlag) |
 | [`docs/Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md`](docs/Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md) | Briefing/Übergabe für einen Vortrag zu Datenprodukten & Data Contracts in DSP/BDC |
 | [`docs/Konzept_MultiPlattform_Executor_BDC.md`](docs/Konzept_MultiPlattform_Executor_BDC.md) | Konzept: Multi-Plattform-Executor (HANA · HDLF · SAP/natives Databricks) via Dialect/Connector-Abstraktion |
+| [`docs/Scope_OpenLineage_Emitter.md`](docs/Scope_OpenLineage_Emitter.md) | Scope: OpenLineage-Emitter (Lineage + DQ-Run-Ergebnisse als Standard-Events) + Sales-/POC-Wert |
+| [`docs/Zusatz_EntropyData_Integration_und_Defensibility.md`](docs/Zusatz_EntropyData_Integration_und_Defensibility.md) | Entropy Data: Integration/Abgrenzung als Marktplatz + Defensibility (HANA-Backend-Bedrohung) |
+| [`docs/Uebergabemodelle_und_Lizenz.md`](docs/Uebergabemodelle_und_Lizenz.md) | Übergabemodelle Dienstleistung vs. Softwareüberlassung (inkl. Managed-Service-Variante A1) |
+| [`docs/interactive/delivery-offering.html`](docs/interactive/delivery-offering.html) | **Interaktiv**: Delivery-Offering „Data Contract & DQ Foundation für BDC" — Phasenplan, Rollen, Betriebsmodelle, Preis |
 | [`docs/HANDOVER.md`](docs/HANDOVER.md) | Technischer Implementierungsplan (Workstreams, Gates) |
 
 ---
