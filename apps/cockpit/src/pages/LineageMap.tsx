@@ -662,6 +662,10 @@ function ObjectLineageGraph({
           : { name: 'dagre', rankDir: 'LR', nodeSep: 60, rankSep: 120, padding: 40 } as unknown as { name: string },
         userZoomingEnabled: true,
         userPanningEnabled: true,
+        // Cap the zoom so a sparse graph (few disconnected nodes) does not
+        // auto-fit to an absurd magnification with oversized labels (UX-L13).
+        minZoom: 0.2,
+        maxZoom: 1.6,
       });
     } catch (err) {
       setGraphError(String(err));
@@ -683,9 +687,16 @@ function ObjectLineageGraph({
       }
     };
 
+    // Hide object labels only once the camera crosses the legibility threshold,
+    // and never touch the swimlane titles. Restyling every node on every zoom
+    // frame (the old behaviour) thrashed the renderer and blanked lane labels
+    // mid-pinch — the source of the "clunky" feel (UX-L13).
+    let labelsHidden = false;
     cy.on('zoom', () => {
-      const z = cy.zoom();
-      cy.nodes().style('label', z < 0.5 ? '' : 'data(label)');
+      const hide = cy.zoom() < 0.5;
+      if (hide === labelsHidden) return;
+      labelsHidden = hide;
+      cy.nodes('[!isLane]').style('label', hide ? '' : 'data(label)');
     });
     cy.on('layoutstop', savePositions);
     cy.on('dragfree', 'node', savePositions);
@@ -1112,7 +1123,9 @@ function ColumnLineageGraph({
   useEffect(() => {
     if (!data || !('columns' in data)) return;
     setIndexes({ [data.object]: data.columns });
-    setExpanded(new Set());
+    // Expand the focused object up front so the panel opens on its columns
+    // instead of an empty box the user has to click to fill (UX-L13).
+    setExpanded(new Set([data.object]));
     setTraceColumnIds(new Set());
     setTraceEdgeIds(new Set());
     setTraceErrors([]);
@@ -1201,6 +1214,10 @@ function ColumnLineageGraph({
             'text-margin-y': -2,
             'padding': 12,
             'compound-sizing-wrt-labels': 'include',
+            // Clamp long object titles so a collapsed box does not spill its
+            // name across the canvas (UX-L13).
+            'text-max-width': '180px',
+            'text-wrap': 'ellipsis',
           } as Record<string, unknown>,
         },
         {
@@ -1276,6 +1293,10 @@ function ColumnLineageGraph({
       userZoomingEnabled: true,
       userPanningEnabled: true,
       wheelSensitivity: 0.2,
+      // Keep a lone object/column from auto-fitting to a giant magnification
+      // with overflowing labels (UX-L13).
+      minZoom: 0.2,
+      maxZoom: 1.6,
     });
 
     cy.on('tap', 'node', evt => {

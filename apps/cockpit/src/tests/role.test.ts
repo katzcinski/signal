@@ -97,6 +97,7 @@ describe('navForRole', () => {
     expect(entries).toEqual([
       '/',
       '/objects',
+      '/products',
       '/lineage',
       '/incidents',
       '/proposals',
@@ -112,6 +113,10 @@ describe('navForRole', () => {
   it('keeps role-specific entries around the shared blocks', () => {
     expect(navForRole('steward')[0]).toMatchObject({ to: '/my' });
     expect(navForRole('owner')[0]).toMatchObject({ to: '/my' });
-    expect(navForRole('admin').at(-1)).toMatchObject({ to: '/inventory-admin' });
+    // Admin gets the platform-admin pair at the foot of the rail: inventory
+    // admin followed by settings (the very last entry).
+    const admin = navForRole('admin');
+    expect(admin.at(-2)).toMatchObject({ to: '/inventory-admin' });
+    expect(admin.at(-1)).toMatchObject({ to: '/settings' });
   });
 });

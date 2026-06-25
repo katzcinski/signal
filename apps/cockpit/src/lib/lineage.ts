@@ -8,15 +8,44 @@ import type {
 
 export const COLUMN_ID_SEPARATOR = '\u241f';
 
+// Data-flow rank for swimlane ordering, keyed by normalised (lowercased) layer
+// name, layer code or role. Upstream (raw/source) ranks first, serving last.
+// Synonyms cover the taxonomies we see in the wild (Datasphere Source/
+// Harmonization/Business as well as raw/integrated_core/serving). Ambiguous
+// single letters are avoided here — `S` means *Source* in one taxonomy and
+// *Serving* in another — so we resolve full names first (see `laneOrder`).
 const LAYER_ORDER: Record<string, number> = {
   r: 0,
   raw: 0,
+  source: 0,
+  src: 0,
+  ingest: 0,
+  ingestion: 0,
+  landing: 0,
+  h: 1,
+  harmonization: 1,
+  harmonisation: 1,
+  harmonized: 1,
+  staging: 1,
+  stage: 1,
   ic: 1,
   integrated_core: 1,
-  bc: 2,
+  integration: 1,
+  cleansing: 1,
+  transformation: 1,
+  b: 2,
+  business: 2,
   business_core: 2,
-  s: 3,
+  bc: 2,
+  core: 2,
   serving: 3,
+  consumption: 3,
+  consume: 3,
+  mart: 3,
+  marts: 3,
+  reporting: 3,
+  fact: 3,
+  dimension: 3,
   unknown: 99,
 };
 
@@ -27,12 +56,24 @@ export interface LaneInfo {
   order: number;
 }
 
+// Resolve the data-flow rank by trying the most specific, least ambiguous
+// signals first: the full layer name, then the role, then the (possibly
+// single-letter, ambiguous) layer code. Falls back to a mid rank so unknown
+// lanes sort after the known pipeline but before the explicit `unknown` bucket.
+function laneOrder(node: Pick<LineageNode, 'layer' | 'layerCode' | 'role'>): number {
+  for (const candidate of [node.layer, node.role, node.layerCode]) {
+    if (!candidate) continue;
+    const rank = LAYER_ORDER[candidate.toLowerCase()];
+    if (rank != null) return rank;
+  }
+  return 50;
+}
+
 export function deriveLane(node: Pick<LineageNode, 'layer' | 'layerCode' | 'role'>): LaneInfo {
   const key = node.layerCode || node.layer || node.role || 'unknown';
   const label = node.layer || node.role || node.layerCode || 'unknown';
   const code = node.layerCode && node.layerCode !== label ? node.layerCode : undefined;
-  const order = LAYER_ORDER[key] ?? LAYER_ORDER[label] ?? 50;
-  return { key, label, code, order };
+  return { key, label, code, order: laneOrder(node) };
 }
 
 export function lineageNodeLabel(node: Pick<LineageNode, 'id' | 'label'>): string {

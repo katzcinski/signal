@@ -26,6 +26,17 @@ describe('lineage lane derivation', () => {
       order: 50,
     });
   });
+
+  it('orders the Datasphere Source/Harmonization/Business taxonomy by data flow', () => {
+    // Regression: these layers carry single-letter codes (S/H/B) that do not
+    // match the lowercase serving/raw map, so they used to all collapse to the
+    // fallback rank and sort alphabetically (Business first). The lane order
+    // must follow the pipeline upstream→downstream instead.
+    const source = deriveLane({ layer: 'Source', layerCode: 'S', role: 'source' });
+    const harmonization = deriveLane({ layer: 'Harmonization', layerCode: 'H', role: 'transformation' });
+    const business = deriveLane({ layer: 'Business', layerCode: 'B', role: 'consumption' });
+    expect([source.order, harmonization.order, business.order]).toEqual([0, 1, 2]);
+  });
 });
 
 describe('column lineage graph builder', () => {

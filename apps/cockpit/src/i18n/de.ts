@@ -156,6 +156,13 @@ export const t = {
       contract: 'Contract',
       all: 'Alle',
     },
+    slaTitle: 'SLA-Übersicht (aktive Contracts)',
+    slaProduct: 'Produkt',
+    slaCurrent: 'Aktuell',
+    sla7d: '7 Tage',
+    sla30d: '30 Tage',
+    sla90d: '90 Tage',
+    slaEmpty: 'Keine aktiven Contracts',
   },
   products: {
     title: 'Data Products',
