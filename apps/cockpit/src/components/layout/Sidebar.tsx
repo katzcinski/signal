@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/ui';
 // symbols (⬡ ⊞ ⟁ …) that rendered inconsistently and carried no label. Each is
 // a 16px stroke icon; semantics come from the adjacent aria-label/title, so the
 // collapsed rail stays navigable for keyboard and screen-reader users.
-type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'library' | 'notifications' | 'settings' | 'schedules';
+type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin';
 
 function Icon({ name }: { name: IconKey }) {
   const common = {
@@ -26,26 +26,36 @@ function Icon({ name }: { name: IconKey }) {
     case 'incidents':  return <svg {...common}><path d="M5 21V4l13 .5L14 8l4 3.5L5 12" /></svg>;
     case 'proposals':  return <svg {...common}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" /></svg>;
     case 'governance': return <svg {...common}><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6Z" /></svg>;
+    case 'compliance': return <svg {...common}><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6Z" /><path d="M9 12l2 2 4-4" /></svg>;
     case 'library':    return <svg {...common}><rect x="4" y="4" width="4" height="16" rx="1" /><rect x="10" y="4" width="4" height="16" rx="1" /><path d="M17 5l3 .8-3 14-2-.5" /></svg>;
     case 'notifications': return <svg {...common}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>;
     case 'settings':   return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>;
+    case 'inventoryAdmin': return <svg {...common}><ellipse cx="12" cy="5" rx="7" ry="3" /><path d="M5 5v7c0 1.7 3.1 3 7 3s7-1.3 7-3V5" /><path d="M5 12v7c0 1.7 3.1 3 7 3s7-1.3 7-3v-7" /><path d="M9 10h6M9 17h6" /></svg>;
   }
 }
 
 interface NavItem { to: string; label: string; icon: IconKey; }
+type SidebarEntry = NavItem | 'divider';
 
 const MY_WORK: NavItem = { to: '/my', label: t.nav.myWork, icon: 'my' };
+const INVENTORY_ADMIN: NavItem = { to: '/inventory-admin', label: t.nav.inventoryAdmin, icon: 'inventoryAdmin' };
 
-const BASE: NavItem[] = [
+const DQ_BLOCK: NavItem[] = [
   { to: '/',           label: t.nav.cockpit,    icon: 'cockpit' },
   { to: '/objects',    label: t.nav.objects,    icon: 'objects' },
   { to: '/products',   label: t.nav.products,   icon: 'products' },
-  { to: '/contracts',  label: t.nav.contracts,  icon: 'contracts' },
   { to: '/lineage',    label: t.nav.lineage,    icon: 'lineage' },
   { to: '/incidents',  label: t.nav.incidents,  icon: 'incidents' },
   { to: '/proposals',  label: t.nav.proposals,  icon: 'proposals' },
-  { to: '/governance', label: t.nav.governance, icon: 'governance' },
   { to: '/library',    label: t.nav.library,    icon: 'library' },
+];
+
+const GOVERN_BLOCK: NavItem[] = [
+  { to: '/contracts',  label: t.nav.contracts,   icon: 'contracts' },
+  { to: '/compliance', label: t.nav.compliance,  icon: 'compliance' },
+];
+
+const UTILITY: NavItem[] = [
   { to: '/notifications', label: t.nav.notifications, icon: 'notifications' },
 ];
 
@@ -68,10 +78,18 @@ function withSchedules(items: NavItem[], role: Role): NavItem[] {
 // UX-N3 / UX-F1: nav order follows the role. Stewards/owners lead with "My work"
 // (their default landing); viewers/admins lead with the global cockpit. The
 // admin additionally gets the platform-settings entry at the foot of the rail.
-function navForRole(role: Role): NavItem[] {
-  if (role === 'steward' || role === 'owner') return withSchedules([MY_WORK, ...BASE], role);
-  if (role === 'admin') return withSchedules([...BASE, SETTINGS], role);
-  return BASE;
+export function navForRole(role: Role): SidebarEntry[] {
+  const dqBlock = withSchedules(DQ_BLOCK, role);
+  const base: SidebarEntry[] = [
+    ...dqBlock,
+    'divider',
+    ...GOVERN_BLOCK,
+    'divider',
+    ...UTILITY,
+  ];
+  if (role === 'admin') return [...base, INVENTORY_ADMIN, SETTINGS];
+  if (role === 'steward' || role === 'owner') return [MY_WORK, ...base];
+  return base;
 }
 
 interface Props { collapsed: boolean }
@@ -118,39 +136,48 @@ export function Sidebar({ collapsed }: Props) {
         </div>
       )}
       <nav style={{ flex: 1, padding: '8px 0' }}>
-        {nav.map(({ to, label, icon }) => (
-          <NavLink
-            key={to} to={to} end={to === '/'}
-            title={label}
-            aria-label={label}
-            style={({ isActive }) => ({
-              position: 'relative',
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '8px 12px', margin: '1px 6px', borderRadius: 'var(--r-md)',
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              color: isActive ? 'var(--fg)' : 'var(--fg-2)',
-              background: isActive ? 'var(--bg-2)' : 'transparent',
-              // Active-route marker. The bar is transparent in classic and a
-              // phosphor signal-bar in the signal theme (theme-bridge token).
-              boxShadow: isActive ? 'inset 2px 0 0 var(--nav-active-bar)' : undefined,
-              fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden',
-              transition: 'color var(--t), background var(--t)',
-            })}
-          >
-            {({ isActive }) => (
-              <>
-                <span style={{
-                  display: 'inline-flex', flexShrink: 0,
-                  color: isActive ? 'var(--nav-active-icon)' : 'inherit',
-                  transition: 'color var(--t)',
-                }}>
-                  <Icon name={icon} />
-                </span>
-                {!collapsed && <span>{label}</span>}
-              </>
-            )}
-          </NavLink>
-        ))}
+        {nav.map((entry, idx) => {
+          if (entry === 'divider') {
+            return (
+              <div
+                key={`div-${idx}`}
+                style={{ height: 1, background: 'var(--line)', margin: '6px 12px' }}
+              />
+            );
+          }
+          const { to, label, icon } = entry;
+          return (
+            <NavLink
+              key={to} to={to} end={to === '/'}
+              title={label}
+              aria-label={label}
+              style={({ isActive }) => ({
+                position: 'relative',
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 12px', margin: '1px 6px', borderRadius: 'var(--r-md)',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                color: isActive ? 'var(--fg)' : 'var(--fg-2)',
+                background: isActive ? 'var(--bg-2)' : 'transparent',
+                boxShadow: isActive ? 'inset 2px 0 0 var(--nav-active-bar)' : undefined,
+                fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden',
+                transition: 'color var(--t), background var(--t)',
+              })}
+            >
+              {({ isActive }) => (
+                <>
+                  <span style={{
+                    display: 'inline-flex', flexShrink: 0,
+                    color: isActive ? 'var(--nav-active-icon)' : 'inherit',
+                    transition: 'color var(--t)',
+                  }}>
+                    <Icon name={icon} />
+                  </span>
+                  {!collapsed && <span>{label}</span>}
+                </>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
     </aside>
   );

@@ -118,13 +118,13 @@ class ResultStore:
                 row = conn.execute(
                     """INSERT INTO dq_check_results
                        (run_id, check_name, sql_text, expect_expr, severity,
-                        passed, actual_value, error_message, duration_ms, state, check_type)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                        passed, actual_value, error_message, duration_ms, state, check_type, kind)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (
                         summary.run_id, result.name, result.sql, result.expect,
                         result.severity, int(result.passed),
                         str(result.actual_value) if result.actual_value is not None else None,
-                        result.error, result.duration_ms, result.state, result.type,
+                        result.error, result.duration_ms, result.state, result.type, result.kind,
                     ),
                 ).lastrowid
                 # [PII-GATE] Only persist diagnostics when explicitly enabled (S1/G8).

@@ -17,7 +17,7 @@ import re
 from typing import Any, Iterable
 
 from ..library.check_library import check_by_id, load_library
-from ..engine.models import CheckDef, DatasetConfig, VALID_OWNERS, VALID_SEVERITIES
+from ..engine.models import CheckDef, DatasetConfig, VALID_OWNERS, VALID_SEVERITIES, VALID_KINDS
 
 SAFE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _ISO_DURATION = re.compile(r"^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$")
@@ -79,10 +79,11 @@ def _bind(template_id: str, dataset: str, params: dict[str, Any]) -> str:
 
 
 def _mk(template_id: str, dataset: str, params: dict[str, Any], *,
-        name: str, expect: str, severity: str, owner: str, unit: str = "") -> CheckDef:
+        name: str, expect: str, severity: str, owner: str, unit: str = "",
+        kind: str = "internal_gate") -> CheckDef:
     return CheckDef(name=name, sql=_bind(template_id, dataset, params),
                     expect=expect, severity=severity, type=template_id,
-                    unit=unit, owned_by=owner)
+                    unit=unit, owned_by=owner, kind=kind)
 
 
 # ── Typed literal binding for the generic checks[] path ───────────────────────
@@ -208,6 +209,9 @@ def compile_contract(
     owner = str(contract.get("owned_by", "platform"))
     if owner not in VALID_OWNERS:
         raise CompileError(f"owned_by muss {sorted(VALID_OWNERS)} sein, nicht {owner!r}")
+    kind = str(contract.get("kind", "internal_gate"))
+    if kind not in VALID_KINDS:
+        raise CompileError(f"kind muss {sorted(VALID_KINDS)} sein, nicht {kind!r}")
     g = contract.get("guarantees") or {}
     cols = inventory_columns
     checks: list[CheckDef] = []
@@ -220,7 +224,7 @@ def compile_contract(
             "schema", dataset, {},
             name="schema_columns",
             expect=("= %d" % len(expected)) if closed else (">= %d" % len(expected)),
-            severity=_severity(schema_g, "critical"), owner=owner,
+            severity=_severity(schema_g, "critical"), owner=owner, kind=kind,
         ))
 
     for i, key in enumerate(g.get("keys") or []):
@@ -229,12 +233,12 @@ def compile_contract(
         if len(kcols) == 1:
             checks.append(_mk("duplicate", dataset, {"<SPALTE>": kcols[0]},
                               name=f"key_{kcols[0]}_unique", expect="= 0",
-                              severity=sev, owner=owner))
+                              severity=sev, owner=owner, kind=kind))
         else:
             key_expr = " || '|' || ".join(f'"{c}"' for c in kcols)
             checks.append(_mk("duplicate_composite", dataset, {"<KEY_EXPR>": key_expr},
                               name="key_" + "_".join(kcols) + "_unique", expect="= 0",
-                              severity=sev, owner=owner))
+                              severity=sev, owner=owner, kind=kind))
 
     for i, ref in enumerate(g.get("referential") or []):
         where = f"guarantees.referential[{i}]"
@@ -247,7 +251,7 @@ def compile_contract(
             "reference_integrity", dataset,
             {"<DIMENSION>": parent, "<FK>": fk[0], "<PK>": pk[0]},
             name=f"ref_{fk[0]}_{parent}", expect="= 0",
-            severity=_severity(ref, "fail"), owner=owner,
+            severity=_severity(ref, "fail"), owner=owner, kind=kind,
         ))
 
     fresh = g.get("freshness")
@@ -256,14 +260,14 @@ def compile_contract(
         seconds = parse_iso_duration(fresh.get("max_age"))
         checks.append(_mk("freshness", dataset, {"<SPALTE>": col},
                           name=f"freshness_{col}", expect=f"< {seconds}",
-                          severity=_severity(fresh, "warn"), owner=owner, unit="s"))
+                          severity=_severity(fresh, "warn"), owner=owner, unit="s", kind=kind))
 
     vol = g.get("volume")
     if vol and vol.get("min_rows") is not None:
         min_rows = int(vol["min_rows"])
         checks.append(_mk("row_count", dataset, {},
                           name="volume_min_rows", expect=f">= {min_rows}",
-                          severity=_severity(vol, "warn"), owner=owner))
+                          severity=_severity(vol, "warn"), owner=owner, kind=kind))
     # volume.baseline=rolling ist Observability-Konfiguration (dq_baselines),
     # kein Contract-Check. volume_anomaly bleibt ein interner Runtime-Check.
 
@@ -272,14 +276,14 @@ def compile_contract(
         max_null_pct = round(100.0 - float(comp.get("min_pct", 100)), 4)
         checks.append(_mk("completeness_pct", dataset, {"<SPALTE>": col},
                           name=f"completeness_{col}", expect=f"<= {max_null_pct}",
-                          severity=_severity(comp, "warn"), owner=owner, unit="%"))
+                          severity=_severity(comp, "warn"), owner=owner, unit="%", kind=kind))
 
     for i, nn in enumerate(g.get("not_null") or []):
         sev = _severity(nn, "fail")
         for col in _idents(nn.get("columns") or [], f"guarantees.not_null[{i}].columns", cols):
             checks.append(_mk("missing", dataset, {"<SPALTE>": col},
                               name=f"{col}_not_null", expect="= 0",
-                              severity=sev, owner=owner))
+                              severity=sev, owner=owner, kind=kind))
 
     # checks[]: library-instanziierte Checks (interne Gates, HANDOVER Iteration 1).
     # Additiv zu den Garantien und nach ihnen kompiliert — eine Quelle, ein

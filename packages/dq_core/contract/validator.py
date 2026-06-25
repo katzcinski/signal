@@ -37,6 +37,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
         "kind": {"enum": sorted(VALID_KINDS)},
         "dataset": _IDENT,
         "owned_by": {"enum": sorted(VALID_OWNED_BY)},
+        "kind": {"enum": sorted(VALID_KINDS)},
         "owners": {"type": "array", "items": {"type": "string"}},
         "version": {"type": "string", "pattern": SEMVER.pattern},
         "lifecycle": {"enum": sorted(VALID_LIFECYCLES)},

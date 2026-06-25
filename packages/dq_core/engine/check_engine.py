@@ -10,7 +10,7 @@ from typing import Any, Callable
 import yaml
 
 from .expectation import evaluate, validate_expectation
-from .models import CheckDef, CheckResult, DatasetConfig, RunSummary, VALID_SEVERITIES
+from .models import CheckDef, CheckResult, DatasetConfig, RunSummary, VALID_SEVERITIES, VALID_KINDS
 from ..library.check_library import check_ids_where
 from ..store.sqlite_store import ResultStore
 
@@ -49,12 +49,15 @@ def load_dataset_config(path: Path, *, allow_empty: bool = False) -> DatasetConf
         sql = str(item.get("sql") or "").strip()
         expect = str(item.get("expect") or "").strip()
         severity = str(item.get("severity") or "fail").strip().lower()
+        kind = str(item.get("kind") or "internal_gate").strip()
         if not sql:
             raise ValueError(f'Check "{name}": "sql" fehlt.')
         if not expect:
             raise ValueError(f'Check "{name}": "expect" fehlt.')
         if severity not in VALID_SEVERITIES:
             raise ValueError(f'Check "{name}": severity muss critical/fail/warn sein.')
+        if kind not in VALID_KINDS:
+            raise ValueError(f'Check "{name}": kind muss internal_gate/consumer_contract/provider_contract sein.')
         try:
             validate_expectation(expect)
         except ValueError as exc:
@@ -72,6 +75,7 @@ def load_dataset_config(path: Path, *, allow_empty: bool = False) -> DatasetConf
                 enabled=bool(item.get("enabled", True)),
                 type=str(item.get("type") or "").strip(),
                 unit=str(item.get("unit") or "").strip(),
+                kind=kind,
                 diagnostics_enabled=bool(diagnostics.get("enabled", False)),
                 diagnostics_columns=[str(c) for c in (diagnostics.get("columns") or [])],
             )
@@ -103,6 +107,7 @@ def dataset_config_to_yaml(config: DatasetConfig) -> str:
             "enabled": check.enabled,
             **({"type": check.type} if check.type else {}),
             **({"unit": check.unit} if check.unit else {}),
+            "kind": check.kind,
             **(
                 {"diagnostics": {"enabled": True, "columns": list(check.diagnostics_columns)}}
                 if check.diagnostics_enabled
@@ -227,7 +232,7 @@ def _run_with_gating(
         skipped = CheckResult(
             name=check.name, sql=check.sql, expect=check.expect,
             severity=check.severity, passed=False,
-            state="skipped_stale", type=check.type,
+            state="skipped_stale", type=check.type, kind=check.kind,
         )
         results.append(skipped)
         if on_progress:
@@ -386,6 +391,7 @@ def _result_from_actual(check: CheckDef, actual: Any, duration_ms: int, *, previ
             actual_value=actual,
             duration_ms=duration_ms,
             type=check.type,
+            kind=check.kind,
         )
     except Exception as exc:  # noqa: BLE001
         return _error_result(check, str(exc), duration_ms, actual_value=actual)
@@ -409,6 +415,7 @@ def _error_result(
         duration_ms=duration_ms,
         state="error",
         type=check.type,
+        kind=check.kind,
     )
 
 

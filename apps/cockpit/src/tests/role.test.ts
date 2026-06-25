@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { canWriteContract, canActOnIncidents, canAcceptProposal, canProfileObject, ROLE_META } from '@/store/role';
+import { canWriteContract, canActOnIncidents, canAcceptProposal, canManageInventory, canProfileObject, ROLE_META } from '@/store/role';
+import { navForRole } from '@/components/layout/Sidebar';
 
 // FE permission mirror of auth/provider.py:Principal. The server stays
 // authoritative; these guard the affordances the UI offers per role.
@@ -53,11 +54,64 @@ describe('canProfileObject', () => {
   });
 });
 
+describe('canManageInventory', () => {
+  it('requires admin role', () => {
+    expect(canManageInventory('viewer')).toBe(false);
+    expect(canManageInventory('steward')).toBe(false);
+    expect(canManageInventory('owner')).toBe(false);
+    expect(canManageInventory('admin')).toBe(true);
+  });
+});
+
 describe('ROLE_META', () => {
   it('routes writer roles to the My-work landing', () => {
     expect(ROLE_META.steward.home).toBe('/my');
     expect(ROLE_META.owner.home).toBe('/my');
     expect(ROLE_META.viewer.home).toBe('/');
     expect(ROLE_META.admin.home).toBe('/');
+  });
+});
+
+describe('ROLE_META homes', () => {
+  it('viewer lands on Health (/)', () => {
+    expect(ROLE_META.viewer.home).toBe('/');
+  });
+
+  it('steward lands on My Work (/my)', () => {
+    expect(ROLE_META.steward.home).toBe('/my');
+  });
+
+  it('owner lands on My Work (/my)', () => {
+    expect(ROLE_META.owner.home).toBe('/my');
+  });
+
+  it('admin lands on Health (/)', () => {
+    expect(ROLE_META.admin.home).toBe('/');
+  });
+});
+
+describe('navForRole', () => {
+  it('groups DQ, governance, and utility entries with dividers', () => {
+    const entries = navForRole('viewer').map(entry => entry === 'divider' ? 'divider' : entry.to);
+
+    expect(entries).toEqual([
+      '/',
+      '/objects',
+      '/lineage',
+      '/incidents',
+      '/proposals',
+      '/library',
+      'divider',
+      '/contracts',
+      '/compliance',
+      'divider',
+      '/notifications',
+    ]);
+  });
+
+  it('keeps role-specific entries around the shared blocks', () => {
+    expect(navForRole('steward')[0]).toMatchObject({ to: '/my' });
+    expect(navForRole('owner')[0]).toMatchObject({ to: '/my' });
+    expect(navForRole('admin').at(-1)).toMatchObject({ to: '/inventory-admin' });
   });
 });

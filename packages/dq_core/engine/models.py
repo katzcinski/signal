@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 VALID_OWNERS: frozenset[str] = frozenset({"platform", "product"})
 VALID_SEVERITIES: frozenset[str] = frozenset({"critical", "fail", "warn"})
+VALID_KINDS: frozenset[str] = frozenset({"internal_gate", "consumer_contract", "provider_contract"})
 
 
 @dataclass
@@ -20,6 +21,7 @@ class CheckDef:
     type: str = ""
     unit: str = ""
     owned_by: str = "platform"
+    kind: str = "internal_gate"
     # [PII-GATE] WS0-6: Diagnostik nur je Check mit Spalten-Allowlist.
     # Default off — ohne enabled+Allowlist verlassen keine Rohzeilen HANA.
     diagnostics_enabled: bool = False
@@ -42,6 +44,7 @@ class CheckResult:
     # allowed: executed | skipped_stale | skipped_dependency | downgraded | error
     # Garantie-Typ des Checks (Rückverfolgbarkeit + Familien-Rollup, WS3-1)
     type: str = ""
+    kind: str = "internal_gate"
 
 
 @dataclass

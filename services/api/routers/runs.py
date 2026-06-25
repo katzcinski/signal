@@ -53,6 +53,7 @@ def _result_out(row: dict) -> CheckResultOut:
         duration_ms=row.get("duration_ms", 0) or 0,
         state=row.get("state", "executed"),
         type=row.get("check_type", "") or "",
+        kind=row.get("kind", "internal_gate") or "internal_gate",
     )
 
 

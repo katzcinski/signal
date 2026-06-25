@@ -15,7 +15,7 @@ const ROUTES = [
   { label: t.nav.lineage, path: '/lineage' },
   { label: t.nav.incidents, path: '/incidents' },
   { label: t.nav.proposals, path: '/proposals' },
-  { label: t.nav.governance, path: '/governance' },
+  { label: t.nav.compliance, path: '/compliance' },
 ];
 
 interface Props { onClose: () => void }

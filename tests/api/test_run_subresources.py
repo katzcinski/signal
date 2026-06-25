@@ -39,6 +39,7 @@ def test_results_endpoint(api_client):
     assert body[0]["name"] == "amount_not_null"
     assert body[0]["state"] == "executed"
     assert body[0]["type"] == "missing"
+    assert body[0]["kind"] == "internal_gate"
     assert api_client.get("/api/runs/nope/results").status_code == 404
 
 
@@ -105,3 +106,4 @@ def test_run_carries_contract_version_and_hash(api_client):
     assert body["contract_version"] == "1.0.0", body
     assert body["contract_hash"] == "abc123def456", body
     assert body["actor"] == "steward@example.com", body
+    assert all("kind" in r for r in body["results"])

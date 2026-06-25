@@ -17,10 +17,10 @@ export interface RoleMeta {
 }
 
 export const ROLE_META: Record<Role, RoleMeta> = {
-  viewer:  { label: 'Viewer',         hint: 'Nur-Lese-Zugriff auf alle Ansichten.',               home: '/' },
-  steward: { label: 'Steward',        hint: 'Pflegt Platform-Contracts, bearbeitet Incidents.',    home: '/my' },
-  owner:   { label: 'Product-Owner',  hint: 'Schreibrecht auf eigene Produkt-Contracts.',          home: '/my' },
-  admin:   { label: 'Platform-Admin', hint: 'Vollzugriff auf alle Objekte und Aktionen.',          home: '/' },
+  viewer:  { label: 'Viewer',         hint: 'Nur-Lese-Zugriff auf Health, Objekte und Compliance.', home: '/' },
+  steward: { label: 'Steward',        hint: 'Pflegt Internal Gates, bearbeitet Incidents und Contracts.', home: '/my' },
+  owner:   { label: 'Product-Owner',  hint: 'Gates und Contracts für eigene Produkte.',             home: '/my' },
+  admin:   { label: 'Platform-Admin', hint: 'Vollzugriff auf alle Objekte und Aktionen.',           home: '/' },
 };
 
 interface RoleState {
@@ -69,6 +69,10 @@ export function canManageEnvironments(role: Role): boolean {
 }
 
 /** Accepting a proposal writes a guarantee → same gate as the contract. */
+export function canManageInventory(role: Role): boolean {
+  return role === 'admin';
+}
+
 export function canAcceptProposal(role: Role, ownedBy?: string): boolean {
   return canWriteContract(role, ownedBy);
 }

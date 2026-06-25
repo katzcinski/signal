@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { Shell } from './components/layout/Shell';
@@ -17,11 +17,12 @@ const Proposals         = lazy(() => import('./pages/Proposals'));
 const RunDetail         = lazy(() => import('./pages/RunDetail'));
 const RunCompare        = lazy(() => import('./pages/RunCompare'));
 const Schedules         = lazy(() => import('./pages/Schedules'));
-const Governance        = lazy(() => import('./pages/Governance'));
+const Compliance        = lazy(() => import('./pages/Compliance'));
 const CheckLibrary      = lazy(() => import('./pages/CheckLibrary'));
 const Notifications     = lazy(() => import('./pages/Notifications'));
 const Settings          = lazy(() => import('./pages/Settings'));
 const Environments      = lazy(() => import('./pages/Environments'));
+const InventoryAdmin    = lazy(() => import('./pages/InventoryAdmin'));
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -53,11 +54,13 @@ export default function App() {
               <Route path="/proposals"   element={<Proposals />} />
               <Route path="/runs/compare" element={<RunCompare />} />
               <Route path="/runs/:id"    element={<RunDetail />} />
-              <Route path="/governance"  element={<Governance />} />
+              <Route path="/compliance"  element={<Compliance />} />
+              <Route path="/governance"  element={<Navigate to="/compliance" replace />} />
               <Route path="/library"    element={<CheckLibrary />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/settings"    element={<Settings />} />
               <Route path="/environments" element={<Environments />} />
+              <Route path="/inventory-admin" element={<InventoryAdmin />} />
             </Routes>
           </Suspense>
         </Shell>

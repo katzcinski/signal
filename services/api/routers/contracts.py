@@ -84,6 +84,7 @@ def _contract_out(store, product: str, data: dict[str, Any]) -> ContractOut:
         kind=data.get("kind", "internal_gate"),
         dataset=data.get("dataset", ""),
         owned_by=data.get("owned_by", "platform"),
+        kind=data.get("kind", "internal_gate"),
         owners=data.get("owners") or [],
         version=str(data.get("version", "0.1.0")),
         lifecycle=data.get("lifecycle", "draft"),
@@ -148,6 +149,7 @@ def list_contracts(
             kind=data.get("kind", "internal_gate"),
             dataset=row["product"],
             owned_by=row["owned_by"] or "platform",
+            kind="internal_gate",
             owners=[],
             version=row["version"] or "0.1.0",
             lifecycle=row["lifecycle"] or "draft",
@@ -439,6 +441,7 @@ def _compile_contract_data(product: str, data: dict[str, Any], inventory: list[d
                         expect=ec.get("expect", c.expect), severity=ec.get("severity", c.severity),
                         type=ec.get("type", c.type), unit=ec.get("unit", c.unit),
                         owned_by=ec.get("owned_by", c.owned_by),
+                        kind=ec.get("kind", c.kind),
                     ))
                 else:
                     merged.append(c)
@@ -648,6 +651,7 @@ def compile_contract(
                 "type": c.type,
                 "unit": c.unit,
                 "owned_by": c.owned_by,
+                "kind": c.kind,
             }
             for c in config.checks
         ],
