@@ -93,7 +93,7 @@ es bei euch schon existiert.
 | F4 | **`datacontract export`** | Generiert Artefakte aus dem Contract: dbt, JSON Schema, Avro, Protobuf, SQL-DDL, SodaCL, Great-Expectations-Suite, pydantic, SQLAlchemy, RDF, GraphQL … | On-demand, auf `*.odcs.yaml` | Ein Contract → viele Downstream-Formate, ohne Handarbeit | ◻️ ihr exportiert heute nur ODCS selbst |
 | F5 | **`datacontract import`** | **Reverse-Engineering**: erzeugt einen Contract aus bestehendem SQL-DDL, Avro, JSON Schema, dbt, AWS Glue, BigQuery, ODCS … | Onboarding neuer Datasets | Schneller Erst-Entwurf eines Contracts aus vorhandenen Strukturen | ◻️ habt ihr nicht; spart Tipparbeit beim Onboarding |
 | F6 | **`datacontract catalog`** | Statischer **HTML-Katalog** aller Contracts | Build-Artefakt / GitHub Pages | Verteilbarer Katalog „außerhalb" des Cockpits (z. B. für Konsumenten ohne Zugang) | ◻️ Cockpit deckt internen Fall ab |
-| F7 | **`datacontract test`** | Führt Quality-Checks aus — **delegiert an Soda Core / Great Expectations**; Backends u. a. Databricks und Delta (`type: databricks` via `[databricks]`, oder Object-Store + `format: delta` via `[duckdb]`) | — für HANA bewusst **nicht** genutzt; tragfähig nur in der BDC/Databricks-Plane | ⛔ **kein HANA-Backend** (kein `type: hana`); widerspricht G1 (verlangt SQL/SodaCL im Contract). Signals HANA-Runner ist hier überlegen. Delta/Databricks ✅ siehe Bewertung §8 | ⛔ **nicht für HANA** · ✅ nur BDC/Delta |
+| F7 | **`datacontract test`** | Führt Quality-Checks aus — seit **v1.0.0 via ibis→`sqlglot`** (nicht mehr Soda Core; SodaCL/GX nur Export); Backends u. a. Databricks und Delta (`type: databricks` via `[databricks]`, oder Object-Store + `format: delta` via `[duckdb]`) | — für HANA bewusst **nicht** genutzt; tragfähig nur in der BDC/Databricks-Plane | ⛔ **kein HANA-Backend** (kein `type: hana`/ibis-HANA); `type: sql` bringt Roh-SQL in den Contract → G1. Signals HANA-Runner ist hier überlegen. Delta/Databricks ✅ siehe Bewertung §8 | ⛔ **nicht für HANA** · ✅ nur BDC/Delta |
 
 **Legende fürs Bild:** ✅ = bereits aktiv · ◻️ = sinnvoller Ausbau · ⛔ = bewusst ausgeschlossen.
 
@@ -113,20 +113,22 @@ Wichtig fürs Schaubild: Die CLI hat **keinen festen Check-Katalog** wie eure
 │    pattern_match·string_length·value_range                              │
 └──────────────────────────────────────────────────────────────────────────┘
 ┌─ Ebene B: quality:-Sektion ──────────────────────────────────────────────┐
-│  alles weitere schreibst du SELBST, delegiert an fremde Engines:         │
-│  type: sodacl  →  Soda Core                                             │
-│  type: great-expectations  →  GX                                        │
-│  type: sql / custom  →  eigenes SQL mit Schwellwert                      │
-│  Backends: Snowflake·BigQuery·Postgres·Databricks·Kafka·S3·Files        │
-│  ⚠ KEIN SAP HANA · ⚠ verlangt SQL/SodaCL im Contract → Bruch von G1     │
+│  type: library  →  benannte Metrik (rowCount, nullValues …)  KEIN SQL   │
+│  type: sql      →  inline query: + Schwellwert               ROH-SQL     │
+│  (type: custom/sodacl: seit CLI v1.0.0 NICHT mehr ausgeführt → migrieren)│
+│  Engine seit v1.0.0: ibis → sqlglot (nicht mehr Soda Core);             │
+│    SodaCL/GX nur noch Export-Ziele                                      │
+│  Backends: Snowflake·BigQuery·Postgres·Databricks·DuckDB/Delta·S3       │
+│  ⚠ KEIN SAP HANA · ⚠ type:sql bringt Roh-SQL in den Contract → Bruch G1 │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
 Fazit für die Legende: Die „komplette Bibliothek an Checks" ist realistisch
-**Schema-Validierung + ein Wrapper um Soda/GX**. Das ersetzt Signals
-HANA-spezifische Checks (inkl. SAP-Spezialitäten BSEG-Balance, BKPF-Orphan,
-Fiscal Completeness, Replication Lag) **nicht** — und kann mangels HANA-Backend
-ohnehin nicht gegen eure Quelle laufen.
+**Schema-Validierung + `library`-Metriken (begrenzt) + Roh-SQL als Escape-Hatch**
+(Engine seit v1.0.0: ibis/`sqlglot`). Das ersetzt Signals HANA-spezifische Checks
+(inkl. SAP-Spezialitäten BSEG-Balance, BKPF-Orphan, Fiscal Completeness,
+Replication Lag) **nicht** — und kann mangels HANA-Backend ohnehin nicht gegen
+eure Quelle laufen.
 
 ---
 

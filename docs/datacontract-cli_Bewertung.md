@@ -38,15 +38,25 @@ Wichtig: Die CLI hat **keinen festen Check-Katalog** wie Signals
 
 - **Ebene A — Schema-Validierung „gratis"** aus der Feld-Definition:
   Typ · `required` · `unique` · `primaryKey` · `enum` · `pattern` · `format`
-  · `minLength`/`maxLength` · `minimum`/`maximum`.
-- **Ebene B — `quality:`-Sektion**, selbst geschrieben und an fremde Engines
-  delegiert: `type: sodacl` (Soda Core) · `type: great-expectations` ·
-  `type: sql`/`custom`. Backends: Snowflake · BigQuery · Postgres · Databricks ·
-  Kafka · S3 · Files — **kein SAP HANA**.
+  · `minLength`/`maxLength` · `minimum`/`maximum`. **Kein SQL.**
+- **Ebene B — `quality:`-Sektion**: `type: library` (benannte Metrik wie
+  `rowCount`/`nullValues` + Operator, `unit: percent` — **kein SQL**) oder
+  `type: sql` (inline `query:` + Schwellwert — **Roh-SQL**). Backends u. a.
+  Snowflake · BigQuery · Postgres · Databricks · DuckDB/Delta — **kein SAP HANA**.
 
-→ „Komplette Bibliothek an Checks" = realistisch **Schema-Validierung + Wrapper
-um Soda/GX**. Ersetzt Signals ~20 HANA-/SAP-Checks nicht und kann mangels
-HANA-Backend nicht gegen eure Quelle laufen.
+> **Stand-Update (datacontract-cli v1.0.0, 2026-06):** Die Ausführungs-Engine
+> wurde **von Soda Core auf ibis umgestellt** — `datacontract test` kompiliert
+> Schema- und Quality-Checks in **ibis-Ausdrücke** (dialekt-korrektes SQL via
+> `sqlglot`). **Rohe SodaCL-Custom-Checks (`type: custom`, `engine: soda`) werden
+> nicht mehr ausgeführt** (nur Warnung); Empfehlung: `type: sql` **oder**
+> `library`-Metrik. SodaCL/Great-Expectations sind damit nur noch **Export**-Ziele,
+> nicht mehr der Laufzeitpfad. Die historischen „Soda/GX-Wrapper"-Aussagen unten
+> sind in diesem Sinn zu lesen.
+
+→ „Komplette Bibliothek an Checks" = realistisch **Schema-Validierung +
+`library`-Metriken (begrenzter Katalog) + Roh-SQL als Escape-Hatch**. Ersetzt
+Signals ~20 HANA-/SAP-Checks nicht und kann mangels HANA-Backend nicht gegen eure
+Quelle laufen.
 
 ---
 
@@ -100,7 +110,7 @@ Präzisierung: ODCS v3.1 **erlaubt** SQL, **erzwingt** es nicht.
 | `library` | benannte Regel (rowCount, nullCount …) + Operator | nein (deklarativ) |
 | `text` | Beschreibung | nein |
 | `sql` | eingebettetes `query:` + Schwellwert | **ja** |
-| `custom` | engine-spezifisch (Soda/GX) | **ja** |
+| `custom` | engine-spezifisch (Soda/GX) — **seit CLI v1.0.0 nicht mehr ausgeführt**, → `sql`/`library` migrieren | **ja** |
 
 Zusätzlich viele **deklarative** Felder auf Property-Ebene (`required`, `unique`,
 `primaryKey`, `pattern`, `min`/`max`, `enum`, `format`).
@@ -154,7 +164,7 @@ Hypothese: Selbst *mit* HANA-Engine würde die CLi nur **`compiler` + `engine` +
 
 **Wo es ehrlicherweise knapp würde:** Für den reinen Ausführungs-Layer könnte man
 „wrappen statt bauen" — *aber nur*, wenn die HANA-Engine read-only, PII-sicher und
-HANA-SQL-nativ wäre. Realistisch (Soda-/GX-basiert, generisch) ist sie das nicht:
+HANA-SQL-nativ wäre. Realistisch (ibis-/`sqlglot`-basiert, generisch) ist sie das nicht:
 
 1. Verlust der Kontrolle über HANA-Native-SQL (`APPROXIMATE_COUNT_DISTINCT`,
    `LIKE_REGEXPR`, `SYS`-Views, SAP-Input-Parameter).
@@ -231,6 +241,18 @@ Lakehouse-Objektspeicher (B) liegt: die CLI deckt beide Fälle ab. **HANA hat
 keinen Connector** (`type: hana` existiert nicht), die HANA-Plane-Aussage oben
 bleibt unberührt.
 
+> **Vorbehalt — CLI vs. Eigenbau für Delta (vgl.
+> [`datacontract-cli_Hypothese_VollerErsatz.md`](datacontract-cli_Hypothese_VollerErsatz.md)
+> §6.6):** „CLI als Delta-Executor" ist nicht alternativlos. Sobald Signal
+> Delta/HDLF *governt*, fallen read-only/PII/Gating **so oder so** an — und die
+> *Plattform*-Garantien (Store/Compliance/Cockpit/G1-Authoring) werden ohnehin
+> wiederverwendet, nicht neu gebaut. Damit schrumpft der CLI-Vorteil auf den
+> mitgelieferten **Connector**; demgegenüber steht der Eigenbau-Weg (DuckDB/ibis-
+> Adapter in `connect/` + `sqlglot`-Transpile der HANA-Templates), der die
+> Guardrails **nativ** wiederverwendet und den Dual-Engine-Split auflöst. Welcher
+> Weg billiger ist, ist eine Abwägung „gesparter Connector vs. Fremdprozess +
+> Mapper + zweite Engine" — siehe §6.6 für die A/B-Gegenüberstellung.
+
 > Offen (vgl. Zusatz-Doc R2/R7): wie Datasphere/BDC die ORD-Dokumente eines
 > Data Products emittiert — und ob BDC-Produkte **überhaupt** als Delta
 > materialisieren (dann greift Pfad A *oder* B) oder teils HANA-nativ bleiben
@@ -276,10 +298,12 @@ Rettungsweg für die CLI als HANA-Executor.
 
 Überlegung: einen HANA-Connector + Engine zu datacontract-cli **contributen**.
 
-**Technisch machbar, nicht von null:** Der Connector landet realistisch eine
-Ebene tiefer als ein `soda-core-hana`-Data-Source-Adapter (datacontract `test`
-delegiert SQL-Backends an Soda Core), gebaut auf **`sqlalchemy-hana`
-(SAP-maintained)** / **`hdbcli`**. Überschaubarer Scope.
+**Technisch machbar, nicht von null:** Seit CLI v1.0.0 läuft `datacontract test`
+nicht mehr über Soda Core, sondern über **ibis** (→ `sqlglot`). Der HANA-Connector
+wäre damit realistisch ein **ibis-Backend für HANA** (statt eines
+`soda-core-hana`-Adapters), gebaut auf **`sqlalchemy-hana` (SAP-maintained)** /
+**`hdbcli`**. Heute existiert kein solches Backend (ibis kennt DuckDB/Snowflake/
+BigQuery/Postgres/Spark …, kein HANA) — der Scope bleibt aber überschaubar.
 
 **Aber die G-Gates kommen als Shim zurück** — ein generischer Connector ist
 general-purpose:
@@ -288,8 +312,8 @@ general-purpose:
    den du löschen wolltest, kehrt als Security-Schicht zurück.
 2. **G1** ist mit der CLI nicht durchsetzbar (`type: sql`/`custom` erlaubt).
 3. **HANA-native SQL & SAP-Checks** (BSEG-Balance, BKPF-Orphan, Fiscal
-   Completeness, `SYS`-Views, Input-Parameter) haben in SodaCL kein Äquivalent →
-   landen als `type: sql custom` → wieder SQL im Contract.
+   Completeness, `SYS`-Views, Input-Parameter) haben **keine `library`-Metrik** →
+   landen als `type: sql` → wieder SQL im Contract.
 
 **Was auch dann bestehen bleibt:** ~70 % von Signal (Compliance/SLA-Store,
 Cockpit, Observability, Lineage, Lifecycle, ORD/CSN). Die Contribution greift nur
