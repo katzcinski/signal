@@ -87,6 +87,12 @@ class Settings(BaseSettings):
     # also use the local @sap/datasphere-cli when available (richest CSN).
     datasphere_use_cli: bool = Field(default=False)
 
+    # "Make available for monitoring" (Hybrid): Signal records the desired-state
+    # set; an external, privileged script reconciles share + projection view in
+    # this monitoring hub space and reports status back. Signal never writes to
+    # Datasphere itself (stays read-only) — it only needs the hub space name.
+    datasphere_monitoring_space: str = Field(default="")
+
 
 _settings: Settings | None = None
 

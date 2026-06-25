@@ -194,6 +194,15 @@ export const t = {
       boundary_leak: 'Boundary-Leak',
     } as Record<string, string>,
   },
+  monitoring: {
+    makeAvailable: 'Für Monitoring vormerken',
+    requesting: 'Merke vor…',
+    requested: 'Angefordert…',
+    inMonitoring: '✓ im Monitoring',
+    failed: 'Provisionierung fehlgeschlagen',
+    requestedToast: 'Fürs Monitoring vorgemerkt — Provisionierung läuft über das Skript.',
+    requestError: 'Vormerken fehlgeschlagen.',
+  },
   badge: {
     title: 'Status-Badge einbetten',
     hint: 'Read-only Compliance-Badge für SAC, Confluence oder README.',

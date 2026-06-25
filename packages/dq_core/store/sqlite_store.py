@@ -798,7 +798,6 @@ class ResultStore:
         "row_count": "volume",
         "volume_anomaly": "volume",
         "freshness": "freshness",
-        "sap_replication_lag": "freshness",
     }
 
     def get_metric_series(self, dataset: str, limit: int = 200) -> dict[str, Any]:

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useObject, useObjectRuns, useTriggerRun, useCheckHistory } from '@/api/objects';
+import { useMonitoringConfig, useMonitoringShares, useRequestMonitoring } from '@/api/monitoring';
 import { useRun } from '@/api/runs';
 import { useContract, useContractVersionDiff, useSeedContract } from '@/api/contracts';
 import { useLineage } from '@/api/lineage';
@@ -341,6 +342,10 @@ export default function ObjectDetail() {
   const { data: contract } = useContract(id);
   const trigger = useTriggerRun(id);
   const seedContract = useSeedContract();
+  const { data: monCfg } = useMonitoringConfig();
+  const { data: monShares = [] } = useMonitoringShares();
+  const requestMonitoring = useRequestMonitoring();
+  const monEntry = monShares.find(s => s.object_id === id);
 
   const latestRun: RunListItem | undefined = runs[0];
   const { data: latestRunDetail } = useRun(latestRun?.run_id ?? '');
@@ -426,6 +431,40 @@ export default function ObjectDetail() {
           <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{obj.space} · {obj.layer}</p>
         </div>
         <div style={{ flex: 1 }} />
+        {monCfg?.enabled && (() => {
+          if (!monEntry) {
+            return (
+              <button
+                onClick={() => requestMonitoring.mutate(id)}
+                disabled={requestMonitoring.isPending}
+                style={{
+                  background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)',
+                  borderRadius: 5, padding: '7px 16px', fontSize: 13,
+                  cursor: requestMonitoring.isPending ? 'wait' : 'pointer',
+                  opacity: requestMonitoring.isPending ? 0.6 : 1,
+                }}
+              >
+                {requestMonitoring.isPending ? t.monitoring.requesting : t.monitoring.makeAvailable}
+              </button>
+            );
+          }
+          const tone = monEntry.status === 'provisioned' ? 'var(--status-ok)'
+            : monEntry.status === 'error' ? 'var(--status-fail)' : 'var(--status-warn)';
+          const label = monEntry.status === 'provisioned' ? t.monitoring.inMonitoring
+            : monEntry.status === 'error' ? t.monitoring.failed : t.monitoring.requested;
+          return (
+            <span
+              title={monEntry.error ?? (monEntry.view ? `View: ${monEntry.view}` : monCfg.monitoring_space)}
+              style={{
+                fontSize: 12, color: tone, border: `1px solid ${tone}`,
+                borderRadius: 5, padding: '6px 12px',
+                background: `color-mix(in srgb, ${tone} 12%, transparent)`,
+              }}
+            >
+              {label}
+            </span>
+          );
+        })()}
         <button
           onClick={() => setProfileOpen(true)}
           disabled={!canProfile}
