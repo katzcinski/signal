@@ -316,19 +316,49 @@
       "unit": ""
     },
     {
-      "id": "sap_replication_lag",
+      "id": "volume_delta",
       "family": "observability",
-      "gating": "gate",
-      "label": "Replication Lag",
+      "gating": "standard",
+      "label": "Volume Delta",
       "category": "Aktualität & Sonstiges",
-      "short": "Replikationsalter in Sekunden",
-      "help": "Sekunden seit dem jüngsten replizierten Satz. Überwacht die Aktualität von Replication Flows.",
-      "example": "Erwartung \"< 3600\" → Replikation nicht älter als 1 Stunde.",
-      "sql_template": "SELECT SECONDS_BETWEEN(MAX(\"<TIMESTAMP_COL>\"), CURRENT_TIMESTAMP)\nFROM \"{schema}\".\"{dataset}\"",
-      "params": [{ "token": "<TIMESTAMP_COL>", "type": "identifier", "label": "Zeitstempelspalte", "hint": "Technischer Replikationszeitstempel" }],
-      "default_expect": "< 3600",
+      "short": "Volumenänderung gegen Vorlauf",
+      "help": "Zählt alle Zeilen und bewertet die Abweichung gegen den vorherigen Lauf (Run-over-Run). Erkennt plötzliche Lade-Einbrüche oder -Spitzen — nutzt die bestehende DELTA-Grammatik, keine Engine-Änderung.",
+      "example": "Erwartung \"DELTA <= 25%\" → Zeilenanzahl darf höchstens 25 % gegenüber dem letzten Lauf abweichen.",
+      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\"",
+      "params": [],
+      "default_expect": "DELTA <= 25%",
       "default_severity": "warn",
-      "unit": "s"
+      "unit": "rows"
+    },
+    {
+      "id": "column_count",
+      "family": "observability",
+      "gating": "standard",
+      "label": "Column Count",
+      "category": "Aktualität & Sonstiges",
+      "short": "Spaltenanzahl stabil",
+      "help": "Zählt die Spalten des Objekts (TABLE_COLUMNS ∪ VIEW_COLUMNS) und bewertet die Abweichung gegen den vorherigen Lauf. Erkennt unangekündigte Schema-Erweiterungen oder -Kürzungen.",
+      "example": "Erwartung \"DELTA <= 0%\" → Spaltenanzahl darf sich gegenüber dem letzten Lauf nicht ändern.",
+      "sql_template": "SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM \"SYS\".\"TABLE_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND TABLE_NAME = '{dataset}' UNION ALL SELECT COLUMN_NAME FROM \"SYS\".\"VIEW_COLUMNS\" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = '{dataset}') catalog_columns",
+      "params": [],
+      "default_expect": "DELTA <= 0%",
+      "default_severity": "warn",
+      "unit": ""
+    },
+    {
+      "id": "recent_volume",
+      "family": "observability",
+      "gating": "standard",
+      "label": "Recent Volume",
+      "category": "Aktualität & Sonstiges",
+      "short": "Zeilen im jüngsten Fenster",
+      "help": "Zählt Zeilen, deren Zeitstempel innerhalb des letzten Tages liegt. Stellt sicher, dass nicht nur Altbestand vorliegt, sondern frisch nachgeladen wird.",
+      "example": "Erwartung \"> 0\" → im letzten Tag wurde mindestens eine Zeile geladen.",
+      "sql_template": "SELECT COUNT(*) FROM \"{schema}\".\"{dataset}\" WHERE \"<SPALTE>\" >= ADD_DAYS(CURRENT_TIMESTAMP, -1)",
+      "params": [{ "token": "<SPALTE>", "type": "identifier", "label": "Zeitstempelspalte", "hint": "Datum/Zeit der letzten Änderung" }],
+      "default_expect": "> 0",
+      "default_severity": "warn",
+      "unit": "rows"
     }
   ]
 }

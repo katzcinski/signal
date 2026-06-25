@@ -48,7 +48,7 @@ def test_engine_gating_sets_derive_from_library():
     assert GATE_TYPES == check_ids_where("gating", "gate")
     assert EXPENSIVE_TYPES == check_ids_where("gating", "expensive")
     # Regression lock: guards against accidental reclassification of a check.
-    assert GATE_TYPES == {"freshness", "sap_replication_lag", "volume_anomaly"}
+    assert GATE_TYPES == {"freshness", "volume_anomaly"}
     assert EXPENSIVE_TYPES == {
         "reference_integrity", "aggregate_range", "duplicate", "duplicate_composite",
     }
@@ -59,8 +59,8 @@ def test_store_obs_types_derive_from_library():
 
     assert set(ResultStore._OBS_TYPES) == check_ids_where("family", "observability")
     assert set(ResultStore._OBS_TYPES) == {
-        "freshness", "row_count", "sap_replication_lag", "schema",
-        "type_conformance", "volume_anomaly",
+        "column_count", "freshness", "recent_volume", "row_count", "schema",
+        "type_conformance", "volume_anomaly", "volume_delta",
     }
 
 
