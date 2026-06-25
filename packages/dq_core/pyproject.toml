@@ -17,6 +17,7 @@ hana = ["hdbcli"]
 dev = [
     "pytest>=8",
     "pytest-cov",
+    "respx",
 ]
 
 [tool.setuptools.packages.find]
