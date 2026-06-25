@@ -70,6 +70,20 @@ describe('buildSchematicModel', () => {
     expect(inb.pins.map(p => p.id)).toEqual(['VBELN', 'NETWR']);
   });
 
+  it('ranks lanes source < harmonization < business by layer name', () => {
+    const m = buildSchematicModel(
+      [
+        { id: 'S', layer: 'Source', layerCode: 'S', columns: [] },
+        { id: 'H', layer: 'Harmonization', layerCode: 'H', columns: [] },
+        { id: 'B', layer: 'Business', layerCode: 'B', columns: [] },
+      ],
+      [],
+    );
+    const order = (id: string) => m.chips.find(c => c.id === id)!.laneOrder;
+    expect(order('S')).toBeLessThan(order('H'));
+    expect(order('H')).toBeLessThan(order('B'));
+  });
+
   it('exposes a stable pin key matching columnId', () => {
     expect(model.pinKeyOf('DS_INB', 'VBELN')).toBe(columnId('DS_INB', 'VBELN'));
   });

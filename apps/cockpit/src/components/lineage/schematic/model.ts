@@ -87,6 +87,25 @@ function isDerived(edgeType: ColumnEdgeType): boolean {
   return edgeType !== 'direct';
 }
 
+// Layer-Rang fürs x-Banding (links → rechts). deriveLane liefert nur für die
+// Lib-Codes (r/ic/bc/s) eine Ordnung; reale Extrakte nutzen aber sprechende
+// Layer-Namen bzw. Codes wie S/H/B (Source/Harmonization/Business), die dort auf
+// 50 fielen. Hier rangieren wir primär nach Namens-Keywords (eindeutig) und
+// fallen sonst auf deriveLane.order zurück.
+const LANE_KEYWORDS: Array<[number, string[]]> = [
+  [0, ['source', 'raw', 'landing', 'inbound', 'ingest', 'bronze', 'staging']],
+  [1, ['harmoniz', 'integrat', 'core', 'cleans', 'silver', 'transform', 'curated']],
+  [2, ['business', 'mart', 'serving', 'consum', 'output', 'semantic', 'gold', 'report', 'analyt']],
+];
+
+function laneRank(node: LineageNode, fallback: number): number {
+  const hay = `${node.layer ?? ''} ${node.role ?? ''}`.toLowerCase();
+  for (const [rank, words] of LANE_KEYWORDS) {
+    if (words.some(w => hay.includes(w))) return rank;
+  }
+  return fallback;
+}
+
 function columnName(col: string | LineageColumn): string {
   return typeof col === 'string' ? col : col.name || col.label || '';
 }
@@ -206,7 +225,7 @@ export function buildSchematicModel(
       label: n.label || n.id,
       layer: lane.label,
       laneKey: lane.key,
-      laneOrder: lane.order,
+      laneOrder: laneRank(n, lane.order),
       layerCode: n.layerCode,
       role: n.role,
       system: n.system,
