@@ -84,6 +84,26 @@ describe('buildSchematicModel', () => {
     expect(order('H')).toBeLessThan(order('B'));
   });
 
+  it('unions real object edges with column-derived pairs', () => {
+    // BUS hat keine Column-Edges, aber eine echte Objekt-Edge HRM -> BUS.
+    const m = buildSchematicModel(
+      [
+        { id: 'INB', layer: 'Source', layerCode: 'r', columns: ['a'] },
+        { id: 'HRM', layer: 'Harmonization', layerCode: 'ic', columns: ['b'] },
+        { id: 'BUS', layer: 'Business', layerCode: 'bc', columns: ['c'] },
+      ],
+      [{ source: 'INB', sourceColumn: 'a', target: 'HRM', targetColumn: 'b', edgeType: 'direct' }],
+      [
+        { source: 'INB', target: 'HRM' }, // Duplikat zur Column-abgeleiteten Kante
+        { source: 'HRM', target: 'BUS' }, // nur als Objekt-Edge vorhanden
+        { source: 'BUS', target: 'BUS' }, // Self-Loop -> ignoriert
+        { source: 'X', target: 'HRM' },   // unbekannter Knoten -> ignoriert
+      ],
+    );
+    const pairs = m.objectEdges.map(e => `${e.from}>${e.to}`).sort();
+    expect(pairs).toEqual(['HRM>BUS', 'INB>HRM']);
+  });
+
   it('exposes a stable pin key matching columnId', () => {
     expect(model.pinKeyOf('DS_INB', 'VBELN')).toBe(columnId('DS_INB', 'VBELN'));
   });

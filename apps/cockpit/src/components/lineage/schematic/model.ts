@@ -74,9 +74,21 @@ export interface SchematicEdge {
   expression?: string;
 }
 
+/** Objekt-zu-Objekt-Kante für den Object-Level-Modus. */
+export interface ObjectEdge {
+  from: string;
+  to: string;
+}
+
 export interface SchematicModel {
   chips: SchematicChip[];
   edges: SchematicEdge[];
+  /**
+   * Deduplizierte Objekt-Kanten für den Object-Mode: Vereinigung der echten
+   * Objekt-Edges (data.edges) und der aus Column-Edges abgeleiteten Paare —
+   * so bleibt der Objekt-Graph auch dort vollständig, wo Spalten-Lineage fehlt.
+   */
+  objectEdges: ObjectEdge[];
   /** Stabiler Pin-Key (`columnId`) → Pin-Index für Trace-Highlighting. */
   pinKeyOf: (node: string, pin: string) => string;
 }
@@ -164,11 +176,26 @@ export function flattenColumnIndex(
 export function buildSchematicModel(
   nodes: LineageNode[],
   columnEdges: RawColumnEdge[],
+  objectEdges: ReadonlyArray<{ source: string; target: string }> = [],
 ): SchematicModel {
   const incoming = new Set<string>();
   const outgoing = new Set<string>();
   const extraColumns = new Map<string, Set<string>>();
   const nodeIds = new Set(nodes.map(n => n.id));
+
+  // Objekt-Kanten: echte data.edges ∪ aus Column-Edges abgeleitete Paare,
+  // dedupliziert, ohne Self-Loops, beide Enden bekannt.
+  const objSeen = new Set<string>();
+  const objectPairs: ObjectEdge[] = [];
+  const addObjectPair = (from: string, to: string) => {
+    if (!from || !to || from === to) return;
+    if (!nodeIds.has(from) || !nodeIds.has(to)) return;
+    const key = `${from}${to}`;
+    if (objSeen.has(key)) return;
+    objSeen.add(key);
+    objectPairs.push({ from, to });
+  };
+  for (const e of objectEdges) addObjectPair(e.source, e.target);
 
   const edges: SchematicEdge[] = [];
   const edgeSeen = new Set<string>();
@@ -181,6 +208,7 @@ export function buildSchematicModel(
 
     outgoing.add(columnId(e.source, e.sourceColumn));
     incoming.add(columnId(e.target, e.targetColumn));
+    addObjectPair(e.source, e.target);
 
     // Spalten, die im Node nicht gelistet sind, trotzdem als Pin zeigen.
     if (nodeIds.has(e.source)) addExtra(extraColumns, e.source, e.sourceColumn);
@@ -242,6 +270,7 @@ export function buildSchematicModel(
   return {
     chips,
     edges,
+    objectEdges: objectPairs,
     pinKeyOf: columnId,
   };
 }

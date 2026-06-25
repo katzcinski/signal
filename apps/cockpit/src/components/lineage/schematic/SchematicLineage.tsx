@@ -27,8 +27,8 @@ export default function SchematicLineage() {
   const [layoutBusy, setLayoutBusy] = useState(false);
 
   const model = useMemo(
-    () => buildSchematicModel(data?.nodes ?? [], data?.columnEdges ?? []),
-    [data?.nodes, data?.columnEdges],
+    () => buildSchematicModel(data?.nodes ?? [], data?.columnEdges ?? [], data?.edges ?? []),
+    [data?.nodes, data?.columnEdges, data?.edges],
   );
 
   // ELK neu rechnen, wenn sich Modell oder Ansicht ändern. Filter/Selektion
