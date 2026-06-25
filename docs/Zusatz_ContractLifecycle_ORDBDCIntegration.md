@@ -76,6 +76,10 @@ Schwäche: die *linke* Hälfte (Versions-/Breaking-Governance, Consumer-Rolle, D
 - **Kein Executor-Ersatz: `datacontract test` unterstützt SAP HANA nicht** (Engines:
   Snowflake/BigQuery/Databricks/Postgres/S3/Kafka/… — HANA fehlt). Einsatz als Executor würde
   das „single executor”-Prinzip brechen → strikt auf statische Kommandos beschränken.
+  → **Gegenentwurf unter der Annahme, HANA wäre unterstützt:**
+  [`Konzept_MultiPlattform_Executor_BDC.md`](Konzept_MultiPlattform_Executor_BDC.md) — Backend-
+  Abstraktion (Dialect/Connector), mit der Signal HANA + HDLF + (SAP-/natives) Databricks aus
+  *einem* Contract prüft; CLI bleibt dort Parität-Gate, nicht Enforcer.
 - **ORD *kodiert* einen Breaking Change, *detektiert* ihn nicht.** ORD-Vokabel: `majorVersion`
   MUSS bei inkompatibler Änderung hochgezählt werden (≙ SemVer-Major); bei Bruch wird die alte
   Ressource nicht ersetzt, sondern ein separater `successor` erzeugt, die alte auf

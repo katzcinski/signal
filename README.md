@@ -85,6 +85,7 @@ tests/                 # pytest (unit + api)
 | [`docs/ADR-0003_BDC-Datasphere-DataProductStudio.md`](docs/ADR-0003_BDC-Datasphere-DataProductStudio.md) | ADR: Signal in einem BDC/Datasphere-Setup mit Data-Product-Studio-Produkten (HDLF-Spaces vs. SQL-Output-Port) |
 | [`docs/ADR-0004_DataProduct-als-Komposition.md`](docs/ADR-0004_DataProduct-als-Komposition.md) | ADR: Datenprodukt als Komposition über Lineage — Manifest + abgeleitetes Interieur (Vorschlag) |
 | [`docs/Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md`](docs/Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md) | Briefing/Übergabe für einen Vortrag zu Datenprodukten & Data Contracts in DSP/BDC |
+| [`docs/Konzept_MultiPlattform_Executor_BDC.md`](docs/Konzept_MultiPlattform_Executor_BDC.md) | Konzept: Multi-Plattform-Executor (HANA · HDLF · SAP/natives Databricks) via Dialect/Connector-Abstraktion |
 | [`docs/HANDOVER.md`](docs/HANDOVER.md) | Technischer Implementierungsplan (Workstreams, Gates) |
 
 ---
