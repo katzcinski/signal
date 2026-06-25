@@ -102,16 +102,13 @@ function buildObjectGraph(model: SchematicModel): ElkNode {
     layoutOptions: { 'elk.partitioning.partition': String(chip.laneOrder) },
   }));
 
-  // Column-Traces auf Objekt-Paare aggregieren.
-  const seen = new Set<string>();
-  const edges: Array<{ id: string; sources: string[]; targets: string[] }> = [];
-  for (const e of model.edges) {
-    if (e.fromNode === e.toNode) continue;
-    const id = objEdgeId(e.fromNode, e.toNode);
-    if (seen.has(id)) continue;
-    seen.add(id);
-    edges.push({ id, sources: [e.fromNode], targets: [e.toNode] });
-  }
+  // Echte Objekt-Edges ∪ aus Column-Edges abgeleitete Paare (im Modell bereits
+  // dedupliziert) — so ist der Objekt-Graph auch ohne Spalten-Lineage vollständig.
+  const edges = model.objectEdges.map(e => ({
+    id: objEdgeId(e.from, e.to),
+    sources: [e.from],
+    targets: [e.to],
+  }));
 
   return { id: 'root', layoutOptions: ROOT_OPTIONS, children, edges };
 }

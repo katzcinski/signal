@@ -20,11 +20,16 @@ def get_lineage_graph(
     settings = get_settings()
     nodes = lineage.get("nodes") or []
     edges = lineage.get("edges") or []
+    column_edges = lineage.get("columnEdges") or []
 
     if space:
         nodes = [n for n in nodes if n.get("space") == space]
         node_ids = {n.get("id") for n in nodes}
         edges = [e for e in edges if e.get("source") in node_ids or e.get("target") in node_ids]
+        column_edges = [
+            e for e in column_edges
+            if e.get("source") in node_ids or e.get("target") in node_ids
+        ]
 
     # Annotate with live DQ status and coverage flags
     object_statuses = store.get_object_status()
@@ -77,6 +82,7 @@ def get_lineage_graph(
     return {
         "nodes": annotated_nodes,
         "edges": edges,
+        "columnEdges": column_edges,
         "extracted_at": extracted_at,
         "extract_age": extract_age_days,
         "stale": stale,

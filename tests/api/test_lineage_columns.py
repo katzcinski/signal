@@ -40,3 +40,17 @@ def test_unknown_object_returns_empty(api_client):
     resp = api_client.get("/api/lineage/columns", params={"object": "nope"})
     assert resp.status_code == 200
     assert resp.json()["columns"] == {}
+
+
+def test_graph_includes_column_edges(api_client):
+    """GET /api/lineage liefert columnEdges mit (fuer das Schaltplan-Board)."""
+    _seed_column_edges(api_client)
+    resp = api_client.get("/api/lineage")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "columnEdges" in body
+    pairs = {
+        (e["source"], e["sourceColumn"], e["target"], e["targetColumn"])
+        for e in body["columnEdges"]
+    }
+    assert ("Sales_Orders", "Amount", "v_OrderSummary", "TotalAmount") in pairs

@@ -653,9 +653,19 @@ export interface LineageEdge {
   expression?: string;
 }
 
+export interface LineageColumnEdge {
+  source: string;
+  sourceColumn: string;
+  target: string;
+  targetColumn: string;
+  edgeType?: ColumnEdgeType;
+  expression?: string;
+}
+
 export interface LineageGraph {
   nodes: LineageNode[];
   edges: LineageEdge[];
+  columnEdges?: LineageColumnEdge[];
   extract_age?: number | null;
   extracted_at?: string | null;
   stale?: boolean;
