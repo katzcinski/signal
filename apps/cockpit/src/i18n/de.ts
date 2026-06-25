@@ -145,6 +145,13 @@ export const t = {
     unvalidatedTitle: 'Seit >30 Tagen nicht validiert',
     unvalidatedHint: 'Ohne Lauf oder letzter Lauf älter als 30 Tage — zur Prüfung öffnen.',
     unvalidatedEmpty: 'Alle Objekte innerhalb der letzten 30 Tage validiert.',
+    slaTitle: 'Contract-SLA',
+    slaProduct: 'Produkt',
+    slaCurrent: 'Aktuell',
+    sla7d: '7 Tage',
+    sla30d: '30 Tage',
+    sla90d: '90 Tage',
+    slaEmpty: 'Keine aktiven Contracts.',
     kind: {
       internal_gate: 'Internal',
       consumer_contract: 'Contract',
