@@ -636,6 +636,8 @@ export interface LineageNode {
   columns?: LineageColumn[];
   family?: Family | string;
   space?: string;
+  /** Quellsystem (z. B. "DEMO", "Datasphere") — im Schaltplan die "Platform". */
+  system?: string;
   // Coverage annotation fields (from /api/lineage)
   coverage_flag?: '●' | '◐' | '▲' | '○';
   dq_status?: string;
