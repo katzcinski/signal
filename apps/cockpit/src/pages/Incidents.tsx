@@ -147,6 +147,10 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
             <button style={drawerBtn('ghost')} onClick={() => navigate(`/lineage?focus=${encodeURIComponent(incident.product)}`)}>
               {t.incidents.rootCause}
             </button>
+            {/* UX-N7: Einstieg in die Spalten-Lineage + Impact-Analyse des betroffenen Objekts. */}
+            <button style={drawerBtn('ghost')} onClick={() => navigate(`/objects/${encodeURIComponent(incident.product)}?tab=lineage`)}>
+              {t.incidents.columnImpact}
+            </button>
           </div>
 
           {/* Inline note form — replaces window.prompt */}

@@ -209,7 +209,107 @@
       },
       "sqlReconstructionAvailable": false,
       "sqlReconstructionStatus": "sanitized",
-      "sqlReconstructionWarningCount": 0
+      "sqlReconstructionWarningCount": 0,
+      "query": {
+        "SELECT": {
+          "from": {
+            "ref": [
+              "DEMO_SRC_01"
+            ],
+            "as": "s"
+          },
+          "columns": [
+            {
+              "ref": [
+                "s",
+                "SRC_COL_01"
+              ],
+              "as": "SRC_COL_01"
+            },
+            {
+              "ref": [
+                "s",
+                "SRC_COL_02"
+              ],
+              "as": "SRC_COL_02"
+            },
+            {
+              "func": "UPPER",
+              "args": [
+                {
+                  "ref": [
+                    "s",
+                    "SRC_COL_03"
+                  ]
+                }
+              ],
+              "as": "SRC_COL_03"
+            },
+            {
+              "ref": [
+                "s",
+                "SRC_COL_04"
+              ],
+              "as": "SRC_COL_04"
+            }
+          ]
+        }
+      },
+      "csnProjection": {
+        "projectionLineage": [
+          {
+            "output": "SRC_COL_01",
+            "sourceRef": "s.SRC_COL_01",
+            "expression": "",
+            "alias": "SRC_COL_01",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_SRC_01.SRC_COL_01"
+            ]
+          },
+          {
+            "output": "SRC_COL_02",
+            "sourceRef": "s.SRC_COL_02",
+            "expression": "",
+            "alias": "SRC_COL_02",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_SRC_01.SRC_COL_02"
+            ]
+          },
+          {
+            "output": "SRC_COL_03",
+            "sourceRef": "",
+            "expression": "UPPER(\"s\".\"SRC_COL_03\")",
+            "alias": "SRC_COL_03",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_SRC_01.SRC_COL_03"
+            ]
+          },
+          {
+            "output": "SRC_COL_04",
+            "sourceRef": "s.SRC_COL_04",
+            "expression": "",
+            "alias": "SRC_COL_04",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_SRC_01.SRC_COL_04"
+            ]
+          }
+        ],
+        "aliasMap": {
+          "s": "DEMO_SRC_01"
+        },
+        "joinDetails": [],
+        "querySources": [
+          "DEMO_SRC_01"
+        ]
+      }
     },
     {
       "objectType": "views",
@@ -290,7 +390,89 @@
       },
       "sqlReconstructionAvailable": false,
       "sqlReconstructionStatus": "sanitized",
-      "sqlReconstructionWarningCount": 0
+      "sqlReconstructionWarningCount": 0,
+      "query": {
+        "SELECT": {
+          "from": {
+            "ref": [
+              "DEMO_SRC_01"
+            ],
+            "as": "s"
+          },
+          "columns": [
+            {
+              "ref": [
+                "s",
+                "SRC_COL_01"
+              ],
+              "as": "SRC_COL_01"
+            },
+            {
+              "func": "TRIM",
+              "args": [
+                {
+                  "ref": [
+                    "s",
+                    "SRC_COL_02"
+                  ]
+                }
+              ],
+              "as": "SRC_COL_02"
+            },
+            {
+              "ref": [
+                "s",
+                "SRC_COL_05"
+              ],
+              "as": "SRC_COL_03"
+            }
+          ]
+        }
+      },
+      "csnProjection": {
+        "projectionLineage": [
+          {
+            "output": "SRC_COL_01",
+            "sourceRef": "s.SRC_COL_01",
+            "expression": "",
+            "alias": "SRC_COL_01",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_SRC_01.SRC_COL_01"
+            ]
+          },
+          {
+            "output": "SRC_COL_02",
+            "sourceRef": "",
+            "expression": "TRIM(\"s\".\"SRC_COL_02\")",
+            "alias": "SRC_COL_02",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_SRC_01.SRC_COL_02"
+            ]
+          },
+          {
+            "output": "SRC_COL_03",
+            "sourceRef": "s.SRC_COL_05",
+            "expression": "",
+            "alias": "SRC_COL_03",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_SRC_01.SRC_COL_05"
+            ]
+          }
+        ],
+        "aliasMap": {
+          "s": "DEMO_SRC_01"
+        },
+        "joinDetails": [],
+        "querySources": [
+          "DEMO_SRC_01"
+        ]
+      }
     },
     {
       "objectType": "local-tables",
@@ -688,7 +870,115 @@
       },
       "sqlReconstructionAvailable": false,
       "sqlReconstructionStatus": "sanitized",
-      "sqlReconstructionWarningCount": 0
+      "sqlReconstructionWarningCount": 0,
+      "query": {
+        "SELECT": {
+          "from": {
+            "ref": [
+              "DEMO_HARM_01"
+            ],
+            "as": "h"
+          },
+          "columns": [
+            {
+              "ref": [
+                "h",
+                "HARM_COL_01"
+              ],
+              "as": "HARM_COL_01"
+            },
+            {
+              "xpr": [
+                {
+                  "ref": [
+                    "h",
+                    "HARM_COL_02"
+                  ]
+                },
+                "*",
+                {
+                  "val": 100
+                }
+              ],
+              "as": "HARM_COL_02"
+            },
+            {
+              "ref": [
+                "h",
+                "HARM_COL_03"
+              ],
+              "as": "HARM_COL_03"
+            },
+            {
+              "func": "COALESCE",
+              "args": [
+                {
+                  "ref": [
+                    "h",
+                    "HARM_COL_04"
+                  ]
+                }
+              ],
+              "as": "HARM_COL_04"
+            }
+          ]
+        }
+      },
+      "csnProjection": {
+        "projectionLineage": [
+          {
+            "output": "HARM_COL_01",
+            "sourceRef": "h.HARM_COL_01",
+            "expression": "",
+            "alias": "HARM_COL_01",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_HARM_01.HARM_COL_01"
+            ]
+          },
+          {
+            "output": "HARM_COL_02",
+            "sourceRef": "",
+            "expression": "\"h\".\"HARM_COL_02\" * 100",
+            "alias": "HARM_COL_02",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_HARM_01.HARM_COL_02"
+            ]
+          },
+          {
+            "output": "HARM_COL_03",
+            "sourceRef": "h.HARM_COL_03",
+            "expression": "",
+            "alias": "HARM_COL_03",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_HARM_01.HARM_COL_03"
+            ]
+          },
+          {
+            "output": "HARM_COL_04",
+            "sourceRef": "",
+            "expression": "COALESCE(\"h\".\"HARM_COL_04\")",
+            "alias": "HARM_COL_04",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_HARM_01.HARM_COL_04"
+            ]
+          }
+        ],
+        "aliasMap": {
+          "h": "DEMO_HARM_01"
+        },
+        "joinDetails": [],
+        "querySources": [
+          "DEMO_HARM_01"
+        ]
+      }
     },
     {
       "objectType": "views",
@@ -1107,7 +1397,201 @@
       },
       "sqlReconstructionAvailable": false,
       "sqlReconstructionStatus": "sanitized",
-      "sqlReconstructionWarningCount": 0
+      "sqlReconstructionWarningCount": 0,
+      "query": {
+        "SELECT": {
+          "from": {
+            "join": "inner",
+            "args": [
+              {
+                "ref": [
+                  "DEMO_BUS_03"
+                ],
+                "as": "b3"
+              },
+              {
+                "ref": [
+                  "DEMO_BUS_04"
+                ],
+                "as": "b4"
+              },
+              {
+                "ref": [
+                  "DEMO_BUS_05"
+                ],
+                "as": "b5"
+              }
+            ],
+            "on": [
+              {
+                "ref": [
+                  "b3",
+                  "BUS_COL_01"
+                ]
+              },
+              "=",
+              {
+                "ref": [
+                  "b4",
+                  "BUS_COL_01"
+                ]
+              }
+            ]
+          },
+          "columns": [
+            {
+              "ref": [
+                "b3",
+                "BUS_COL_01"
+              ],
+              "as": "BUS_COL_01"
+            },
+            {
+              "ref": [
+                "b4",
+                "BUS_COL_02"
+              ],
+              "as": "BUS_COL_02"
+            },
+            {
+              "func": "SUM",
+              "args": [
+                {
+                  "ref": [
+                    "b5",
+                    "BUS_COL_03"
+                  ]
+                }
+              ],
+              "as": "BUS_COL_03"
+            },
+            {
+              "xpr": [
+                {
+                  "ref": [
+                    "b3",
+                    "BUS_COL_02"
+                  ]
+                },
+                "+",
+                {
+                  "ref": [
+                    "b4",
+                    "BUS_COL_03"
+                  ]
+                }
+              ],
+              "as": "BUS_COL_04"
+            }
+          ]
+        }
+      },
+      "csnProjection": {
+        "projectionLineage": [
+          {
+            "output": "BUS_COL_01",
+            "sourceRef": "b3.BUS_COL_01",
+            "expression": "",
+            "alias": "BUS_COL_01",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_BUS_03.BUS_COL_01"
+            ]
+          },
+          {
+            "output": "BUS_COL_02",
+            "sourceRef": "b4.BUS_COL_02",
+            "expression": "",
+            "alias": "BUS_COL_02",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_BUS_04.BUS_COL_02"
+            ]
+          },
+          {
+            "output": "BUS_COL_03",
+            "sourceRef": "",
+            "expression": "SUM(\"b5\".\"BUS_COL_03\")",
+            "alias": "BUS_COL_03",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_BUS_05.BUS_COL_03"
+            ]
+          },
+          {
+            "output": "BUS_COL_04",
+            "sourceRef": "",
+            "expression": "\"b3\".\"BUS_COL_02\" + \"b4\".\"BUS_COL_03\"",
+            "alias": "BUS_COL_04",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_BUS_03.BUS_COL_02",
+              "DEMO_BUS_04.BUS_COL_03"
+            ]
+          }
+        ],
+        "aliasMap": {
+          "b3": "DEMO_BUS_03",
+          "b4": "DEMO_BUS_04",
+          "b5": "DEMO_BUS_05"
+        },
+        "joinDetails": [
+          {
+            "joinType": "inner",
+            "leftAliases": [
+              "b3"
+            ],
+            "rightAliases": [
+              "b4"
+            ],
+            "cardinality": {},
+            "condition": "\"b3\".\"BUS_COL_01\" = \"b4\".\"BUS_COL_01\"",
+            "keyPairs": [
+              {
+                "left": "b3.BUS_COL_01",
+                "right": "b4.BUS_COL_01"
+              }
+            ],
+            "sourceRefs": [
+              "DEMO_BUS_03",
+              "DEMO_BUS_04",
+              "DEMO_BUS_05"
+            ]
+          },
+          {
+            "joinType": "inner",
+            "leftAliases": [
+              "b3",
+              "b4"
+            ],
+            "rightAliases": [
+              "b5"
+            ],
+            "cardinality": {},
+            "condition": "\"b3\".\"BUS_COL_01\" = \"b4\".\"BUS_COL_01\"",
+            "keyPairs": [
+              {
+                "left": "b3.BUS_COL_01",
+                "right": "b4.BUS_COL_01"
+              }
+            ],
+            "sourceRefs": [
+              "DEMO_BUS_03",
+              "DEMO_BUS_04",
+              "DEMO_BUS_05"
+            ]
+          }
+        ],
+        "querySources": [
+          "DEMO_BUS_03",
+          "DEMO_BUS_04",
+          "DEMO_BUS_05"
+        ]
+      }
     },
     {
       "objectType": "views",
@@ -1223,7 +1707,89 @@
       },
       "sqlReconstructionAvailable": false,
       "sqlReconstructionStatus": "sanitized",
-      "sqlReconstructionWarningCount": 0
+      "sqlReconstructionWarningCount": 0,
+      "query": {
+        "SELECT": {
+          "from": {
+            "ref": [
+              "DEMO_BUS_01"
+            ],
+            "as": "b1"
+          },
+          "columns": [
+            {
+              "ref": [
+                "b1",
+                "BUS_COL_01"
+              ],
+              "as": "BUS_COL_01"
+            },
+            {
+              "func": "ROUND",
+              "args": [
+                {
+                  "ref": [
+                    "b1",
+                    "BUS_COL_03"
+                  ]
+                }
+              ],
+              "as": "BUS_COL_03"
+            },
+            {
+              "ref": [
+                "b1",
+                "BUS_COL_04"
+              ],
+              "as": "BUS_COL_04"
+            }
+          ]
+        }
+      },
+      "csnProjection": {
+        "projectionLineage": [
+          {
+            "output": "BUS_COL_01",
+            "sourceRef": "b1.BUS_COL_01",
+            "expression": "",
+            "alias": "BUS_COL_01",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_BUS_01.BUS_COL_01"
+            ]
+          },
+          {
+            "output": "BUS_COL_03",
+            "sourceRef": "",
+            "expression": "ROUND(\"b1\".\"BUS_COL_03\")",
+            "alias": "BUS_COL_03",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_BUS_01.BUS_COL_03"
+            ]
+          },
+          {
+            "output": "BUS_COL_04",
+            "sourceRef": "b1.BUS_COL_04",
+            "expression": "",
+            "alias": "BUS_COL_04",
+            "unsupported": false,
+            "nullableSource": false,
+            "allSourceRefs": [
+              "DEMO_BUS_01.BUS_COL_04"
+            ]
+          }
+        ],
+        "aliasMap": {
+          "b1": "DEMO_BUS_01"
+        },
+        "joinDetails": [],
+        "querySources": [
+          "DEMO_BUS_01"
+        ]
+      }
     },
     {
       "objectType": "local-tables",

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './client';
 import type {
+  ColumnImpactResponse,
   ColumnLineageColumnResponse,
   ColumnLineageObjectResponse,
   LineageGraph,
@@ -25,4 +26,14 @@ export const useColumnLineage = (objectId: string, column?: string) =>
     queryKey: ['lineage', 'columns', objectId, column ?? 'all'],
     queryFn: () => fetchColumnLineage(objectId, column as string),
     enabled: !!objectId,
+  });
+
+export const useColumnImpact = (objectId: string, column: string | undefined) =>
+  useQuery<ColumnImpactResponse>({
+    queryKey: ['lineage', 'columns', 'impact', objectId, column ?? ''],
+    queryFn: () =>
+      api
+        .get('/lineage/columns/impact', { params: { object: objectId, column } })
+        .then(r => r.data),
+    enabled: !!objectId && !!column,
   });

@@ -17,6 +17,7 @@ import { MinedProposalsCallout } from '@/components/MinedProposalsCallout';
 import { ObservabilityTimeseries } from '@/components/ObservabilityTimeseries';
 import { ObjectProfilePanel } from '@/components/ObjectProfilePanel';
 import { SchedulePanel } from '@/components/SchedulePanel';
+import { ColumnLineagePanel } from '@/components/lineage/ColumnLineagePanel';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
@@ -574,15 +575,20 @@ export default function ObjectDetail() {
       )}
 
       {tab === 'lineage' && (
-        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s6)' }}>
-          <MiniLineageDag focusId={obj.id} />
-          <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 16 }}>
-            {t.objectDetail.lineageHint}{' '}
-            <Link to={`/lineage?focus=${encodeURIComponent(obj.id)}`} style={{ color: 'var(--cont)' }}>
-              {t.objectDetail.lineageLink}
-            </Link>.
-          </p>
-        </div>
+        <>
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s6)' }}>
+            <MiniLineageDag focusId={obj.id} />
+            <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 16 }}>
+              {t.objectDetail.lineageHint}{' '}
+              <Link to={`/lineage?focus=${encodeURIComponent(obj.id)}`} style={{ color: 'var(--cont)' }}>
+                {t.objectDetail.lineageLink}
+              </Link>.
+            </p>
+          </div>
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s6)', marginTop: 'var(--s4)' }}>
+            <ColumnLineagePanel objectId={obj.id} />
+          </div>
+        </>
       )}
 
       {tab === 'schedule' && (

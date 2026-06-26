@@ -32,7 +32,7 @@ sind gesetzt und werden nicht neu verhandelt.
 | UX-N4 | SLA/SLO-Dashboard (Burn-down, Uptime %) | ✅ Done | Tooldoku §5 (`/sla`) |
 | UX-N5 | Run-Vergleich / Regressions-Diff | ✅ Done | Tooldoku §5/§8 (`/runs/compare`) |
 | UX-N6 | Teilbarer Quality-Report / Data-Docs (Link/PDF) | ◻ Offen | Badge existiert (`/badge/{p}`), Report-Snapshot fehlt |
-| UX-N7 | Spaltenebene-Lineage + Impact-Analyse | ◻ Offen | **blockiert durch O3** (`columnEdges`-Parser) |
+| UX-N7 | Spaltenebene-Lineage + Impact-Analyse | ◑ Teilweise | DAG + Impact-API + UI gegen Demo-Daten (WS-A/C/D ✅). Offen: WS-B Walker-Härtung + echter Extract. Plan: `PLAN_UX-N7_Column_Lineage.md` |
 | UX-N8 | Check-/Expectation-Library-Browser | ✅ Done | Tooldoku §8 (`/library`) |
 | UX-N9 | Schema-Drift-/Change-Screen | ◻ Offen | — |
 | UX-N10 | Status-Heatmap Objekt × Tag | ✅ Done | Tooldoku §8 (Cockpit) |
@@ -83,9 +83,15 @@ Read-only Run-Report als Link/PDF für Nicht-Nutzer. `BadgeEmbed`/`GET /api/badg
 existiert als Tile; der vollständige, auth-gegatete Report-Snapshot fehlt noch.
 *Acceptance:* öffentlich teilbarer, auth-gegateter Report-Snapshot.
 
-**UX-N7 Spaltenebene-Lineage + Impact-Analyse** *(Datafold; blockiert)*
-UI ist objektebene-only. **Blockiert durch O3** (`columnEdges`-Parser-Defekt im
-Analyzer, siehe [`PLAN_Remediation_v2.md`](PLAN_Remediation_v2.md) / `REVIEW_Tool_v2_Status.md`).
+**UX-N7 Spaltenebene-Lineage + Impact-Analyse** *(Datafold)*
+UI ist objektebene-only. O3 ist **neu bewertet (2026-06-26): kein Parser-Defekt,
+sondern ein Datenproblem.** Der CQN-Walker (`_csn_reconstructor.extract_query_details`
++ `_column_lineage.build_column_lineage`) ist implementiert und unit-getestet
+(`computed`-Kanten inkl. gerenderter Expression; SQL-Pfad via sqlglot). Die API steht
+ebenfalls (`GET /api/lineage/columns` → `build_column_indexes`). Blocker: die
+Extract-Snapshots (`data/inventory.json`) tragen **keinen** CSN-`query`-AST/`sql`, daher
+nur Seed-Platzhalter in `data/lineage.json` (alle `direct`, leere Expression).
+Vollständiger Umsetzungsplan: [`PLAN_UX-N7_Column_Lineage.md`](PLAN_UX-N7_Column_Lineage.md).
 *Acceptance:* Spalten-DAG + betroffene Downstream-Consumer mit Ownership aus einem
 Incident heraus.
 
