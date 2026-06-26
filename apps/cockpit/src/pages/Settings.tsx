@@ -7,7 +7,7 @@ import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { OperationProgress } from '@/components/OperationProgress';
 import {
   useAdminEnvironments, useCreateEnvironment, useUpdateEnvironment, useDeleteEnvironment,
-  useStartConnectionTest, useOperationStream, useSetEnvironmentSecret, type EnvironmentInput,
+  useStartConnectionTest, useOperationStream, type EnvironmentInput,
 } from '@/api/environments';
 import { t } from '@/i18n/de';
 import type { AdminEnvironment, ConnectionTestResult } from '@/types';
@@ -84,47 +84,6 @@ function ConnectionTest({ name, canTest }: { name: string; canTest: boolean }) {
           <OperationProgress operation={op} />
         </div>
       )}
-    </div>
-  );
-}
-
-// --- Inline password entry (stores value in secrets.local.yml via the secret endpoint) ---
-function SetSecret({ name, onDone }: { name: string; onDone: () => void }) {
-  const [pw, setPw] = useState('');
-  const save = useSetEnvironmentSecret();
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pw) return;
-    save.mutate({ name, password: pw }, { onSuccess: () => { setPw(''); onDone(); } });
-  };
-
-  return (
-    <div style={{
-      border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)',
-      padding: 'var(--s3)', marginTop: 'var(--s2)', background: 'var(--bg-2)',
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 'var(--s2)' }}>
-        {t.environments.setSecret} — {name}
-      </div>
-      <form onSubmit={onSubmit} style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'center' }}>
-        <input
-          type="password"
-          value={pw}
-          onChange={e => setPw(e.target.value)}
-          placeholder={t.environments.secretPlaceholder}
-          autoComplete="new-password"
-          style={{
-            flex: 1, fontSize: 12, padding: '2px 6px',
-            border: '1px solid var(--line)', borderRadius: 'var(--r)',
-            background: 'var(--bg)', color: 'var(--fg)',
-          }}
-        />
-        <Button variant="secondary" size="sm" type="submit" disabled={!pw || save.isPending}>
-          {t.environments.setSecret}
-        </Button>
-        <Button variant="ghost" size="sm" type="button" onClick={onDone}>{t.settings.cancel}</Button>
-      </form>
     </div>
   );
 }
@@ -217,7 +176,6 @@ function EnvironmentForm({ initial, onDone }: { initial: AdminEnvironment | null
 function ConnectionsSection({ environments, canEdit }: { environments: AdminEnvironment[]; canEdit: boolean }) {
   const del = useDeleteEnvironment();
   const [editing, setEditing] = useState<string | null>(null);
-  const [settingSecret, setSettingSecret] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
   return (
@@ -245,16 +203,8 @@ function ConnectionsSection({ environments, canEdit }: { environments: AdminEnvi
             <div style={{ flex: 1 }} />
             {canEdit && (
               <>
-                {env.password_ref && (
-                  <Button variant="ghost" size="sm" onClick={() => {
-                    setSettingSecret(settingSecret === env.name ? null : env.name);
-                    setEditing(null);
-                  }}>
-                    {t.environments.setSecret}
-                  </Button>
-                )}
                 <Button variant="ghost" size="sm" onClick={() => {
-                  setEditing(env.name); setAdding(false); setSettingSecret(null);
+                  setEditing(env.name); setAdding(false);
                 }}>
                   {t.settings.edit}
                 </Button>
@@ -267,9 +217,6 @@ function ConnectionsSection({ environments, canEdit }: { environments: AdminEnvi
           </div>
           {canEdit && (
             <ConnectionTest name={env.name} canTest={env.password_set} />
-          )}
-          {settingSecret === env.name && (
-            <SetSecret name={env.name} onDone={() => setSettingSecret(null)} />
           )}
           {editing === env.name && (
             <EnvironmentForm initial={env} onDone={() => setEditing(null)} />

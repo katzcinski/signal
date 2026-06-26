@@ -86,7 +86,6 @@ function EnvironmentRow({ env, canTest }: { env: Environment; canTest: boolean }
     <div style={row}>
       <div>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--fg)' }}>{env.name}</div>
-        {env.password_ref && <div style={mono}>{env.password_ref}</div>}
       </div>
       <div style={mono}>{env.host || '-'}</div>
       <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap' }}>

@@ -12,7 +12,6 @@ const h = vi.hoisted(() => ({
         name: 'prod',
         schema: 'CORE',
         host: '***.example.com',
-        password_ref: 'env:HANA_PW_PROD',
         secret_status: true,
       }],
     } as EnvironmentsResponse,
@@ -45,7 +44,6 @@ describe('Environments page', () => {
 
     expect(screen.getByText('prod')).toBeInTheDocument();
     expect(screen.getByText('***.example.com')).toBeInTheDocument();
-    expect(screen.getByText('env:HANA_PW_PROD')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText(t.settings.test));
     expect(h.start).toHaveBeenCalledWith('prod', expect.objectContaining({ onSuccess: expect.any(Function) }));

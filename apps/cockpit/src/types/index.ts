@@ -61,7 +61,6 @@ export interface Environment {
   name: string;
   schema: string;
   host?: string;
-  password_ref?: string;
   secret_status?: boolean;
 }
 

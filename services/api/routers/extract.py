@@ -340,7 +340,6 @@ def list_environments():
                 "name": name,
                 "schema": (cfg or {}).get("schema", ""),
                 "host": _mask_host(str((cfg or {}).get("host", ""))),
-                "password_ref": _safe_ref(str((cfg or {}).get("password_ref", ""))),
                 "secret_status": bool((cfg or {}).get("password")) or secret_status((cfg or {}).get("password_ref")),
             }
             for name, cfg in envs.items()
