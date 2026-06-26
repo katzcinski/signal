@@ -1,6 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useExtractStatus, useStartExtract, type ExtractCounts } from '@/api/extract';
-import { ConnectorPanel } from '@/components/ConnectorPanel';
 import { Button } from '@/components/ui/Button';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Field, Input } from '@/components/ui/Field';
@@ -60,7 +59,6 @@ function Counts({ counts }: { counts?: ExtractCounts }) {
 export default function InventoryAdmin() {
   const role = useRoleStore(s => s.role);
   const canTrigger = canManageInventory(role);
-  const canEdit = canTrigger;
   const { data, isLoading, isError, refetch } = useExtractStatus();
   const startExtract = useStartExtract();
   const [environment, setEnvironment] = useState('default');
@@ -168,8 +166,6 @@ export default function InventoryAdmin() {
               ))}
             </div>
           </Panel>
-
-          <ConnectorPanel canEdit={canEdit} />
         </div>
       </div>
     </div>
