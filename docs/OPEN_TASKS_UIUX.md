@@ -24,7 +24,7 @@ sind gesetzt und werden nicht neu verhandelt.
 | UX-F5 | Faceted Search/Filter im Objektkatalog (URL-synced) | ✅ Done | Tooldoku §8 (`/objects`) |
 | UX-F6 | Token-Disziplin Spacing/Radius + geteilte Primitives | ◑ Teilweise | Primitives + `--r-full`; Radius projektweit aus Tokens. Padding/Gap-Inline-Sweep offen |
 | UX-F7 | Restpolitur (Breadcrumbs, Governance Loading/Error, Relativzeit) | ✅ Done | — |
-| UX-F8 | Button-Interaktionszustände (Hover/Active/Disabled-Kontrast) | ◻ Offen | hängt an UX-F6 |
+| UX-F8 | Button-Interaktionszustände (Hover/Active/Disabled-Kontrast) | ✅ Done | Globale `button`-Regeln (index.css) + `Button`-Disabled-Tone-Shift; `Button.test.tsx` |
 | UX-F9 | CSS-Micro-polish (::selection, FF-Scrollbar, Header-Shadow, Row-Hover) | ◻ Offen | — |
 | UX-N1 | Freshness-/Volume-Zeitreihen (Band, Anomalie-Marker) | ✅ Done | Tooldoku §8 („Verlauf"-Tab) |
 | UX-N2 | Alerting & Notification-Routing | ✅ Done | Tooldoku §5/§8 (`/notifications`, Migration 005/007 `match_kind`) |
@@ -42,8 +42,8 @@ sind gesetzt und werden nicht neu verhandelt.
 | UX-N14 | Profiling-/Sample-Row-View hinter `[PII-GATE]` | ✅ Done | Tooldoku §5/§6 (`/profile`, `ALLOW_PROFILE_SAMPLES`) |
 | UX-N15 | Activity-/Audit-Feed | ✅ Done | Tooldoku §5 (`/api/activity`) |
 
-**Offen (5):** UX-F6 (◑ teilweise — Radius/Primitives erledigt, Padding/Gap-Sweep
-offen), UX-F8, UX-F9 (UI-Politur/Wartbarkeit, additiv) · UX-N6 (teilbarer Report) ·
+**Offen (4):** UX-F6 (◑ teilweise — Radius/Primitives erledigt, Padding/Gap-Sweep
+offen), UX-F9 (UI-Politur/Wartbarkeit, additiv) · UX-N6 (teilbarer Report) ·
 UX-N7 (Spalten-Lineage, blockiert) · UX-N9 (Schema-Drift-Screen).
 
 ---
@@ -61,11 +61,15 @@ alle Inline-`borderRadius:4/5/6/8/10` → `var(--r/--r-md/--r-lg)`, Pills (`20/9
 Einzelfall-Mapping.
 *Acceptance:* neue Screens nutzen Primitives; Radius/Spacing kommt aus Tokens.
 
-**UX-F8 Button-Interaktionszustände** *(hängt an UX-F6)*
-Hover/Active einheitlich über das `Button`-Primitive; Disabled mit Farbton-Shift +
-`cursor: not-allowed` statt reinem `opacity: 0.45` (WCAG 1.4.3).
+**UX-F8 Button-Interaktionszustände** *(hängt an UX-F6)* — ✅ Done
+Globale `button`-Regeln in `index.css`: Transition + `:not(:disabled):hover`
+(`filter: brightness(1.12)`), `:active` (`0.94`) und `:disabled { cursor:
+not-allowed }`. Background-agnostisch via `filter`, daher greift es auf **jeden**
+`<button>` über alle Themes ohne Kenntnis der Inline-Farben. Das `Button`-Primitive
+kodiert Disabled jetzt über einen Farbton-Shift (`--bg-2`/`--fg-3`/`--line`) statt
+`opacity: 0.45` (WCAG 1.4.3). Abgesichert durch `tests/Button.test.tsx`.
 *Acceptance:* jeder `<button>` zeigt sichtbaren Hover mit Transition; Disabled
-ohne Tooltip erkennbar.
+ohne Tooltip erkennbar. ✓
 
 **UX-F9 CSS-Micro-polish**
 `::selection` mit Accent-Farbe; Firefox-Scrollbar slim+dunkel (`scrollbar-color`/

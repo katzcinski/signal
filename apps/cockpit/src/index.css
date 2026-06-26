@@ -532,7 +532,18 @@ a {
 button {
   font-family: inherit;
   cursor: pointer;
+  /* UX-F8: every button transitions, so hover/active read as a state change
+     rather than an instant jump. */
+  transition: filter var(--t), background var(--t), border-color var(--t),
+    color var(--t), opacity var(--t);
 }
+
+/* UX-F8: universal, background-agnostic interaction feedback. `brightness`
+   works on inline-styled buttons across every theme without the rule needing
+   to know their colours — hover lifts, active presses, disabled blocks. */
+button:not(:disabled):hover { filter: brightness(1.12); }
+button:not(:disabled):active { filter: brightness(0.94); }
+button:disabled { cursor: not-allowed; }
 
 /* A11y floor: visible keyboard focus everywhere (theme-bridged ring colour). */
 :focus-visible {
