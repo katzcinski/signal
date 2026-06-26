@@ -13,7 +13,7 @@ const muted: CSSProperties = { color: 'var(--fg-3)', fontSize: 12 };
 const valueText: CSSProperties = { color: 'var(--fg)', fontSize: 13, fontWeight: 600 };
 const monoText: CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)' };
 const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 'var(--s3)' };
-const LOCAL_SOURCE_WARNING = 'No live extraction source configured; refreshed local snapshot timestamps.';
+const LOCAL_SOURCE_WARNING = 'No live extraction source configured; nothing was extracted.';
 
 function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
   const { data, isLoading } = useConnectorStatus();

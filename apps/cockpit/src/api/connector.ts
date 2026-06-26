@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { EXTRACT_STATUS_KEY } from './extract';
 
 export interface ConnectorStatus {
   space_id: string;
@@ -41,7 +42,7 @@ export function useSaveConnector() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['connector-status'] });
-      qc.invalidateQueries({ queryKey: ['extract-status'] });
+      qc.invalidateQueries({ queryKey: EXTRACT_STATUS_KEY });
     },
   });
 }

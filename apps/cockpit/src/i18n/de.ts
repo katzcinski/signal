@@ -899,9 +899,10 @@ export const t = {
     publishedAt: 'Veroeffentlicht',
     artifacts: 'Artefakte',
     warning: 'Hinweis',
-    localWarning: 'Kein Live-Connector konfiguriert; Phase 1 nutzt vorhandene Snapshot-Dateien.',
+    localWarning: 'Kein Live-Connector konfiguriert; es wurde nichts extrahiert.',
     noValue: 'n/a',
     triggerOk: 'Extrakt abgeschlossen.',
+    triggerSkipped: 'Kein Live-Connector konfiguriert — es wurde nichts extrahiert. Der angezeigte Snapshot ist unverändert.',
     triggerError: 'Extrakt konnte nicht gestartet werden.',
   },
   notifications: {
