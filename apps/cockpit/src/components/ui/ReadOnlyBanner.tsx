@@ -11,7 +11,7 @@ export function ReadOnlyBanner({ hint }: { hint?: string }) {
         display: 'flex', alignItems: 'center', gap: 10,
         background: 'var(--bg-2)', border: '1px solid var(--line-2)',
         borderLeft: '3px solid var(--obs)', borderRadius: 'var(--r-md)',
-        padding: '8px 12px', marginBottom: 16,
+        padding: 'var(--s2) var(--s3)', marginBottom: 16,
       }}
     >
       <span aria-hidden style={{ color: 'var(--obs)' }}>🔒</span>

@@ -179,7 +179,7 @@ export function LineageMiniGraph({ subgraph }: LineageMiniGraphProps) {
 
   if (subgraph.nodes.length === 0) {
     return (
-      <div style={{ color: 'var(--fg-3)', fontSize: 12, padding: 24, textAlign: 'center' }}>
+      <div style={{ color: 'var(--fg-3)', fontSize: 12, padding: 'var(--s6)', textAlign: 'center' }}>
         No lineage nodes.
       </div>
     );

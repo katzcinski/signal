@@ -29,11 +29,11 @@ export function ObservabilityTimeseries({ objectId, enabled }: { objectId: strin
   );
 
   if (isError) return <ErrorBanner onRetry={() => refetch()} />;
-  if (isLoading) return <p style={{ color: 'var(--fg-3)', fontSize: 12, padding: 16 }}>{t.common.loading}</p>;
+  if (isLoading) return <p style={{ color: 'var(--fg-3)', fontSize: 12, padding: 'var(--s4)' }}>{t.common.loading}</p>;
 
   if (!data || data.series.length === 0) {
     return (
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 24, textAlign: 'center' }}>
+      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s6)', textAlign: 'center' }}>
         <p style={{ color: 'var(--fg-2)', fontSize: 13, fontWeight: 600 }}>{t.timeseries.emptyTitle}</p>
         <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 6 }}>{t.timeseries.emptyHint}</p>
       </div>
@@ -42,7 +42,7 @@ export function ObservabilityTimeseries({ objectId, enabled }: { objectId: strin
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)', marginBottom: 14 }}>
         <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.timeseries.rangeLabel}</span>
         <div role="group" aria-label={t.timeseries.rangeLabel} style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
           {RANGES.map(r => (

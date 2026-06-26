@@ -23,7 +23,7 @@ const chipBtn = (active: boolean): CSSProperties => ({
 function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
+      display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)',
       padding: '2px 6px 2px 8px', borderRadius: 'var(--r-full)',
       background: 'var(--cont)', color: '#fff', fontSize: 11,
     }}>
@@ -60,7 +60,7 @@ export default function ObjectCatalog() {
     {
       key: 'name', header: t.objects.colName, mono: true, sortable: true, sortValue: o => o.name,
       render: o => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
           <span style={{
             width: 3, height: 16, borderRadius: 2, flexShrink: 0,
             background: o.family === 'observability' ? 'var(--obs)'

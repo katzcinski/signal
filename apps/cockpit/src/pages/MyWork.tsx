@@ -25,7 +25,7 @@ function RowButton({ onClick, children }: { onClick: () => void; children: React
     <button
       onClick={onClick}
       style={{
-        display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
+        display: 'flex', alignItems: 'center', gap: 'var(--s3)', width: '100%', textAlign: 'left',
         padding: '7px 0', background: 'none', border: 'none',
         borderBottom: '1px solid var(--line)', borderRadius: 0,
         color: 'var(--fg)', cursor: 'pointer',
@@ -93,7 +93,7 @@ export default function MyWork() {
       )}
 
       {isLoading ? <KpiSkeleton count={3} /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--s4)', marginBottom: 24 }}>
           <Kpi label={t.myWork.openIncidents} value={openIncidents.length} accent="var(--cont)" />
           <Kpi label={t.myWork.openProposals} value={openProposals.length} accent="var(--cont)" />
           <Kpi label={t.cockpit.kpiHealth} value={`${healthPct}%`} accent="var(--qual)" />

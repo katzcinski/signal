@@ -22,7 +22,7 @@ export function LifecycleStepper({ current }: Props) {
         return (
           <div key={step} style={{ display: 'flex', alignItems: 'center' }}>
             <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--s1)',
             }}>
               <div style={{
                 width: 24, height: 24, borderRadius: '50%',

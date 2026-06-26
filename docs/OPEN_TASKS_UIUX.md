@@ -22,7 +22,7 @@ sind gesetzt und werden nicht neu verhandelt.
 | UX-F3 | Incident-Drawer als echter Dialog/Inspector | ✅ Done | Incidents-Inbox (R4-1) |
 | UX-F4 | A11y-Härtung (Kontrast `--fg-3`→AA, Nav-Icon-Labels) | ✅ Done | — |
 | UX-F5 | Faceted Search/Filter im Objektkatalog (URL-synced) | ✅ Done | Tooldoku §8 (`/objects`) |
-| UX-F6 | Token-Disziplin Spacing/Radius + geteilte Primitives | ◑ Teilweise | Primitives + `--r-full`; Radius projektweit aus Tokens. Padding/Gap-Inline-Sweep offen |
+| UX-F6 | Token-Disziplin Spacing/Radius + geteilte Primitives | ✅ Done | Primitives + `--r-full`; Radius projektweit + Padding/Gap (exakt-Token) aus Tokens |
 | UX-F7 | Restpolitur (Breadcrumbs, Governance Loading/Error, Relativzeit) | ✅ Done | — |
 | UX-F8 | Button-Interaktionszustände (Hover/Active/Disabled-Kontrast) | ✅ Done | Globale `button`-Regeln (index.css) + `Button`-Disabled-Tone-Shift; `Button.test.tsx` |
 | UX-F9 | CSS-Micro-polish (::selection, FF-Scrollbar, Header-Shadow, Row-Hover) | ✅ Done | index.css (FF-Scrollbar, `.tbl-row` Hover/:focus-within), `Table` Sticky-Header-Shadow |
@@ -42,24 +42,23 @@ sind gesetzt und werden nicht neu verhandelt.
 | UX-N14 | Profiling-/Sample-Row-View hinter `[PII-GATE]` | ✅ Done | Tooldoku §5/§6 (`/profile`, `ALLOW_PROFILE_SAMPLES`) |
 | UX-N15 | Activity-/Audit-Feed | ✅ Done | Tooldoku §5 (`/api/activity`) |
 
-**Offen (4):** UX-F6 (◑ teilweise — Radius/Primitives erledigt, Padding/Gap-Sweep
-offen) · UX-N6 (teilbarer Report) · UX-N7 (Spalten-Lineage, blockiert) ·
+**Offen (3):** UX-N6 (teilbarer Report) · UX-N7 (Spalten-Lineage, blockiert) ·
 UX-N9 (Schema-Drift-Screen).
 
 ---
 
 ## Offene Punkte (Detail)
 
-**UX-F6 Token-Disziplin Spacing/Radius + geteilte Primitives** *(Wartbarkeit)* — ◑ teilweise
+**UX-F6 Token-Disziplin Spacing/Radius + geteilte Primitives** *(Wartbarkeit)* — ✅ Done
 Primitive-Set (`Card`, `Button`, `Field`/`Input`/`Select`, `SectionHeader`) zieht
-Spacing/Radius/Shadow aus Tokens. **Radius ist jetzt projektweit token-getrieben:**
-alle Inline-`borderRadius:4/5/6/8/10` → `var(--r/--r-md/--r-lg)`, Pills (`20/99/999`)
-→ neues Token `--r-full`. Bewusst belassen: `0/2/3` (absichtliche Mikro-Radien an
-8px-Dots/Tags — Mapping würde Quadrate zu Kreisen machen). `Panel`-Padding aus Tokens.
-*Rest:* breiter Padding/Gap-Inline-Sweep (`padding`/`gap` mit px-Literalen) auf die
-4px-Skala (`--s1`…`--s6`) — schrittweise, viele Werte (`10px`/asymmetrisch) brauchen
-Einzelfall-Mapping.
-*Acceptance:* neue Screens nutzen Primitives; Radius/Spacing kommt aus Tokens.
+Spacing/Radius/Shadow aus Tokens. **Radius projektweit token-getrieben:** alle
+Inline-`borderRadius:4/5/6/8/10` → `var(--r/--r-md/--r-lg)`, Pills (`20/99/999`)
+→ neues Token `--r-full`. **Padding/Gap-Sweep:** ~213 Inline-Literale (numerisch +
+String-Shorthands) auf die 4px-Skala (`--s1`…`--s6`) migriert — konservativ nur bei
+exakter Token-Deckung (4/8/12/16/20/24), Shorthands nur wenn alle Komponenten passen.
+Bewusst belassen: off-scale-Werte (`5/6/7/10/14/18…`) und Mikro-Radien (`0/2/3`) — ein
+Mapping würde die Optik ändern (z. B. Quadrate zu Kreisen).
+*Acceptance:* neue Screens nutzen Primitives; Radius/Spacing kommt aus Tokens. ✓
 
 **UX-F8 Button-Interaktionszustände** *(hängt an UX-F6)* — ✅ Done
 Globale `button`-Regeln in `index.css`: Transition + `:not(:disabled):hover`

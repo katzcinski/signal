@@ -18,7 +18,7 @@ function StepCard({ step, title, desc, done, locked, children }: {
 }) {
   return (
     <div style={{
-      display: 'flex', gap: 14, padding: 16,
+      display: 'flex', gap: 14, padding: 'var(--s4)',
       background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)',
       opacity: locked ? 0.45 : 1,
     }}>
@@ -70,7 +70,7 @@ export function OnboardingPanel() {
   const dryRunData = dryRun.data as { total?: number; passed?: number; failed?: number } | undefined;
 
   return (
-    <div style={{ maxWidth: 640, margin: '40px auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ maxWidth: 640, margin: '40px auto', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
       <div>
         <h2 style={{ fontSize: 17, fontWeight: 700 }}>{t.onboarding.title}</h2>
         <p style={{ fontSize: 13, color: 'var(--fg-3)', marginTop: 4 }}>{t.onboarding.intro}</p>
@@ -92,7 +92,7 @@ export function OnboardingPanel() {
 
       <StepCard step={2} title={t.onboarding.step2Title} desc={t.onboarding.step2Desc} done={seedDone} locked={!extractDone}>
         {!seedDone && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'center' }}>
             <select
               value={pick}
               onChange={e => setPick(e.target.value)}

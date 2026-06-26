@@ -36,12 +36,12 @@ export function RunTriggerDialog({ onStart, onClose, pending }: Props) {
         onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
         style={{
           background: 'var(--bg-1)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-lg)',
-          padding: 20, width: 360, display: 'flex', flexDirection: 'column', gap: 14,
+          padding: 'var(--s5)', width: 360, display: 'flex', flexDirection: 'column', gap: 14,
         }}
       >
         <div style={{ fontWeight: 700, fontSize: 14 }}>{t.objectDetail.runDialogTitle}</div>
 
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--fg-2)' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)', fontSize: 12, color: 'var(--fg-2)' }}>
           {t.objectDetail.environment}
           <select value={environment} onChange={e => setEnvironment(e.target.value)} style={selectStyle}>
             <option value="">{t.objectDetail.localMock}</option>
@@ -51,14 +51,14 @@ export function RunTriggerDialog({ onStart, onClose, pending }: Props) {
           </select>
         </label>
 
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--fg-2)' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)', fontSize: 12, color: 'var(--fg-2)' }}>
           {t.objectDetail.executionMode}
           <select value={executionMode} onChange={e => setExecutionMode(e.target.value)} style={selectStyle}>
             {EXECUTION_MODES.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </label>
 
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 'var(--s2)', justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}
             style={{

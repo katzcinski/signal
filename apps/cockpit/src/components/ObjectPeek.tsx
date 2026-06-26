@@ -17,7 +17,7 @@ function CheckRow({ objectId, check }: { objectId: string; check: CheckResult })
     .map(h => Number(h.actual_value))
     .filter(n => Number.isFinite(n));
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 'var(--s2) 0', borderBottom: '1px solid var(--line)' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{check.name}</div>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }}>{check.expect}</div>
@@ -40,7 +40,7 @@ export function ObjectPeek({ objectId, onClose }: { objectId: string; onClose: (
   return (
     <SidePanel
       title={
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
           <span style={{ fontFamily: 'var(--font-mono)' }}>{obj?.name ?? objectId}</span>
           {obj && <FamilyTag family={obj.family} />}
           {obj && <StatusPill status={obj.status ?? 'unknown'} size="sm" />}

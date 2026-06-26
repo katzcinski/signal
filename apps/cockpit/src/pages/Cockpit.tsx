@@ -69,7 +69,7 @@ function SlaBar({ pct }: { pct: number | null }) {
   if (pct === null) return <span style={{ fontSize: 10, color: 'var(--fg-3)' }}>—</span>;
   const color = pct >= 99 ? 'var(--qual)' : pct >= 90 ? 'var(--status-warn)' : 'var(--status-crit)';
   return (
-    <div title={`${pct}%`} style={{ display: 'flex', alignItems: 'center', gap: 4, width: 84 }}>
+    <div title={`${pct}%`} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s1)', width: 84 }}>
       <div style={{ width: 52, height: 5, background: 'var(--bg-2)', borderRadius: 3, overflow: 'hidden' }}>
         <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: color, borderRadius: 3 }} />
       </div>
@@ -84,7 +84,7 @@ function SlaRow({ product }: { product: string }) {
   const cur = sla?.current ?? 'unknown';
   const curColor = cur === 'compliant' ? 'var(--qual)' : cur === 'breached' ? 'var(--status-crit)' : 'var(--fg-3)';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)', padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product}</span>
       <span style={{ fontSize: 11, color: curColor, minWidth: 64 }}>{t.compliance[cur] ?? cur}</span>
       <SlaBar pct={w?.['7d'] ?? null} />
@@ -148,16 +148,16 @@ export default function Cockpit() {
   ];
 
   return (
-    <div className="page-full" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+    <div className="page-full" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--s4)', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>{t.cockpit.title}</h1>
           <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{t.cockpit.subtitle}</p>
         </div>
         <span style={{
-          fontSize: 11, color: 'var(--fg-2)', padding: '4px 12px', borderRadius: 'var(--r-full)',
+          fontSize: 11, color: 'var(--fg-2)', padding: 'var(--s1) var(--s3)', borderRadius: 'var(--r-full)',
           border: '1px solid var(--line-2)', background: 'var(--bg-1)',
-          display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap',
+          display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)', whiteSpace: 'nowrap',
         }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--qual)' }} />
           {t.cockpit.dqFirst}
@@ -170,7 +170,7 @@ export default function Cockpit() {
       {/* Hero: DQ-health trend (left) + per-family rollup & hotspots (right). */}
       <div className="dash-hero">
         <DqHealthTrend />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
           <FamilyHealthCards objects={objects} />
           <AttentionPanel objects={objects} />
         </div>
@@ -234,7 +234,7 @@ export default function Cockpit() {
               key={i.id}
               onClick={() => navigate(`/incidents?status=${i.status}&kind=${i.kind === 'internal_gate' ? 'internal_gate' : 'contract'}`)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
+                display: 'flex', alignItems: 'center', gap: 'var(--s3)', width: '100%', textAlign: 'left',
                 padding: '6px 0', background: 'none', border: 'none',
                 borderBottom: '1px solid var(--line)', borderRadius: 0,
                 color: 'var(--fg)', cursor: 'pointer',
@@ -250,7 +250,7 @@ export default function Cockpit() {
 
         {activeContracts.length > 0 ? (
           <Panel title={t.cockpit.slaTitle}>
-            <div style={{ display: 'flex', gap: 16, padding: '0 0 6px 0', borderBottom: '1px solid var(--line)', marginBottom: 4 }}>
+            <div style={{ display: 'flex', gap: 'var(--s4)', padding: '0 0 6px 0', borderBottom: '1px solid var(--line)', marginBottom: 4 }}>
               <span style={{ fontSize: 10, color: 'var(--fg-3)', flex: 1 }}>{t.cockpit.slaProduct}</span>
               <span style={{ fontSize: 10, color: 'var(--fg-3)', minWidth: 64 }}>{t.cockpit.slaCurrent}</span>
               <span style={{ fontSize: 10, color: 'var(--fg-3)', width: 84 }}>{t.cockpit.sla7d}</span>
@@ -285,7 +285,7 @@ export default function Cockpit() {
                   key={objId}
                   onClick={() => navigate(`/objects/${objId}`)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
+                    display: 'flex', alignItems: 'center', gap: 'var(--s3)', width: '100%', textAlign: 'left',
                     padding: '6px 0', background: 'none', border: 'none',
                     borderBottom: '1px solid var(--line)', borderRadius: 0,
                     color: 'var(--fg)', cursor: 'pointer',

@@ -36,7 +36,7 @@ export function HealthGauge({ pct, prevPct = null, size = 120 }: Props) {
 
   return (
     <div
-      style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}
+      style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--s1)' }}
       role="img"
       aria-label={`${t.cockpit.kpiHealth}: ${clamped}%${delta != null ? `, ${trend === 'up' ? '+' : ''}${delta}` : ''}`}
     >

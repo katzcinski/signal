@@ -123,7 +123,7 @@ export function Table<T>({
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           {head}
           <tbody>
-            <tr><td colSpan={columns.length} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--fg-3)' }}>{empty}</td></tr>
+            <tr><td colSpan={columns.length} style={{ padding: 'var(--s6) var(--s3)', textAlign: 'center', color: 'var(--fg-3)' }}>{empty}</td></tr>
           </tbody>
         </table>
       </div>

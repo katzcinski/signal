@@ -27,10 +27,10 @@ export function BadgeEmbed({ product }: { product: string }) {
   };
 
   return (
-    <div style={{ marginTop: 16, padding: 16, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)' }}>
+    <div style={{ marginTop: 16, padding: 'var(--s4)', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)' }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>{t.badge.title}</div>
       <p style={{ color: 'var(--fg-3)', fontSize: 12, margin: '4px 0 12px' }}>{t.badge.hint}</p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
         <span style={{ color: 'var(--fg-3)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.badge.preview}</span>
         <img src={relUrl} alt={`DQ ${product}`} style={{ height: 20 }} />
         <div style={{ flex: 1 }} />
