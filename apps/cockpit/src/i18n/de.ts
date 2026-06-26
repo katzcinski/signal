@@ -28,13 +28,14 @@ export const t = {
     ownerLock: 'Schreibgeschützt — Ownership',
     ownedPlatform: 'Platform',
     ownedProduct: 'Produkt',
+    ownersEmpty: 'Kein verantwortliches Team hinterlegt — Incident-Routing nicht möglich.',
     tooltips: {
       viewer: 'Nur-Lese-Zugriff: Schreibaktionen bleiben sichtbar, aber deaktiviert.',
       steward: 'Kann Runs starten und platform-owned Gates oder Contracts pflegen.',
       owner: 'Kann platform- und product-owned Artefakte im eigenen Scope ändern.',
       admin: 'Vollzugriff für Betrieb, Policy und Notfallkorrekturen.',
-      ownerLockPlatform: 'Platform-owned: Änderung liegt beim Plattform- oder Beratungsteam.',
-      ownerLockProduct: 'Product-owned: Änderung erfordert Product Owner oder passenden Owner-Scope.',
+      ownerLockPlatform: 'Pflege und Remediation liegt beim Plattformteam.',
+      ownerLockProduct: 'Pflege und Remediation liegt bei der Product Domain.',
     },
   },
   myWork: {

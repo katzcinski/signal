@@ -75,9 +75,19 @@ describe('SchematicBoard', () => {
 
   it('fires onSelectPin when a pin label is clicked', () => {
     const onSelectPin = vi.fn();
-    render(<SchematicBoard layout={fakeLayout()} onSelectPin={onSelectPin} />);
+    const onSelectChip = vi.fn();
+    render(<SchematicBoard layout={fakeLayout()} onSelectChip={onSelectChip} onSelectPin={onSelectPin} />);
     fireEvent.click(screen.getByText('VBELN'));
     expect(onSelectPin).toHaveBeenCalledWith('INB', 'VBELN');
+    expect(onSelectChip).not.toHaveBeenCalled();
+  });
+
+  it('fires onSelectChip when the chip body is clicked', () => {
+    const onSelectChip = vi.fn();
+    const { container } = render(<SchematicBoard layout={fakeLayout()} onSelectChip={onSelectChip} />);
+    const chipBody = container.querySelector('.schem-chip-body')!;
+    fireEvent.click(chipBody);
+    expect(onSelectChip).toHaveBeenCalledWith('INB');
   });
 
   it('marks traced edges active and dims the rest', () => {

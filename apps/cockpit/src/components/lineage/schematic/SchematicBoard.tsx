@@ -6,7 +6,7 @@
  * So bleibt das Rendering testbar; der stateful Container (ELK-Aufruf,
  * Trace-Berechnung, Inspector) kommt in Phase 4 obendrauf.
  */
-import { useId } from 'react';
+import { useId, type MouseEvent } from 'react';
 import { columnId, edgeTypeColor } from '@/lib/lineage';
 import type { PositionedChip, RoutedEdge, RoutedObjectEdge, SchematicLayout } from './layout';
 import { GEO } from './layout';
@@ -148,9 +148,14 @@ function Chip({ chip, mode, dimmed, selected, tracePins, selectedPin, onSelectCh
   const tagText = `${chip.layer.toUpperCase()}${chip.system ? ` · ${chip.system}` : ''}`;
   const dqColor = chip.dqStatus ? dqStatusColor(chip.dqStatus) : null;
   const dotY = mode === 'object' ? 20 : 32;
+  const selectChip = () => onSelectChip?.(chip.id);
+  const selectPin = (event: MouseEvent<SVGElement>, pinId: string) => {
+    event.stopPropagation();
+    onSelectPin?.(chip.id, pinId);
+  };
 
   return (
-    <g className={cls} transform={`translate(${chip.x}, ${chip.y})`}>
+    <g className={cls} transform={`translate(${chip.x}, ${chip.y})`} onClick={selectChip} style={{ cursor: 'pointer' }}>
       <rect className="schem-chip-body" x={0} y={0} width={chip.width} height={chip.height} rx={5} />
       <rect x={0} y={0} width={chip.width} height={3} rx={1.5} fill={laneColor(chip.laneOrder)} />
 
@@ -161,8 +166,7 @@ function Chip({ chip, mode, dimmed, selected, tracePins, selectedPin, onSelectCh
         className="schem-title"
         x={12}
         y={36}
-        style={{ cursor: 'pointer', fontFamily: 'var(--font-mono)' }}
-        onClick={() => onSelectChip?.(chip.id)}
+        style={{ fontFamily: 'var(--font-mono)' }}
       >
         {chip.label}
       </text>
@@ -199,7 +203,7 @@ function Chip({ chip, mode, dimmed, selected, tracePins, selectedPin, onSelectCh
                 width={chip.width - 2}
                 height={GEO.pinRowH}
                 style={{ cursor: 'pointer' }}
-                onClick={() => onSelectPin?.(chip.id, pin.id)}
+                onClick={(event) => selectPin(event, pin.id)}
               >
                 <title>{`${chip.label}.${pin.id}`}</title>
               </rect>
@@ -208,7 +212,7 @@ function Chip({ chip, mode, dimmed, selected, tracePins, selectedPin, onSelectCh
                 x={22}
                 y={pin.rowY + 3.5}
                 style={{ fontFamily: 'var(--font-mono)', cursor: 'pointer' }}
-                onClick={() => onSelectPin?.(chip.id, pin.id)}
+                onClick={(event) => selectPin(event, pin.id)}
               >
                 {pin.label}
               </text>

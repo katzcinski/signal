@@ -1415,6 +1415,13 @@ function EditorPane({ product, onPromote, promotePending }: {
         <LifecycleStepper current={lifecycle} />
         <FrameTag internal={draft.kind === 'internal_gate'} />
         <OwnershipTag ownedBy={contract?.owned_by} />
+        {(!contract?.owners || contract.owners.length === 0) && (
+          <Tooltip content={t.role.ownersEmpty}>
+            <span style={{ fontSize: 10, color: 'var(--status-warn)', whiteSpace: 'nowrap' }}>
+              {'⚠'} Kein Team
+            </span>
+          </Tooltip>
+        )}
         <div style={{ flex: 1 }} />
         {lifecycle === 'active' && draft.kind !== 'internal_gate' && <SlaBars product={product} />}
         <div style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'center', flexWrap: 'wrap' }}>
