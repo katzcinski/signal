@@ -157,11 +157,10 @@ export default function InventoryAdmin() {
   const backendReady = !isError && !isLoading;
   const snapshotReady = Boolean(data?.published_snapshot_timestamp);
   const effectiveCanTrigger = canTrigger && Boolean(data?.can_trigger);
-  const warnings = useMemo(() => {
-    const items = (data?.warnings ?? []).map(item => item === LOCAL_SOURCE_WARNING ? t.inventoryAdmin.localWarning : item);
-    if (data?.source === 'local' && items.length === 0) return [t.inventoryAdmin.localWarning];
-    return items;
-  }, [data?.source, data?.warnings]);
+  const warnings = useMemo(
+    () => (data?.warnings ?? []).map(item => item === LOCAL_SOURCE_WARNING ? t.inventoryAdmin.localWarning : item),
+    [data?.warnings],
+  );
 
   const trigger = () => {
     startExtract.mutate({
