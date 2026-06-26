@@ -14,6 +14,7 @@ vi.mock('@/api/environments', () => {
     useUpdateEnvironment: noopMut,
     useDeleteEnvironment: noopMut,
     useStartConnectionTest: () => ({ mutate: () => {}, isPending: false }),
+    useSetEnvironmentSecret: noopMut,
     useOperation: () => ({ data: null }),
     useOperationStream: () => ({ data: null }),
   };

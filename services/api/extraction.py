@@ -200,14 +200,14 @@ def _gather_via_cli(cli: Any, space: str) -> list[dict[str, Any]]:
     return out
 
 
-def _gather_via_catalog(catalog: Any, space: str) -> list[dict[str, Any]]:
+def _gather_via_catalog(catalog: Any, space: str) -> list[dict[str, Any]] | None:
     from .datasphere_catalog import CatalogError
 
     try:
         listed = catalog.list_objects(space)
     except CatalogError as exc:
         logger.warning("Catalog list_objects(%s) failed: %s", space, exc)
-        return []
+        return None
 
     out: list[dict[str, Any]] = []
     for meta in listed:

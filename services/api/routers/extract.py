@@ -89,6 +89,11 @@ def _mask_host(host: str) -> str:
     return f"***.{host.split('.', 1)[1]}"
 
 
+def _safe_ref(ref: str) -> str:
+    """Gibt die Secret-Referenz zurück, maskiert aber plain:-Direktwerte (S-13)."""
+    return "" if ref.startswith("plain:") else ref
+
+
 def _legacy_config_view(name: str, cfg: dict[str, Any]) -> dict[str, Any]:
     from ..secrets import secret_status
 
@@ -100,7 +105,7 @@ def _legacy_config_view(name: str, cfg: dict[str, Any]) -> dict[str, Any]:
         "port": int(cfg.get("port", 443) or 443),
         "user": cfg.get("user", ""),
         "schema": cfg.get("schema", ""),
-        "password_ref": ref,
+        "password_ref": _safe_ref(ref),
         "secret_configured": has_inline or bool(ref),
         "secret_available": has_inline or secret_status(ref),
     }
@@ -335,7 +340,7 @@ def list_environments():
                 "name": name,
                 "schema": (cfg or {}).get("schema", ""),
                 "host": _mask_host(str((cfg or {}).get("host", ""))),
-                "password_ref": str((cfg or {}).get("password_ref", "")),
+                "password_ref": _safe_ref(str((cfg or {}).get("password_ref", ""))),
                 "secret_status": bool((cfg or {}).get("password")) or secret_status((cfg or {}).get("password_ref")),
             }
             for name, cfg in envs.items()

@@ -1,8 +1,11 @@
 """Database connection helper. [SCHEMA-MAP] schema is bound at run-time, never hardcoded."""
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any, Callable, Protocol
+
+_LOG = logging.getLogger(__name__)
 
 from .query_helpers import qualified
 
@@ -124,9 +127,17 @@ def get_connection(
     try:
         from hdbcli import dbapi  # type: ignore[import]
     except ImportError as exc:
+        _LOG.error(
+            "hdbcli import failed (%s). "
+            "Verify that hdbcli is installed in the same Python environment "
+            "that runs this process (check 'pip show hdbcli' inside the venv).",
+            exc,
+        )
         raise RuntimeError(
-            "hdbcli ist nicht installiert — HANA-Verbindung nicht möglich. "
-            "Installiere das Extra 'dq_core[hana]' oder nutze explizit MockConnection."
+            f"hdbcli ist nicht installiert oder nicht importierbar "
+            f"({exc}). "
+            "Stelle sicher dass hdbcli im selben Python-Environment wie der "
+            "API-Prozess installiert ist."
         ) from exc
 
     def _connect() -> Any:
@@ -299,7 +310,10 @@ def _connection_result(
 def _safe_connect_failure(exc: Exception) -> tuple[str, str]:
     message = " ".join(str(part) for part in exc.args if part).strip().lower()
     if isinstance(exc, RuntimeError) and "hdbcli" in message:
-        return "driver", "HANA driver is not installed."
+        # Surface the underlying ImportError so the user can diagnose env issues.
+        cause = str(exc.__cause__) if exc.__cause__ else ""
+        detail = f" ({cause})" if cause else ""
+        return "driver", f"HANA driver is not installed or not importable.{detail}"
     auth_markers = ("auth", "credential", "password", "invalid user", "invalid username")
     if any(marker in message for marker in auth_markers):
         return "connect", "Authentication failed or credentials are not valid."

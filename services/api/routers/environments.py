@@ -63,9 +63,9 @@ def _public_view(name: str, cfg: dict) -> dict:
         "port": int(cfg.get("port", 443) or 443),
         "user": cfg.get("user", ""),
         "schema": cfg.get("schema", ""),
-        # The reference is safe to surface (it is not the secret); the inline
-        # legacy password is intentionally hidden behind password_set only.
-        "password_ref": ref,
+        # plain: refs embed the secret value directly — never surface them.
+        # Other refs (env:VAR, bare VAR) are safe to display.
+        "password_ref": "" if ref.startswith("plain:") else ref,
         "password_set": has_inline or secret_status(ref),
         "encrypt": bool(cfg.get("encrypt", True)),
         "validate_cert": bool(cfg.get("validate_cert", True)),

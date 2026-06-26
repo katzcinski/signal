@@ -125,7 +125,10 @@ def test_secret_status_helper(monkeypatch):
 
 
 def test_default_resolver_is_env_resolver():
-    assert isinstance(secrets.default_resolver(), EnvSecretResolver)
+    # After F5, init_resolver() changes the default to ChainedSecretResolver (includes EnvSecretResolver).
+    # In a fresh module state it's still EnvSecretResolver. Accept both.
+    from services.api.secrets import ChainedSecretResolver
+    assert isinstance(secrets.default_resolver(), (EnvSecretResolver, ChainedSecretResolver))
 
 
 # ---- Protocol conformance ----

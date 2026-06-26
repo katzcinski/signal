@@ -199,14 +199,14 @@ python scripts/generate_environments.py --space DQ_SIGNAL --db-user DQ_SVC
 | A | Connection-Test + `on_progress`-Instrumentierung | — | ~~1–1,5~~ | ✅ Erledigt |
 | B | Operation-/Progress-Kanal (Migration 008, Store-Protocol, SSE generalisieren) | A | ~~2–3~~ | ✅ Erledigt |
 | C1 | Run mit Connection-Phasen | B | ~~0,5~~ | ✅ Erledigt |
-| C2–C4 | Dry-Run/Profile async + Connection-Test-Endpoint | B | 1,5–2 | ⬜ offen |
+| C2–C4 | Dry-Run/Profile async + Connection-Test-Endpoint | B | 1,5–2 | ✅ Erledigt |
 | D | FE: `useOperationStream`, `OperationProgress`, Connections-Screen, Dialoge | C | 3–4 | ⬜ offen |
 | E | `HanaResultStore` (O6) + HANA-Migrationen + `RESULTS_ENVIRONMENT` | B (Protocol) | 4–6 | ⬜ offen |
 | F1–F3 | Smoke-Harness, DB-User-Härtung, Doku, `generate_environments.py` | C–E | 2–2,5 | ⬜ offen |
 | F5 | `FileSecretResolver` + `PUT …/secret` + `secrets.local.yml` | — | ~~1~~ | ✅ Erledigt |
 | G | Quarantäne/Reject-Store (optional) | E | 2–3 | ⬜ optional |
 
-**Verbleibend ≈ 10,5–14,5 PT** (ohne WS G; mit Quarantäne +2–3 PT). WS A, B und C1 sind abgeschlossen — rund 4–5 PT bereits investiert. Kritischer Pfad C2–C4 → D; E läuft parallel.
+**Verbleibend ≈ 7,5–10,5 PT** (ohne WS G; mit Quarantäne +2–3 PT). WS A, B, C1–C4 sind abgeschlossen — rund 6–7 PT bereits investiert. Kritischer Pfad D; E läuft parallel.
 
 ## Definition of Done
 
