@@ -32,7 +32,7 @@ sind gesetzt und werden nicht neu verhandelt.
 | UX-N4 | SLA/SLO-Dashboard (Burn-down, Uptime %) | ✅ Done | Tooldoku §5 (`/sla`) |
 | UX-N5 | Run-Vergleich / Regressions-Diff | ✅ Done | Tooldoku §5/§8 (`/runs/compare`) |
 | UX-N6 | Teilbarer Quality-Report / Data-Docs (Link/PDF) | ◻ Offen | Badge existiert (`/badge/{p}`), Report-Snapshot fehlt |
-| UX-N7 | Spaltenebene-Lineage + Impact-Analyse | ◻ Offen | O3 ist **Daten-**, kein Parser-Defekt (Walker getestet). Plan: `PLAN_UX-N7_Column_Lineage.md` |
+| UX-N7 | Spaltenebene-Lineage + Impact-Analyse | ◑ Teilweise | DAG + Impact-API + UI gegen Demo-Daten (WS-A/C/D ✅). Offen: WS-B Walker-Härtung + echter Extract. Plan: `PLAN_UX-N7_Column_Lineage.md` |
 | UX-N8 | Check-/Expectation-Library-Browser | ✅ Done | Tooldoku §8 (`/library`) |
 | UX-N9 | Schema-Drift-/Change-Screen | ◻ Offen | — |
 | UX-N10 | Status-Heatmap Objekt × Tag | ✅ Done | Tooldoku §8 (Cockpit) |

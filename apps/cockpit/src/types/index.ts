@@ -698,6 +698,27 @@ export interface ColumnLineageColumnResponse {
 
 export type ColumnLineageResponse = ColumnLineageObjectResponse | ColumnLineageColumnResponse;
 
+export interface ColumnImpactRow {
+  object: string;
+  column: string;
+  edgeType: ColumnEdgeType;
+  expression?: string;
+  depth: number;
+  ownedBy?: string;
+  owners?: string[];
+  coverageFlag?: string;
+  dqStatus?: string;
+}
+
+export interface ColumnImpactResponse {
+  object: string;
+  column: string;
+  impacted: ColumnImpactRow[];
+  totalImpacted: number;
+  maxDepth: number;
+  truncated: boolean;
+}
+
 // ---- Object profiling (POST /api/objects/{id}/profile) ----
 export interface ObjectProfileColumn {
   column: string;

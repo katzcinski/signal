@@ -98,8 +98,15 @@ upstream/downstream-Kanten inkl. mind. einer `computed`-Kante mit Expression.
 *Acceptance:* neue Shape-Fixtures ergeben erwartete `computed`-Kanten; `ratio`
 spiegelt ungemappte Objekte wider.
 
-### WS-C — API: Impact-Endpunkt
+### WS-C — API: Impact-Endpunkt ✅ (2026-06-26)
 **Ziel:** „Welche Downstream-Consumer-Spalten brechen, wenn Spalte X sich ändert?"
+
+> **Umgesetzt:** `GET /api/lineage/columns/impact?object=…&column=…[&max_depth=]`
+> (BFS über `columnEdges`, zyklensicher, `truncated`-Flag), angereichert mit
+> Ownership (`ownedBy`/`owners`) und Coverage-Flag je betroffenem Consumer.
+> Contract-Scan in `_scan_contracts` faktorisiert (geteilt mit `/lineage`).
+> Tests in `tests/api/test_lineage_columns.py` (transitiv+Ownership, max_depth/
+> truncation, Zyklus). *Erledigt.*
 
 - **C1** `GET /api/lineage/columns` deckt 1-Hop ab. **Neu:** transitive
   Downstream-Hülle je Spalte (BFS über `columnEdges`) + Anreicherung mit
@@ -112,8 +119,18 @@ spiegelt ungemappte Objekte wider.
 *Acceptance:* Impact-Response listet alle transitiven Downstream-Spalten mit
 Objekt, Ownership und Coverage; Zyklus terminiert.
 
-### WS-D — Frontend: Spalten-DAG + Impact-Liste
+### WS-D — Frontend: Spalten-DAG + Impact-Liste ✅ (2026-06-26)
 **Ziel:** UX-N7-Acceptance im Cockpit.
+
+> **Umgesetzt:** `useColumnImpact`-Hook (`api/lineage.ts`) + Typen
+> (`ColumnImpactResponse`). Neue Komponente
+> `components/lineage/ColumnLineagePanel.tsx`: Spalten-Picker → Upstream/
+> Downstream-DAG (Chips, `direct`/`computed` als Decor-Badge, Expression im
+> Tooltip) + Impact-Tabelle (Objekt/Spalte/Ebene/Typ/Owner inkl. Coverage-Flag,
+> Truncation-Hinweis). Eingebunden im `lineage`-Tab von `ObjectDetail`. Leerer/
+> degradierter Zustand explizit (G6-Geist). Strings in `i18n/de.ts`, vitest
+> `tests/ColumnLineagePanel.test.tsx`. **Offen (klein):** dedizierter Einstieg
+> direkt aus einem Incident-Drawer (aktuell Einstieg über Objekt-Detail). *Erledigt.*
 
 - **D1** `useColumnLineage` (vorhanden) + neuer `useColumnImpact`-Hook in
   `api/lineage.ts`; ggf. `npm run gen:api` für Typen.
