@@ -73,3 +73,18 @@ export const useStartConnectionTest = () =>
       api.post(`/environments/${encodeURIComponent(name)}/test`).then(r => r.data as { op_id: string }),
     onError: () => toast.error(t.settings.testStartError),
   });
+
+// Store the password for an environment in secrets.local.yml (server-side).
+// The password is sent once and never returned or logged (S-1).
+export const useSetEnvironmentSecret = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, password }: { name: string; password: string }) =>
+      api.put(`/admin/environments/${encodeURIComponent(name)}/secret`, { password }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['environments'] });
+      toast.success(t.environments.secretSaved);
+    },
+    onError: () => toast.error(t.environments.secretSaveError),
+  });
+};

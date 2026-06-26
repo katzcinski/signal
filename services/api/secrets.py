@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 LOGGER = logging.getLogger(__name__)
@@ -125,9 +126,117 @@ class EnvSecretResolver:
         return True
 
 
+def _var_name_from_ref(ref: str) -> str | None:
+    """Gibt den Env-Var-Namen aus einer Referenz zurück (ohne plain:-Prefix).
+
+    Gibt None zurück für plain:-Referenzen (Direktwerte, kein Var-Name).
+    """
+    ref = ref.strip()
+    if not ref or ref.startswith(_PLAIN_PREFIX):
+        return None
+    if ref.startswith(_ENV_PREFIX):
+        name = ref[len(_ENV_PREFIX):].strip()
+    else:
+        name = ref
+    return name or None
+
+
+class FileSecretResolver:
+    """Liest Secrets aus einer lokalen YAML-Datei (secrets.local.yml, gitignored).
+
+    Format der Datei::
+
+        VAR_NAME: wert
+
+    Liest die Datei bei jedem get()-Aufruf frisch — für gelegentlichen
+    Zugriff (Connection-Aufbau) ausreichend, kein Cache-Invalidierungs-Problem.
+    """
+
+    def __init__(self, path: str | Path) -> None:
+        self._path = Path(path)
+
+    def get(self, ref: str | None) -> str | None:
+        if ref is None:
+            return None
+        var_name = _var_name_from_ref(ref)
+        if var_name is None or not self._path.exists():
+            return None
+        try:
+            import yaml
+            data = yaml.safe_load(self._path.read_text(encoding="utf-8")) or {}
+            value = data.get(var_name)
+            return str(value) if value else None
+        except Exception:
+            LOGGER.warning("Fehler beim Lesen der Secrets-Datei %s", self._path)
+            return None
+
+    def status(self, ref: str | None) -> bool:
+        return self.get(ref) is not None
+
+    def available(self) -> bool:
+        return self._path.exists()
+
+
+class ChainedSecretResolver:
+    """Probiert Resolver der Reihe nach; erster Nicht-None-Wert gewinnt."""
+
+    def __init__(self, *resolvers: SecretResolver) -> None:
+        self._resolvers = resolvers
+
+    def get(self, ref: str | None) -> str | None:
+        for r in self._resolvers:
+            v = r.get(ref)
+            if v is not None:
+                return v
+        return None
+
+    def status(self, ref: str | None) -> bool:
+        return self.get(ref) is not None
+
+    def available(self) -> bool:
+        return any(r.available() for r in self._resolvers)
+
+
 # Default-Resolver für die Modul-Helfer. Austauschbar gegen einen künftigen
 # VaultSecretResolver, ohne dass Consumer angepasst werden müssen.
 _default_resolver: SecretResolver = EnvSecretResolver()
+
+
+def init_resolver(secrets_file: str) -> None:
+    """Initialisiert den Default-Resolver: Env-Vars (Priorität) + lokale Secrets-Datei.
+
+    Muss einmalig beim App-Start aufgerufen werden (create_app).
+    """
+    global _default_resolver
+    _default_resolver = ChainedSecretResolver(
+        EnvSecretResolver(),
+        FileSecretResolver(secrets_file),
+    )
+
+
+def write_secret(ref: str, value: str, path: str | Path) -> None:
+    """Schreibt ein Secret in die lokale Secrets-Datei. Logt niemals den Wert (S-1).
+
+    Unterstützt nur env:VAR und bare VAR-Referenzen; plain:-Referenzen sind
+    Direktwerte und können nicht in einer Datei hinterlegt werden.
+    """
+    var_name = _var_name_from_ref(ref)
+    if var_name is None:
+        raise ValueError(
+            f"Referenz {ref!r} enthält einen Direktwert (plain:) und kann nicht "
+            "in secrets.local.yml gespeichert werden. Nutze env:VAR_NAME."
+        )
+    import yaml
+    secrets_path = Path(path)
+    try:
+        existing: dict = yaml.safe_load(secrets_path.read_text(encoding="utf-8")) or {} if secrets_path.exists() else {}
+    except Exception:
+        existing = {}
+    existing[var_name] = value
+    tmp = secrets_path.with_suffix(".tmp")
+    tmp.write_text(yaml.dump(existing, allow_unicode=True), encoding="utf-8")
+    tmp.replace(secrets_path)
+    LOGGER.info("Secret für Referenz '%s' in %s gespeichert.", ref, secrets_path)
 
 
 def get_secret(ref: str | None) -> str | None:

@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .middleware import ObservabilityMiddleware
+from .secrets import init_resolver
 from .settings import get_settings
 from .routers import library, objects, runs, lineage, contracts, incidents, proposals, stream, checks, extract, metrics, data_loads, activity, notifications, profile, operations, environments, products, schedules, monitoring
 
@@ -66,6 +67,7 @@ def _problem(status_code: int, title: str, detail) -> JSONResponse:
 def create_app() -> FastAPI:
     settings = get_settings()
     assert_bind_policy(settings)
+    init_resolver(settings.secrets_file)
 
     app = FastAPI(
         title="DQ & Observability Cockpit API",
@@ -97,12 +99,13 @@ def create_app() -> FastAPI:
         logger.exception("Unhandled error on %s %s", request.method, request.url.path)
         return _problem(500, "Internal Server Error", "An internal error occurred.")
 
+    from .routers import connector
     for router in [library.router, objects.router, runs.router, lineage.router,
                    contracts.router, incidents.router, proposals.router, stream.router,
                    checks.router, extract.router, metrics.router, data_loads.router,
                    activity.router, notifications.router, profile.router, operations.router,
                    environments.router, products.router, schedules.router,
-                   monitoring.router]:
+                   monitoring.router, connector.router]:
         app.include_router(router)
 
     @app.get("/api/health")

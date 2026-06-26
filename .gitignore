@@ -20,6 +20,8 @@ env/
 .env.*
 !.env.example
 environments.yml
+secrets.local.yml
+datasphere.yml
 secrets/
 *.pem
 *.key

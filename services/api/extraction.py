@@ -60,7 +60,8 @@ def _normalize_object_type(raw: str) -> str:
 
 def extraction_available(settings: Any) -> bool:
     """True when a live extraction source (REST catalog or CLI) is configured."""
-    if not getattr(settings, "datasphere_space_id", ""):
+    from .connector_config import effective_space_id
+    if not effective_space_id(settings):
         return False
     from .datasphere_catalog import get_catalog_client
 
@@ -69,13 +70,15 @@ def extraction_available(settings: Any) -> bool:
     return _cli_if_ready(settings) is not None
 
 
-def run_extraction(settings: Any) -> dict[str, Any] | None:
+def run_extraction(settings: Any, *, space_id: str | None = None) -> dict[str, Any] | None:
     """Extract inventory + lineage from the configured space and write snapshots.
 
     Returns count summary on success, or ``None`` when no connectivity is
     configured (caller should fall back to the local snapshot behaviour).
+    ``space_id`` overrides the configured default when provided.
     """
-    space = getattr(settings, "datasphere_space_id", "")
+    from .connector_config import effective_space_id
+    space = space_id or effective_space_id(settings)
     if not space:
         return None
 
@@ -146,7 +149,8 @@ def _gather_objects(settings: Any, space: str) -> list[dict[str, Any]] | None:
 
 def _cli_if_ready(settings: Any):
     """Return a logged-in DatasphereCli when the optional CLI path is enabled."""
-    if not getattr(settings, "datasphere_use_cli", False):
+    from .connector_config import effective_use_cli
+    if not effective_use_cli(settings):
         return None
     try:
         from .datasphere_cli import CliError, DatasphereCli

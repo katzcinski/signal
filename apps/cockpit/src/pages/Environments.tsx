@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useEnvironments } from '@/api/objects';
-import { useStartConnectionTest, useOperationStream } from '@/api/environments';
+import { useStartConnectionTest, useOperationStream, useSetEnvironmentSecret } from '@/api/environments';
 import { OperationProgress } from '@/components/OperationProgress';
 import { Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
@@ -34,6 +34,33 @@ const chip = (color: string): React.CSSProperties => ({
   textTransform: 'uppercase',
   whiteSpace: 'nowrap',
 });
+
+function SetSecret({ env }: { env: Environment }) {
+  const [pw, setPw] = useState('');
+  const save = useSetEnvironmentSecret();
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pw) return;
+    save.mutate({ name: env.name, password: pw }, { onSuccess: () => setPw('') });
+  };
+
+  return (
+    <form onSubmit={onSubmit} style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'center', marginTop: 'var(--s2)' }}>
+      <input
+        type="password"
+        value={pw}
+        onChange={e => setPw(e.target.value)}
+        placeholder={t.environments.secretPlaceholder}
+        autoComplete="new-password"
+        style={{ flex: 1, fontSize: 12, padding: '2px 6px', border: '1px solid var(--line)', borderRadius: 'var(--r)', background: 'var(--bg-2)', color: 'var(--fg)' }}
+      />
+      <Button variant="secondary" size="sm" type="submit" disabled={!pw || save.isPending}>
+        {t.environments.setSecret}
+      </Button>
+    </form>
+  );
+}
 
 function ConnectionTest({ env, canTest }: { env: Environment; canTest: boolean }) {
   const start = useStartConnectionTest();
@@ -80,7 +107,7 @@ function ConnectionTest({ env, canTest }: { env: Environment; canTest: boolean }
   );
 }
 
-function EnvironmentRow({ env, canTest }: { env: Environment; canTest: boolean }) {
+function EnvironmentRow({ env, canTest, canSetSecret }: { env: Environment; canTest: boolean; canSetSecret: boolean }) {
   return (
     <div style={row}>
       <div>
@@ -94,7 +121,10 @@ function EnvironmentRow({ env, canTest }: { env: Environment; canTest: boolean }
           {env.secret_status ? t.settings.passwordSet : t.settings.passwordMissing}
         </span>
       </div>
-      <ConnectionTest env={env} canTest={canTest && !!env.secret_status} />
+      <div>
+        <ConnectionTest env={env} canTest={canTest && !!env.secret_status} />
+        {canSetSecret && !env.secret_status && <SetSecret env={env} />}
+      </div>
     </div>
   );
 }
@@ -103,6 +133,7 @@ export default function Environments() {
   const { data, isLoading, isError, refetch } = useEnvironments();
   const role = useRoleStore(s => s.role);
   const canTest = role !== 'viewer';
+  const canSetSecret = role === 'admin';
   const environments = data?.environments ?? [];
 
   return (
@@ -126,7 +157,7 @@ export default function Environments() {
         ) : (
           <div>
             {environments.map(env => (
-              <EnvironmentRow key={env.name} env={env} canTest={canTest} />
+              <EnvironmentRow key={env.name} env={env} canTest={canTest} canSetSecret={canSetSecret} />
             ))}
           </div>
         )}

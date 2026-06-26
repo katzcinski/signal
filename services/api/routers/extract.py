@@ -211,8 +211,10 @@ def trigger_extract(
         started_at=started_at,
     )
 
+    space_override = spaces[0].strip() if spaces else None
+
     try:
-        result = run_extraction(settings)
+        result = run_extraction(settings, space_id=space_override or None)
     except Exception as exc:  # noqa: BLE001 - surface extraction failure, never 500 silently
         error = f"Extraction failed: {exc}"
         _LATEST_STATUS = _status_payload(

@@ -151,7 +151,28 @@ Gemeinsames Muster (wie der bestehende Run): Endpoint legt `op_id` an (`begin_op
 
 **F2 DB-User-Härtung (S-4)** in `Tooldokumentation.md` §9/§10 festhalten: Lese-Zugriff nur `SELECT` auf die Space-exponierten Prüf-Objekte; Schreib-Zugriff der Result-Store-User **auf sein eigenes Open SQL Schema** (DDL/DML dort, sonst nichts); nie Space-Admin. Ob ein **einziger** Datasphere-DB-User beides abdeckt (lesen via „Enable read access", schreiben ins eigene Open-Schema) oder zwei getrennte User — abhängig von den Space-Grants; beide Varianten dokumentieren. TLS bereits `encrypt`+Cert (verifiziert).
 
-**F3 Doku nachziehen:** `Tooldokumentation.md` §5 (neue Operation-/Test-Endpoints), §6 (ggf. `RESULTS_ENVIRONMENT`-ENV), §8 (Connections-Screen, Progress in Dry-Run/Profile); `REVIEW_Tool_v2_Status.md` (HANA-Pfad/O6 von „verification-only/open" auf „done" ziehen, sobald F1/E grün).
+**F3 Doku nachziehen:** `Tooldokumentation.md` §5 (neue Operation-/Test-Endpoints), §6 (`RESULTS_ENVIRONMENT`-ENV), §8 (Connections-Screen, Progress in Dry-Run/Profile); `REVIEW_Tool_v2_Status.md` (HANA-Pfad/O6 von „verification-only/open" auf „done" ziehen, sobald F1/E grün).
+
+**F4 `scripts/generate_environments.py` + `DatasphereClient.list_db_users()`**
+- Neue Methode `list_db_users(space_id) -> list[dict]` in `services/api/datasphere.py`: `GET /api/v1/dwc/catalog/spaces/{id}/dbUsers` via bestehendem `_get()` — liefert `user_name` + Open-SQL-Schema-Name (`<SPACE>#<CUSTOM>`).
+- Script `scripts/generate_environments.py`: nutzt die vorhandenen `DATASPHERE_BASE_URL/CLIENT_ID/CLIENT_SECRET/TOKEN_URL` aus `.env` (keine neuen Env-Variablen). Ohne Argumente: interaktive Auswahl aus `list_spaces()` + `list_db_users()`; mit `--space`/`--db-user` direkt. Schreibt `environments.yml` mit host/port/user/schema vorausgefüllt; `password_ref: "<bitte eintragen>"` bleibt Platzhalter — kein Passwort wird verarbeitet (S-1).
+
+```bash
+python scripts/generate_environments.py --space DQ_SIGNAL --db-user DQ_SVC
+# → environments.yml mit schema: DQ_SIGNAL#DQ_SVC, password_ref: "<bitte eintragen>"
+```
+
+*Acceptance F4:* generierte YAML ist direkt von `deps.get_environment()` ladbar; ohne Argumente läuft interaktive Auswahl durch; kein Secret erscheint in Output oder Log.
+
+**F5 `FileSecretResolver` + `PUT /api/admin/environments/{name}/secret`** ✅ Erledigt
+- `services/api/secrets.py`: `_var_name_from_ref()`, `FileSecretResolver` (liest `secrets.local.yml` frisch je Aufruf), `ChainedSecretResolver` (Env-Var hat Vorrang), `write_secret(ref, value, path)` (atomar, logt nie den Wert), `init_resolver(secrets_file)`.
+- `services/api/settings.py`: `secrets_file: str = Field(default="secrets.local.yml")`.
+- `services/api/main.py`: `init_resolver(settings.secrets_file)` in `create_app()`.
+- `services/api/routers/environments.py`: `PUT /{name}/secret` (admin+, 204) — schreibt via `write_secret` in `secrets.local.yml`; `plain:`-Referenzen werden mit 422 abgelehnt.
+- `.gitignore`: `secrets.local.yml` eingetragen.
+- Frontend (→ D2): Passwort-Feld im Connections-Screen, das `PUT /api/admin/environments/{name}/secret` aufruft; danach `password_set`-Badge neu laden.
+
+*Flow:* `generate_environments.py` → `environments.yml` mit `password_ref: env:HANA_PW_DQ_SVC` → Connections-UI zeigt Environment vorausgefüllt mit `password_set: false` → Admin gibt Passwort ein → `PUT …/secret` → `secrets.local.yml` (gitignored) → `secret_status: true`.
 
 ---
 
@@ -181,10 +202,11 @@ Gemeinsames Muster (wie der bestehende Run): Endpoint legt `op_id` an (`begin_op
 | C2–C4 | Dry-Run/Profile async + Connection-Test-Endpoint | B | 1,5–2 | ⬜ offen |
 | D | FE: `useOperationStream`, `OperationProgress`, Connections-Screen, Dialoge | C | 3–4 | ⬜ offen |
 | E | `HanaResultStore` (O6) + HANA-Migrationen + `RESULTS_ENVIRONMENT` | B (Protocol) | 4–6 | ⬜ offen |
-| F | Smoke-Harness, DB-User-Härtung, Doku | C–E | 1,5–2 | ⬜ offen |
+| F1–F3 | Smoke-Harness, DB-User-Härtung, Doku, `generate_environments.py` | C–E | 2–2,5 | ⬜ offen |
+| F5 | `FileSecretResolver` + `PUT …/secret` + `secrets.local.yml` | — | ~~1~~ | ✅ Erledigt |
 | G | Quarantäne/Reject-Store (optional) | E | 2–3 | ⬜ optional |
 
-**Verbleibend ≈ 10–14 PT** (ohne WS G; mit Quarantäne +2–3 PT). WS A, B und C1 sind abgeschlossen — rund 4–5 PT bereits investiert. Kritischer Pfad C2–C4 → D; E läuft parallel.
+**Verbleibend ≈ 10,5–14,5 PT** (ohne WS G; mit Quarantäne +2–3 PT). WS A, B und C1 sind abgeschlossen — rund 4–5 PT bereits investiert. Kritischer Pfad C2–C4 → D; E läuft parallel.
 
 ## Definition of Done
 

@@ -42,6 +42,7 @@ class Settings(BaseSettings):
 
     # Environments
     environments_file: str = Field(default="environments.yml")
+    secrets_file: str = Field(default="secrets.local.yml")
 
     # Diagnostics PII gate (S1)
     allow_local_diagnostics: bool = Field(default=False)
@@ -74,6 +75,9 @@ class Settings(BaseSettings):
     # absent, webhook_url acts as an implicit default target. Every target URL is
     # still validated against webhook_allowlist (no SSRF bypass via routing).
     notifications_file: str = Field(default="notifications.yml")
+
+    # Datasphere connector config file (runtime alternative to env vars, git-ignored)
+    connector_file: str = Field(default="datasphere.yml")
 
     # Datasphere API — data load status (R7)
     # base_url: e.g. https://mytenant.eu10.hcs.cloud.sap

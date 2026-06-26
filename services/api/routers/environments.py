@@ -22,7 +22,8 @@ from pydantic import BaseModel, Field
 
 from ..auth.provider import Principal, require_roles
 from ..deps import read_environments, write_environments
-from ..secrets import secret_status
+from ..secrets import secret_status, write_secret
+from ..settings import get_settings
 
 router = APIRouter(prefix="/api/admin/environments", tags=["admin", "environments"])
 
@@ -135,6 +136,33 @@ def update_environment(name: str, body: EnvironmentIn, principal: Principal = re
     envs[name] = _entry_from_input(body, existing=envs[name])
     write_environments(envs)
     return _public_view(name, envs[name])
+
+
+class SecretBody(BaseModel):
+    password: str = Field(min_length=1, max_length=1024)
+
+
+@router.put("/{name}/secret", status_code=status.HTTP_204_NO_CONTENT)
+def set_environment_secret(name: str, body: SecretBody, principal: Principal = require_admin):
+    """Speichert das Passwort für ein Environment in secrets.local.yml (gitignored).
+
+    Das Passwort verlässt diesen Endpoint nie — kein Log, keine Response (S-1).
+    Die Referenz (password_ref) muss im Environment konfiguriert sein und darf
+    kein plain:-Direktwert sein.
+    """
+    envs = read_environments()
+    if name not in envs:
+        raise HTTPException(status_code=404, detail=f"Environment {name!r} not found.")
+    ref = str(envs[name].get("password_ref") or "")
+    if not ref:
+        raise HTTPException(
+            status_code=422,
+            detail="Environment hat keine password_ref konfiguriert.",
+        )
+    try:
+        write_secret(ref, body.password, get_settings().secrets_file)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.delete("/{name}", status_code=status.HTTP_204_NO_CONTENT)
