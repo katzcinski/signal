@@ -14,9 +14,9 @@ export function Kpi({ label, value, delta, deltaPositive, sparkData, sparkColor,
   return (
     <div style={{
       background: 'var(--bg-1)', border: '1px solid var(--line)',
-      borderRadius: 'var(--r-lg)', padding: '16px 20px',
+      borderRadius: 'var(--r-lg)', padding: 'var(--s4) var(--s5)',
       borderBottom: `2px solid ${accent}`,
-      display: 'flex', flexDirection: 'column', gap: 8,
+      display: 'flex', flexDirection: 'column', gap: 'var(--s2)',
     }}>
       <div style={{ fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
         {label}

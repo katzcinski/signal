@@ -25,8 +25,8 @@ export function LiveRunPanel({ runId, dataset, running }: Props) {
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-          background: 'none', border: 'none', padding: '8px 16px',
+          width: '100%', display: 'flex', alignItems: 'center', gap: 'var(--s2)',
+          background: 'none', border: 'none', padding: 'var(--s2) var(--s4)',
           color: 'var(--fg-2)', fontSize: 12, cursor: 'pointer', textAlign: 'left',
         }}
       >
@@ -38,7 +38,7 @@ export function LiveRunPanel({ runId, dataset, running }: Props) {
       </button>
       {open && (
         <div style={{
-          maxHeight: 160, overflowY: 'auto', padding: '0 16px 12px',
+          maxHeight: 160, overflowY: 'auto', padding: '0 var(--s4) var(--s3)',
           fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)',
         }}>
           {events.length === 0 ? (

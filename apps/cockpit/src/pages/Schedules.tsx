@@ -202,7 +202,7 @@ export default function Schedules() {
   return (
     <div className="page-full">
       {/* header */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 18, gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 18, gap: 'var(--s4)', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{t.schedules.title}</h1>
           <p style={{ color: 'var(--fg-2)', fontSize: 13, marginTop: 4 }}>
@@ -219,9 +219,9 @@ export default function Schedules() {
       </div>
 
       {/* KPI tiles */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--s4)', marginBottom: 22 }}>
         <Tile label={t.schedules.kpiScheduled} accent="var(--cont)">
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s2)' }}>
             <span style={{ fontSize: 30, fontWeight: 700, color: 'var(--fg)', lineHeight: 1 }}>{schedules.length}</span>
             <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.schedules.kpiScheduledSub.replace('{total}', String(objects.length || '—'))}</span>
           </div>
@@ -241,7 +241,7 @@ export default function Schedules() {
         </Tile>
 
         <Tile label={t.schedules.kpiOverdue} accent="var(--status-fail)">
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s2)' }}>
             <span style={{ fontSize: 30, fontWeight: 700, color: stats.overdue ? 'var(--status-fail)' : 'var(--fg)', lineHeight: 1 }}>{stats.overdue}</span>
             <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>{t.schedules.kpiOverdueSub}</span>
           </div>
@@ -251,7 +251,7 @@ export default function Schedules() {
         </Tile>
 
         <Tile label={t.schedules.kpiSuccess} accent="var(--status-ok)">
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s2)' }}>
             <span style={{ fontSize: 30, fontWeight: 700, color: 'var(--fg)', lineHeight: 1 }}>
               {stats.ok + stats.failed > 0 ? `${Math.round((stats.ok / (stats.ok + stats.failed)) * 100)}%` : '—'}
             </span>
@@ -264,13 +264,13 @@ export default function Schedules() {
       </div>
 
       {/* toolbar: filter chips + search */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 'var(--s3)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 'var(--s2)' }}>
           {chips.map(([key, label, n, color]) => {
             const active = filter === key;
             return (
               <button key={key} onClick={() => setFilter(key)} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 'var(--r-lg)', fontSize: 12.5, cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)', padding: '6px 12px', borderRadius: 'var(--r-lg)', fontSize: 12.5, cursor: 'pointer',
                 background: active ? 'color-mix(in srgb, var(--cont) 16%, transparent)' : 'var(--bg-2)',
                 border: `1px solid ${active ? 'var(--cont)' : 'var(--line)'}`,
                 color: active ? 'var(--fg)' : 'var(--fg-2)', fontWeight: active ? 650 : 400,

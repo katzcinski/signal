@@ -23,7 +23,7 @@ export function SparkCell({ series, unit = '', width = 64 }: Props) {
   const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
       <div style={{ minWidth: 56 }}>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg)' }}>{fmt(latest)}{unit}</div>
         {points.length > 1 && (

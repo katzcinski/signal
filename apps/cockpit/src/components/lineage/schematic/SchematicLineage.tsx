@@ -237,12 +237,12 @@ const sideHeading: CSSProperties = {
   fontSize: 11, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--fg-3)', margin: '0 0 10px', fontWeight: 600,
 };
 const layerRow = (active: boolean): CSSProperties => ({
-  display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 4px', borderRadius: 'var(--r)',
+  display: 'flex', alignItems: 'center', gap: 'var(--s2)', width: '100%', padding: '6px 4px', borderRadius: 'var(--r)',
   fontSize: 12.5, cursor: 'pointer', color: active ? 'var(--fg-2)' : 'var(--fg-3)', background: 'transparent',
   border: 'none', opacity: active ? 1 : 0.5,
 });
 const canvas: CSSProperties = { flex: 1, overflow: 'auto', background: 'var(--bg-1)', position: 'relative' };
 const inspector: CSSProperties = {
-  width: 320, borderLeft: '1px solid var(--line)', padding: 16, overflowY: 'auto', flexShrink: 0,
+  width: 320, borderLeft: '1px solid var(--line)', padding: 'var(--s4)', overflowY: 'auto', flexShrink: 0,
 };
 const hint: CSSProperties = { color: 'var(--fg-3)', fontSize: 13, padding: 40, textAlign: 'center' };

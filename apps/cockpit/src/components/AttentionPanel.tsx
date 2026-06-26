@@ -49,7 +49,7 @@ export function AttentionPanel({ objects }: { objects: ObjectSummary[] }) {
       borderRadius: 'var(--r-lg)', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column',
     }}>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
+        display: 'flex', alignItems: 'center', gap: 'var(--s2)',
         padding: '10px 14px', borderBottom: '1px solid var(--line)',
       }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -62,7 +62,7 @@ export function AttentionPanel({ objects }: { objects: ObjectSummary[] }) {
 
       <div style={{ padding: '4px 14px 8px', flex: 1 }}>
         {ranked.length === 0 ? (
-          <p style={{ color: 'var(--fg-3)', fontSize: 12, padding: '20px 0', textAlign: 'center' }}>
+          <p style={{ color: 'var(--fg-3)', fontSize: 12, padding: 'var(--s5) 0', textAlign: 'center' }}>
             {t.cockpit.attentionEmpty}
           </p>
         ) : ranked.map(o => (

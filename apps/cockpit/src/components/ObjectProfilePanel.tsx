@@ -78,7 +78,7 @@ function CandidateRow({ candidate }: {
       padding: '9px 11px',
       background: 'var(--bg-2)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', flexWrap: 'wrap', marginBottom: 6 }}>
         <code style={{ color: 'var(--fg)', fontSize: 12 }}>{cols.join(' + ')}</code>
         {candidate.exact && (
           <span style={{
@@ -90,7 +90,7 @@ function CandidateRow({ candidate }: {
         )}
         <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{candidate.rank_reason}</span>
       </div>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 'var(--s3)', flexWrap: 'wrap' }}>
         <Score label="final" value={candidate.final_score} />
         <Score label="technical" value={candidate.technical_score} />
         <Score label="business" value={candidate.business_score} />
@@ -110,7 +110,7 @@ function CandidateSection({ title, candidates }: {
       {candidates.length === 0 ? (
         <div style={{ color: 'var(--fg-3)', fontSize: 12 }}>No candidates found.</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
           {candidates.slice(0, 8).map((candidate, idx) => (
             <CandidateRow
               key={'column' in candidate ? candidate.column : `${candidate.columns.join('|')}-${idx}`}
@@ -140,7 +140,7 @@ function ProfileSummary({ profile }: { profile: ObjectProfileResult }) {
   const labelStyle: React.CSSProperties = { color: 'var(--fg-3)', fontSize: 11, marginTop: 2 };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(100px, 1fr))', gap: 8, marginBottom: 18 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(100px, 1fr))', gap: 'var(--s2)', marginBottom: 18 }}>
       <div style={kpiStyle}>
         <div style={valueStyle}>{profile.row_count.toLocaleString()}</div>
         <div style={labelStyle}>Rows</div>
@@ -307,7 +307,7 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
           </select>
         </label>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--fg-2)', fontSize: 12 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', color: 'var(--fg-2)', fontSize: 12 }}>
           <input
             type="checkbox"
             checked={includeSamples}

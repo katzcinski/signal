@@ -28,7 +28,7 @@ function IncidentKindBadge({ kind }: { kind?: Incident['kind'] }) {
   const isGate = kind === 'internal_gate';
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 8px',
+      display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 var(--s2)',
       borderRadius: 'var(--r-full)', border: `1px solid ${isGate ? 'var(--qual)' : 'var(--cont)'}`,
       color: isGate ? 'var(--qual)' : 'var(--cont)', fontSize: 11, fontWeight: 650,
       whiteSpace: 'nowrap',
@@ -91,14 +91,14 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
         style={{
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 420, zIndex: 100,
           background: 'var(--bg-1)', borderLeft: '1px solid var(--line)',
-          padding: 20, overflowY: 'auto', boxShadow: '-12px 0 32px rgba(0,0,0,0.4)',
+          padding: 'var(--s5)', overflowY: 'auto', boxShadow: '-12px 0 32px rgba(0,0,0,0.4)',
         }}
       >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
           {incident && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginBottom: 6 }}>
                 <StatusPill status={incident.severity} size="sm" />
                 <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{t.incidents.statusLabel[incident.status] ?? incident.status}</span>
                 <IncidentKindBadge kind={incident.kind} />
@@ -121,7 +121,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
           {/* Read-only roles keep the same layout — actions are marked, not hidden. */}
           {!canAct && <ReadOnlyBanner />}
           {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: pendingStatus ? 8 : 16 }}
+          <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap', marginBottom: pendingStatus ? 8 : 16 }}
                title={canAct ? undefined : t.role.noWriteAction}>
             {incident.status === 'open' && (
               <button style={drawerBtn(pendingStatus === 'acknowledged' ? 'primary' : 'ghost')}
@@ -153,7 +153,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
           {pendingStatus && (
             <div style={{
               background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-              borderRadius: 'var(--r-md)', padding: 12, marginBottom: 16,
+              borderRadius: 'var(--r-md)', padding: 'var(--s3)', marginBottom: 16,
             }}>
               <div style={{ fontSize: 11, color: 'var(--fg-3)', marginBottom: 6 }}>
                 {t.incidents.notePrompt}
@@ -171,7 +171,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
                   resize: 'vertical', boxSizing: 'border-box', display: 'block',
                 }}
               />
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <div style={{ display: 'flex', gap: 'var(--s2)', marginTop: 8 }}>
                 <button style={drawerBtn()} onClick={confirmAct} disabled={transition.isPending}>
                   {t.common.confirm}
                 </button>
@@ -190,7 +190,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
             <div style={{ fontSize: 12, color: 'var(--fg-2)', marginBottom: 6 }}>
               {t.incidents.colOwner}: {incident.owner || t.incidents.noOwner}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 'var(--s2)' }}>
               <input
                 value={ownerInput}
                 onChange={e => setOwnerInput(e.target.value)}
@@ -282,7 +282,7 @@ function FailedChecksTab() {
     },
   ];
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
+  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</div>;
   if (isError) return <ErrorBanner onRetry={() => refetch()} />;
 
   return (
@@ -370,7 +370,7 @@ export default function Incidents() {
             key={tabKey}
             onClick={() => { setStatus(tabKey); setSelectedId(null); }}
             style={{
-              padding: '8px 16px', border: 'none', background: 'none',
+              padding: 'var(--s2) var(--s4)', border: 'none', background: 'none',
               color: status === tabKey ? 'var(--fg)' : 'var(--fg-3)',
               borderBottom: status === tabKey ? '2px solid var(--cont)' : '2px solid transparent',
               cursor: 'pointer', fontSize: 13,
@@ -386,7 +386,7 @@ export default function Incidents() {
         <FailedChecksTab />
       ) : (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginBottom: 12 }}>
             <span style={{ fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               {t.incidents.filterKind}
             </span>

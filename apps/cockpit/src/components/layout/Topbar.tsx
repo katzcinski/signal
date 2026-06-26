@@ -30,7 +30,7 @@ function ThemeSwitcher() {
         aria-label={t.theme.label}
         style={{
           background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)',
-          borderRadius: 'var(--r-md)', padding: '4px 8px', fontSize: 12, cursor: 'pointer',
+          borderRadius: 'var(--r-md)', padding: 'var(--s1) var(--s2)', fontSize: 12, cursor: 'pointer',
         }}
       >
         {THEMES.map(th => (
@@ -88,14 +88,14 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
   return (
     <header style={{
       height: 44, background: 'var(--bg-1)', borderBottom: '1px solid var(--line)',
-      display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px',
+      display: 'flex', alignItems: 'center', gap: 'var(--s3)', padding: '0 var(--s4)',
       flexShrink: 0,
     }}>
       <button
         onClick={onToggleSidebar}
         style={{
           background: 'none', border: 'none', color: 'var(--fg-2)',
-          padding: 4, display: 'inline-flex', alignItems: 'center',
+          padding: 'var(--s1)', display: 'inline-flex', alignItems: 'center',
         }}
         aria-label="Toggle sidebar"
         title="Toggle sidebar"
@@ -109,7 +109,7 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
         onClick={onOpenPalette}
         style={{
           background: 'var(--bg-2)', border: '1px solid var(--line)',
-          color: 'var(--fg-2)', borderRadius: 'var(--r-md)', padding: '4px 8px 4px 12px',
+          color: 'var(--fg-2)', borderRadius: 'var(--r-md)', padding: 'var(--s1) var(--s2) var(--s1) var(--s3)',
           fontSize: 12, display: 'flex', alignItems: 'center', gap: 10,
         }}
       >

@@ -22,7 +22,7 @@ export default function Governance() {
     <div className="page-full">
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>{t.governance.title}</h1>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)', marginBottom: 24 }}>
         <Panel title={t.governance.g1Title} family="contract">
           <ul style={{ paddingLeft: 16, margin: 0 }}>
             {t.governance.g1Policy.map((p, i) => (
@@ -38,11 +38,11 @@ export default function Governance() {
         </Panel>
       </div>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <span style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: '8px 12px', fontSize: 12, color: 'var(--fg-2)' }}>
+      <div style={{ display: 'flex', gap: 'var(--s3)', marginBottom: 16, flexWrap: 'wrap' }}>
+        <span style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s2) var(--s3)', fontSize: 12, color: 'var(--fg-2)' }}>
           {t.cockpit.slaTitle}: <strong style={{ color: 'var(--fg)' }}>{activeContracts.length}</strong>
         </span>
-        <span style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: '8px 12px', fontSize: 12, color: 'var(--fg-2)' }}>
+        <span style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s2) var(--s3)', fontSize: 12, color: 'var(--fg-2)' }}>
           {t.governance.contractsBreached}: <strong style={{ color: 'var(--fg)' }}>{coverageQuery.data?.contracts_breached ?? 0}</strong>
         </span>
       </div>
@@ -51,7 +51,7 @@ export default function Governance() {
         <div style={{
           background: 'color-mix(in srgb, var(--cont) 8%, transparent)',
           border: '1px solid var(--cont)',
-          borderRadius: 'var(--r-lg)', padding: '12px 16px', marginBottom: 16,
+          borderRadius: 'var(--r-lg)', padding: 'var(--s3) var(--s4)', marginBottom: 16,
           fontSize: 12, color: 'var(--fg-2)',
         }}>
           Noch keine aktiven Contracts - Compliance-Daten erscheinen nach der ersten
@@ -81,12 +81,12 @@ export default function Governance() {
                   const contract = contractByProduct.get(o.id);
                   return (
                     <tr key={o.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                      <td style={{ padding: '8px 12px', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</td>
-                      <td style={{ padding: '8px 12px', color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</td>
-                      <td style={{ padding: '8px 12px' }}>
+                      <td style={{ padding: 'var(--s2) var(--s3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</td>
+                      <td style={{ padding: 'var(--s2) var(--s3)', color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</td>
+                      <td style={{ padding: 'var(--s2) var(--s3)' }}>
                         <LifecycleStepper current={(contract?.lifecycle || 'draft') as Lifecycle} />
                       </td>
-                      <td style={{ padding: '8px 12px', fontSize: 12, color: contract ? 'var(--status-ok)' : 'var(--status-fail)' }}>
+                      <td style={{ padding: 'var(--s2) var(--s3)', fontSize: 12, color: contract ? 'var(--status-ok)' : 'var(--status-fail)' }}>
                         {contract ? t.governance.yes : t.governance.no}
                       </td>
                     </tr>

@@ -81,14 +81,14 @@ export function StatusHeatmap() {
           </div>
         </div>
         {/* Legend */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, fontSize: 10, color: 'var(--fg-3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)', marginTop: 10, fontSize: 10, color: 'var(--fg-3)' }}>
           {(['pass', 'warn', 'fail', 'critical'] as const).map(s => (
-            <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)' }}>
               <span style={{ width: CELL, height: CELL, borderRadius: 2, background: CELL_COLOR[s] }} />
               {t.status[s] ?? s}
             </span>
           ))}
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)' }}>
             <span style={{ width: CELL, height: CELL, borderRadius: 2, background: EMPTY }} />
             {t.heatmap.noRun}
           </span>

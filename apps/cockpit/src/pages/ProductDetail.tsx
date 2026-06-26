@@ -68,7 +68,7 @@ export default function ProductDetail() {
   }
 
   if (!data) {
-    return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.notFound}</div>;
+    return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.notFound}</div>;
   }
 
   const portColumns: ColDef<ProductPort>[] = [
@@ -119,7 +119,7 @@ export default function ProductDetail() {
         { label: data.product },
       ]} />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)', marginBottom: 20, flexWrap: 'wrap' }}>
         <button onClick={() => navigate('/products')} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', cursor: 'pointer' }}>
           {t.common.back}
         </button>
@@ -133,10 +133,10 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s4)' }}>
         {data.upstream_risk.length > 0 && (
           <Panel title={t.products.upstreamRiskTitle} family="contract">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, color: 'var(--fg-3)', fontSize: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginBottom: 10, color: 'var(--fg-3)', fontSize: 12 }}>
               <span style={{ border: '1px solid var(--line)', borderRadius: 'var(--r)', padding: '1px 6px' }}>
                 {t.products.nonContagious}
               </span>

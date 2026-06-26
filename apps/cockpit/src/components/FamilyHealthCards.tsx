@@ -50,11 +50,11 @@ function FamilyCard({ objects, family }: {
         textAlign: 'left', width: '100%', cursor: 'pointer',
         background: 'var(--bg-1)', border: '1px solid var(--line)',
         borderLeft: `3px solid ${family.accent}`, borderRadius: 'var(--r-lg)',
-        padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8,
+        padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 'var(--s2)',
         transition: 'var(--t)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
         <span style={{ width: 8, height: 8, borderRadius: 2, background: family.accent }} />
         <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {family.label}
@@ -65,7 +65,7 @@ function FamilyCard({ objects, family }: {
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s2)' }}>
         <span style={{ fontSize: 24, fontWeight: 700, color: 'var(--fg)', lineHeight: 1 }}>{pct}%</span>
         <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{passing}/{total} {t.cockpit.familyPassing}</span>
       </div>
@@ -90,7 +90,7 @@ function FamilyCard({ objects, family }: {
 
 export function FamilyHealthCards({ objects }: { objects: ObjectSummary[] }) {
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div style={{ display: 'grid', gap: 'var(--s3)' }}>
       {FAMILIES.map(f => <FamilyCard key={f.key} objects={objects} family={f} />)}
     </div>
   );

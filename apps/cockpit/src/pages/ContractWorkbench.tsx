@@ -31,7 +31,7 @@ import type {
 // ─── Shared style tokens ─────────────────────────────────────────────────────
 const cardStyle: React.CSSProperties = {
   background: 'var(--bg-1)', border: '1px solid var(--line)',
-  borderRadius: 'var(--r-lg)', padding: 16,
+  borderRadius: 'var(--r-lg)', padding: 'var(--s4)',
 };
 const monoStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)', fontSize: 12,
@@ -47,7 +47,7 @@ const btnStyle = (variant: 'primary' | 'danger' | 'ghost' = 'primary'): React.CS
 });
 const selectStyle: React.CSSProperties = {
   background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-  color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '4px 8px', fontSize: 12,
+  color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: 'var(--s1) var(--s2)', fontSize: 12,
 };
 const fieldLabel: React.CSSProperties = { fontSize: 11, color: 'var(--fg-3)' };
 
@@ -159,7 +159,7 @@ function ColumnsPicker({ value, onChange, options }: {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
       {value.map(col => (
         <span key={col} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
+          display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)',
           background: 'var(--bg-3)', border: '1px solid var(--line-2)', borderRadius: 'var(--r)',
           padding: '2px 6px', ...monoStyle, fontSize: 11,
         }}>
@@ -197,7 +197,7 @@ function GuaranteeCard({ familyKey, enabled, onToggle, headerExtra, children }: 
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
         borderBottom: enabled && children ? '1px solid var(--line)' : 'none',
       }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
           <input
             type="checkbox"
             checked={enabled}
@@ -400,7 +400,7 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
         headerExtra={g.freshness && <SeveritySelect value={g.freshness.severity} onChange={s => set({ freshness: { ...g.freshness!, severity: s } })} />}
       >
         {g.freshness && (
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--s3)', flexWrap: 'wrap' }}>
             <div>
               <div style={{ ...fieldLabel, marginBottom: 4 }}>{t.workbench.fields.column}</div>
               <Combobox
@@ -411,7 +411,7 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
                 width={180}
               />
             </div>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--fg-3)' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)', fontSize: 11, color: 'var(--fg-3)' }}>
               {t.workbench.fields.maxAgeHours}
               <input
                 type="number"
@@ -435,7 +435,7 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
       >
         {g.volume && (
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--fg-3)' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)', fontSize: 11, color: 'var(--fg-3)' }}>
               {t.workbench.fields.minRows}
               <input
                 type="number"
@@ -498,7 +498,7 @@ function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, 
                     width={180}
                   />
                 </div>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--fg-3)' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)', fontSize: 11, color: 'var(--fg-3)' }}>
                   {t.workbench.fields.minPct}
                   <input
                     type="number"
@@ -574,7 +574,7 @@ function BreakingDiffPanel({ entries, pending, isError, blocking, ceremonyRequir
       <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{t.workbench.diffTitle}</div>
       {!ceremonyRequired && (
         <div style={{
-          marginBottom: 10, padding: '8px 12px', borderRadius: 'var(--r-md)',
+          marginBottom: 10, padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)',
           background: 'var(--bg-2)', border: '1px solid var(--line)',
           color: 'var(--fg-2)', fontSize: 12,
         }}>
@@ -589,7 +589,7 @@ function BreakingDiffPanel({ entries, pending, isError, blocking, ceremonyRequir
       )}
       {entries.map((e, i) => (
         <div key={i} style={{
-          display: 'flex', gap: 8, alignItems: 'baseline', padding: '4px 0',
+          display: 'flex', gap: 'var(--s2)', alignItems: 'baseline', padding: 'var(--s1) 0',
           borderBottom: '1px solid var(--line)', fontSize: 12, flexWrap: 'wrap',
         }}>
           <span style={{
@@ -610,7 +610,7 @@ function BreakingDiffPanel({ entries, pending, isError, blocking, ceremonyRequir
       ))}
       {!ceremonyRequired && hasBreaking && (
         <div style={{
-          marginTop: 10, padding: '8px 12px', borderRadius: 'var(--r-md)',
+          marginTop: 10, padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)',
           background: 'var(--status-warn)22', border: '1px solid var(--status-warn)',
           color: 'var(--fg-2)', fontSize: 12, fontWeight: 600,
         }}>
@@ -619,7 +619,7 @@ function BreakingDiffPanel({ entries, pending, isError, blocking, ceremonyRequir
       )}
       {blocking && (
         <div style={{
-          marginTop: 10, padding: '8px 12px', borderRadius: 'var(--r-md)',
+          marginTop: 10, padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)',
           background: 'var(--status-crit)22', border: '1px solid var(--status-crit)',
           color: 'var(--status-crit)', fontSize: 12, fontWeight: 600,
         }}>
@@ -642,7 +642,7 @@ function SlaBars({ product }: { product: string }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 200 }}>
       <div style={{ fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.workbench.slaTitle}</div>
       {windows.map(([label, pct]) => (
-        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
           <span style={{ ...monoStyle, fontSize: 10, width: 28, color: 'var(--fg-3)' }}>{label}</span>
           <div style={{ flex: 1, height: 6, background: 'var(--bg-3)', borderRadius: 3, overflow: 'hidden' }}>
             {pct != null && (
@@ -703,9 +703,9 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
 
   return (
     <div style={cardStyle}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 'var(--s2)' }}>
         <div style={{ fontWeight: 600, fontSize: 14 }}>{t.workbench.compile.title}</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap' }}>
           <button style={btnStyle()} onClick={() => { compile.mutate(); setActiveTab('preview'); }}>
             {compile.isPending ? t.workbench.compile.compiling : t.workbench.compile.compileDry}
           </button>
@@ -736,19 +736,19 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, fontSize: 12 }}>
               <thead>
                 <tr style={{ color: 'var(--fg-3)', textAlign: 'left' }}>
-                  <th style={{ padding: '4px 8px' }}>{t.workbench.compile.check}</th>
-                  <th style={{ padding: '4px 8px' }}>{t.workbench.compile.type}</th>
-                  <th style={{ padding: '4px 8px' }}>{t.workbench.compile.expect}</th>
-                  <th style={{ padding: '4px 8px' }}>{t.common.severity}</th>
+                  <th style={{ padding: 'var(--s1) var(--s2)' }}>{t.workbench.compile.check}</th>
+                  <th style={{ padding: 'var(--s1) var(--s2)' }}>{t.workbench.compile.type}</th>
+                  <th style={{ padding: 'var(--s1) var(--s2)' }}>{t.workbench.compile.expect}</th>
+                  <th style={{ padding: 'var(--s1) var(--s2)' }}>{t.common.severity}</th>
                 </tr>
               </thead>
               <tbody>
                 {compileData.checks.map(c => (
                   <tr key={c.name} style={{ borderTop: '1px solid var(--line)' }}>
-                    <td style={{ padding: '4px 8px', ...monoStyle }}>{c.name}</td>
-                    <td style={{ padding: '4px 8px', color: 'var(--fg-3)' }}>{c.type}</td>
-                    <td style={{ padding: '4px 8px', ...monoStyle }}>{c.expect}</td>
-                    <td style={{ padding: '4px 8px', color: 'var(--fg-2)' }}>{c.severity}</td>
+                    <td style={{ padding: 'var(--s1) var(--s2)', ...monoStyle }}>{c.name}</td>
+                    <td style={{ padding: 'var(--s1) var(--s2)', color: 'var(--fg-3)' }}>{c.type}</td>
+                    <td style={{ padding: 'var(--s1) var(--s2)', ...monoStyle }}>{c.expect}</td>
+                    <td style={{ padding: 'var(--s1) var(--s2)', color: 'var(--fg-2)' }}>{c.severity}</td>
                   </tr>
                 ))}
               </tbody>
@@ -762,7 +762,7 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
               <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 6, fontStyle: 'italic' }}>
                 {t.workbench.compile.yamlPreviewHint}
               </div>
-              <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 'var(--r-md)', marginTop: 6, overflow: 'auto', maxHeight: 300, fontSize: 11 }}>
+              <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', marginTop: 6, overflow: 'auto', maxHeight: 300, fontSize: 11 }}>
                 {compileData.yaml_preview}
               </pre>
             </details>
@@ -776,26 +776,26 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
             <div style={{ color: 'var(--fg-3)', fontSize: 13 }}>{dryRunData.message}</div>
           ) : (
             <div>
-              <div style={{ display: 'flex', gap: 24, marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 'var(--s6)', marginBottom: 12 }}>
                 <span style={{ fontSize: 13 }}>{t.workbench.compile.statusLabel} <strong style={{ color: dryRunData.overall_status === 'pass' ? 'var(--status-ok)' : 'var(--status-fail)' }}>{dryRunData.overall_status}</strong></span>
                 <span style={{ fontSize: 13, color: 'var(--fg-3)' }}>{dryRunData.passed}/{dryRunData.total} {t.workbench.compile.passedOf}</span>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   <tr style={{ color: 'var(--fg-3)', textAlign: 'left' }}>
-                    <th style={{ padding: '4px 8px' }}>{t.workbench.compile.check}</th>
-                    <th style={{ padding: '4px 8px' }}>{t.workbench.compile.actual}</th>
-                    <th style={{ padding: '4px 8px' }}>{t.workbench.compile.expect}</th>
-                    <th style={{ padding: '4px 8px' }}>{t.workbench.compile.state}</th>
+                    <th style={{ padding: 'var(--s1) var(--s2)' }}>{t.workbench.compile.check}</th>
+                    <th style={{ padding: 'var(--s1) var(--s2)' }}>{t.workbench.compile.actual}</th>
+                    <th style={{ padding: 'var(--s1) var(--s2)' }}>{t.workbench.compile.expect}</th>
+                    <th style={{ padding: 'var(--s1) var(--s2)' }}>{t.workbench.compile.state}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(dryRunData.results ?? []).map((r) => (
                     <tr key={r.name} style={{ borderTop: '1px solid var(--line)' }}>
-                      <td style={{ padding: '4px 8px', ...monoStyle }}>{r.name}</td>
-                      <td style={{ padding: '4px 8px', ...monoStyle }}>{String(r.actual_value ?? '—')}</td>
-                      <td style={{ padding: '4px 8px', ...monoStyle }}>{r.expect}</td>
-                      <td style={{ padding: '4px 8px' }}>
+                      <td style={{ padding: 'var(--s1) var(--s2)', ...monoStyle }}>{r.name}</td>
+                      <td style={{ padding: 'var(--s1) var(--s2)', ...monoStyle }}>{String(r.actual_value ?? '—')}</td>
+                      <td style={{ padding: 'var(--s1) var(--s2)', ...monoStyle }}>{r.expect}</td>
+                      <td style={{ padding: 'var(--s1) var(--s2)' }}>
                         {r.state && r.state !== 'executed' ? (
                           <StatePill state={r.state} size="sm" />
                         ) : (
@@ -816,11 +816,11 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
       {activeTab === 'export' && exportBdc.data && (
         <div>
           <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>{t.workbench.compile.csn}</div>
-          <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 'var(--r-md)', overflow: 'auto', maxHeight: 200, fontSize: 11 }}>
+          <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', overflow: 'auto', maxHeight: 200, fontSize: 11 }}>
             {JSON.stringify((exportBdc.data as { csn_fragment: unknown }).csn_fragment, null, 2)}
           </pre>
           <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8, marginTop: 12 }}>{t.workbench.compile.ord}</div>
-          <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 'var(--r-md)', overflow: 'auto', maxHeight: 200, fontSize: 11 }}>
+          <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 'var(--s3)', borderRadius: 'var(--r-md)', overflow: 'auto', maxHeight: 200, fontSize: 11 }}>
             {JSON.stringify((exportBdc.data as { ord_fragment: unknown }).ord_fragment, null, 2)}
           </pre>
         </div>
@@ -833,7 +833,7 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
       {showRevertConfirm && (
         <div style={{ marginTop: 12, background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 'var(--r-md)', padding: 14 }}>
           <div style={{ fontSize: 13, marginBottom: 10 }}>{t.workbench.compile.revertConfirm} <strong style={monoStyle}>checks/{dataset}/checks.yml</strong></div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 'var(--s2)' }}>
             <button style={btnStyle('danger')} onClick={() => { revert.mutate(); setShowRevertConfirm(false); }}>
               {revert.isPending ? t.workbench.compile.reverting : t.workbench.compile.revertConfirmBtn}
             </button>
@@ -861,7 +861,7 @@ function SectionTabs({ section, onChange }: { section: Section; onChange: (s: Se
     <button
       onClick={() => onChange(key)}
       style={{
-        flex: 1, padding: '8px 8px', fontSize: 12, cursor: 'pointer', background: 'none',
+        flex: 1, padding: 'var(--s2) var(--s2)', fontSize: 12, cursor: 'pointer', background: 'none',
         border: 'none', borderBottom: section === key ? '2px solid var(--cont)' : '2px solid transparent',
         color: section === key ? 'var(--fg)' : 'var(--fg-3)', fontWeight: section === key ? 600 : 400,
       }}
@@ -937,7 +937,7 @@ function ContractList({ contracts, inventory, selected, onSelect, section, onSec
             border: 'none', borderBottom: '1px solid var(--line)', color: 'var(--fg)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
             <span style={{ ...monoStyle, color: 'var(--fg)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.product}</span>
             <span style={{
               fontSize: 10, padding: '1px 6px', borderRadius: 3,
@@ -946,10 +946,10 @@ function ContractList({ contracts, inventory, selected, onSelect, section, onSec
               {t.lifecycle[c.lifecycle] ?? c.lifecycle}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginTop: 4 }}>
             <span style={{ ...monoStyle, fontSize: 10, color: 'var(--fg-3)' }}>v{String(c.version).replace(/^v/i, '')}</span>
             <span style={{ fontSize: 10, color: 'var(--fg-3)' }}>{c.owned_by}</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 'auto', fontSize: 10, color: 'var(--fg-3)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)', marginLeft: 'auto', fontSize: 10, color: 'var(--fg-3)' }}>
               <StatusDot status={complianceStatus(c)} size={6} />
               {t.compliance[c.compliance ?? 'unknown'] ?? t.compliance.unknown}
             </span>
@@ -966,7 +966,7 @@ function ContractList({ contracts, inventory, selected, onSelect, section, onSec
           {uncovered.map(d => {
             const id = String(d.id ?? datasetName(d));
             return (
-              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderBottom: '1px solid var(--line)' }}>
+              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', padding: '6px 14px', borderBottom: '1px solid var(--line)' }}>
                 <span style={{ ...monoStyle, fontSize: 11, color: 'var(--fg-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {datasetName(d)}
                 </span>
@@ -1017,7 +1017,7 @@ function ValueListInput({ value, onChange }: { value: string[]; onChange: (v: st
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
       {value.map(v => (
         <span key={v} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
+          display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)',
           background: 'var(--bg-3)', border: '1px solid var(--line-2)', borderRadius: 'var(--r)',
           padding: '2px 6px', ...monoStyle, fontSize: 11,
         }}>
@@ -1247,10 +1247,10 @@ function EditorPane({ product, onPromote, promotePending }: {
   }, [canReleaseDraft]);
 
   if (isLoading || !draft) {
-    return <div style={{ padding: 24, color: 'var(--fg-3)' }}>{t.common.loading}</div>;
+    return <div style={{ padding: 'var(--s6)', color: 'var(--fg-3)' }}>{t.common.loading}</div>;
   }
   if (isError) {
-    return <div style={{ flex: 1, padding: 24 }}><ErrorBanner onRetry={() => refetch()} /></div>;
+    return <div style={{ flex: 1, padding: 'var(--s6)' }}><ErrorBanner onRetry={() => refetch()} /></div>;
   }
 
   // [AUTHZ] FE mirror of can_write_contract_data — server stays authoritative on PUT.
@@ -1400,7 +1400,7 @@ function EditorPane({ product, onPromote, promotePending }: {
   ) : null;
 
   const errorsBlock = validationErrors.length > 0 && (
-    <div style={{ background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 'var(--r-md)', padding: '8px 12px' }}>
+    <div style={{ background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 'var(--r-md)', padding: 'var(--s2) var(--s3)' }}>
       <div style={{ color: 'var(--status-fail)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t.workbench.validationErrors}</div>
       {validationErrors.map((e, i) => <div key={i} style={{ color: 'var(--status-fail)', fontSize: 12 }}>• {e}</div>)}
     </div>
@@ -1408,16 +1408,16 @@ function EditorPane({ product, onPromote, promotePending }: {
 
   // TODO: show an accepted-proposal release banner once ContractOut exposes quality_proposals.
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 20, gap: 14, overflowY: 'auto', minWidth: 0 }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'var(--s5)', gap: 14, overflowY: 'auto', minWidth: 0 }}>
       {!canWrite && <ReadOnlyBanner hint={t.role.noWriteContract} />}
       {/* ApprovalBar: visible state machine + actions */}
-      <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
         <LifecycleStepper current={lifecycle} />
         <FrameTag internal={draft.kind === 'internal_gate'} />
         <OwnershipTag ownedBy={contract?.owned_by} />
         <div style={{ flex: 1 }} />
         {lifecycle === 'active' && draft.kind !== 'internal_gate' && <SlaBars product={product} />}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'center', flexWrap: 'wrap' }}>
           {saveButton}
           {promoteMenu}
           {primaryAction && (
@@ -1448,7 +1448,7 @@ function EditorPane({ product, onPromote, promotePending }: {
           <div style={{ fontSize: 13, marginBottom: 10 }}>
             {confirmAction === 'deprecate' ? t.workbench.deprecateConfirm : t.workbench.approveConfirm}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 'var(--s2)' }}>
             <button style={btnStyle(confirmAction === 'deprecate' ? 'danger' : 'primary')} onClick={handleConfirmAction}>{t.common.confirm}</button>
             <button style={btnStyle('ghost')} onClick={() => setConfirmAction(null)}>{t.common.cancel}</button>
           </div>
@@ -1618,7 +1618,7 @@ export default function ContractWorkbench() {
                 onClick={() => navigate('/lineage')}
                 style={{
                   background: 'var(--cont)', color: '#fff', border: 'none',
-                  borderRadius: 'var(--r-md)', padding: '8px 20px', fontSize: 13, cursor: 'pointer',
+                  borderRadius: 'var(--r-md)', padding: 'var(--s2) var(--s5)', fontSize: 13, cursor: 'pointer',
                 }}
               >
                 {t.contracts.onboardingCta}

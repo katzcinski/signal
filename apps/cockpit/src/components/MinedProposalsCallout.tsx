@@ -25,10 +25,10 @@ export function MinedProposalsCallout({ productId }: { productId: string }) {
 
   return (
     <div style={{
-      marginBottom: 16, padding: 16, borderRadius: 'var(--r-lg)',
+      marginBottom: 16, padding: 'var(--s4)', borderRadius: 'var(--r-lg)',
       background: 'var(--bg-1)', border: '1px solid var(--cont)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>
           {t.mined.title} ({open.length})
         </span>
@@ -45,8 +45,8 @@ export function MinedProposalsCallout({ productId }: { productId: string }) {
       </div>
       <p style={{ color: 'var(--fg-3)', fontSize: 12, margin: '4px 0 12px' }}>{t.mined.hint}</p>
       {top.map(p => (
-        <div key={p.id} style={{ borderTop: '1px solid var(--line)', padding: '8px 0', fontSize: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <div key={p.id} style={{ borderTop: '1px solid var(--line)', padding: 'var(--s2) 0', fontSize: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s2)' }}>
             <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg)' }}>{p.check_name}</span>
             <span style={{ marginLeft: 'auto', color: 'var(--fg-3)', fontSize: 11 }}>
               {t.mined.confidence} {Math.round(p.confidence * 100)}%
@@ -54,7 +54,7 @@ export function MinedProposalsCallout({ productId }: { productId: string }) {
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--cont)', marginTop: 2 }}>{p.proposed_expect}</div>
           {p.rationale && <div style={{ color: 'var(--fg-3)', marginTop: 2 }}>{p.rationale}</div>}
-          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+          <div style={{ display: 'flex', gap: 'var(--s2)', marginTop: 6 }}>
             <button
               style={rowBtn('primary')}
               disabled={action.isPending}

@@ -16,16 +16,16 @@ function CheckCard({ check }: { check: CheckDef }) {
   return (
     <div style={{
       background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)',
-      padding: 14, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0,
+      padding: 14, display: 'flex', flexDirection: 'column', gap: 'var(--s2)', minWidth: 0,
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s2)' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, overflowWrap: 'anywhere' }}>{check.label}</div>
           {check.short && (
             <div style={{ fontSize: 12, color: 'var(--fg-2)', marginTop: 4, lineHeight: 1.4 }}>{check.short}</div>
           )}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--s1)', flexShrink: 0 }}>
           <FamilyTag family={check.family} />
           <span style={{
             fontSize: 10, padding: '2px 6px', borderRadius: 'var(--r)',
@@ -52,7 +52,7 @@ function CheckCard({ check }: { check: CheckDef }) {
       {check.params.length > 0 && (
         <div>
           <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.library.params}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--s1)' }}>
             {check.params.map(param => (
               <span key={param.token} title={param.hint} style={{
                 fontSize: 11, fontFamily: 'var(--font-mono)',
@@ -87,7 +87,7 @@ export default function CheckLibrary() {
     <div className="page-full">
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.library.title}</h1>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 'var(--s2)', marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           type="search"
           value={search}
@@ -110,7 +110,7 @@ export default function CheckLibrary() {
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 'var(--s2)', marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <button style={chipBtn(family === '')} onClick={() => setFamily('')}>
           {t.library.allFamilies}
         </button>
@@ -129,7 +129,7 @@ export default function CheckLibrary() {
         <div style={{ color: 'var(--fg-3)', fontSize: 14 }}>{t.library.noResults}</div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 'var(--s3)' }}>
         {checks.map(c => <CheckCard key={c.id} check={c} />)}
       </div>
     </div>

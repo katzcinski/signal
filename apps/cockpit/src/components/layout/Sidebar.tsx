@@ -129,13 +129,13 @@ export function Sidebar({ collapsed }: Props) {
           )}
         </div>
       ) : (
-        <div style={{ padding: '16px 12px', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
+        <div style={{ padding: 'var(--s4) var(--s3)', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
           <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--fg)', whiteSpace: 'nowrap' }}>
             {collapsed ? 'S' : 'Signal'}
           </span>
         </div>
       )}
-      <nav style={{ flex: 1, padding: '8px 0' }}>
+      <nav style={{ flex: 1, padding: 'var(--s2) 0' }}>
         {nav.map((entry, idx) => {
           if (entry === 'divider') {
             return (
@@ -154,7 +154,7 @@ export function Sidebar({ collapsed }: Props) {
               style={({ isActive }) => ({
                 position: 'relative',
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 12px', margin: '1px 6px', borderRadius: 'var(--r-md)',
+                padding: 'var(--s2) var(--s3)', margin: '1px 6px', borderRadius: 'var(--r-md)',
                 justifyContent: collapsed ? 'center' : 'flex-start',
                 color: isActive ? 'var(--fg)' : 'var(--fg-2)',
                 background: isActive ? 'var(--bg-2)' : 'transparent',

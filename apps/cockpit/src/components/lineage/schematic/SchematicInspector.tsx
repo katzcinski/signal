@@ -148,7 +148,7 @@ function ContractBadges({ chip }: { chip: SchematicChip }) {
 }
 
 const emptyStyle: CSSProperties = {
-  color: 'var(--fg-3)', fontSize: 13, lineHeight: 1.6, marginTop: 48, textAlign: 'center', padding: '0 12px',
+  color: 'var(--fg-3)', fontSize: 13, lineHeight: 1.6, marginTop: 48, textAlign: 'center', padding: '0 var(--s3)',
 };
 const eyebrow: CSSProperties = {
   fontSize: 10.5, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600,
@@ -162,7 +162,7 @@ const sectionLabel: CSSProperties = {
   fontSize: 10.5, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 6,
 };
 const rowStyle: CSSProperties = {
-  display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--fg-2)', marginBottom: 6, gap: 8,
+  display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--fg-2)', marginBottom: 6, gap: 'var(--s2)',
 };
 const codeBlock: CSSProperties = {
   background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: '10px 11px',

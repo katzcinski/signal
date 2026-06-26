@@ -21,9 +21,9 @@ export default function RunDetail() {
   const { data: run, isLoading, isError, refetch } = useRun(id);
   const navigate = useNavigate();
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
+  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</div>;
   if (isError) return <div className="page-full"><ErrorBanner onRetry={() => refetch()} /></div>;
-  if (!run) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.runDetail.notFound}</div>;
+  if (!run) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.runDetail.notFound}</div>;
 
   const durationMs = run.started_at && run.finished_at
     ? new Date(run.finished_at).getTime() - new Date(run.started_at).getTime()
@@ -62,7 +62,7 @@ export default function RunDetail() {
       ]} />
       <div style={{ marginBottom: 20 }}>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', cursor: 'pointer', marginBottom: 12 }}>{t.runDetail.back}</button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg-2)' }}>{run.run_id}</span>
           <StatusPill status={run.overall_status} />
           <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.runDetail.dataset}: {run.dataset}</span>
@@ -82,7 +82,7 @@ export default function RunDetail() {
             {t.runDetail.downloadCsv}
           </button>
         </div>
-        <div style={{ marginTop: 12, display: 'flex', gap: 20 }}>
+        <div style={{ marginTop: 12, display: 'flex', gap: 'var(--s5)' }}>
           {[
             { label: t.runDetail.total, value: run.total },
             { label: t.runDetail.passed, value: run.passed, color: 'var(--status-ok)' },

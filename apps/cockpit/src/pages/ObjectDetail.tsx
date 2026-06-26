@@ -88,7 +88,7 @@ function ContractView({ contract }: { contract: ContractOut }) {
               }}>
                 {t.workbench.families[family] ?? family}
               </div>
-              <div style={{ background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: '8px 12px' }}>
+              <div style={{ background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: 'var(--s2) var(--s3)' }}>
                 <pre style={{
                   margin: 0, fontFamily: 'var(--font-mono)', fontSize: 11,
                   color: 'var(--fg-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
@@ -119,7 +119,7 @@ function ContractVersionDiffView({ product, enabled }: { product: string; enable
   if (isLoading || !diff) return null;
 
   return (
-    <div style={{ marginTop: 16, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 16 }}>
+    <div style={{ marginTop: 16, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s4)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {t.diff.versionTitle}
@@ -146,12 +146,12 @@ function ContractVersionDiffView({ product, enabled }: { product: string; enable
       ) : diff.entries.length === 0 ? (
         <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.diff.noChanges}</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
           {diff.entries.map((e, i) => (
             <div key={`${e.path}-${i}`} style={{
               display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
               borderLeft: `3px solid ${e.breaking ? 'var(--status-fail)' : 'var(--status-warn)'}`,
-              background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: '8px 12px',
+              background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: 'var(--s2) var(--s3)',
             }}>
               <span style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500 }}>
                 {t.diff.kinds[e.kind] ?? e.kind}
@@ -195,7 +195,7 @@ function MiniLineageDag({ focusId }: { focusId: string }) {
   const navigate = useNavigate();
 
   if (isLoading) {
-    return <div style={{ color: 'var(--fg-3)', fontSize: 12, padding: 12 }}>{t.common.loading}</div>;
+    return <div style={{ color: 'var(--fg-3)', fontSize: 12, padding: 'var(--s3)' }}>{t.common.loading}</div>;
   }
   if (!graph || graph.nodes.length === 0) return null;
 
@@ -365,9 +365,9 @@ export default function ObjectDetail() {
     prevRunState.current = runState;
   }, [runState, id, qc]);
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
+  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</div>;
   if (isError) return <div className="page-full"><ErrorBanner onRetry={() => refetch()} /></div>;
-  if (!obj) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.objectDetail.notFound}</div>;
+  if (!obj) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.objectDetail.notFound}</div>;
 
   const canCreateChecks = canWriteContract(role, obj.owned_by);
   const openChecksWorkbench = () => {
@@ -380,7 +380,7 @@ export default function ObjectDetail() {
   };
 
   const TAB_STYLE = (tabKey: Tab) => ({
-    padding: '8px 16px', border: 'none', background: 'none',
+    padding: 'var(--s2) var(--s4)', border: 'none', background: 'none',
     color: tab === tabKey ? 'var(--fg)' : 'var(--fg-3)',
     borderBottom: tab === tabKey ? '2px solid var(--cont)' : '2px solid transparent',
     cursor: 'pointer', fontSize: 13,
@@ -420,7 +420,7 @@ export default function ObjectDetail() {
         { label: t.breadcrumb.objects, to: '/objects' },
         { label: obj.name },
       ]} />
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
         <button onClick={() => navigate('/objects')} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', cursor: 'pointer' }}>{t.objectDetail.back}</button>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -557,7 +557,7 @@ export default function ObjectDetail() {
       {tab === 'contract' && (
         <>
           {!contract && <MinedProposalsCallout productId={obj.id} />}
-          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 20 }}>
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s5)' }}>
             {contract ? (
               <ContractView contract={contract as ContractOut} />
             ) : (
@@ -574,7 +574,7 @@ export default function ObjectDetail() {
       )}
 
       {tab === 'lineage' && (
-        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 24 }}>
+        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s6)' }}>
           <MiniLineageDag focusId={obj.id} />
           <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 16 }}>
             {t.objectDetail.lineageHint}{' '}

@@ -59,14 +59,14 @@ export function DqHealthTrend() {
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--line)',
+        gap: 'var(--s3)', padding: 'var(--s3) var(--s4)', borderBottom: '1px solid var(--line)',
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, minWidth: 0 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
             {t.cockpit.trendTitle}
           </span>
           {current != null && (
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--s2)' }}>
               <span style={{ fontSize: 26, fontWeight: 700, color: 'var(--fg)', lineHeight: 1 }}>{current}%</span>
               {delta != null && (
                 <span style={{ fontSize: 12, color: trendColor, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
@@ -85,7 +85,7 @@ export function DqHealthTrend() {
         </div>
       </div>
 
-      <div style={{ padding: '12px 12px 4px' }}>
+      <div style={{ padding: 'var(--s3) var(--s3) var(--s1)' }}>
         {isLoading && !data ? (
           <div style={{ height: 200 }} className="skeleton" />
         ) : !hasData ? (
@@ -150,7 +150,7 @@ export function DqHealthTrend() {
           </div>
         )}
       </div>
-      <p style={{ color: 'var(--fg-3)', fontSize: 11, padding: '0 16px 12px' }}>
+      <p style={{ color: 'var(--fg-3)', fontSize: 11, padding: '0 var(--s4) var(--s3)' }}>
         {t.cockpit.trendPassRate} · {t.cockpit.trendHint}
       </p>
     </div>

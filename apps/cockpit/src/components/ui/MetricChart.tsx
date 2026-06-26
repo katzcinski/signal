@@ -53,7 +53,7 @@ export function MetricChart({ series }: { series: MetricSeries }) {
 
   if (numeric.length < 2) {
     return (
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 16, marginBottom: 12 }}>
+      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s4)', marginBottom: 12 }}>
         <Header name={series.check_name} label={label} color={color} anomalyCount={anomalyCount} />
         <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 8 }}>{t.timeseries.tooFew}</p>
       </div>
@@ -61,7 +61,7 @@ export function MetricChart({ series }: { series: MetricSeries }) {
   }
 
   return (
-    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 16, marginBottom: 12 }}>
+    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s4)', marginBottom: 12 }}>
       <Header name={series.check_name} label={label} color={color} anomalyCount={anomalyCount} />
       <div style={{ height: 180, marginTop: 12 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -146,7 +146,7 @@ function Header({ name, label, color, anomalyCount }: {
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }}>{name}</span>
       <div style={{ flex: 1 }} />
       {anomalyCount > 0 && (
-        <span style={{ fontSize: 10, color: 'var(--status-crit)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 10, color: 'var(--status-crit)', display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)' }}>
           ⚠ {anomalyCount} {t.timeseries.anomalies}
         </span>
       )}

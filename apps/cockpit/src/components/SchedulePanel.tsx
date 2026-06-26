@@ -41,7 +41,7 @@ function ModeCard({ choice, active, onClick, disabled }: {
         transition: 'background var(--t), border-color var(--t)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginBottom: 4 }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.c }} />
         <span style={{ fontSize: 13, fontWeight: 650, color: 'var(--fg)' }}>{meta.title}</span>
       </div>
@@ -84,7 +84,7 @@ export function SchedulePanel({ objectId }: { objectId: string }) {
     schedule?.environment, schedule?.execution_mode, schedule?.enabled,
   ]);
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
+  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</div>;
 
   const next = schedule ? nextRunInfo(schedule) : null;
   const intervalTooLow = choice === 'internal' && interval < 60;
@@ -110,13 +110,13 @@ export function SchedulePanel({ objectId }: { objectId: string }) {
   };
 
   return (
-    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 20, maxWidth: 720 }}>
+    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s5)', maxWidth: 720 }}>
       {!canEdit && <ReadOnlyBanner />}
 
       {/* status strip when a schedule exists */}
       {schedule && next && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18,
+          display: 'flex', alignItems: 'center', gap: 'var(--s4)', marginBottom: 18,
           padding: '10px 14px', background: 'var(--bg-2)', borderRadius: 'var(--r-lg)',
           border: '1px solid var(--line)',
         }}>
@@ -209,13 +209,13 @@ export function SchedulePanel({ objectId }: { objectId: string }) {
       )}
 
       {/* actions */}
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 'var(--s2)' }}>
         <button
           onClick={onSave}
           disabled={!canEdit || upsert.isPending || remove.isPending || intervalTooLow}
           style={{
             background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 'var(--r-md)',
-            padding: '8px 16px', fontSize: 13, cursor: canEdit ? 'pointer' : 'not-allowed',
+            padding: 'var(--s2) var(--s4)', fontSize: 13, cursor: canEdit ? 'pointer' : 'not-allowed',
             opacity: canEdit && !intervalTooLow ? 1 : 0.5,
           }}
         >

@@ -26,7 +26,7 @@ function ExpectDiff({ current, proposed }: { current: string; proposed: string }
   return (
     <div>
       <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.diff.meaning}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', flexWrap: 'wrap' }}>
         <span style={{
           fontSize: 11, borderRadius: 'var(--r)', padding: '2px 8px',
           background: `color-mix(in srgb, ${dirColor} 15%, transparent)`,
@@ -43,7 +43,7 @@ function ExpectDiff({ current, proposed }: { current: string; proposed: string }
           </span>
         )}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s2)', marginTop: 8 }}>
         <div>
           <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.proposals.current}</div>
           <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)' }}>{current || '—'}</code>
@@ -61,7 +61,7 @@ function ConfidenceBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
   const color = pct >= 80 ? 'var(--status-ok)' : pct >= 50 ? 'var(--status-warn)' : 'var(--status-fail)';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
       <div style={{ flex: 1, height: 4, background: 'var(--line-2)', borderRadius: 2, overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
       </div>
@@ -81,7 +81,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
   return (
     <div style={{
       background: 'var(--bg-1)', border: '1px solid var(--line)',
-      borderRadius: 'var(--r-lg)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
+      borderRadius: 'var(--r-lg)', padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
@@ -119,8 +119,8 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
 
       {proposal.stats && (
         <div style={{
-          background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: '8px 12px',
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
+          background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: 'var(--s2) var(--s3)',
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--s2)',
         }}>
           {(['n', 'min', 'max', 'mean'] as const).map(k => (
             <div key={k}>
@@ -137,7 +137,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
 
       {proposal.status === 'open' && (
         <Tooltip content={proposal.kind === 'internal_gate' && !canWrite ? t.role.noWriteAction : undefined} focusable={!canWrite} className="tooltip-full">
-          <span style={{ display: 'flex', gap: 8 }}>
+          <span style={{ display: 'flex', gap: 'var(--s2)' }}>
             {proposal.kind !== 'internal_gate' ? (
               <button onClick={() => navigate(`/contracts?product=${encodeURIComponent(proposal.product)}`)} style={{ flex: 1, background: 'var(--cont)22', border: '1px solid var(--cont)', color: 'var(--cont)', borderRadius: 'var(--r-md)', padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
                 Im Contract pruefen {'->'}
@@ -166,7 +166,7 @@ export default function Proposals() {
   const pending = proposals.filter(p => p.status === 'open');
   const others  = proposals.filter(p => p.status !== 'open');
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</div>;
+  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</div>;
 
   return (
     <div className="page-full">
@@ -181,7 +181,7 @@ export default function Proposals() {
       {pending.length > 0 && (
         <>
           <h2 style={{ fontSize: 13, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>{t.proposals.pending} ({pending.length})</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s4)', marginBottom: 24 }}>
             {pending.map(p => <ProposalCard key={p.id} proposal={p} />)}
           </div>
         </>
@@ -189,7 +189,7 @@ export default function Proposals() {
       {others.length > 0 && (
         <>
           <h2 style={{ fontSize: 13, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>{t.proposals.reviewed} ({others.length})</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s4)' }}>
             {others.map(p => <ProposalCard key={p.id} proposal={p} />)}
           </div>
         </>

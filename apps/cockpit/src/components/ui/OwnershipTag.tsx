@@ -15,7 +15,7 @@ export function OwnershipTag({ ownedBy }: { ownedBy: string | undefined }) {
       <span
         aria-label={`${t.role.ownerLock}: ${label}. ${hint}`}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
+          display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)',
           fontSize: 10, color, border: `1px solid ${color}55`,
           background: `${color}1A`, borderRadius: 'var(--r)', padding: '1px 6px',
           whiteSpace: 'nowrap',

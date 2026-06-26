@@ -125,15 +125,15 @@ export default function RunCompare() {
         <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{t.compare.subtitle}</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 'var(--s4)', flexWrap: 'wrap', marginBottom: 20 }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)' }}>
           <span style={{ fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.compare.base}</span>
           <select style={selectStyle} value={base} onChange={e => setRun('base', e.target.value)}>
             <option value="">{t.compare.pickRun}</option>
             {pickerRuns.map(r => <option key={r.run_id} value={r.run_id}>{RunOption(r)}</option>)}
           </select>
         </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)' }}>
           <span style={{ fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.compare.head}</span>
           <select style={selectStyle} value={head} onChange={e => setRun('head', e.target.value)}>
             <option value="">{t.compare.pickRun}</option>
@@ -144,10 +144,10 @@ export default function RunCompare() {
 
       {isError && <ErrorBanner onRetry={() => refetch()} />}
       {(!base || !head || base === head) && (
-        <p style={{ color: 'var(--fg-3)', fontSize: 13, padding: '24px 0' }}>{t.compare.needTwo}</p>
+        <p style={{ color: 'var(--fg-3)', fontSize: 13, padding: 'var(--s6) 0' }}>{t.compare.needTwo}</p>
       )}
       {base && head && base !== head && isLoading && (
-        <p style={{ color: 'var(--fg-3)', padding: 24 }}>{t.common.loading}</p>
+        <p style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</p>
       )}
 
       {cmp && (
@@ -155,7 +155,7 @@ export default function RunCompare() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
             {(['regressed', 'recovered', 'added', 'removed', 'changed'] as CheckTransition[]).map(k => (
               <div key={k} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
+                display: 'flex', alignItems: 'center', gap: 'var(--s2)',
                 background: 'var(--bg-1)', border: '1px solid var(--line)',
                 borderRadius: 'var(--r-md)', padding: '6px 12px',
               }}>
@@ -166,7 +166,7 @@ export default function RunCompare() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)', marginBottom: 8 }}>
             <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>
               <Link to={`/runs/${cmp.base.run_id}`} style={{ color: 'var(--cont)' }}>{cmp.base.run_id.slice(0, 10)}…</Link>
               {' → '}
