@@ -24,7 +24,7 @@ function OwnerChips({ owners }: { owners: string[] }) {
           style={{
             background: 'var(--bg-2)',
             border: '1px solid var(--line)',
-            borderRadius: 4,
+            borderRadius: 'var(--r)',
             color: 'var(--fg-2)',
             fontSize: 11,
             padding: '2px 7px',
@@ -137,7 +137,7 @@ export default function ProductDetail() {
         {data.upstream_risk.length > 0 && (
           <Panel title={t.products.upstreamRiskTitle} family="contract">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, color: 'var(--fg-3)', fontSize: 12 }}>
-              <span style={{ border: '1px solid var(--line)', borderRadius: 4, padding: '1px 6px' }}>
+              <span style={{ border: '1px solid var(--line)', borderRadius: 'var(--r)', padding: '1px 6px' }}>
                 {t.products.nonContagious}
               </span>
             </div>
@@ -157,7 +157,7 @@ export default function ProductDetail() {
                     <div key={`${finding.finding_type}-${finding.scope ?? 'none'}-${finding.object_id}`} style={{
                       borderLeft: '3px solid var(--status-warn)',
                       background: 'var(--bg-2)',
-                      borderRadius: 5,
+                      borderRadius: 'var(--r-md)',
                       color: 'var(--fg-2)',
                       fontSize: 12,
                       marginBottom: 6,

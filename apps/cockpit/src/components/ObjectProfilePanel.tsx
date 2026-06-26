@@ -74,7 +74,7 @@ function CandidateRow({ candidate }: {
   return (
     <div style={{
       border: '1px solid var(--line)',
-      borderRadius: 6,
+      borderRadius: 'var(--r-md)',
       padding: '9px 11px',
       background: 'var(--bg-2)',
     }}>
@@ -83,7 +83,7 @@ function CandidateRow({ candidate }: {
         {candidate.exact && (
           <span style={{
             fontSize: 10, color: 'var(--status-ok)',
-            border: '1px solid var(--status-ok)', borderRadius: 4, padding: '1px 6px',
+            border: '1px solid var(--status-ok)', borderRadius: 'var(--r)', padding: '1px 6px',
           }}>
             exact
           </span>
@@ -126,7 +126,7 @@ function CandidateSection({ title, candidates }: {
 function ProfileSummary({ profile }: { profile: ObjectProfileResult }) {
   const kpiStyle: React.CSSProperties = {
     border: '1px solid var(--line)',
-    borderRadius: 6,
+    borderRadius: 'var(--r-md)',
     background: 'var(--bg-2)',
     padding: '9px 11px',
     minWidth: 110,
@@ -186,7 +186,7 @@ function ColumnStatsTable({ columns }: { columns: ObjectProfileColumn[] }) {
   return (
     <section style={{ marginTop: 18 }}>
       <div style={sectionTitle}>Column stats</div>
-      <div style={{ border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden' }}>
+      <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
         <Table
           columns={colDefs}
           rows={columns}
@@ -226,7 +226,7 @@ function SampleRowsSection({ sample }: { sample?: ProfileSampleRows }) {
       {!sample.enabled ? (
         <div style={{ color: 'var(--fg-3)', fontSize: 12 }}>{sample.reason || 'Sample rows unavailable.'}</div>
       ) : (
-        <div style={{ border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
           <Table
             columns={colDefs}
             rows={rows}
@@ -294,7 +294,7 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
             style={{
               background: 'var(--bg-2)',
               border: '1px solid var(--line)',
-              borderRadius: 5,
+              borderRadius: 'var(--r-md)',
               color: 'var(--fg)',
               padding: '7px 10px',
               fontSize: 12,
@@ -320,7 +320,7 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
         {error && (
           <div style={{
             border: '1px solid var(--status-crit)',
-            borderRadius: 6,
+            borderRadius: 'var(--r-md)',
             background: 'rgba(229, 72, 77, 0.08)',
             color: 'var(--status-crit)',
             padding: '10px 12px',

@@ -29,7 +29,7 @@ export function StatePill({ state, size = 'md' }: Props) {
         display: 'inline-flex', alignItems: 'center', gap: 5,
         background: 'transparent',
         borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--fg-3)',
-        color: 'var(--fg-3)', borderRadius: 4, padding: pad, fontSize: fs,
+        color: 'var(--fg-3)', borderRadius: 'var(--r)', padding: pad, fontSize: fs,
         fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap',
       }}>
         <span aria-hidden>{GLYPH[state]}</span>

@@ -45,6 +45,7 @@
   --r: 4px;
   --r-md: 6px;
   --r-lg: 8px;
+  --r-full: 999px;   /* pills, toggles, round dots */
 
   /* Spacing scale (UX-F6): single source for padding/gap — stop hardcoding
      16/20/24 in inline styles. Steps are 4px-based. */

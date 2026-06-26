@@ -25,7 +25,7 @@ export function StatusPill({ status, size = 'md' }: Props) {
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 5,
       background: `${color}22`, border: `1px solid ${color}55`,
-      color, borderRadius: 4, padding: pad, fontSize: fs,
+      color, borderRadius: 'var(--r)', padding: pad, fontSize: fs,
       fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap',
     }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />

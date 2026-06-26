@@ -21,7 +21,7 @@ const drawerBtn = (variant: 'primary' | 'ghost' = 'primary'): React.CSSPropertie
   background: variant === 'primary' ? 'var(--cont)' : 'var(--bg-2)',
   color: variant === 'primary' ? '#fff' : 'var(--fg)',
   border: variant === 'primary' ? 'none' : '1px solid var(--line-2)',
-  borderRadius: 5, padding: '6px 12px', fontSize: 12, cursor: 'pointer',
+  borderRadius: 'var(--r-md)', padding: '6px 12px', fontSize: 12, cursor: 'pointer',
 });
 
 function IncidentKindBadge({ kind }: { kind?: Incident['kind'] }) {
@@ -29,7 +29,7 @@ function IncidentKindBadge({ kind }: { kind?: Incident['kind'] }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 8px',
-      borderRadius: 999, border: `1px solid ${isGate ? 'var(--qual)' : 'var(--cont)'}`,
+      borderRadius: 'var(--r-full)', border: `1px solid ${isGate ? 'var(--qual)' : 'var(--cont)'}`,
       color: isGate ? 'var(--qual)' : 'var(--cont)', fontSize: 11, fontWeight: 650,
       whiteSpace: 'nowrap',
     }}>
@@ -153,7 +153,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
           {pendingStatus && (
             <div style={{
               background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-              borderRadius: 6, padding: 12, marginBottom: 16,
+              borderRadius: 'var(--r-md)', padding: 12, marginBottom: 16,
             }}>
               <div style={{ fontSize: 11, color: 'var(--fg-3)', marginBottom: 6 }}>
                 {t.incidents.notePrompt}
@@ -167,7 +167,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
                 rows={2}
                 style={{
                   width: '100%', background: 'var(--bg-1)', border: '1px solid var(--line-2)',
-                  color: 'var(--fg)', borderRadius: 4, padding: '6px 8px', fontSize: 12,
+                  color: 'var(--fg)', borderRadius: 'var(--r)', padding: '6px 8px', fontSize: 12,
                   resize: 'vertical', boxSizing: 'border-box', display: 'block',
                 }}
               />
@@ -198,7 +198,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
                 aria-label={t.incidents.assignOwner}
                 style={{
                   flex: 1, background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-                  color: 'var(--fg)', borderRadius: 5, padding: '5px 10px', fontSize: 12,
+                  color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12,
                 }}
               />
               <button
@@ -274,7 +274,7 @@ function FailedChecksTab() {
       render: c => (
         <button
           onClick={e => { e.stopPropagation(); navigate(`/runs/${c.run_id}`); }}
-          style={{ background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+          style={{ background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 'var(--r)', padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
         >
           {t.incidents.run}
         </button>
@@ -294,7 +294,7 @@ function FailedChecksTab() {
           aria-label={t.common.severity}
           style={{
             background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-            color: 'var(--fg)', borderRadius: 5, padding: '5px 10px', fontSize: 12,
+            color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12,
           }}
         >
           <option value="">{t.incidents.allSeverities}</option>
@@ -303,7 +303,7 @@ function FailedChecksTab() {
           <option value="warn">{t.status.warn}</option>
         </select>
       </div>
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
         <Table
           columns={columns}
           rows={checks}
@@ -399,7 +399,7 @@ export default function Incidents() {
                 key={value}
                 onClick={() => setKindFilter(value)}
                 style={{
-                  border: '1px solid var(--line-2)', borderRadius: 999,
+                  border: '1px solid var(--line-2)', borderRadius: 'var(--r-full)',
                   padding: '4px 10px', fontSize: 12, cursor: 'pointer',
                   background: kindFilter === value ? 'var(--cont)' : 'var(--bg-2)',
                   color: kindFilter === value ? '#fff' : 'var(--fg-2)',
@@ -412,7 +412,7 @@ export default function Incidents() {
           {isError && <ErrorBanner onRetry={() => refetch()} />}
           {isLoading && <TableSkeleton columns={7} />}
           {!isError && !isLoading && (
-            <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
               <Table
                 columns={columns}
                 rows={filteredIncidents}

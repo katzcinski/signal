@@ -68,7 +68,7 @@ export function IncidentSla({ incident }: { incident: Incident }) {
         display: 'inline-flex', alignItems: 'center', gap: 5,
         fontSize: 11, fontFamily: 'var(--font-mono)', color,
         border: `1px solid ${level === 'neutral' ? 'var(--line-2)' : color}`,
-        borderRadius: 5, padding: '1px 7px',
+        borderRadius: 'var(--r-md)', padding: '1px 7px',
         fontWeight: level === 'neutral' ? 400 : 600,
       }}
     >

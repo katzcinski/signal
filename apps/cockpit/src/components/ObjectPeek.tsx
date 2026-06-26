@@ -52,7 +52,7 @@ export function ObjectPeek({ objectId, onClose }: { objectId: string; onClose: (
           <button
             onClick={() => trigger.mutate({})}
             disabled={trigger.isPending || isRunning}
-            style={{ background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 5, padding: '7px 14px', fontSize: 13, cursor: 'pointer' }}
+            style={{ background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 'var(--r-md)', padding: '7px 14px', fontSize: 13, cursor: 'pointer' }}
           >
             {trigger.isPending || isRunning ? t.peek.running : t.peek.runChecks}
           </button>

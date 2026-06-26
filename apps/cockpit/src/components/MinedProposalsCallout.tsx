@@ -20,12 +20,12 @@ export function MinedProposalsCallout({ productId }: { productId: string }) {
     background: variant === 'primary' ? 'var(--cont)' : 'var(--bg-2)',
     color: variant === 'primary' ? '#fff' : 'var(--fg-2)',
     border: variant === 'primary' ? 'none' : '1px solid var(--line-2)',
-    borderRadius: 5, padding: '4px 10px', fontSize: 11, cursor: 'pointer',
+    borderRadius: 'var(--r-md)', padding: '4px 10px', fontSize: 11, cursor: 'pointer',
   });
 
   return (
     <div style={{
-      marginBottom: 16, padding: 16, borderRadius: 8,
+      marginBottom: 16, padding: 16, borderRadius: 'var(--r-lg)',
       background: 'var(--bg-1)', border: '1px solid var(--cont)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -37,7 +37,7 @@ export function MinedProposalsCallout({ productId }: { productId: string }) {
           onClick={() => navigate('/proposals')}
           style={{
             background: 'var(--cont)', color: '#fff', border: 'none',
-            borderRadius: 5, padding: '5px 12px', fontSize: 12, cursor: 'pointer',
+            borderRadius: 'var(--r-md)', padding: '5px 12px', fontSize: 12, cursor: 'pointer',
           }}
         >
           {t.mined.review} →

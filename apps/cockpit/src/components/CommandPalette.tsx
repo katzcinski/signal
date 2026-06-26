@@ -54,7 +54,7 @@ export function CommandPalette({ onClose }: Props) {
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 10, width: 560, overflow: 'hidden', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}
+        style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-lg)', width: 560, overflow: 'hidden', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}
       >
         <Command label={t.palette.placeholder} shouldFilter>
           <Command.Input autoFocus value={query} onValueChange={setQuery} placeholder={t.palette.placeholder} />

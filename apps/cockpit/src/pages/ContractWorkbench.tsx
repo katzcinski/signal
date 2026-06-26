@@ -31,14 +31,14 @@ import type {
 // ─── Shared style tokens ─────────────────────────────────────────────────────
 const cardStyle: React.CSSProperties = {
   background: 'var(--bg-1)', border: '1px solid var(--line)',
-  borderRadius: 8, padding: 16,
+  borderRadius: 'var(--r-lg)', padding: 16,
 };
 const monoStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)', fontSize: 12,
 };
 const btnStyle = (variant: 'primary' | 'danger' | 'ghost' = 'primary'): React.CSSProperties => ({
   border: variant === 'ghost' ? '1px solid var(--line-2)' : 'none',
-  borderRadius: 5, padding: '7px 14px', fontSize: 13,
+  borderRadius: 'var(--r-md)', padding: '7px 14px', fontSize: 13,
   cursor: 'pointer',
   background: variant === 'primary' ? 'var(--cont)'
     : variant === 'danger' ? 'var(--status-fail)'
@@ -47,7 +47,7 @@ const btnStyle = (variant: 'primary' | 'danger' | 'ghost' = 'primary'): React.CS
 });
 const selectStyle: React.CSSProperties = {
   background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-  color: 'var(--fg)', borderRadius: 5, padding: '4px 8px', fontSize: 12,
+  color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '4px 8px', fontSize: 12,
 };
 const fieldLabel: React.CSSProperties = { fontSize: 11, color: 'var(--fg-3)' };
 
@@ -66,7 +66,7 @@ function FrameTag({ internal }: { internal: boolean }) {
   return (
     <Tooltip content={internal ? t.workbench.frameInternalHint : t.workbench.frameContractHint}>
       <span style={{
-        fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+        fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 'var(--r)',
         background: internal ? 'var(--qual)22' : 'var(--cont)22',
         border: `1px solid ${internal ? 'var(--qual)' : 'var(--cont)'}`,
         color: internal ? 'var(--qual)' : 'var(--cont)',
@@ -160,7 +160,7 @@ function ColumnsPicker({ value, onChange, options }: {
       {value.map(col => (
         <span key={col} style={{
           display: 'inline-flex', alignItems: 'center', gap: 4,
-          background: 'var(--bg-3)', border: '1px solid var(--line-2)', borderRadius: 4,
+          background: 'var(--bg-3)', border: '1px solid var(--line-2)', borderRadius: 'var(--r)',
           padding: '2px 6px', ...monoStyle, fontSize: 11,
         }}>
           {col}
@@ -219,7 +219,7 @@ function RemoveRowButton({ onClick }: { onClick: () => void }) {
     <button
       onClick={onClick}
       aria-label={t.common.remove}
-      style={{ background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 4, padding: '2px 8px', fontSize: 11, cursor: 'pointer' }}
+      style={{ background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 'var(--r)', padding: '2px 8px', fontSize: 11, cursor: 'pointer' }}
     >
       ×
     </button>
@@ -574,7 +574,7 @@ function BreakingDiffPanel({ entries, pending, isError, blocking, ceremonyRequir
       <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{t.workbench.diffTitle}</div>
       {!ceremonyRequired && (
         <div style={{
-          marginBottom: 10, padding: '8px 12px', borderRadius: 5,
+          marginBottom: 10, padding: '8px 12px', borderRadius: 'var(--r-md)',
           background: 'var(--bg-2)', border: '1px solid var(--line)',
           color: 'var(--fg-2)', fontSize: 12,
         }}>
@@ -610,7 +610,7 @@ function BreakingDiffPanel({ entries, pending, isError, blocking, ceremonyRequir
       ))}
       {!ceremonyRequired && hasBreaking && (
         <div style={{
-          marginTop: 10, padding: '8px 12px', borderRadius: 5,
+          marginTop: 10, padding: '8px 12px', borderRadius: 'var(--r-md)',
           background: 'var(--status-warn)22', border: '1px solid var(--status-warn)',
           color: 'var(--fg-2)', fontSize: 12, fontWeight: 600,
         }}>
@@ -619,7 +619,7 @@ function BreakingDiffPanel({ entries, pending, isError, blocking, ceremonyRequir
       )}
       {blocking && (
         <div style={{
-          marginTop: 10, padding: '8px 12px', borderRadius: 5,
+          marginTop: 10, padding: '8px 12px', borderRadius: 'var(--r-md)',
           background: 'var(--status-crit)22', border: '1px solid var(--status-crit)',
           color: 'var(--status-crit)', fontSize: 12, fontWeight: 600,
         }}>
@@ -666,7 +666,7 @@ function SlaBars({ product }: { product: string }) {
 function ConflictList({ conflicts }: { conflicts: string[] }) {
   if (!conflicts.length) return null;
   return (
-    <div style={{ background: 'var(--status-warn)22', border: '1px solid var(--status-warn)', borderRadius: 6, padding: '10px 14px', marginTop: 8 }}>
+    <div style={{ background: 'var(--status-warn)22', border: '1px solid var(--status-warn)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginTop: 8 }}>
       <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--status-warn)', marginBottom: 4 }}>
         {conflicts.length} {t.workbench.compile.conflicts}
       </div>
@@ -762,7 +762,7 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
               <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 6, fontStyle: 'italic' }}>
                 {t.workbench.compile.yamlPreviewHint}
               </div>
-              <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 6, marginTop: 6, overflow: 'auto', maxHeight: 300, fontSize: 11 }}>
+              <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 'var(--r-md)', marginTop: 6, overflow: 'auto', maxHeight: 300, fontSize: 11 }}>
                 {compileData.yaml_preview}
               </pre>
             </details>
@@ -816,11 +816,11 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
       {activeTab === 'export' && exportBdc.data && (
         <div>
           <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>{t.workbench.compile.csn}</div>
-          <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 6, overflow: 'auto', maxHeight: 200, fontSize: 11 }}>
+          <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 'var(--r-md)', overflow: 'auto', maxHeight: 200, fontSize: 11 }}>
             {JSON.stringify((exportBdc.data as { csn_fragment: unknown }).csn_fragment, null, 2)}
           </pre>
           <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8, marginTop: 12 }}>{t.workbench.compile.ord}</div>
-          <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 6, overflow: 'auto', maxHeight: 200, fontSize: 11 }}>
+          <pre style={{ ...monoStyle, background: 'var(--bg-2)', padding: 12, borderRadius: 'var(--r-md)', overflow: 'auto', maxHeight: 200, fontSize: 11 }}>
             {JSON.stringify((exportBdc.data as { ord_fragment: unknown }).ord_fragment, null, 2)}
           </pre>
         </div>
@@ -831,7 +831,7 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
 
       {/* Revert confirmation */}
       {showRevertConfirm && (
-        <div style={{ marginTop: 12, background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 6, padding: 14 }}>
+        <div style={{ marginTop: 12, background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 'var(--r-md)', padding: 14 }}>
           <div style={{ fontSize: 13, marginBottom: 10 }}>{t.workbench.compile.revertConfirm} <strong style={monoStyle}>checks/{dataset}/checks.yml</strong></div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button style={btnStyle('danger')} onClick={() => { revert.mutate(); setShowRevertConfirm(false); }}>
@@ -916,7 +916,7 @@ function ContractList({ contracts, inventory, selected, onSelect, section, onSec
           aria-label={t.workbench.searchContracts}
           style={{
             width: '100%', background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-            color: 'var(--fg)', borderRadius: 5, padding: '5px 10px', fontSize: 12, outline: 'none',
+            color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12, outline: 'none',
           }}
         />
       </div>
@@ -1018,7 +1018,7 @@ function ValueListInput({ value, onChange }: { value: string[]; onChange: (v: st
       {value.map(v => (
         <span key={v} style={{
           display: 'inline-flex', alignItems: 'center', gap: 4,
-          background: 'var(--bg-3)', border: '1px solid var(--line-2)', borderRadius: 4,
+          background: 'var(--bg-3)', border: '1px solid var(--line-2)', borderRadius: 'var(--r)',
           padding: '2px 6px', ...monoStyle, fontSize: 11,
         }}>
           {v}
@@ -1384,7 +1384,7 @@ function EditorPane({ product, onPromote, promotePending }: {
       <div style={{
         position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 10,
         minWidth: 220, background: 'var(--bg-1)', border: '1px solid var(--line)',
-        borderRadius: 6, padding: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+        borderRadius: 'var(--r-md)', padding: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
       }}>
         <Tooltip content={canWrite ? t.workbench.promoteHint : writeTitle} focusable={!canWrite} className="tooltip-full">
           <button
@@ -1400,7 +1400,7 @@ function EditorPane({ product, onPromote, promotePending }: {
   ) : null;
 
   const errorsBlock = validationErrors.length > 0 && (
-    <div style={{ background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 5, padding: '8px 12px' }}>
+    <div style={{ background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 'var(--r-md)', padding: '8px 12px' }}>
       <div style={{ color: 'var(--status-fail)', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t.workbench.validationErrors}</div>
       {validationErrors.map((e, i) => <div key={i} style={{ color: 'var(--status-fail)', fontSize: 12 }}>• {e}</div>)}
     </div>
@@ -1585,7 +1585,7 @@ export default function ContractWorkbench() {
       {contractsQuery.isError && <ErrorBanner onRetry={() => contractsQuery.refetch()} />}
       <div style={{
         background: 'var(--bg-1)', border: '1px solid var(--line)',
-        borderRadius: 8, overflow: 'hidden', display: 'flex', minHeight: 600,
+        borderRadius: 'var(--r-lg)', overflow: 'hidden', display: 'flex', minHeight: 600,
       }}>
         <ContractList
           contracts={contracts}
@@ -1606,7 +1606,7 @@ export default function ContractWorkbench() {
           <div style={{ flex: 1, padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{
               background: 'var(--bg-1)', border: '1px dashed var(--line-2)',
-              borderRadius: 8, padding: 32, textAlign: 'center', maxWidth: 560,
+              borderRadius: 'var(--r-lg)', padding: 32, textAlign: 'center', maxWidth: 560,
             }}>
               <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--fg)', marginBottom: 8 }}>
                 {t.contracts.onboardingTitle}
@@ -1618,7 +1618,7 @@ export default function ContractWorkbench() {
                 onClick={() => navigate('/lineage')}
                 style={{
                   background: 'var(--cont)', color: '#fff', border: 'none',
-                  borderRadius: 5, padding: '8px 20px', fontSize: 13, cursor: 'pointer',
+                  borderRadius: 'var(--r-md)', padding: '8px 20px', fontSize: 13, cursor: 'pointer',
                 }}
               >
                 {t.contracts.onboardingCta}

@@ -124,7 +124,7 @@ export function Combobox({ options, value, onChange, placeholder, ariaLabel, wid
         onKeyDown={handleKeyDown}
         style={{
           width: '100%', background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-          color: 'var(--fg)', borderRadius: 5, padding: '5px 10px', fontSize: 12,
+          color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12,
           fontFamily: 'var(--font-mono)', outline: 'none',
         }}
       />
@@ -134,7 +134,7 @@ export function Combobox({ options, value, onChange, placeholder, ariaLabel, wid
           role="listbox"
           style={{
             ...listboxStyle, zIndex: 10000,
-            background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 5,
+            background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)',
             overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
           }}
         >

@@ -19,7 +19,7 @@ function StepCard({ step, title, desc, done, locked, children }: {
   return (
     <div style={{
       display: 'flex', gap: 14, padding: 16,
-      background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8,
+      background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)',
       opacity: locked ? 0.45 : 1,
     }}>
       <div aria-hidden style={{
@@ -45,7 +45,7 @@ function StepCard({ step, title, desc, done, locked, children }: {
 
 const btnStyle: React.CSSProperties = {
   background: 'var(--cont)', color: '#fff', border: 'none',
-  borderRadius: 5, padding: '6px 14px', fontSize: 13,
+  borderRadius: 'var(--r-md)', padding: '6px 14px', fontSize: 13,
 };
 
 // U4 onboarding: empty tenant → Extract → Seed → Dry-Run → first run.
@@ -98,7 +98,7 @@ export function OnboardingPanel() {
               onChange={e => setPick(e.target.value)}
               style={{
                 background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg)',
-                borderRadius: 5, padding: '6px 10px', fontSize: 12, minWidth: 220,
+                borderRadius: 'var(--r-md)', padding: '6px 10px', fontSize: 12, minWidth: 220,
               }}
             >
               <option value="">{t.onboarding.step2Pick}</option>

@@ -31,7 +31,7 @@ function ModeBadge({ mode }: { mode: Schedule['mode'] }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 6, height: 22, padding: '0 9px',
-      borderRadius: 999, fontSize: 11, fontWeight: 650, color: c, whiteSpace: 'nowrap',
+      borderRadius: 'var(--r-full)', fontSize: 11, fontWeight: 650, color: c, whiteSpace: 'nowrap',
       background: internal ? 'color-mix(in srgb, var(--qual) 15%, transparent)' : 'transparent',
       border: internal ? '1px solid transparent' : `1px solid color-mix(in srgb, var(--obs) 55%, var(--line))`,
     }}>
@@ -47,7 +47,7 @@ function EnvBadge({ env }: { env: string }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 6, height: 22, padding: '0 9px',
-      borderRadius: 6, background: 'var(--bg-3)', fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg-2)',
+      borderRadius: 'var(--r-md)', background: 'var(--bg-3)', fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg-2)',
     }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: prod ? 'var(--qual)' : 'var(--obs)' }} />
       {env}
@@ -58,7 +58,7 @@ function EnvBadge({ env }: { env: string }) {
 function Tile({ label, accent, children }: { label: string; accent: string; children: React.ReactNode }) {
   return (
     <div style={{
-      background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 10,
+      background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)',
       padding: '14px 18px', borderBottom: `2px solid ${accent}`, minWidth: 0,
     }}>
       <div style={{ fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{label}</div>
@@ -212,7 +212,7 @@ export default function Schedules() {
         </div>
         <button
           onClick={() => navigate('/objects')}
-          style={{ background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          style={{ background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 'var(--r-lg)', padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
         >
           + {t.schedules.panelTitle}
         </button>
@@ -270,14 +270,14 @@ export default function Schedules() {
             const active = filter === key;
             return (
               <button key={key} onClick={() => setFilter(key)} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 8, fontSize: 12.5, cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 'var(--r-lg)', fontSize: 12.5, cursor: 'pointer',
                 background: active ? 'color-mix(in srgb, var(--cont) 16%, transparent)' : 'var(--bg-2)',
                 border: `1px solid ${active ? 'var(--cont)' : 'var(--line)'}`,
                 color: active ? 'var(--fg)' : 'var(--fg-2)', fontWeight: active ? 650 : 400,
               }}>
                 {label}
                 <span style={{
-                  minWidth: 20, height: 16, padding: '0 5px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  minWidth: 20, height: 16, padding: '0 5px', borderRadius: 'var(--r-lg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 10.5, fontWeight: 700,
                   background: active ? color : 'var(--bg-3)', color: active ? '#0B0D12' : color,
                 }}>{n}</span>
@@ -288,7 +288,7 @@ export default function Schedules() {
         <input
           value={search} onChange={e => setSearch(e.target.value)} placeholder={t.schedules.search}
           aria-label={t.schedules.search}
-          style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', color: 'var(--fg)', borderRadius: 8, padding: '7px 12px', fontSize: 12.5, width: 248 }}
+          style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', color: 'var(--fg)', borderRadius: 'var(--r-lg)', padding: '7px 12px', fontSize: 12.5, width: 248 }}
         />
       </div>
 
@@ -296,7 +296,7 @@ export default function Schedules() {
       {isError && <ErrorBanner onRetry={() => refetch()} />}
       {isLoading && <TableSkeleton columns={8} />}
       {!isError && !isLoading && (
-        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
           <Table
             columns={columns}
             rows={filtered}
@@ -316,7 +316,7 @@ function IconBtn({ children, title, onClick, disabled }: { children: React.React
       title={title} aria-label={title} onClick={onClick} disabled={disabled}
       style={{
         width: 26, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--bg-3)', border: '1px solid var(--line-2)', borderRadius: 6,
+        background: 'var(--bg-3)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)',
         cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
       }}
     >

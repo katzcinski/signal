@@ -68,7 +68,7 @@ function RoleSwitcher() {
           aria-label={t.role.switchLabel}
           style={{
             background: 'var(--cont)22', border: '1px solid var(--cont)55', color: 'var(--cont)',
-            borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600,
+            borderRadius: 'var(--r)', padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600,
           }}
         >
           {ROLES.map(r => (
@@ -128,7 +128,7 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
         aria-label={t.density.toggle}
         style={{
           background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)',
-          borderRadius: 5, padding: '4px 10px', fontSize: 12, cursor: 'pointer',
+          borderRadius: 'var(--r-md)', padding: '4px 10px', fontSize: 12, cursor: 'pointer',
         }}
       >
         ↕ {density === 'compact' ? t.density.compact : t.density.comfortable}

@@ -214,17 +214,17 @@ const toolbar: CSSProperties = {
 const titleStyle: CSSProperties = { fontSize: 15, fontWeight: 600, color: 'var(--fg)' };
 const searchInput: CSSProperties = {
   flex: 1, minWidth: 160, maxWidth: 320, background: 'var(--bg-1)', border: '1px solid var(--line)',
-  borderRadius: 6, color: 'var(--fg)', fontSize: 13, padding: '8px 11px', outline: 'none',
+  borderRadius: 'var(--r-md)', color: 'var(--fg)', fontSize: 13, padding: '8px 11px', outline: 'none',
 };
 const toggle: CSSProperties = {
-  display: 'flex', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden',
+  display: 'flex', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden',
 };
 const toggleBtn = (active: boolean): CSSProperties => ({
   background: active ? 'var(--cont)' : 'transparent', color: active ? '#fff' : 'var(--fg-2)',
   border: 'none', fontSize: 12, fontWeight: 600, padding: '7px 12px', cursor: 'pointer',
 });
 const chip = (active: boolean): CSSProperties => ({
-  fontSize: 11.5, fontWeight: 500, padding: '6px 10px', borderRadius: 999,
+  fontSize: 11.5, fontWeight: 500, padding: '6px 10px', borderRadius: 'var(--r-full)',
   border: `1px solid ${active ? 'var(--cont)' : 'var(--line)'}`,
   color: active ? 'var(--fg)' : 'var(--fg-3)',
   background: active ? 'color-mix(in srgb, var(--cont) 12%, transparent)' : 'var(--bg-1)', cursor: 'pointer',
@@ -237,7 +237,7 @@ const sideHeading: CSSProperties = {
   fontSize: 11, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--fg-3)', margin: '0 0 10px', fontWeight: 600,
 };
 const layerRow = (active: boolean): CSSProperties => ({
-  display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 4px', borderRadius: 4,
+  display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 4px', borderRadius: 'var(--r)',
   fontSize: 12.5, cursor: 'pointer', color: active ? 'var(--fg-2)' : 'var(--fg-3)', background: 'transparent',
   border: 'none', opacity: active ? 1 : 0.5,
 });

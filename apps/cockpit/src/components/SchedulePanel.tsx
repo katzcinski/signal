@@ -37,7 +37,7 @@ function ModeCard({ choice, active, onClick, disabled }: {
         background: active ? 'var(--bg-2)' : 'transparent',
         border: `1px solid ${active ? meta.c : 'var(--line)'}`,
         boxShadow: active ? `inset 2px 0 0 ${meta.c}` : undefined,
-        borderRadius: 8, padding: '12px 14px', opacity: disabled ? 0.5 : 1,
+        borderRadius: 'var(--r-lg)', padding: '12px 14px', opacity: disabled ? 0.5 : 1,
         transition: 'background var(--t), border-color var(--t)',
       }}
     >
@@ -106,18 +106,18 @@ export function SchedulePanel({ objectId }: { objectId: string }) {
   };
   const fieldStyle: React.CSSProperties = {
     background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-    color: 'var(--fg)', borderRadius: 6, padding: '7px 10px', fontSize: 13,
+    color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '7px 10px', fontSize: 13,
   };
 
   return (
-    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 20, maxWidth: 720 }}>
+    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 20, maxWidth: 720 }}>
       {!canEdit && <ReadOnlyBanner />}
 
       {/* status strip when a schedule exists */}
       {schedule && next && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18,
-          padding: '10px 14px', background: 'var(--bg-2)', borderRadius: 8,
+          padding: '10px 14px', background: 'var(--bg-2)', borderRadius: 'var(--r-lg)',
           border: '1px solid var(--line)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -173,7 +173,7 @@ export function SchedulePanel({ objectId }: { objectId: string }) {
               role="switch" aria-checked={enabled} disabled={!canEdit}
               onClick={() => setEnabled(v => !v)}
               style={{
-                width: 44, height: 24, borderRadius: 999, position: 'relative',
+                width: 44, height: 24, borderRadius: 'var(--r-full)', position: 'relative',
                 border: '1px solid var(--line-2)', cursor: canEdit ? 'pointer' : 'not-allowed',
                 background: enabled ? 'var(--qual)' : 'var(--bg-3)', transition: 'background var(--t)',
               }}
@@ -189,7 +189,7 @@ export function SchedulePanel({ objectId }: { objectId: string }) {
 
       {choice === 'external' && (
         <div style={{
-          marginBottom: 18, padding: '12px 14px', borderRadius: 8,
+          marginBottom: 18, padding: '12px 14px', borderRadius: 'var(--r-lg)',
           background: 'color-mix(in srgb, var(--obs) 8%, transparent)',
           border: '1px solid color-mix(in srgb, var(--obs) 40%, var(--line))',
           fontSize: 12.5, color: 'var(--fg-2)', lineHeight: 1.5,
@@ -214,7 +214,7 @@ export function SchedulePanel({ objectId }: { objectId: string }) {
           onClick={onSave}
           disabled={!canEdit || upsert.isPending || remove.isPending || intervalTooLow}
           style={{
-            background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 6,
+            background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 'var(--r-md)',
             padding: '8px 16px', fontSize: 13, cursor: canEdit ? 'pointer' : 'not-allowed',
             opacity: canEdit && !intervalTooLow ? 1 : 0.5,
           }}

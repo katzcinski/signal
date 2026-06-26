@@ -192,7 +192,7 @@ export function LineageMiniGraph({ subgraph }: LineageMiniGraphProps) {
       style={{
         background: 'var(--bg-1)',
         border: '1px solid var(--line)',
-        borderRadius: 8,
+        borderRadius: 'var(--r-lg)',
         height: 360,
         minHeight: 320,
         overflow: 'hidden',

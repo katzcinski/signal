@@ -27,7 +27,7 @@ function StatusLine({ ok, label, detail }: { ok: boolean; label: string; detail?
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', minHeight: 28 }}>
       <span style={{
-        width: 8, height: 8, borderRadius: 99,
+        width: 8, height: 8, borderRadius: 'var(--r-full)',
         background: ok ? 'var(--status-pass)' : 'var(--status-warn)',
       }} />
       <span style={valueText}>{label}</span>

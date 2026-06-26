@@ -28,7 +28,7 @@ function ExpectDiff({ current, proposed }: { current: string; proposed: string }
       <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.diff.meaning}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{
-          fontSize: 11, borderRadius: 4, padding: '2px 8px',
+          fontSize: 11, borderRadius: 'var(--r)', padding: '2px 8px',
           background: `color-mix(in srgb, ${dirColor} 15%, transparent)`,
           color: dirColor, border: `1px solid ${dirColor}`,
         }}>
@@ -81,7 +81,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
   return (
     <div style={{
       background: 'var(--bg-1)', border: '1px solid var(--line)',
-      borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
+      borderRadius: 'var(--r-lg)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12,
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
@@ -104,7 +104,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
         </div>
         <span style={{
           background: 'var(--bg-3)', border: '1px solid var(--line-2)',
-          borderRadius: 4, padding: '2px 8px', fontSize: 10, color: 'var(--fg-3)',
+          borderRadius: 'var(--r)', padding: '2px 8px', fontSize: 10, color: 'var(--fg-3)',
         }}>
           {t.proposals.statusLabel[proposal.status] ?? proposal.status}
         </span>
@@ -119,7 +119,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
 
       {proposal.stats && (
         <div style={{
-          background: 'var(--bg-2)', borderRadius: 5, padding: '8px 12px',
+          background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: '8px 12px',
           display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
         }}>
           {(['n', 'min', 'max', 'mean'] as const).map(k => (
@@ -139,18 +139,18 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
         <Tooltip content={proposal.kind === 'internal_gate' && !canWrite ? t.role.noWriteAction : undefined} focusable={!canWrite} className="tooltip-full">
           <span style={{ display: 'flex', gap: 8 }}>
             {proposal.kind !== 'internal_gate' ? (
-              <button onClick={() => navigate(`/contracts?product=${encodeURIComponent(proposal.product)}`)} style={{ flex: 1, background: 'var(--cont)22', border: '1px solid var(--cont)', color: 'var(--cont)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
+              <button onClick={() => navigate(`/contracts?product=${encodeURIComponent(proposal.product)}`)} style={{ flex: 1, background: 'var(--cont)22', border: '1px solid var(--cont)', color: 'var(--cont)', borderRadius: 'var(--r-md)', padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
                 Im Contract pruefen {'->'}
               </button>
             ) : (
-              <button onClick={() => act('accept')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
+              <button onClick={() => act('accept')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 'var(--r-md)', padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
                 {t.proposals.accept}
               </button>
             )}
-            <button onClick={() => act('snooze')} disabled={!canWrite} style={{ flex: 1, background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
+            <button onClick={() => act('snooze')} disabled={!canWrite} style={{ flex: 1, background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-3)', borderRadius: 'var(--r-md)', padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
               {t.proposals.snooze}
             </button>
-            <button onClick={() => act('reject')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', color: 'var(--status-fail)', borderRadius: 5, padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
+            <button onClick={() => act('reject')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', color: 'var(--status-fail)', borderRadius: 'var(--r-md)', padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
               {t.proposals.reject}
             </button>
           </span>

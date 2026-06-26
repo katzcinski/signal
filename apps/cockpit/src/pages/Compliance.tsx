@@ -39,10 +39,10 @@ export default function Governance() {
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <span style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--fg-2)' }}>
+        <span style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: '8px 12px', fontSize: 12, color: 'var(--fg-2)' }}>
           {t.cockpit.slaTitle}: <strong style={{ color: 'var(--fg)' }}>{activeContracts.length}</strong>
         </span>
-        <span style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: 'var(--fg-2)' }}>
+        <span style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: '8px 12px', fontSize: 12, color: 'var(--fg-2)' }}>
           {t.governance.contractsBreached}: <strong style={{ color: 'var(--fg)' }}>{coverageQuery.data?.contracts_breached ?? 0}</strong>
         </span>
       </div>
@@ -51,7 +51,7 @@ export default function Governance() {
         <div style={{
           background: 'color-mix(in srgb, var(--cont) 8%, transparent)',
           border: '1px solid var(--cont)',
-          borderRadius: 8, padding: '12px 16px', marginBottom: 16,
+          borderRadius: 'var(--r-lg)', padding: '12px 16px', marginBottom: 16,
           fontSize: 12, color: 'var(--fg-2)',
         }}>
           Noch keine aktiven Contracts - Compliance-Daten erscheinen nach der ersten

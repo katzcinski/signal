@@ -24,7 +24,7 @@ function FamilyMark({ letter, status }: { letter: string; status: string }) {
     <span
       title={`${letter}: ${t.status[status] ?? status}`}
       style={{
-        width: 16, height: 16, borderRadius: 4, fontSize: 9, fontWeight: 700,
+        width: 16, height: 16, borderRadius: 'var(--r)', fontSize: 9, fontWeight: 700,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         color, border: `1px solid ${color}`,
         background: `color-mix(in srgb, ${color} 14%, transparent)`,
@@ -46,7 +46,7 @@ export function AttentionPanel({ objects }: { objects: ObjectSummary[] }) {
     <div style={{
       background: 'var(--bg-1)', border: '1px solid var(--line)',
       borderLeft: `3px solid ${ranked.length ? 'var(--status-fail)' : 'var(--qual)'}`,
-      borderRadius: 8, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column',
+      borderRadius: 'var(--r-lg)', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column',
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
