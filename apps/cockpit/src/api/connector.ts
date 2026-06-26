@@ -10,10 +10,31 @@ export interface ConnectorStatus {
   catalog_configured: boolean;
   source_mode: 'cli' | 'catalog' | 'none';
   config_file: string;
+  base_url: string;
+  client_id: string;
+  token_url: string;
+  secret_configured: boolean;
   file_space_id: string;
   file_use_cli: boolean;
+  file_cli_host: string;
+  file_base_url: string;
+  file_client_id: string;
+  file_token_url: string;
   env_space_id: string;
   env_use_cli: boolean;
+  env_base_url: string;
+  env_client_id: string;
+}
+
+export interface ConnectorSave {
+  space_id: string;
+  use_cli: boolean;
+  cli_host?: string;
+  base_url?: string;
+  client_id?: string;
+  token_url?: string;
+  client_secret?: string;
+  clear_secret?: boolean;
 }
 
 export function useConnectorStatus() {
@@ -31,7 +52,7 @@ export function useConnectorStatus() {
 export function useSaveConnector() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: { space_id: string; use_cli: boolean }) => {
+    mutationFn: async (body: ConnectorSave) => {
       const resp = await fetch('/api/admin/connector', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

@@ -20,17 +20,39 @@ function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
   const save = useSaveConnector();
   const [spaceId, setSpaceId] = useState<string | null>(null);
   const [useCli, setUseCli] = useState<boolean | null>(null);
+  const [cliHost, setCliHost] = useState<string | null>(null);
+  const [baseUrl, setBaseUrl] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [tokenUrl, setTokenUrl] = useState<string | null>(null);
+  const [clientSecret, setClientSecret] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
 
   const effectiveSpace = spaceId ?? (data?.file_space_id ?? '');
   const effectiveUseCli = useCli ?? (data?.file_use_cli ?? false);
-  const envOverride = Boolean(data?.env_space_id || data?.env_use_cli);
+  const effectiveCliHost = cliHost ?? (data?.file_cli_host ?? '');
+  const effectiveBaseUrl = baseUrl ?? (data?.file_base_url ?? '');
+  const effectiveClientId = clientId ?? (data?.file_client_id ?? '');
+  const effectiveTokenUrl = tokenUrl ?? (data?.file_token_url ?? '');
+  // Env vars take precedence over the file → those fields are read-only.
+  const envOverride = Boolean(data?.env_space_id || data?.env_use_cli || data?.env_base_url || data?.env_client_id);
 
   const handleSave = () => {
     save.mutate(
-      { space_id: effectiveSpace, use_cli: effectiveUseCli },
       {
-        onSuccess: () => { setSavedMsg(t.connector.saved); setSpaceId(null); setUseCli(null); },
+        space_id: effectiveSpace,
+        use_cli: effectiveUseCli,
+        cli_host: effectiveCliHost,
+        base_url: effectiveBaseUrl,
+        client_id: effectiveClientId,
+        token_url: effectiveTokenUrl,
+        client_secret: clientSecret || undefined,
+      },
+      {
+        onSuccess: () => {
+          setSavedMsg(t.connector.saved);
+          setSpaceId(null); setUseCli(null); setCliHost(null);
+          setBaseUrl(null); setClientId(null); setTokenUrl(null); setClientSecret('');
+        },
         onError: () => setSavedMsg(t.connector.saveError),
       },
     );
@@ -55,19 +77,21 @@ function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
             </span>
           </div>
 
-          {data.use_cli && (
+          {/* CLI login is detected whenever the CLI is installed, regardless of the use_cli toggle. */}
+          {data.cli_available && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)' }}>
-              <StatusLine ok={data.cli_available} label={data.cli_available ? t.connector.cliAvailable : t.connector.cliMissing} />
-              {!data.cli_available && (
-                <pre style={{ ...muted, fontSize: 11, margin: 0, whiteSpace: 'pre-wrap' }}>{t.connector.installHint}</pre>
-              )}
-              {data.cli_available && (
-                <StatusLine ok={data.cli_logged_in} label={data.cli_logged_in ? t.connector.cliLoggedIn : t.connector.cliNotLoggedIn}
-                  detail={data.cli_host ?? undefined} />
-              )}
-              {data.cli_available && !data.cli_logged_in && (
+              <StatusLine ok={data.cli_available} label={t.connector.cliAvailable} />
+              <StatusLine ok={data.cli_logged_in} label={data.cli_logged_in ? t.connector.cliLoggedIn : t.connector.cliNotLoggedIn}
+                detail={data.cli_host ?? undefined} />
+              {!data.cli_logged_in && (
                 <p style={{ ...muted, fontSize: 11 }}>{t.connector.loginHint}</p>
               )}
+            </div>
+          )}
+          {!data.cli_available && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)' }}>
+              <StatusLine ok={false} label={t.connector.cliMissing} />
+              <pre style={{ ...muted, fontSize: 11, margin: 0, whiteSpace: 'pre-wrap' }}>{t.connector.installHint}</pre>
             </div>
           )}
 
@@ -90,7 +114,64 @@ function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
               />
               {t.connector.useCli}
             </label>
-            {canEdit && !envOverride && (
+            <Field label={t.connector.cliHost} hint={t.connector.cliHostHint}>
+              <Input
+                value={effectiveCliHost}
+                disabled={!canEdit}
+                onChange={e => setCliHost(e.target.value)}
+                placeholder="my-tenant.eu10.hcs.cloud.sap"
+                style={{ width: '100%' }}
+              />
+            </Field>
+
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 'var(--s3)', display: 'grid', gap: 'var(--s3)' }}>
+              <p style={{ ...valueText, fontSize: 12 }}>{t.connector.restTitle}</p>
+              <p style={{ ...muted, fontSize: 11, margin: 0 }}>{t.connector.restHint}</p>
+              <Field label={t.connector.baseUrl}>
+                <Input
+                  value={effectiveBaseUrl}
+                  disabled={!canEdit || Boolean(data.env_base_url)}
+                  onChange={e => setBaseUrl(e.target.value)}
+                  placeholder="https://my-tenant.eu10.hcs.cloud.sap"
+                  style={{ width: '100%' }}
+                />
+              </Field>
+              <Field label={t.connector.clientId}>
+                <Input
+                  value={effectiveClientId}
+                  disabled={!canEdit || Boolean(data.env_client_id)}
+                  onChange={e => setClientId(e.target.value)}
+                  autoComplete="off"
+                  style={{ width: '100%' }}
+                />
+              </Field>
+              <Field label={t.connector.tokenUrl} hint={t.connector.tokenUrlHint}>
+                <Input
+                  value={effectiveTokenUrl}
+                  disabled={!canEdit}
+                  onChange={e => setTokenUrl(e.target.value)}
+                  placeholder="https://my-tenant.authentication.eu10.hana.ondemand.com/oauth/token"
+                  style={{ width: '100%' }}
+                />
+              </Field>
+              <Field
+                label={t.connector.clientSecret}
+                hint={data.secret_configured ? t.connector.secretKeepHint : t.connector.secretHint}
+              >
+                <Input
+                  type="password"
+                  value={clientSecret}
+                  disabled={!canEdit}
+                  onChange={e => setClientSecret(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder={data.secret_configured ? '••••••••' : ''}
+                  style={{ width: '100%' }}
+                />
+              </Field>
+              <StatusLine ok={data.secret_configured} label={data.secret_configured ? t.connector.secretSet : t.connector.secretMissing} />
+            </div>
+
+            {canEdit && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
                 <Button variant="primary" disabled={save.isPending} onClick={handleSave}>{t.connector.save}</Button>
                 {savedMsg && <span style={{ fontSize: 12, color: save.isError ? 'var(--status-fail)' : 'var(--fg-3)' }}>{savedMsg}</span>}

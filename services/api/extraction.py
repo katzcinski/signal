@@ -149,13 +149,13 @@ def _gather_objects(settings: Any, space: str) -> list[dict[str, Any]] | None:
 
 def _cli_if_ready(settings: Any):
     """Return a logged-in DatasphereCli when the optional CLI path is enabled."""
-    from .connector_config import effective_use_cli
+    from .connector_config import effective_cli_host, effective_use_cli
     if not effective_use_cli(settings):
         return None
     try:
         from .datasphere_cli import CliError, DatasphereCli
 
-        cli = DatasphereCli()
+        cli = DatasphereCli(host=effective_cli_host(settings) or None)
         if not cli.is_available():
             return None
         if not cli.check_login():

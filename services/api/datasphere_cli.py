@@ -97,10 +97,15 @@ class DatasphereCli:
     def __init__(
         self,
         *,
+        host: str | None = None,
         timeout_sec: int = DEFAULT_TIMEOUT_SEC,
         retries: int = DEFAULT_RETRIES,
         retry_delay_sec: int = DEFAULT_RETRY_DELAY_SEC,
     ) -> None:
+        # UI-configured tenant host. ``DSP_CLI_HOST`` in the environment still
+        # wins (resolved per-call in ``_run_cli_once``); this is the fallback so
+        # the host can also be set from the connector UI.
+        self._host = (host or "").strip() or None
         self.timeout_sec = timeout_sec
         self.retries = retries
         self.retry_delay_sec = retry_delay_sec
@@ -173,14 +178,27 @@ class DatasphereCli:
             return None
         return host.strip() or None
 
+    # Probe subcommands tried in order to detect an existing CLI login. They
+    # vary across @sap/datasphere-cli versions, so we try several and treat the
+    # first that exits cleanly as "logged in" — this is what makes an existing
+    # ``datasphere login`` reliably get picked up regardless of CLI version.
+    _LOGIN_PROBES = (
+        ["config", "secrets", "check"],
+        ["config", "secrets", "show"],
+        ["login", "--check"],
+        ["whoami"],
+    )
+
     def check_login(self) -> bool:
         """Return True if the CLI session is usable; False if a login is needed.
 
-        Raises ``CliAuthError`` only when the CLI explicitly reports an auth
-        prompt/error (which carries the actionable login hint). Other CLI
-        failures resolve to ``False`` so callers can fall back gracefully.
+        Tries a sequence of read-only probe subcommands (tolerant of CLI-version
+        differences). The first that exits cleanly means an existing login was
+        detected. Raises ``CliAuthError`` only when the CLI explicitly reports an
+        auth prompt/error (which carries the actionable login hint); other CLI
+        failures fall through to the next probe, and ``False`` if all fail.
         """
-        for argv in (["config", "secrets", "check"], ["login", "--check"]):
+        for argv in self._LOGIN_PROBES:
             try:
                 self.run_cli_text(argv, timeout_sec=15, retries=0)
                 return True
@@ -440,7 +458,7 @@ class DatasphereCli:
 
     def _run_cli_once(self, args: list[str], timeout_sec: int) -> CliResult:
         command = self._cli_command() + list(args)
-        cli_host = os.environ.get("DSP_CLI_HOST")
+        cli_host = os.environ.get("DSP_CLI_HOST") or self._host
         if cli_host and "--host" not in args:
             command += ["--host", cli_host]
 
