@@ -18,6 +18,15 @@ const SIZE: Record<Size, CSSProperties> = {
   md: { padding: 'var(--s2) var(--s4)', fontSize: 12 },
 };
 
+// UX-F8: disabled reads via a tone-shift (muted surface + dim ink), not a pure
+// opacity fade — recognizable without a tooltip (WCAG 1.4.3). Spread after the
+// variant so it overrides its background/border/colour.
+const DISABLED: CSSProperties = {
+  background: 'var(--bg-2)',
+  color: 'var(--fg-3)',
+  borderColor: 'var(--line)',
+};
+
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
@@ -30,10 +39,10 @@ export function Button({ variant = 'secondary', size = 'md', style, disabled, ..
       style={{
         borderRadius: 'var(--r-md)',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.45 : 1,
-        transition: 'background var(--t), opacity var(--t)',
+        transition: 'filter var(--t), background var(--t), border-color var(--t), color var(--t)',
         ...VARIANT[variant],
         ...SIZE[size],
+        ...(disabled ? DISABLED : null),
         ...style,
       }}
       {...rest}

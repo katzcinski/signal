@@ -532,7 +532,18 @@ a {
 button {
   font-family: inherit;
   cursor: pointer;
+  /* UX-F8: every button transitions, so hover/active read as a state change
+     rather than an instant jump. */
+  transition: filter var(--t), background var(--t), border-color var(--t),
+    color var(--t), opacity var(--t);
 }
+
+/* UX-F8: universal, background-agnostic interaction feedback. `brightness`
+   works on inline-styled buttons across every theme without the rule needing
+   to know their colours — hover lifts, active presses, disabled blocks. */
+button:not(:disabled):hover { filter: brightness(1.12); }
+button:not(:disabled):active { filter: brightness(0.94); }
+button:disabled { cursor: not-allowed; }
 
 /* A11y floor: visible keyboard focus everywhere (theme-bridged ring colour). */
 :focus-visible {
@@ -547,6 +558,19 @@ button {
 ::-webkit-scrollbar-track { background: var(--scroll-track); }
 ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--scroll-hover); }
+
+/* UX-F9: slim, theme-tinted scrollbars in Firefox (WebKit handled above).
+   Both properties are inherited, so setting them on html cascades everywhere. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) var(--scroll-track);
+}
+
+/* UX-F9: table row hover/keyboard-focus as a CSS state (≥100 ms transition),
+   so focusing an interactive cell highlights its row too (:focus-within). */
+.tbl-row { transition: background 120ms ease; }
+.tbl-row:hover,
+.tbl-row:focus-within { background: var(--bg-2); }
 
 /* ── Schaltplan-Lineage (Circuit-Board-Ansicht) ───────────────────────────
    Farben kommen ausschließlich aus Theme-Vars; Positionen/Pfad-Geometrie
