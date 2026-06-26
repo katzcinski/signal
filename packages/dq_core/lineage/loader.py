@@ -25,7 +25,9 @@ def get_coverage(
 ) -> list[dict]:
     """Annotate lineage nodes with coverage flags.
 
-    Coverage flags (object-granular until columnEdges parser is fixed — O3):
+    Coverage flags (object-granular until per-column edges carry real
+    derivation — O3; the CQN walker works, but extract snapshots lack the
+    CSN query AST. See docs/PLAN_UX-N7_Column_Lineage.md):
     ● (covered) — active contract + passing checks
     ◐ (partial)  — contract exists but some checks fail/missing
     ▲ (gap)      — no contract or key gap flagged
