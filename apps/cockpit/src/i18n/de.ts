@@ -402,6 +402,7 @@ export const t = {
     notePlaceholder: 'Notiz eingeben…',
     openRun: 'Run öffnen',
     rootCause: 'Root Cause in Lineage',
+    columnImpact: 'Spalten-Impact',
     transitionFailed: 'Statuswechsel fehlgeschlagen',
     contractVersion: 'Contract-Version',
     allSeverities: 'Alle Schweregrade',
