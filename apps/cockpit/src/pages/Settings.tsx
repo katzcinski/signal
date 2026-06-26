@@ -5,11 +5,13 @@ import { Field, Input } from '@/components/ui/Field';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { OperationProgress } from '@/components/OperationProgress';
+import { ConnectorPanel } from '@/components/ConnectorPanel';
 import {
   useAdminEnvironments, useCreateEnvironment, useUpdateEnvironment, useDeleteEnvironment,
   useStartConnectionTest, useOperationStream, type EnvironmentInput,
 } from '@/api/environments';
 import { t } from '@/i18n/de';
+import { canManageEnvironments, useRoleStore } from '@/store/role';
 import type { AdminEnvironment, ConnectionTestResult } from '@/types';
 
 const row: React.CSSProperties = {
@@ -231,7 +233,9 @@ function ConnectionsSection({ environments, canEdit }: { environments: AdminEnvi
 
 export default function Settings() {
   const { data, isLoading, isError, refetch } = useAdminEnvironments();
+  const role = useRoleStore(s => s.role);
   const canEdit = data?.can_edit ?? false;
+  const canEditConnector = canManageEnvironments(role);
 
   return (
     <div className="page-full">
@@ -248,6 +252,7 @@ export default function Settings() {
           {!canEdit && <ReadOnlyBanner hint={t.settings.readOnlyHint} />}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
             <ConnectionsSection environments={data.environments} canEdit={canEdit} />
+            <ConnectorPanel canEdit={canEditConnector} />
           </div>
         </>
       )}
