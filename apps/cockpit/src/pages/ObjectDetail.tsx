@@ -49,7 +49,7 @@ function ContractView({ contract }: { contract: ContractOut }) {
           v{contract.version}
         </span>
         <span style={{
-          fontSize: 11, borderRadius: 4, padding: '2px 8px',
+          fontSize: 11, borderRadius: 'var(--r)', padding: '2px 8px',
           background: lifecycleColor.bg, color: lifecycleColor.fg,
           border: `1px solid ${lifecycleColor.fg}`,
         }}>
@@ -88,7 +88,7 @@ function ContractView({ contract }: { contract: ContractOut }) {
               }}>
                 {t.workbench.families[family] ?? family}
               </div>
-              <div style={{ background: 'var(--bg-2)', borderRadius: 6, padding: '8px 12px' }}>
+              <div style={{ background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: '8px 12px' }}>
                 <pre style={{
                   margin: 0, fontFamily: 'var(--font-mono)', fontSize: 11,
                   color: 'var(--fg-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
@@ -119,7 +119,7 @@ function ContractVersionDiffView({ product, enabled }: { product: string; enable
   if (isLoading || !diff) return null;
 
   return (
-    <div style={{ marginTop: 16, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 16 }}>
+    <div style={{ marginTop: 16, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {t.diff.versionTitle}
@@ -131,7 +131,7 @@ function ContractVersionDiffView({ product, enabled }: { product: string; enable
         )}
         {diff.available && diff.entries.length > 0 && (
           <span style={{
-            fontSize: 10, borderRadius: 4, padding: '2px 8px',
+            fontSize: 10, borderRadius: 'var(--r)', padding: '2px 8px',
             background: diff.breaking ? 'rgba(196,68,68,0.15)' : 'rgba(45,164,78,0.15)',
             color: diff.breaking ? 'var(--status-fail)' : 'var(--status-ok)',
             border: `1px solid ${diff.breaking ? 'var(--status-fail)' : 'var(--status-ok)'}`,
@@ -151,7 +151,7 @@ function ContractVersionDiffView({ product, enabled }: { product: string; enable
             <div key={`${e.path}-${i}`} style={{
               display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
               borderLeft: `3px solid ${e.breaking ? 'var(--status-fail)' : 'var(--status-warn)'}`,
-              background: 'var(--bg-2)', borderRadius: 5, padding: '8px 12px',
+              background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: '8px 12px',
             }}>
               <span style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500 }}>
                 {t.diff.kinds[e.kind] ?? e.kind}
@@ -439,7 +439,7 @@ export default function ObjectDetail() {
                 disabled={requestMonitoring.isPending}
                 style={{
                   background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)',
-                  borderRadius: 5, padding: '7px 16px', fontSize: 13,
+                  borderRadius: 'var(--r-md)', padding: '7px 16px', fontSize: 13,
                   cursor: requestMonitoring.isPending ? 'wait' : 'pointer',
                   opacity: requestMonitoring.isPending ? 0.6 : 1,
                 }}
@@ -457,7 +457,7 @@ export default function ObjectDetail() {
               title={monEntry.error ?? (monEntry.view ? `View: ${monEntry.view}` : monCfg.monitoring_space)}
               style={{
                 fontSize: 12, color: tone, border: `1px solid ${tone}`,
-                borderRadius: 5, padding: '6px 12px',
+                borderRadius: 'var(--r-md)', padding: '6px 12px',
                 background: `color-mix(in srgb, ${tone} 12%, transparent)`,
               }}
             >
@@ -471,7 +471,7 @@ export default function ObjectDetail() {
           title={canProfile ? undefined : 'Profiling requires steward role or higher.'}
           style={{
             background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)',
-            borderRadius: 5, padding: '7px 16px', fontSize: 13,
+            borderRadius: 'var(--r-md)', padding: '7px 16px', fontSize: 13,
             cursor: canProfile ? 'pointer' : 'not-allowed',
             opacity: canProfile ? 1 : 0.45,
           }}
@@ -484,7 +484,7 @@ export default function ObjectDetail() {
           title={canCreateChecks ? undefined : t.objectDetail.createChecksNoWrite}
           style={{
             background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)',
-            borderRadius: 5, padding: '7px 16px', fontSize: 13,
+            borderRadius: 'var(--r-md)', padding: '7px 16px', fontSize: 13,
             cursor: canCreateChecks ? 'pointer' : 'not-allowed',
             opacity: canCreateChecks ? 1 : 0.45,
           }}
@@ -496,7 +496,7 @@ export default function ObjectDetail() {
           disabled={trigger.isPending || isRunning}
           style={{
             background: 'var(--cont)', color: '#fff', border: 'none',
-            borderRadius: 5, padding: '7px 16px', fontSize: 13, cursor: 'pointer',
+            borderRadius: 'var(--r-md)', padding: '7px 16px', fontSize: 13, cursor: 'pointer',
           }}
         >
           {trigger.isPending || isRunning ? t.objectDetail.running : t.objectDetail.run}
@@ -526,7 +526,7 @@ export default function ObjectDetail() {
       {tab === 'checks' && (
         <>
           {results.length === 0 && <MinedProposalsCallout productId={obj.id} />}
-          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
             <Table columns={checkColumns} rows={results} rowKey={c => c.name} empty={t.objectDetail.noResults} />
           </div>
         </>
@@ -544,7 +544,7 @@ export default function ObjectDetail() {
               </Link>
             </div>
           )}
-          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
             <Table columns={runColumns} rows={runs} rowKey={r => r.run_id} empty={t.objectDetail.noRuns} />
           </div>
         </>
@@ -557,7 +557,7 @@ export default function ObjectDetail() {
       {tab === 'contract' && (
         <>
           {!contract && <MinedProposalsCallout productId={obj.id} />}
-          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 20 }}>
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 20 }}>
             {contract ? (
               <ContractView contract={contract as ContractOut} />
             ) : (
@@ -574,7 +574,7 @@ export default function ObjectDetail() {
       )}
 
       {tab === 'lineage' && (
-        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 24 }}>
+        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 24 }}>
           <MiniLineageDag focusId={obj.id} />
           <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 16 }}>
             {t.objectDetail.lineageHint}{' '}

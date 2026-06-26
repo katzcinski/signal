@@ -29,7 +29,7 @@ function LifecycleTag({ lifecycle }: { lifecycle: string }) {
     <span style={{
       background: `${color}1A`,
       border: `1px solid ${color}55`,
-      borderRadius: 4,
+      borderRadius: 'var(--r)',
       color,
       display: 'inline-flex',
       fontSize: 10,
@@ -123,7 +123,7 @@ export default function Products() {
       {isError ? (
         <ErrorBanner onRetry={() => refetch()} />
       ) : (
-        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
           <Table
             columns={columns}
             rows={products}

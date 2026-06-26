@@ -11,7 +11,7 @@ export function KpiSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${count}, 1fr)`, gap: 16, marginBottom: 24 }}>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: '16px 20px', borderLeft: '3px solid var(--line-2)' }}>
+        <div key={i} style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: '16px 20px', borderLeft: '3px solid var(--line-2)' }}>
           <Skeleton width={80} height={10} />
           <div style={{ marginTop: 12 }}><Skeleton width={60} height={26} /></div>
         </div>
@@ -23,7 +23,7 @@ export function KpiSkeleton({ count = 4 }: { count?: number }) {
 // Mirrors the generic Table: a header row plus N body rows across `columns` cells.
 export function TableSkeleton({ columns = 5, rows = 8 }: { columns?: number; rows?: number }) {
   return (
-    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
       <div style={{ display: 'flex', gap: 16, padding: 'var(--row-pad-y) var(--row-pad-x)', background: 'var(--bg-2)', borderBottom: '1px solid var(--line)' }}>
         {Array.from({ length: columns }).map((_, i) => <Skeleton key={i} width={i === 0 ? 140 : 70} height={9} />)}
       </div>

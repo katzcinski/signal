@@ -36,7 +36,7 @@ export function SidePanel({ title, onClose, width = 460, footer, children }: Pro
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--line)' }}>
           <div style={{ fontSize: 14, fontWeight: 700 }}>{title}</div>
           <button onClick={onClose} aria-label="Close"
-            style={{ background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 5, padding: '3px 9px', cursor: 'pointer' }}>✕</button>
+            style={{ background: 'none', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 'var(--r-md)', padding: '3px 9px', cursor: 'pointer' }}>✕</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: 18 }}>{children}</div>
         {footer && <div style={{ borderTop: '1px solid var(--line)', padding: '12px 18px' }}>{footer}</div>}

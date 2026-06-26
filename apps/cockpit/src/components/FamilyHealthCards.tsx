@@ -49,7 +49,7 @@ function FamilyCard({ objects, family }: {
       style={{
         textAlign: 'left', width: '100%', cursor: 'pointer',
         background: 'var(--bg-1)', border: '1px solid var(--line)',
-        borderLeft: `3px solid ${family.accent}`, borderRadius: 8,
+        borderLeft: `3px solid ${family.accent}`, borderRadius: 'var(--r-lg)',
         padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8,
         transition: 'var(--t)',
       }}

@@ -13,7 +13,7 @@ import { t } from '@/i18n/de';
 import type { ObjectSummary } from '@/types';
 
 const chipBtn = (active: boolean): CSSProperties => ({
-  padding: '4px 10px', borderRadius: 20,
+  padding: '4px 10px', borderRadius: 'var(--r-full)',
   border: active ? '1px solid var(--cont)' : '1px solid var(--line-2)',
   background: active ? 'var(--cont)' : 'var(--bg-2)',
   color: active ? '#fff' : 'var(--fg-3)',
@@ -24,7 +24,7 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '2px 6px 2px 8px', borderRadius: 20,
+      padding: '2px 6px 2px 8px', borderRadius: 'var(--r-full)',
       background: 'var(--cont)', color: '#fff', fontSize: 11,
     }}>
       {label}
@@ -120,7 +120,7 @@ export default function ObjectCatalog() {
           placeholder={t.objects.searchPlaceholder}
           style={{
             background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-            color: 'var(--fg)', borderRadius: 5, padding: '5px 10px', fontSize: 12, minWidth: 220,
+            color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12, minWidth: 220,
           }}
         />
       </div>
@@ -145,7 +145,7 @@ export default function ObjectCatalog() {
             aria-label={t.objects.colSpace}
             style={{
               background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-              color: 'var(--fg)', borderRadius: 5, padding: '5px 10px', fontSize: 12,
+              color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12,
             }}
           >
             <option value="">{t.objects.allSpaces}</option>
@@ -163,7 +163,7 @@ export default function ObjectCatalog() {
       )}
       {isError && <ErrorBanner onRetry={() => refetch()} />}
       {!isError && (
-        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
           <Table
             columns={columns}
             rows={rows}

@@ -12,7 +12,7 @@ const EXECUTION_MODES = ['auto', 'batch', 'isolated'];
 
 const selectStyle: React.CSSProperties = {
   background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-  color: 'var(--fg)', borderRadius: 5, padding: '6px 10px', fontSize: 13, width: '100%',
+  color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '6px 10px', fontSize: 13, width: '100%',
 };
 
 export function RunTriggerDialog({ onStart, onClose, pending }: Props) {
@@ -35,7 +35,7 @@ export function RunTriggerDialog({ onStart, onClose, pending }: Props) {
         onClick={e => e.stopPropagation()}
         onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
         style={{
-          background: 'var(--bg-1)', border: '1px solid var(--line-2)', borderRadius: 8,
+          background: 'var(--bg-1)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-lg)',
           padding: 20, width: 360, display: 'flex', flexDirection: 'column', gap: 14,
         }}
       >
@@ -63,7 +63,7 @@ export function RunTriggerDialog({ onStart, onClose, pending }: Props) {
             onClick={onClose}
             style={{
               background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line-2)',
-              borderRadius: 5, padding: '7px 14px', fontSize: 13,
+              borderRadius: 'var(--r-md)', padding: '7px 14px', fontSize: 13,
             }}
           >
             {t.common.cancel}
@@ -73,7 +73,7 @@ export function RunTriggerDialog({ onStart, onClose, pending }: Props) {
             disabled={pending}
             style={{
               background: 'var(--cont)', color: '#fff', border: 'none',
-              borderRadius: 5, padding: '7px 14px', fontSize: 13,
+              borderRadius: 'var(--r-md)', padding: '7px 14px', fontSize: 13,
             }}
           >
             {pending ? t.objectDetail.running : t.common.start}

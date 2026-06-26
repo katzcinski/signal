@@ -43,7 +43,7 @@ function TransitionBadge({ transition }: { transition: CheckTransition }) {
   const color = TRANSITION_COLOR[transition];
   return (
     <span style={{
-      fontSize: 10, borderRadius: 4, padding: '2px 8px',
+      fontSize: 10, borderRadius: 'var(--r)', padding: '2px 8px',
       background: `color-mix(in srgb, ${color} 15%, transparent)`,
       color, border: `1px solid ${color}`,
     }}>
@@ -110,7 +110,7 @@ export default function RunCompare() {
 
   const selectStyle = {
     background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg)',
-    borderRadius: 5, padding: '7px 10px', fontSize: 12, minWidth: 280, maxWidth: '100%',
+    borderRadius: 'var(--r-md)', padding: '7px 10px', fontSize: 12, minWidth: 280, maxWidth: '100%',
   } as const;
 
   return (
@@ -157,7 +157,7 @@ export default function RunCompare() {
               <div key={k} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: 'var(--bg-1)', border: '1px solid var(--line)',
-                borderRadius: 6, padding: '6px 12px',
+                borderRadius: 'var(--r-md)', padding: '6px 12px',
               }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: TRANSITION_COLOR[k] }} />
                 <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>{t.compare.transition[k]}</span>
@@ -179,7 +179,7 @@ export default function RunCompare() {
             </label>
           </div>
 
-          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
             <Table columns={columns} rows={sortedChanges} rowKey={c => c.check_name} empty={t.compare.noChanges} />
           </div>
         </>

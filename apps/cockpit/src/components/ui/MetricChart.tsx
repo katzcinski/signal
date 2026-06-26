@@ -53,7 +53,7 @@ export function MetricChart({ series }: { series: MetricSeries }) {
 
   if (numeric.length < 2) {
     return (
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 16, marginBottom: 12 }}>
+      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 16, marginBottom: 12 }}>
         <Header name={series.check_name} label={label} color={color} anomalyCount={anomalyCount} />
         <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 8 }}>{t.timeseries.tooFew}</p>
       </div>
@@ -61,7 +61,7 @@ export function MetricChart({ series }: { series: MetricSeries }) {
   }
 
   return (
-    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, padding: 16, marginBottom: 12 }}>
+    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 16, marginBottom: 12 }}>
       <Header name={series.check_name} label={label} color={color} anomalyCount={anomalyCount} />
       <div style={{ height: 180, marginTop: 12 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -102,7 +102,7 @@ export function MetricChart({ series }: { series: MetricSeries }) {
             <Tooltip
               contentStyle={{
                 background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-                borderRadius: 6, fontSize: 11, color: 'var(--fg)',
+                borderRadius: 'var(--r-md)', fontSize: 11, color: 'var(--fg)',
               }}
               labelFormatter={(v: string) => new Date(v).toLocaleString()}
               formatter={(value: number, _n, item: { payload?: Row }) => {

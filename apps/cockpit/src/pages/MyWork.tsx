@@ -41,7 +41,7 @@ function IncidentKindBadge({ incident }: { incident: Incident }) {
   return (
     <span style={{
       border: `1px solid ${isGate ? 'var(--qual)' : 'var(--cont)'}`,
-      borderRadius: 999, color: isGate ? 'var(--qual)' : 'var(--cont)',
+      borderRadius: 'var(--r-full)', color: isGate ? 'var(--qual)' : 'var(--cont)',
       fontSize: 11, fontWeight: 650, padding: '2px 7px', whiteSpace: 'nowrap',
     }}>
       {isGate ? t.incidents.kindGate : t.incidents.kindContract}

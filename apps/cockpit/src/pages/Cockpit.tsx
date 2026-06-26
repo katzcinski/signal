@@ -41,7 +41,7 @@ function ActivityFeed() {
             padding: '7px 0', borderBottom: '1px solid var(--line)',
           }}>
             <span style={{
-              fontSize: 10, borderRadius: 4, padding: '2px 6px', minWidth: 64, textAlign: 'center',
+              fontSize: 10, borderRadius: 'var(--r)', padding: '2px 6px', minWidth: 64, textAlign: 'center',
               background: `color-mix(in srgb, ${color} 14%, transparent)`,
               color, border: `1px solid ${color}`,
             }}>
@@ -155,7 +155,7 @@ export default function Cockpit() {
           <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{t.cockpit.subtitle}</p>
         </div>
         <span style={{
-          fontSize: 11, color: 'var(--fg-2)', padding: '4px 12px', borderRadius: 999,
+          fontSize: 11, color: 'var(--fg-2)', padding: '4px 12px', borderRadius: 'var(--r-full)',
           border: '1px solid var(--line-2)', background: 'var(--bg-1)',
           display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap',
         }}>
@@ -207,7 +207,7 @@ export default function Cockpit() {
       )}
 
       {/* Primary drill-down: object × family status grid → object detail. */}
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
         <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--line)', fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {t.cockpit.statusGrid}
         </div>

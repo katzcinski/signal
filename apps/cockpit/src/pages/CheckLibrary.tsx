@@ -5,7 +5,7 @@ import { FamilyTag } from '@/components/ui/FamilyTag';
 import type { CheckDef, CheckFamily } from '@/types';
 
 const chipBtn = (active: boolean): CSSProperties => ({
-  padding: '4px 10px', borderRadius: 20,
+  padding: '4px 10px', borderRadius: 'var(--r-full)',
   border: active ? '1px solid var(--cont)' : '1px solid var(--line-2)',
   background: active ? 'var(--cont)' : 'var(--bg-2)',
   color: active ? '#fff' : 'var(--fg-3)',
@@ -15,7 +15,7 @@ const chipBtn = (active: boolean): CSSProperties => ({
 function CheckCard({ check }: { check: CheckDef }) {
   return (
     <div style={{
-      background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8,
+      background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)',
       padding: 14, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
@@ -28,7 +28,7 @@ function CheckCard({ check }: { check: CheckDef }) {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
           <FamilyTag family={check.family} />
           <span style={{
-            fontSize: 10, padding: '2px 6px', borderRadius: 4,
+            fontSize: 10, padding: '2px 6px', borderRadius: 'var(--r)',
             background: 'var(--bg-2)', color: 'var(--fg-3)', border: '1px solid var(--line-2)',
           }}>{check.category}</span>
         </div>
@@ -43,7 +43,7 @@ function CheckCard({ check }: { check: CheckDef }) {
         <div>
           <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 4 }}>{t.library.templateSql}</div>
           <pre style={{
-            background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 4,
+            background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 'var(--r)',
             padding: '6px 8px', fontSize: 11, overflowX: 'auto', margin: 0, color: 'var(--fg-2)',
             whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxWidth: '100%',
           }}>{check.sql_template}</pre>
@@ -95,7 +95,7 @@ export default function CheckLibrary() {
           placeholder={t.library.searchPlaceholder}
           style={{
             background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-            color: 'var(--fg)', borderRadius: 5, padding: '6px 10px', fontSize: 12, minWidth: 220,
+            color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '6px 10px', fontSize: 12, minWidth: 220,
           }}
         />
         <button style={chipBtn(category === '')} onClick={() => setCategory('')}>

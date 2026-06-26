@@ -165,12 +165,12 @@ const rowStyle: CSSProperties = {
   display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--fg-2)', marginBottom: 6, gap: 8,
 };
 const codeBlock: CSSProperties = {
-  background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 5, padding: '10px 11px',
+  background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: '10px 11px',
   fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--qual)', lineHeight: 1.5, whiteSpace: 'pre-wrap',
   wordBreak: 'break-word', margin: '4px 0 0',
 };
 const badge: CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, padding: '3px 8px',
-  borderRadius: 999, marginRight: 6, marginBottom: 6,
+  borderRadius: 'var(--r-full)', marginRight: 6, marginBottom: 6,
 };
 const dot: CSSProperties = { width: 6, height: 6, borderRadius: '50%' };

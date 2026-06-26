@@ -71,13 +71,13 @@ export default function RunDetail() {
           <div style={{ flex: 1 }} />
           <Link
             to={`/runs/compare?head=${encodeURIComponent(run.run_id)}`}
-            style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 5, padding: '6px 14px', fontSize: 12, textDecoration: 'none' }}
+            style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 'var(--r-md)', padding: '6px 14px', fontSize: 12, textDecoration: 'none' }}
           >
             {t.compare.compareTo}
           </Link>
           <button
             onClick={downloadCSV}
-            style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 5, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}
+            style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 'var(--r-md)', padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}
           >
             {t.runDetail.downloadCsv}
           </button>
@@ -96,7 +96,7 @@ export default function RunDetail() {
           ))}
         </div>
       </div>
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
         <Table columns={columns} rows={run.results} rowKey={c => c.name} empty={t.runDetail.noResults} />
       </div>
     </div>

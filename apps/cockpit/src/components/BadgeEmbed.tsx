@@ -23,11 +23,11 @@ export function BadgeEmbed({ product }: { product: string }) {
 
   const btn: React.CSSProperties = {
     background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)',
-    borderRadius: 5, padding: '5px 12px', fontSize: 12, cursor: 'pointer',
+    borderRadius: 'var(--r-md)', padding: '5px 12px', fontSize: 12, cursor: 'pointer',
   };
 
   return (
-    <div style={{ marginTop: 16, padding: 16, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 8 }}>
+    <div style={{ marginTop: 16, padding: 16, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)' }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>{t.badge.title}</div>
       <p style={{ color: 'var(--fg-3)', fontSize: 12, margin: '4px 0 12px' }}>{t.badge.hint}</p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
