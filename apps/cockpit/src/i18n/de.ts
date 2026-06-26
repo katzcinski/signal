@@ -861,7 +861,8 @@ export const t = {
     cliLoggedIn: 'Eingeloggt',
     cliNotLoggedIn: 'Nicht eingeloggt',
     cliHost: 'CLI-Host',
-    loginHint: 'Führe "datasphere login" in einem Terminal aus, um die CLI-Session zu starten.',
+    installHint: 'npm install -g @sap/datasphere-cli',
+    loginHint: 'Führe "datasphere login --host <tenant>" in einem Terminal aus, um die CLI-Session zu starten.',
     envOverride: 'Env-Var aktiv (read-only)',
   },
   inventoryAdmin: {

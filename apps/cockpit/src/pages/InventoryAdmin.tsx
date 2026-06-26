@@ -58,6 +58,9 @@ function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
           {data.use_cli && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)' }}>
               <StatusLine ok={data.cli_available} label={data.cli_available ? t.connector.cliAvailable : t.connector.cliMissing} />
+              {!data.cli_available && (
+                <pre style={{ ...muted, fontSize: 11, margin: 0, whiteSpace: 'pre-wrap' }}>{t.connector.installHint}</pre>
+              )}
               {data.cli_available && (
                 <StatusLine ok={data.cli_logged_in} label={data.cli_logged_in ? t.connector.cliLoggedIn : t.connector.cliNotLoggedIn}
                   detail={data.cli_host ?? undefined} />
