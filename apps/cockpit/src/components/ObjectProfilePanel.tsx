@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useEnvironments, useObjectProfile } from '@/api/objects';
+import { useOperationStream } from '@/api/operations';
 import { useRoleStore, canProfileObject } from '@/store/role';
 import { Button } from '@/components/ui/Button';
+import { OperationProgress } from '@/components/OperationProgress';
 import { SidePanel } from '@/components/ui/SidePanel';
 import { Table, type ColDef } from '@/components/ui/Table';
 import type {
@@ -248,22 +250,30 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
   const environments = useMemo(() => envData?.environments ?? [], [envData]);
   const [environment, setEnvironment] = useState('');
   const [includeSamples, setIncludeSamples] = useState(false);
+  const [opId, setOpId] = useState<string | null>(null);
+  const { data: operation } = useOperationStream<ObjectProfileResult>(opId);
 
   useEffect(() => {
     if (!environment && environments[0]) setEnvironment(environments[0].name);
   }, [environment, environments]);
 
   const runProfile = () => {
+    setOpId(null);
     profile.mutate({
       environment,
       include_composite: true,
       include_samples: includeSamples,
       sample_limit: 20,
+    }, {
+      onSuccess: data => setOpId(data.op_id),
     });
   };
 
   const error = profile.isError ? profileErrorMessage(profile.error) : '';
-  const canRun = allowed && !!environment && !profile.isPending;
+  const running = profile.isPending || operation?.state === 'running';
+  const profileResult = operation?.state === 'finished' ? operation.result : null;
+  const operationError = operation?.state === 'error' ? operation.error : '';
+  const canRun = allowed && !!environment && !running;
 
   return (
     <SidePanel
@@ -273,7 +283,7 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
       footer={(
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Button variant="primary" onClick={runProfile} disabled={!canRun}>
-            {profile.isPending ? 'Profiling...' : 'Run profile'}
+            {running ? 'Profiling...' : 'Run profile'}
           </Button>
           {!allowed && <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>Steward role or higher required.</span>}
           {allowed && !environment && !envLoading && (
@@ -312,12 +322,12 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
             type="checkbox"
             checked={includeSamples}
             onChange={e => setIncludeSamples(e.target.checked)}
-            disabled={!allowed || profile.isPending}
+            disabled={!allowed || running}
           />
           Sample rows [PII-GATE]
         </label>
 
-        {error && (
+        {(error || operationError) && (
           <div style={{
             border: '1px solid var(--status-crit)',
             borderRadius: 'var(--r-md)',
@@ -326,25 +336,27 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
             padding: '10px 12px',
             fontSize: 12,
           }}>
-            {error}
+            {error || operationError}
           </div>
         )}
 
-        {!profile.data && !profile.isPending && !error && (
+        {operation && <OperationProgress operation={operation} />}
+
+        {!profileResult && !running && !error && !operationError && (
           <div style={{ color: 'var(--fg-3)', fontSize: 12, lineHeight: 1.6 }}>
             Profiling runs aggregate-only queries against the selected live environment.
           </div>
         )}
 
-        {profile.isPending && <div style={{ color: 'var(--fg-3)', fontSize: 12 }}>Profiling columns...</div>}
+        {running && !operation && <div style={{ color: 'var(--fg-3)', fontSize: 12 }}>Profiling columns...</div>}
 
-        {profile.data && (
+        {profileResult && (
           <div>
-            <ProfileSummary profile={profile.data} />
-            <CandidateSection title="Single-column key candidates" candidates={profile.data.pk_candidates.ranked_single ?? []} />
-            <CandidateSection title="Composite key candidates" candidates={profile.data.pk_candidates.ranked_composite ?? []} />
-            <ColumnStatsTable columns={profile.data.columns} />
-            <SampleRowsSection sample={profile.data.sample_rows} />
+            <ProfileSummary profile={profileResult} />
+            <CandidateSection title="Single-column key candidates" candidates={profileResult.pk_candidates.ranked_single ?? []} />
+            <CandidateSection title="Composite key candidates" candidates={profileResult.pk_candidates.ranked_composite ?? []} />
+            <ColumnStatsTable columns={profileResult.columns} />
+            <SampleRowsSection sample={profileResult.sample_rows} />
           </div>
         )}
       </div>

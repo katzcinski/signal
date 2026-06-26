@@ -60,6 +60,9 @@ export interface InventoryResponse {
 export interface Environment {
   name: string;
   schema: string;
+  host?: string;
+  password_ref?: string;
+  secret_status?: boolean;
 }
 
 export interface EnvironmentsResponse {
@@ -133,7 +136,11 @@ export interface OperationProgressLine {
   line: string;
 }
 
-export interface OperationStatus<T = ConnectionTestResult> {
+export interface OperationStart {
+  op_id: string;
+}
+
+export interface OperationStatus<T = unknown> {
   op_id: string;
   kind: string;
   state: 'running' | 'finished' | 'error';

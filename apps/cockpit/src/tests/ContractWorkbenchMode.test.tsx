@@ -60,6 +60,11 @@ vi.mock('@/api/contracts', () => ({
   }),
 }));
 
+vi.mock('@/api/operations', () => ({
+  useOperation: () => ({ data: null }),
+  useOperationStream: () => ({ data: null }),
+}));
+
 // The check builder renders for internal gates, so every internal-gate render
 // here now consumes the library. Mock it (real hook needs a QueryClient) with a
 // mix that exercises the eligibility filter: eligible (value_range,

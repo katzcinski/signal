@@ -134,6 +134,11 @@
             "title": "Expect",
             "type": "string"
           },
+          "kind": {
+            "default": "internal_gate",
+            "title": "Kind",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -203,6 +208,11 @@
           "expect": {
             "default": "",
             "title": "Expect",
+            "type": "string"
+          },
+          "kind": {
+            "default": "internal_gate",
+            "title": "Kind",
             "type": "string"
           },
           "name": {
@@ -583,6 +593,103 @@
         "title": "EnvironmentConfigIn",
         "type": "object"
       },
+      "EnvironmentIn": {
+        "properties": {
+          "encrypt": {
+            "default": true,
+            "title": "Encrypt",
+            "type": "boolean"
+          },
+          "host": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Host",
+            "type": "string"
+          },
+          "password_ref": {
+            "default": "",
+            "maxLength": 255,
+            "title": "Password Ref",
+            "type": "string"
+          },
+          "port": {
+            "default": 443,
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Port",
+            "type": "integer"
+          },
+          "schema": {
+            "default": "",
+            "maxLength": 128,
+            "title": "Schema",
+            "type": "string"
+          },
+          "user": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "User",
+            "type": "string"
+          },
+          "validate_cert": {
+            "default": true,
+            "title": "Validate Cert",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "host",
+          "user"
+        ],
+        "title": "EnvironmentIn",
+        "type": "object"
+      },
+      "ExtractIn": {
+        "description": "Phase-1 trigger payload for the admin inventory tool.",
+        "properties": {
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "include_sql": {
+            "default": true,
+            "title": "Include Sql",
+            "type": "boolean"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile"
+          },
+          "spaces": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Spaces",
+            "type": "array"
+          }
+        },
+        "title": "ExtractIn",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -627,6 +734,32 @@
           }
         },
         "title": "IncidentTransitionIn",
+        "type": "object"
+      },
+      "LineageSubgraphOut": {
+        "properties": {
+          "edges": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "title": "LineageSubgraphOut",
         "type": "object"
       },
       "MuteIn": {
@@ -883,6 +1016,323 @@
           "name"
         ],
         "title": "ObjectOut",
+        "type": "object"
+      },
+      "ProductDetailOut": {
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/ProductFindingOut"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "inbound_sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Inbound Sources",
+            "type": "array"
+          },
+          "interior": {
+            "items": {
+              "$ref": "#/components/schemas/ProductInteriorOut"
+            },
+            "title": "Interior",
+            "type": "array"
+          },
+          "lifecycle": {
+            "title": "Lifecycle",
+            "type": "string"
+          },
+          "own_health": {
+            "title": "Own Health",
+            "type": "string"
+          },
+          "owners": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Owners",
+            "type": "array"
+          },
+          "ports": {
+            "items": {
+              "$ref": "#/components/schemas/ProductPortOut"
+            },
+            "title": "Ports",
+            "type": "array"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "subgraph": {
+            "$ref": "#/components/schemas/LineageSubgraphOut"
+          },
+          "upstream_risk": {
+            "items": {
+              "$ref": "#/components/schemas/ProductInboundDependencyOut"
+            },
+            "title": "Upstream Risk",
+            "type": "array"
+          }
+        },
+        "required": [
+          "product",
+          "owners",
+          "lifecycle",
+          "own_health",
+          "ports",
+          "interior",
+          "inbound_sources",
+          "upstream_risk",
+          "findings",
+          "subgraph"
+        ],
+        "title": "ProductDetailOut",
+        "type": "object"
+      },
+      "ProductFindingOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "finding_type": {
+            "enum": [
+              "dangling_port",
+              "contested",
+              "boundary_leak"
+            ],
+            "title": "Finding Type",
+            "type": "string"
+          },
+          "object_id": {
+            "title": "Object Id",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "enum": [
+                  "port",
+                  "interior"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          }
+        },
+        "required": [
+          "finding_type",
+          "object_id",
+          "detail"
+        ],
+        "title": "ProductFindingOut",
+        "type": "object"
+      },
+      "ProductInboundDependencyOut": {
+        "properties": {
+          "compliance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compliance"
+          },
+          "current_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Version"
+          },
+          "pinned_version": {
+            "title": "Pinned Version",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "upstream_breach": {
+            "title": "Upstream Breach",
+            "type": "boolean"
+          },
+          "version_drift": {
+            "title": "Version Drift",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "product",
+          "pinned_version",
+          "upstream_breach",
+          "version_drift"
+        ],
+        "title": "ProductInboundDependencyOut",
+        "type": "object"
+      },
+      "ProductInteriorOut": {
+        "properties": {
+          "coverage_flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Flag"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "layer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "ProductInteriorOut",
+        "type": "object"
+      },
+      "ProductListItem": {
+        "properties": {
+          "finding_count": {
+            "title": "Finding Count",
+            "type": "integer"
+          },
+          "lifecycle": {
+            "title": "Lifecycle",
+            "type": "string"
+          },
+          "own_health": {
+            "title": "Own Health",
+            "type": "string"
+          },
+          "owners": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Owners",
+            "type": "array"
+          },
+          "port_count": {
+            "title": "Port Count",
+            "type": "integer"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "upstream_risk_count": {
+            "title": "Upstream Risk Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "product",
+          "owners",
+          "port_count",
+          "own_health",
+          "upstream_risk_count",
+          "finding_count",
+          "lifecycle"
+        ],
+        "title": "ProductListItem",
+        "type": "object"
+      },
+      "ProductPortOut": {
+        "properties": {
+          "compliance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compliance"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "lifecycle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lifecycle"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "dataset"
+        ],
+        "title": "ProductPortOut",
         "type": "object"
       },
       "ProfileRequest": {
@@ -1206,6 +1656,152 @@
         "title": "RunTriggerIn",
         "type": "object"
       },
+      "ScheduleOut": {
+        "properties": {
+          "created_at": {
+            "default": "",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "default": "",
+            "title": "Created By",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "execution_mode": {
+            "title": "Execution Mode",
+            "type": "string"
+          },
+          "interval_seconds": {
+            "title": "Interval Seconds",
+            "type": "integer"
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run At"
+          },
+          "last_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run Id"
+          },
+          "last_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Status"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "next_due_at": {
+            "title": "Next Due At",
+            "type": "string"
+          },
+          "object_id": {
+            "title": "Object Id",
+            "type": "string"
+          },
+          "schedule_id": {
+            "title": "Schedule Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "object_id",
+          "mode",
+          "environment",
+          "execution_mode",
+          "interval_seconds",
+          "enabled",
+          "next_due_at"
+        ],
+        "title": "ScheduleOut",
+        "type": "object"
+      },
+      "ScheduleUpsertIn": {
+        "description": "Per-object scheduling toggle.\n\nmode=internal \u2192 Signal's poller runs the object every ``interval_seconds``.\nmode=external \u2192 an outside orchestrator (Task Chain / cron \u2192 CLI) drives it;\nSignal records runs but never fires the poller for it.",
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "environment": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Environment",
+            "type": "string"
+          },
+          "execution_mode": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "batch",
+              "isolated"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
+          },
+          "interval_seconds": {
+            "default": 0,
+            "maximum": 2678400.0,
+            "minimum": 0.0,
+            "title": "Interval Seconds",
+            "type": "integer"
+          },
+          "mode": {
+            "default": "internal",
+            "enum": [
+              "internal",
+              "external"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "title": "ScheduleUpsertIn",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1301,6 +1897,301 @@
         "summary": "List Activity",
         "tags": [
           "activity"
+        ]
+      }
+    },
+    "/api/admin/environments": {
+      "get": {
+        "description": "All configured connection targets (admin-only, secret values hidden).",
+        "operationId": "list_environments_api_admin_environments_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Environments",
+        "tags": [
+          "admin",
+          "environments"
+        ]
+      },
+      "post": {
+        "operationId": "create_environment_api_admin_environments_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvironmentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Environment",
+        "tags": [
+          "admin",
+          "environments"
+        ]
+      }
+    },
+    "/api/admin/environments/{name}": {
+      "delete": {
+        "operationId": "delete_environment_api_admin_environments__name__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Environment",
+        "tags": [
+          "admin",
+          "environments"
+        ]
+      },
+      "put": {
+        "operationId": "update_environment_api_admin_environments__name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvironmentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Environment",
+        "tags": [
+          "admin",
+          "environments"
         ]
       }
     },
@@ -1422,6 +2313,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "202": {
+            "description": "Dry-run operation started."
           },
           "422": {
             "content": {
@@ -2806,8 +3700,8 @@
     },
     "/api/environments/config": {
       "get": {
-        "description": "Editable environment config for the cockpit; never returns secret values.",
-        "operationId": "list_environment_config_api_environments_config_get",
+        "description": "Legacy non-secret environment config endpoint.",
+        "operationId": "list_environment_configs_api_environments_config_get",
         "parameters": [
           {
             "in": "header",
@@ -2862,7 +3756,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Environment Config",
+        "summary": "List Environment Configs",
         "tags": [
           "extract"
         ]
@@ -2935,8 +3829,7 @@
         ]
       },
       "put": {
-        "description": "Create or update a configured environment. Admin-only because it writes credentials.",
-        "operationId": "upsert_environment_config_api_environments_config__name__put",
+        "operationId": "put_environment_config_api_environments_config__name__put",
         "parameters": [
           {
             "in": "path",
@@ -3010,7 +3903,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Upsert Environment Config",
+        "summary": "Put Environment Config",
         "tags": [
           "extract"
         ]
@@ -3091,7 +3984,7 @@
     },
     "/api/extract": {
       "post": {
-        "description": "Extract inventory/lineage from Datasphere (when configured) and report counts.\n\nTier-2: when a live source (REST catalog or the @sap/datasphere-cli) is\nconfigured, run the real extraction \u2014 pull objects with columns + CSN,\nassemble the inventory, build the object + column lineage, and write the\nMeridian-shaped snapshots. FastAPI runs this sync handler in a threadpool,\nso the blocking I/O does not stall the event loop.\n\nF5 fallback: with no connectivity configured (local mode), touch the\nsnapshot files to reset the mtime-based staleness clock. Either way the\nresponse carries the new extraction timestamp for the staleness indicator.",
+        "description": "Extract inventory/lineage and report counts.\n\nFastAPI runs this sync handler in a threadpool, so the blocking I/O does not\nstall the event loop. The response keeps the legacy top-level count fields\nwhile also returning the richer status shape used by the Phase-1 admin UI.",
         "operationId": "trigger_extract_api_extract_post",
         "parameters": [
           {
@@ -3102,6 +3995,119 @@
               "default": "default",
               "title": "Environment",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ExtractIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Extract",
+        "tags": [
+          "extract"
+        ]
+      }
+    },
+    "/api/extract/status": {
+      "get": {
+        "description": "Latest extract status for the platform-admin inventory tool.",
+        "operationId": "extract_status_api_extract_status_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
         ],
@@ -3125,7 +4131,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Trigger Extract",
+        "summary": "Extract Status",
         "tags": [
           "extract"
         ]
@@ -3596,6 +4602,229 @@
         "summary": "Service Health Metrics",
         "tags": [
           "metrics"
+        ]
+      }
+    },
+    "/api/monitoring/config": {
+      "get": {
+        "description": "``enabled`` = ein Monitoring-Hub ist konfiguriert (steuert UI-Sichtbarkeit).",
+        "operationId": "monitoring_config_api_monitoring_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Monitoring Config Api Monitoring Config Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Monitoring Config",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/monitoring/manifest": {
+      "get": {
+        "description": "Soll-Zustand f\u00fcr das Provisioning-Skript: Identit\u00e4t + View-Name + Spalten\n+ vorgeschlagenes (\u00fcberschreibbares) Projektions-SQL je Objekt.",
+        "operationId": "manifest_api_monitoring_manifest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Manifest Api Monitoring Manifest Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Manifest",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/monitoring/shares": {
+      "get": {
+        "description": "Status je vorgemerktem Objekt \u2014 f\u00fcr das Cockpit.",
+        "operationId": "list_shares_api_monitoring_shares_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "title": "Response List Shares Api Monitoring Shares Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Shares",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/monitoring/shares/{object_id}": {
+      "delete": {
+        "description": "Aus dem Soll-Zustand entfernen. Das Skript droppt die verwaiste View beim\nn\u00e4chsten Reconcile (Manifest = Soll; was nicht drinsteht, wird abger\u00e4umt).",
+        "operationId": "remove_monitoring_api_monitoring_shares__object_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Remove Monitoring Api Monitoring Shares  Object Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Monitoring",
+        "tags": [
+          "monitoring"
+        ]
+      },
+      "post": {
+        "description": "Objekt f\u00fcrs Monitoring vormerken (Soll-Zustand). Kein Datasphere-Write \u2014\ndas Provisioning \u00fcbernimmt das Skript anhand des Manifests.",
+        "operationId": "request_monitoring_api_monitoring_shares__object_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Request Monitoring Api Monitoring Shares  Object Id  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Monitoring",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/monitoring/shares/{object_id}/status": {
+      "put": {
+        "description": "Callback f\u00fcr das Provisioning-Skript: provisioned | error melden.",
+        "operationId": "report_status_api_monitoring_shares__object_id__status_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Report Status Api Monitoring Shares  Object Id  Status Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Report Status",
+        "tags": [
+          "monitoring"
         ]
       }
     },
@@ -4382,7 +5611,7 @@
           }
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {}
@@ -4536,6 +5765,238 @@
         "summary": "Get Object Runs",
         "tags": [
           "objects"
+        ]
+      }
+    },
+    "/api/objects/{object_id}/schedule": {
+      "delete": {
+        "description": "Back to manual scheduling for this object.",
+        "operationId": "delete_object_schedule_api_objects__object_id__schedule_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Object Schedule",
+        "tags": [
+          "schedules"
+        ]
+      },
+      "get": {
+        "description": "The object's schedule, or null when scheduling is manual.",
+        "operationId": "get_object_schedule_api_objects__object_id__schedule_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ScheduleOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Object Schedule Api Objects  Object Id  Schedule Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Object Schedule",
+        "tags": [
+          "schedules"
+        ]
+      },
+      "put": {
+        "description": "Set the object's scheduling mode (internal/external) and cadence.",
+        "operationId": "upsert_object_schedule_api_objects__object_id__schedule_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleUpsertIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upsert Object Schedule",
+        "tags": [
+          "schedules"
         ]
       }
     },
@@ -4733,6 +6194,73 @@
         "summary": "Get Operation Events",
         "tags": [
           "operations"
+        ]
+      }
+    },
+    "/api/products": {
+      "get": {
+        "operationId": "list_products_api_products_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductListItem"
+                  },
+                  "title": "Response List Products Api Products Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Products",
+        "tags": [
+          "products"
+        ]
+      }
+    },
+    "/api/products/{product}": {
+      "get": {
+        "operationId": "get_product_api_products__product__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Product",
+        "tags": [
+          "products"
         ]
       }
     },
@@ -5353,6 +6881,76 @@
         "summary": "Get Run Results",
         "tags": [
           "runs"
+        ]
+      }
+    },
+    "/api/schedules": {
+      "get": {
+        "description": "All schedules \u2014 the platform ops view across objects.",
+        "operationId": "list_schedules_api_schedules_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleOut"
+                  },
+                  "title": "Response List Schedules Api Schedules Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Schedules",
+        "tags": [
+          "schedules"
         ]
       }
     },

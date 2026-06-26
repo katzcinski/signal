@@ -9,8 +9,10 @@ import {
   useSeedContract, useDiffContract, useContractSla, useInventory, useCertifyContract,
   usePromoteContract,
 } from '@/api/contracts';
+import { useOperationStream } from '@/api/operations';
 import { useLibrary } from '@/api/library';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
+import { OperationProgress } from '@/components/OperationProgress';
 import { StatePill } from '@/components/ui/StatePill';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -684,16 +686,23 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
   const exportBdc = useExportBdc(objectId);
   const [showRevertConfirm, setShowRevertConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<'preview' | 'dryrun' | 'export'>('preview');
+  const [dryRunOpId, setDryRunOpId] = useState<string | null>(null);
+  const { data: dryRunOperation } = useOperationStream<{
+    mode?: string; overall_status?: string; total?: number; passed?: number; failed?: number;
+    results?: { name: string; passed: boolean; actual_value: unknown; expect: string; state: CheckState }[];
+    message?: string; checks_yaml?: string;
+  }>(dryRunOpId);
 
   const compileData = compile.data as {
     yaml_preview?: string; conflicts?: string[]; determinism_hash?: string;
     checks?: { name: string; type: string; expect: string; severity: string }[];
   } | undefined;
-  const dryRunData = dryRun.data as {
+  const dryRunData = (dryRunOperation?.state === 'finished' ? dryRunOperation.result : dryRun.data) as {
     mode?: string; overall_status?: string; total?: number; passed?: number; failed?: number;
     results?: { name: string; passed: boolean; actual_value: unknown; expect: string; state: CheckState }[];
-    message?: string; checks_yaml?: string;
+    message?: string; checks_yaml?: string; op_id?: string;
   } | undefined;
+  const dryRunRunning = dryRun.isPending || dryRunOperation?.state === 'running';
 
   const tabStyle = (tabKey: string): React.CSSProperties => ({
     padding: '5px 14px', fontSize: 12, cursor: 'pointer', background: 'none', border: 'none',
@@ -709,8 +718,17 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
           <button style={btnStyle()} onClick={() => { compile.mutate(); setActiveTab('preview'); }}>
             {compile.isPending ? t.workbench.compile.compiling : t.workbench.compile.compileDry}
           </button>
-          <button style={btnStyle('ghost')} onClick={() => { dryRun.mutate({}); setActiveTab('dryrun'); }}>
-            {dryRun.isPending ? t.workbench.compile.running : t.workbench.compile.runChecks}
+          <button style={btnStyle('ghost')} onClick={() => {
+            setDryRunOpId(null);
+            dryRun.mutate({}, {
+              onSuccess: data => {
+                const opId = (data as { op_id?: string })?.op_id;
+                if (opId) setDryRunOpId(opId);
+              },
+            });
+            setActiveTab('dryrun');
+          }}>
+            {dryRunRunning ? t.workbench.compile.running : t.workbench.compile.runChecks}
           </button>
           <button style={btnStyle('ghost')} onClick={() => { exportBdc.mutate(); setActiveTab('export'); }}>{t.workbench.compile.bdcExport}</button>
           <button style={btnStyle('danger')} onClick={() => setShowRevertConfirm(true)}>{t.workbench.compile.revert}</button>
@@ -770,11 +788,12 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
         </div>
       )}
 
-      {activeTab === 'dryrun' && dryRunData && (
+      {activeTab === 'dryrun' && (
         <div>
-          {dryRunData.mode === 'compile_only' ? (
+          {dryRunOperation && <OperationProgress operation={dryRunOperation} />}
+          {dryRunData?.mode === 'compile_only' ? (
             <div style={{ color: 'var(--fg-3)', fontSize: 13 }}>{dryRunData.message}</div>
-          ) : (
+          ) : dryRunData ? (
             <div>
               <div style={{ display: 'flex', gap: 'var(--s6)', marginBottom: 12 }}>
                 <span style={{ fontSize: 13 }}>{t.workbench.compile.statusLabel} <strong style={{ color: dryRunData.overall_status === 'pass' ? 'var(--status-ok)' : 'var(--status-fail)' }}>{dryRunData.overall_status}</strong></span>
@@ -809,7 +828,7 @@ function CompilePanel({ objectId, dataset }: { objectId: string; dataset: string
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 

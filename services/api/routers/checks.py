@@ -1,25 +1,64 @@
 """Check-suite endpoints: dry-run execution and git-revert. (WS3-2)"""
 from __future__ import annotations
 
+import json
+import logging
 import threading
+import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, status
+from fastapi.responses import JSONResponse
 
 from ..auth.provider import PrincipalDep
 from ..deps import StoreDep, get_environment
+from ..sse import make_progress_callback
 from ..settings import get_settings
 
 router = APIRouter(prefix="/api/checks", tags=["checks"])
+logger = logging.getLogger("dq_cockpit.checks")
 
 _revert_lock = threading.Lock()
 
 
-@router.post("/{dataset}/dry-run")
+def _summary_payload(summary) -> dict:
+    return {
+        "mode": "executed",
+        "run_id": summary.run_id,
+        "dataset": summary.dataset,
+        "overall_status": summary.overall_status,
+        "total": summary.total,
+        "passed": summary.passed,
+        "failed": summary.failed,
+        "warnings": summary.warnings,
+        "started_at": summary.started_at,
+        "finished_at": summary.finished_at,
+        "results": [
+            {
+                "name": r.name,
+                "passed": r.passed,
+                "actual_value": r.actual_value,
+                "expect": r.expect,
+                "severity": r.severity,
+                "state": r.state,
+                "kind": r.kind,
+                "error": r.error,
+                "duration_ms": r.duration_ms,
+            }
+            for r in summary.results
+        ],
+    }
+
+
+@router.post(
+    "/{dataset}/dry-run",
+    responses={status.HTTP_202_ACCEPTED: {"description": "Dry-run operation started."}},
+)
 def dry_run_checks(
     dataset: str,
     principal: PrincipalDep,
     body: dict = Body(default={}),
+    store: StoreDep = ...,
 ):
     """Compile contract for dataset and run checks without persisting results.
 
@@ -79,63 +118,54 @@ def dry_run_checks(
             "message": "No environment configured — compile-only preview. Provide 'environment' in body to run against HANA.",
         }
 
-    from dq_core.connect.db_connection import get_connection
-
     schema = env_cfg.get("schema", "")
     bind_schema(config, schema)  # [SCHEMA-MAP]
-    try:
-        conn = get_connection(
-            host=env_cfg.get("host", ""),
-            port=int(env_cfg.get("port", 443)),
-            user=env_cfg.get("user", ""),
-            password=env_cfg.get("password", ""),
-            schema=schema,
-        )
-    except RuntimeError as exc:
-        raise HTTPException(status_code=502, detail=str(exc))
 
-    try:
-        # results_db=None → nichts wird persistiert (WS3-2)
-        summary = run_checks(
-            config,
-            conn,
-            results_db=None,
-            execution_mode=str(body.get("execution_mode", "auto")),
-            triggered_by=principal.sub,
-        )
-    finally:
+    execution_mode = str(body.get("execution_mode", "auto"))
+    op_id = str(uuid.uuid4())
+    if not store.begin_operation(op_id, "dry_run", created_by=principal.sub):
+        raise HTTPException(status_code=409, detail="Operation already exists.")
+
+    def _worker() -> None:
+        from dq_core.connect.db_connection import get_connection
+
+        callback = make_progress_callback(op_id, store)
+        conn = None
         try:
-            conn.close()
-        except Exception:
-            pass
+            callback(f'Dry-run fuer "{dataset}" wird vorbereitet ...')
+            callback(f'Schema "{schema}" gebunden.')
+            conn = get_connection(
+                host=env_cfg.get("host", ""),
+                port=int(env_cfg.get("port", 443)),
+                user=env_cfg.get("user", ""),
+                password=env_cfg.get("password", ""),
+                schema=schema,
+                on_progress=callback,
+            )
+            # results_db=None -> nichts wird persistiert (WS3-2)
+            summary = run_checks(
+                config,
+                conn,
+                results_db=None,
+                on_progress=callback,
+                execution_mode=execution_mode,
+                triggered_by=principal.sub,
+            )
+            store.finish_operation(op_id, "finished", result_json=json.dumps(_summary_payload(summary), default=str))
+        except RuntimeError as exc:
+            store.finish_operation(op_id, "error", error=str(exc))
+        except Exception:  # noqa: BLE001 - unexpected internals stay out of the API result
+            logger.warning("Dry-run operation failed for %s", dataset, exc_info=True)
+            store.finish_operation(op_id, "error", error="Dry-run failed to complete.")
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:  # noqa: BLE001
+                    pass
 
-    return {
-        "mode": "executed",
-        "run_id": summary.run_id,
-        "dataset": summary.dataset,
-        "overall_status": summary.overall_status,
-        "total": summary.total,
-        "passed": summary.passed,
-        "failed": summary.failed,
-        "warnings": summary.warnings,
-        "started_at": summary.started_at,
-        "finished_at": summary.finished_at,
-        "results": [
-            {
-                "name": r.name,
-                "passed": r.passed,
-                "actual_value": r.actual_value,
-                "expect": r.expect,
-                "severity": r.severity,
-                "state": r.state,
-                "kind": r.kind,
-                "error": r.error,
-                "duration_ms": r.duration_ms,
-            }
-            for r in summary.results
-        ],
-    }
-
+    threading.Thread(target=_worker, daemon=True).start()
+    return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={"op_id": op_id})
 
 @router.post("/{dataset}/revert")
 def revert_checks(

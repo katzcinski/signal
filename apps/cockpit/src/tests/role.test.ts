@@ -106,6 +106,7 @@ describe('navForRole', () => {
       '/contracts',
       '/compliance',
       'divider',
+      '/environments',
       '/notifications',
     ]);
   });

@@ -14,6 +14,7 @@ export const t = {
     schedules: 'Zeitpläne',
     library: 'Bibliothek',
     notifications: 'Alerting',
+    environments: 'Verbindungen',
     settings: 'Einstellungen',
     inventoryAdmin: 'Inventory',
   },

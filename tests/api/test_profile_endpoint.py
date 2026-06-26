@@ -4,12 +4,28 @@ Reuses the profiler's synthetic FakeCursor; get_connection + get_environment are
 monkeypatched so no live HANA is needed. Object DS_SALES_ORDERS comes from the
 api_client fixture inventory.
 """
+import time
+
 from tests.unit.test_profile import (
     FakeCursor,
     _DEMO_AGG_ROW,
     _DEMO_COLUMNS,
     _DEMO_PROFILE_ROW,
 )
+
+
+def _wait_for_profile(api_client, op_id: str) -> dict:
+    for _ in range(40):
+        resp = api_client.get(f"/api/operations/{op_id}", headers={"X-DQ-Role": "steward"})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        if body["state"] == "finished":
+            assert any("Profiling" in row["line"] for row in body["progress"])
+            return body["result"]
+        if body["state"] == "error":
+            raise AssertionError(body["error"])
+        time.sleep(0.05)
+    raise AssertionError("profile operation did not finish")
 
 
 class _FakeConn:
@@ -59,8 +75,8 @@ def test_profile_returns_column_stats_and_pk_candidates(api_client, monkeypatch)
         json={"environment": "prod", "include_composite": True},
         headers={"X-DQ-Role": "steward"},
     )
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
+    assert resp.status_code == 202, resp.text
+    data = _wait_for_profile(api_client, resp.json()["op_id"])
     assert data["row_count"] == 100
     assert data["column_count"] == 3
     by_col = {c["column"]: c for c in data["columns"]}
@@ -78,8 +94,8 @@ def test_profile_samples_disabled_by_default(api_client, monkeypatch):
         json={"environment": "prod", "include_samples": True},
         headers={"X-DQ-Role": "steward"},
     )
-    assert resp.status_code == 200, resp.text
-    sample = resp.json()["sample_rows"]
+    assert resp.status_code == 202, resp.text
+    sample = _wait_for_profile(api_client, resp.json()["op_id"])["sample_rows"]
     assert sample["enabled"] is False
     assert sample["rows"] == []
     assert "disabled" in sample["reason"]
@@ -97,8 +113,8 @@ def test_profile_samples_require_allowlist(api_client, monkeypatch):
         json={"environment": "prod", "include_samples": True},
         headers={"X-DQ-Role": "steward"},
     )
-    assert resp.status_code == 200, resp.text
-    sample = resp.json()["sample_rows"]
+    assert resp.status_code == 202, resp.text
+    sample = _wait_for_profile(api_client, resp.json()["op_id"])["sample_rows"]
     assert sample["enabled"] is False
     assert sample["rows"] == []
     assert "allowlisted" in sample["reason"]
@@ -120,8 +136,8 @@ def test_profile_samples_project_allowlisted_columns(api_client, monkeypatch):
         json={"environment": "prod", "include_samples": True, "sample_limit": 2},
         headers={"X-DQ-Role": "steward"},
     )
-    assert resp.status_code == 200, resp.text
-    sample = resp.json()["sample_rows"]
+    assert resp.status_code == 202, resp.text
+    sample = _wait_for_profile(api_client, resp.json()["op_id"])["sample_rows"]
     assert sample["enabled"] is True
     assert sample["columns"] == ["ID", "AMOUNT"]
     assert sample["rows"] == [{"ID": 1, "AMOUNT": 42.5}, {"ID": 2, "AMOUNT": 84.0}]

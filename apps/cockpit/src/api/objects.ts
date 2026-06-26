@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
   ObjectSummary, RunListItem, CheckHistoryPoint, EnvironmentsResponse,
-  ObjectProfileResult,
+  OperationStart,
   ObjectTimeseries,
 } from '@/types';
 
@@ -79,7 +79,7 @@ export interface ObjectProfileRequest {
 }
 
 export const useObjectProfile = (id: string) =>
-  useMutation<ObjectProfileResult, Error, ObjectProfileRequest>({
+  useMutation<OperationStart, Error, ObjectProfileRequest>({
     mutationFn: (body: ObjectProfileRequest) =>
       api.post(`/objects/${id}/profile`, body).then(r => r.data),
   });

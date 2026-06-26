@@ -87,6 +87,7 @@ def analyze_composite_candidates(
     schema: str,
     table: str,
     max_cols: int = 3,
+    on_progress: Any | None = None,
 ) -> tuple[list[tuple[str, ...]], list[dict], dict]:
     """Find exact and promising multi-column PK candidates.
 
@@ -102,11 +103,15 @@ def analyze_composite_candidates(
         "heuristic_combo_count": 0,
     }
     if not stats:
+        if on_progress:
+            on_progress("Composite-Key-Suche: keine Spaltenstatistiken vorhanden.")
         return [], [], empty_meta
 
     total = int(stats[0]["total"])
     if total == 0:
         empty_meta["skip_reason"] = "No rows available."
+        if on_progress:
+            on_progress("Composite-Key-Suche: keine Zeilen vorhanden.")
         return [], [], empty_meta
 
     eligible_stats = [
@@ -128,7 +133,11 @@ def analyze_composite_candidates(
             f"Exact full search skipped: {len(eligible_cols)} null-free columns "
             f"(limit {_COMPOSITE_COL_LIMIT})."
         )
+        if on_progress:
+            on_progress(f"Composite-Key-Suche: exakte Vollsuche uebersprungen ({len(eligible_cols)} Kandidaten).")
     else:
+        if on_progress:
+            on_progress(f"Composite-Key-Suche: pruefe {len(eligible_cols)} nullfreie Spalten.")
         for width in range(2, max_cols + 1):
             for combo in combinations(eligible_cols, width):
                 distinct = count_distinct_combo(cursor, schema, table, combo)
@@ -148,6 +157,8 @@ def analyze_composite_candidates(
         if len(heuristic_combos) >= _HEURISTIC_COMBO_LIMIT:
             break
 
+    if on_progress:
+        on_progress(f"Composite-Key-Suche: bewerte {len(heuristic_combos)} heuristische Kombinationen.")
     for combo in heuristic_combos:
         distinct = distinct_cache.get(combo)
         if distinct is None:

@@ -121,6 +121,7 @@ def profile_table(
     schema: str,
     table: str,
     columns: list[dict] | None = None,
+    on_progress: Any | None = None,
 ) -> dict:
     """Profile *schema.table* in zwei Aggregat-Pässen und liefere ein Result-Dict.
 
@@ -135,9 +136,13 @@ def profile_table(
 
     Es wird nie ``SELECT *`` ausgeführt — ausschließlich Aggregate.
     """
+    if on_progress:
+        on_progress("Profiling: Spalten werden aufgeloest ...")
     cols = _resolve_columns(cursor, schema, table, columns)
 
     if not cols:
+        if on_progress:
+            on_progress("Profiling: keine profilierbaren Spalten gefunden.")
         return {
             "schema": schema,
             "table": table,
@@ -152,6 +157,8 @@ def profile_table(
     qt = qualified(schema, table)
 
     # --- Pass 1: COUNT(*) + pro Spalte COUNT / COUNT(DISTINCT) ---------------
+    if on_progress:
+        on_progress(f"Profiling: Pass 1/2 fuer {len(cols)} Spalten ...")
     parts = ["COUNT(*) AS r0"]
     for i, col in enumerate(cols):
         qc = quote_identifier(col["name"])
@@ -189,6 +196,8 @@ def profile_table(
         )
 
     # --- Pass 2: MIN/MAX/AVG/MEDIAN (numerisch) + Leerstring (Text) ---------
+    if on_progress:
+        on_progress("Profiling: Pass 2/2 fuer Detailstatistiken ...")
     profile_parts: list[str] = []
     profile_map: list[tuple[str, str]] = []
     for col in cols:
@@ -233,6 +242,8 @@ def profile_table(
         item["avg"] = _round_number(extras.get("avg"))
         item["median"] = _round_number(extras.get("median"))
 
+    if on_progress:
+        on_progress("Profiling: Statistiken berechnet.")
     return {
         "schema": schema,
         "table": table,

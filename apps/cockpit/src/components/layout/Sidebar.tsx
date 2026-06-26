@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/ui';
 // symbols (⬡ ⊞ ⟁ …) that rendered inconsistently and carried no label. Each is
 // a 16px stroke icon; semantics come from the adjacent aria-label/title, so the
 // collapsed rail stays navigable for keyboard and screen-reader users.
-type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin';
+type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin' | 'environments';
 
 function Icon({ name }: { name: IconKey }) {
   const common = {
@@ -29,6 +29,7 @@ function Icon({ name }: { name: IconKey }) {
     case 'compliance': return <svg {...common}><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6Z" /><path d="M9 12l2 2 4-4" /></svg>;
     case 'library':    return <svg {...common}><rect x="4" y="4" width="4" height="16" rx="1" /><rect x="10" y="4" width="4" height="16" rx="1" /><path d="M17 5l3 .8-3 14-2-.5" /></svg>;
     case 'notifications': return <svg {...common}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>;
+    case 'environments': return <svg {...common}><path d="M8 7h8M8 17h8" /><rect x="4" y="4" width="16" height="6" rx="1.5" /><rect x="4" y="14" width="16" height="6" rx="1.5" /><path d="M7 10v4M17 10v4" /></svg>;
     case 'settings':   return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>;
     case 'inventoryAdmin': return <svg {...common}><ellipse cx="12" cy="5" rx="7" ry="3" /><path d="M5 5v7c0 1.7 3.1 3 7 3s7-1.3 7-3V5" /><path d="M5 12v7c0 1.7 3.1 3 7 3s7-1.3 7-3v-7" /><path d="M9 10h6M9 17h6" /></svg>;
   }
@@ -56,6 +57,7 @@ const GOVERN_BLOCK: NavItem[] = [
 ];
 
 const UTILITY: NavItem[] = [
+  { to: '/environments', label: t.nav.environments, icon: 'environments' },
   { to: '/notifications', label: t.nav.notifications, icon: 'notifications' },
 ];
 

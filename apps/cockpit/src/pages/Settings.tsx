@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
+import { OperationProgress } from '@/components/OperationProgress';
 import {
   useAdminEnvironments, useCreateEnvironment, useUpdateEnvironment, useDeleteEnvironment,
-  useStartConnectionTest, useOperation, type EnvironmentInput,
+  useStartConnectionTest, useOperationStream, type EnvironmentInput,
 } from '@/api/environments';
 import { t } from '@/i18n/de';
-import type { AdminEnvironment } from '@/types';
+import type { AdminEnvironment, ConnectionTestResult } from '@/types';
 
 const row: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 'var(--s3)',
@@ -44,7 +45,7 @@ function toForm(env: AdminEnvironment): FormState {
 function ConnectionTest({ name, canTest }: { name: string; canTest: boolean }) {
   const start = useStartConnectionTest();
   const [opId, setOpId] = useState<string | null>(null);
-  const { data: op } = useOperation(opId);
+  const { data: op } = useOperationStream<ConnectionTestResult>(opId);
 
   const running = start.isPending || (!!op && op.state === 'running');
   const result = op?.state === 'finished' || op?.state === 'error' ? op : null;
@@ -77,6 +78,11 @@ function ConnectionTest({ name, canTest }: { name: string; canTest: boolean }) {
         <span style={{ ...mono, color: 'var(--status-fail)' }}>
           {result.result?.error || result.error || t.settings.testFailed}
         </span>
+      )}
+      {opId && (
+        <div style={{ flexBasis: '100%', marginTop: 'var(--s2)' }}>
+          <OperationProgress operation={op} />
+        </div>
       )}
     </div>
   );

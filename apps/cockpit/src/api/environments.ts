@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api } from './client';
+export { useOperation } from './operations';
+export { useOperationStream } from './operations';
 import { t } from '@/i18n/de';
-import type { AdminEnvironmentsResponse, OperationStatus } from '@/types';
+import type { AdminEnvironmentsResponse } from '@/types';
 
 const KEY = ['admin', 'environments'];
 
@@ -70,14 +72,4 @@ export const useStartConnectionTest = () =>
     mutationFn: (name: string) =>
       api.post(`/environments/${encodeURIComponent(name)}/test`).then(r => r.data as { op_id: string }),
     onError: () => toast.error(t.settings.testStartError),
-  });
-
-export const useOperation = (opId: string | null) =>
-  useQuery<OperationStatus>({
-    queryKey: ['operations', opId],
-    queryFn: () => api.get(`/operations/${opId}`).then(r => r.data),
-    enabled: !!opId,
-    // Poll while the operation is still running; stop once it settles.
-    refetchInterval: (query) =>
-      query.state.data && query.state.data.state !== 'running' ? false : 1000,
   });

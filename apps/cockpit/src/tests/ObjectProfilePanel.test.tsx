@@ -2,12 +2,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ObjectProfilePanel } from '@/components/ObjectProfilePanel';
 import { useRoleStore } from '@/store/role';
-import type { ObjectProfileResult } from '@/types';
+import type { ObjectProfileResult, OperationStatus } from '@/types';
 
 const apiMock = vi.hoisted(() => ({
   mutate: vi.fn(),
   state: {
-    data: null as ObjectProfileResult | null,
+    operation: null as OperationStatus<ObjectProfileResult> | null,
     isPending: false,
     isError: false,
     error: null as unknown,
@@ -21,11 +21,16 @@ vi.mock('@/api/objects', () => ({
   }),
   useObjectProfile: () => ({
     mutate: apiMock.mutate,
-    data: apiMock.state.data,
+    data: null,
     isPending: apiMock.state.isPending,
     isError: apiMock.state.isError,
     error: apiMock.state.error,
   }),
+}));
+
+vi.mock('@/api/operations', () => ({
+  useOperation: () => ({ data: apiMock.state.operation }),
+  useOperationStream: () => ({ data: apiMock.state.operation }),
 }));
 
 const profileResult: ObjectProfileResult = {
@@ -86,7 +91,16 @@ describe('ObjectProfilePanel', () => {
   beforeEach(() => {
     localStorage.clear();
     apiMock.mutate.mockReset();
-    apiMock.state.data = profileResult;
+    apiMock.state.operation = {
+      op_id: 'op-1',
+      kind: 'profile',
+      state: 'finished',
+      started_at: null,
+      finished_at: null,
+      result: profileResult,
+      error: null,
+      progress: [],
+    };
     apiMock.state.isPending = false;
     apiMock.state.isError = false;
     apiMock.state.error = null;
@@ -116,7 +130,7 @@ describe('ObjectProfilePanel', () => {
       include_composite: true,
       include_samples: false,
       sample_limit: 20,
-    });
+    }, expect.objectContaining({ onSuccess: expect.any(Function) }));
   });
 
   it('requests sample rows only after the PII gate checkbox is enabled', async () => {
@@ -132,16 +146,19 @@ describe('ObjectProfilePanel', () => {
       include_composite: true,
       include_samples: true,
       sample_limit: 20,
-    });
+    }, expect.objectContaining({ onSuccess: expect.any(Function) }));
   });
 
   it('renders PII-gated sample rows when the server returns them', () => {
-    apiMock.state.data = {
-      ...profileResult,
-      sample_rows: {
-        enabled: true,
-        columns: ['ORDER_ID', 'AMOUNT'],
-        rows: [{ ORDER_ID: 'SO-1', AMOUNT: 1234.5 }],
+    apiMock.state.operation = {
+      ...apiMock.state.operation!,
+      result: {
+        ...profileResult,
+        sample_rows: {
+          enabled: true,
+          columns: ['ORDER_ID', 'AMOUNT'],
+          rows: [{ ORDER_ID: 'SO-1', AMOUNT: 1234.5 }],
+        },
       },
     };
 
@@ -161,7 +178,7 @@ describe('ObjectProfilePanel', () => {
   });
 
   it('shows server authorization errors', () => {
-    apiMock.state.data = null;
+    apiMock.state.operation = null;
     apiMock.state.isError = true;
     apiMock.state.error = { response: { status: 403, data: { detail: 'Profiling requires steward role or higher.' } } };
 

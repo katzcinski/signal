@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 from typing import Any
 from uuid import uuid4
 
@@ -16,10 +17,13 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from ..auth.provider import Principal, PrincipalDep, require_roles
-from ..deps import StoreDep, get_environment, get_inventory, get_lineage, read_environments
+from ..deps import StoreDep, get_environment, get_inventory, get_lineage, read_environments, write_environments
 
 router = APIRouter(prefix="/api", tags=["extract"])
 require_admin = require_roles("admin")
+require_steward = require_roles("steward", "owner", "admin")
+
+_ENV_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 
 
 class ExtractIn(BaseModel):
@@ -30,6 +34,18 @@ class ExtractIn(BaseModel):
     spaces: list[str] = Field(default_factory=list)
     include_sql: bool = Field(default=True)
     force: bool = Field(default=False)
+
+
+class EnvironmentConfigIn(BaseModel):
+    host: str = Field(min_length=1, max_length=512)
+    port: int = Field(default=443, ge=1, le=65535)
+    user: str = Field(min_length=1, max_length=256)
+    schema_: str = Field(min_length=1, max_length=256, alias="schema")
+    password_ref: str = Field(default="", max_length=512)
+    password: str = Field(default="", max_length=4096)
+    clear_secret: bool = False
+
+    model_config = {"populate_by_name": True}
 
 
 _LATEST_STATUS: dict[str, Any] | None = None
@@ -63,6 +79,57 @@ def _counts(inventory: list[dict], lineage: dict) -> dict[str, int]:
         "lineage_edges": len(lineage.get("edges", [])),
         "inventory_items": len(inventory),
     }
+
+
+def _mask_host(host: str) -> str:
+    if not host:
+        return ""
+    if "." not in host:
+        return "***"
+    return f"***.{host.split('.', 1)[1]}"
+
+
+def _legacy_config_view(name: str, cfg: dict[str, Any]) -> dict[str, Any]:
+    from ..secrets import secret_status
+
+    ref = str(cfg.get("password_ref") or "")
+    has_inline = bool(cfg.get("password"))
+    return {
+        "name": name,
+        "host": cfg.get("host", ""),
+        "port": int(cfg.get("port", 443) or 443),
+        "user": cfg.get("user", ""),
+        "schema": cfg.get("schema", ""),
+        "password_ref": ref,
+        "secret_configured": has_inline or bool(ref),
+        "secret_available": has_inline or secret_status(ref),
+    }
+
+
+def _legacy_config_entry(body: EnvironmentConfigIn, existing: dict[str, Any] | None) -> dict[str, Any]:
+    entry = dict(existing or {})
+    entry.update(
+        host=body.host.strip(),
+        port=body.port,
+        user=body.user.strip(),
+        schema=body.schema_.strip(),
+    )
+    if body.clear_secret:
+        entry.pop("password_ref", None)
+        entry.pop("password", None)
+    elif body.password_ref.strip():
+        entry["password_ref"] = body.password_ref.strip()
+        entry.pop("password", None)
+    elif body.password:
+        # Legacy local-dev compatibility. New UI paths use password_ref only.
+        entry["password"] = body.password
+        entry.pop("password_ref", None)
+    return entry
+
+
+def _validate_environment_name(name: str) -> None:
+    if not _ENV_NAME_RE.match(name):
+        raise HTTPException(status_code=422, detail="Invalid environment name.")
 
 
 def _status_payload(
@@ -257,13 +324,53 @@ def list_inventory(inventory: list[dict] = Depends(get_inventory)):
 @router.get("/environments")
 def list_environments():
     """Environment-Namen für den RunTriggerDialog — NIE Credentials (S-13)."""
+    from ..secrets import secret_status
+
     envs = read_environments()
     return {
         "environments": [
-            {"name": name, "schema": (cfg or {}).get("schema", "")}
+            {
+                "name": name,
+                "schema": (cfg or {}).get("schema", ""),
+                "host": _mask_host(str((cfg or {}).get("host", ""))),
+                "password_ref": str((cfg or {}).get("password_ref", "")),
+                "secret_status": bool((cfg or {}).get("password")) or secret_status((cfg or {}).get("password_ref")),
+            }
             for name, cfg in envs.items()
         ]
     }
+
+
+@router.get("/environments/config")
+def list_environment_configs(principal: Principal = require_steward):
+    """Legacy non-secret environment config endpoint."""
+    envs = read_environments()
+    return {
+        "environments": [_legacy_config_view(name, cfg) for name, cfg in sorted(envs.items())],
+        "can_edit": principal.has_role("admin"),
+    }
+
+
+@router.put("/environments/config/{name}")
+def put_environment_config(
+    name: str,
+    body: EnvironmentConfigIn,
+    principal: Principal = require_admin,
+):
+    _validate_environment_name(name)
+    envs = read_environments()
+    envs[name] = _legacy_config_entry(body, envs.get(name))
+    write_environments(envs)
+    return _legacy_config_view(name, envs[name])
+
+
+@router.delete("/environments/config/{name}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_environment_config(name: str, principal: Principal = require_admin):
+    envs = read_environments()
+    if name not in envs:
+        raise HTTPException(status_code=404, detail=f"Environment {name!r} not found.")
+    del envs[name]
+    write_environments(envs)
 
 
 @router.post("/environments/{name}/test", status_code=status.HTTP_202_ACCEPTED)

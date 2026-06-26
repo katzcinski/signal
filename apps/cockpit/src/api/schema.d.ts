@@ -25,6 +25,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/environments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Environments
+         * @description All configured connection targets (admin-only, secret values hidden).
+         */
+        get: operations["list_environments_api_admin_environments_get"];
+        put?: never;
+        /** Create Environment */
+        post: operations["create_environment_api_admin_environments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/environments/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Environment */
+        put: operations["update_environment_api_admin_environments__name__put"];
+        post?: never;
+        /** Delete Environment */
+        delete: operations["delete_environment_api_admin_environments__name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/badge/{product}": {
         parameters: {
             query?: never;
@@ -549,10 +588,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Environment Config
-         * @description Editable environment config for the cockpit; never returns secret values.
+         * List Environment Configs
+         * @description Legacy non-secret environment config endpoint.
          */
-        get: operations["list_environment_config_api_environments_config_get"];
+        get: operations["list_environment_configs_api_environments_config_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -569,11 +608,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Upsert Environment Config
-         * @description Create or update a configured environment. Admin-only because it writes credentials.
-         */
-        put: operations["upsert_environment_config_api_environments_config__name__put"];
+        /** Put Environment Config */
+        put: operations["put_environment_config_api_environments_config__name__put"];
         post?: never;
         /** Delete Environment Config */
         delete: operations["delete_environment_config_api_environments_config__name__delete"];
@@ -613,19 +649,33 @@ export interface paths {
         put?: never;
         /**
          * Trigger Extract
-         * @description Extract inventory/lineage from Datasphere (when configured) and report counts.
+         * @description Extract inventory/lineage and report counts.
          *
-         *     Tier-2: when a live source (REST catalog or the @sap/datasphere-cli) is
-         *     configured, run the real extraction — pull objects with columns + CSN,
-         *     assemble the inventory, build the object + column lineage, and write the
-         *     Meridian-shaped snapshots. FastAPI runs this sync handler in a threadpool,
-         *     so the blocking I/O does not stall the event loop.
-         *
-         *     F5 fallback: with no connectivity configured (local mode), touch the
-         *     snapshot files to reset the mtime-based staleness clock. Either way the
-         *     response carries the new extraction timestamp for the staleness indicator.
+         *     FastAPI runs this sync handler in a threadpool, so the blocking I/O does not
+         *     stall the event loop. The response keeps the legacy top-level count fields
+         *     while also returning the richer status shape used by the Phase-1 admin UI.
          */
         post: operations["trigger_extract_api_extract_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/extract/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Extract Status
+         * @description Latest extract status for the platform-admin inventory tool.
+         */
+        get: operations["extract_status_api_extract_status_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -814,6 +864,113 @@ export interface paths {
          */
         get: operations["service_health_metrics_api_metrics_health_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/monitoring/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Monitoring Config
+         * @description ``enabled`` = ein Monitoring-Hub ist konfiguriert (steuert UI-Sichtbarkeit).
+         */
+        get: operations["monitoring_config_api_monitoring_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/monitoring/manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Manifest
+         * @description Soll-Zustand für das Provisioning-Skript: Identität + View-Name + Spalten
+         *     + vorgeschlagenes (überschreibbares) Projektions-SQL je Objekt.
+         */
+        get: operations["manifest_api_monitoring_manifest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/monitoring/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Shares
+         * @description Status je vorgemerktem Objekt — für das Cockpit.
+         */
+        get: operations["list_shares_api_monitoring_shares_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/monitoring/shares/{object_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Monitoring
+         * @description Objekt fürs Monitoring vormerken (Soll-Zustand). Kein Datasphere-Write —
+         *     das Provisioning übernimmt das Skript anhand des Manifests.
+         */
+        post: operations["request_monitoring_api_monitoring_shares__object_id__post"];
+        /**
+         * Remove Monitoring
+         * @description Aus dem Soll-Zustand entfernen. Das Skript droppt die verwaiste View beim
+         *     nächsten Reconcile (Manifest = Soll; was nicht drinsteht, wird abgeräumt).
+         */
+        delete: operations["remove_monitoring_api_monitoring_shares__object_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/monitoring/shares/{object_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Report Status
+         * @description Callback für das Provisioning-Skript: provisioned | error melden.
+         */
+        put: operations["report_status_api_monitoring_shares__object_id__status_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1063,6 +1220,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/objects/{object_id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Object Schedule
+         * @description The object's schedule, or null when scheduling is manual.
+         */
+        get: operations["get_object_schedule_api_objects__object_id__schedule_get"];
+        /**
+         * Upsert Object Schedule
+         * @description Set the object's scheduling mode (internal/external) and cadence.
+         */
+        put: operations["upsert_object_schedule_api_objects__object_id__schedule_put"];
+        post?: never;
+        /**
+         * Delete Object Schedule
+         * @description Back to manual scheduling for this object.
+         */
+        delete: operations["delete_object_schedule_api_objects__object_id__schedule_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/objects/{object_id}/timeseries": {
         parameters: {
             query?: never;
@@ -1111,6 +1296,40 @@ export interface paths {
         };
         /** Get Operation Events */
         get: operations["get_operation_events_api_operations__op_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Products */
+        get: operations["list_products_api_products_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/products/{product}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Product */
+        get: operations["get_product_api_products__product__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1311,6 +1530,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Schedules
+         * @description All schedules — the platform ops view across objects.
+         */
+        get: operations["list_schedules_api_schedules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/stream": {
         parameters: {
             query?: never;
@@ -1383,6 +1622,11 @@ export interface components {
         CheckDefOut: {
             /** Expect */
             expect: string;
+            /**
+             * Kind
+             * @default internal_gate
+             */
+            kind: string;
             /** Name */
             name: string;
             /**
@@ -1421,6 +1665,11 @@ export interface components {
              * @default
              */
             expect: string;
+            /**
+             * Kind
+             * @default internal_gate
+             */
+            kind: string;
             /** Name */
             name: string;
             /**
@@ -1647,6 +1896,60 @@ export interface components {
             /** User */
             user: string;
         };
+        /** EnvironmentIn */
+        EnvironmentIn: {
+            /**
+             * Encrypt
+             * @default true
+             */
+            encrypt: boolean;
+            /** Host */
+            host: string;
+            /**
+             * Password Ref
+             * @default
+             */
+            password_ref: string;
+            /**
+             * Port
+             * @default 443
+             */
+            port: number;
+            /**
+             * Schema
+             * @default
+             */
+            schema: string;
+            /** User */
+            user: string;
+            /**
+             * Validate Cert
+             * @default true
+             */
+            validate_cert: boolean;
+        };
+        /**
+         * ExtractIn
+         * @description Phase-1 trigger payload for the admin inventory tool.
+         */
+        ExtractIn: {
+            /** Environment */
+            environment?: string | null;
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+            /**
+             * Include Sql
+             * @default true
+             */
+            include_sql: boolean;
+            /** Profile */
+            profile?: string | null;
+            /** Spaces */
+            spaces?: string[];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1663,6 +1966,17 @@ export interface components {
             owner?: string | null;
             /** Status */
             status?: string | null;
+        };
+        /** LineageSubgraphOut */
+        LineageSubgraphOut: {
+            /** Edges */
+            edges: {
+                [key: string]: unknown;
+            }[];
+            /** Nodes */
+            nodes: {
+                [key: string]: unknown;
+            }[];
         };
         /** MuteIn */
         MuteIn: {
@@ -1827,6 +2141,98 @@ export interface components {
              * @default unknown
              */
             status: string;
+        };
+        /** ProductDetailOut */
+        ProductDetailOut: {
+            /** Findings */
+            findings: components["schemas"]["ProductFindingOut"][];
+            /** Inbound Sources */
+            inbound_sources: string[];
+            /** Interior */
+            interior: components["schemas"]["ProductInteriorOut"][];
+            /** Lifecycle */
+            lifecycle: string;
+            /** Own Health */
+            own_health: string;
+            /** Owners */
+            owners: string[];
+            /** Ports */
+            ports: components["schemas"]["ProductPortOut"][];
+            /** Product */
+            product: string;
+            subgraph: components["schemas"]["LineageSubgraphOut"];
+            /** Upstream Risk */
+            upstream_risk: components["schemas"]["ProductInboundDependencyOut"][];
+        };
+        /** ProductFindingOut */
+        ProductFindingOut: {
+            /** Detail */
+            detail: string;
+            /**
+             * Finding Type
+             * @enum {string}
+             */
+            finding_type: "dangling_port" | "contested" | "boundary_leak";
+            /** Object Id */
+            object_id: string;
+            /** Scope */
+            scope?: ("port" | "interior") | null;
+        };
+        /** ProductInboundDependencyOut */
+        ProductInboundDependencyOut: {
+            /** Compliance */
+            compliance?: string | null;
+            /** Current Version */
+            current_version?: string | null;
+            /** Pinned Version */
+            pinned_version: string;
+            /** Product */
+            product: string;
+            /** Upstream Breach */
+            upstream_breach: boolean;
+            /** Version Drift */
+            version_drift: boolean;
+        };
+        /** ProductInteriorOut */
+        ProductInteriorOut: {
+            /** Coverage Flag */
+            coverage_flag?: string | null;
+            /** Id */
+            id: string;
+            /** Layer */
+            layer?: string | null;
+            /** Role */
+            role?: string | null;
+        };
+        /** ProductListItem */
+        ProductListItem: {
+            /** Finding Count */
+            finding_count: number;
+            /** Lifecycle */
+            lifecycle: string;
+            /** Own Health */
+            own_health: string;
+            /** Owners */
+            owners: string[];
+            /** Port Count */
+            port_count: number;
+            /** Product */
+            product: string;
+            /** Upstream Risk Count */
+            upstream_risk_count: number;
+        };
+        /** ProductPortOut */
+        ProductPortOut: {
+            /** Compliance */
+            compliance?: string | null;
+            /** Dataset */
+            dataset: string;
+            /** Kind */
+            kind?: string | null;
+            /** Lifecycle */
+            lifecycle?: string | null;
+            /** Version */
+            version?: string | null;
         };
         /** ProfileRequest */
         ProfileRequest: {
@@ -2080,6 +2486,80 @@ export interface components {
              */
             execution_mode: string;
         };
+        /** ScheduleOut */
+        ScheduleOut: {
+            /**
+             * Created At
+             * @default
+             */
+            created_at: string;
+            /**
+             * Created By
+             * @default
+             */
+            created_by: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Environment */
+            environment: string;
+            /** Execution Mode */
+            execution_mode: string;
+            /** Interval Seconds */
+            interval_seconds: number;
+            /** Last Run At */
+            last_run_at?: string | null;
+            /** Last Run Id */
+            last_run_id?: string | null;
+            /** Last Status */
+            last_status?: string | null;
+            /** Mode */
+            mode: string;
+            /** Next Due At */
+            next_due_at: string;
+            /** Object Id */
+            object_id: string;
+            /** Schedule Id */
+            schedule_id: string;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /**
+         * ScheduleUpsertIn
+         * @description Per-object scheduling toggle.
+         *
+         *     mode=internal → Signal's poller runs the object every ``interval_seconds``.
+         *     mode=external → an outside orchestrator (Task Chain / cron → CLI) drives it;
+         *     Signal records runs but never fires the poller for it.
+         */
+        ScheduleUpsertIn: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Environment
+             * @default
+             */
+            environment: string;
+            /**
+             * Execution Mode
+             * @default auto
+             * @enum {string}
+             */
+            execution_mode: "auto" | "batch" | "isolated";
+            /**
+             * Interval Seconds
+             * @default 0
+             */
+            interval_seconds: number;
+            /**
+             * Mode
+             * @default internal
+             * @enum {string}
+             */
+            mode: "internal" | "external";
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -2121,6 +2601,146 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ActivityItem"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_environments_api_admin_environments_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_environment_api_admin_environments_post: {
+        parameters: {
+            query: {
+                name: string;
+            };
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvironmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_environment_api_admin_environments__name__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvironmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_environment_api_admin_environments__name__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -2194,6 +2814,13 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                 };
+            };
+            /** @description Dry-run operation started. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -2939,7 +3566,7 @@ export interface operations {
             };
         };
     };
-    list_environment_config_api_environments_config_get: {
+    list_environment_configs_api_environments_config_get: {
         parameters: {
             query?: never;
             header?: {
@@ -2971,7 +3598,7 @@ export interface operations {
             };
         };
     };
-    upsert_environment_config_api_environments_config__name__put: {
+    put_environment_config_api_environments_config__name__put: {
         parameters: {
             query?: never;
             header?: {
@@ -3080,7 +3707,46 @@ export interface operations {
             query?: {
                 environment?: string;
             };
-            header?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExtractIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    extract_status_api_extract_status_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3381,6 +4047,179 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    monitoring_config_api_monitoring_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    manifest_api_monitoring_manifest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    list_shares_api_monitoring_shares_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: {
+                            [key: string]: unknown;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    request_monitoring_api_monitoring_shares__object_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_monitoring_api_monitoring_shares__object_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_status_api_monitoring_shares__object_id__status_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3774,7 +4613,7 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3850,6 +4689,110 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RunListItem"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_object_schedule_api_objects__object_id__schedule_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_object_schedule_api_objects__object_id__schedule_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleUpsertIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_object_schedule_api_objects__object_id__schedule_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -3950,6 +4893,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_products_api_products_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductListItem"][];
+                };
+            };
+        };
+    };
+    get_product_api_products__product__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetailOut"];
                 };
             };
             /** @description Validation Error */
@@ -4279,6 +5273,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckResultOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_schedules_api_schedules_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleOut"][];
                 };
             };
             /** @description Validation Error */

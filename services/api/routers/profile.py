@@ -13,14 +13,19 @@ against the mock (which cannot produce meaningful statistics).
 """
 from __future__ import annotations
 
+import json
 import logging
+import threading
+import uuid
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from ..auth.provider import PrincipalDep
-from ..deps import get_environment, get_inventory
+from ..deps import StoreDep, get_environment, get_inventory
+from ..sse import make_progress_callback
 from ..settings import get_settings
 
 logger = logging.getLogger("dq_cockpit.profile")
@@ -102,11 +107,12 @@ def _maybe_add_sample_rows(result: dict[str, Any], cursor: Any, schema: str, tab
         )
 
 
-@router.post("/{object_id}/profile")
+@router.post("/{object_id}/profile", status_code=status.HTTP_202_ACCEPTED)
 def profile_object(
     object_id: str,
     principal: PrincipalDep,
     body: ProfileRequest = Body(default=ProfileRequest()),
+    store: StoreDep = ...,
     inventory: list[dict] = Depends(get_inventory),
 ):
     """Profile one object's columns over a live HANA connection.
@@ -135,63 +141,80 @@ def profile_object(
             detail="Profiling requires a configured environment with a live HANA connection.",
         )
 
-    from dq_core.connect.db_connection import get_connection
-    from dq_core.profile.heuristics import enrich_result_with_context
-    from dq_core.profile.pk_detection import (
-        analyze_composite_candidates,
-        rank_single_candidates,
-    )
-    from dq_core.profile.profiler import profile_table
-
     schema = env_cfg.get("schema") or obj.get("schema") or "LOCAL"  # [SCHEMA-MAP]
     table = obj.get("technicalName") or obj.get("name") or object_id
 
-    conn = None
-    try:
-        conn = get_connection(
-            host=env_cfg.get("host", ""),
-            port=int(env_cfg.get("port", 443)),
-            user=env_cfg.get("user", ""),
-            password=env_cfg.get("password", ""),
-            schema=schema,
+    op_id = str(uuid.uuid4())
+    if not store.begin_operation(op_id, "profile", created_by=principal.sub):
+        raise HTTPException(status_code=409, detail="Operation already exists.")
+
+    def _worker() -> None:
+        from dq_core.connect.db_connection import get_connection
+        from dq_core.profile.heuristics import enrich_result_with_context
+        from dq_core.profile.pk_detection import (
+            analyze_composite_candidates,
+            rank_single_candidates,
         )
-        cursor = conn.cursor()
+        from dq_core.profile.profiler import profile_table
 
-        result = profile_table(cursor, schema, table)
-        result["view"] = table  # heuristics.enrich_result_with_context keys off 'view'
-
-        ranked_single = rank_single_candidates(result["columns"])
-        exact_combos: list = []
-        ranked_composite: list = []
-        search_meta: dict = {}
-        if body.include_composite:
-            exact_combos, ranked_composite, search_meta = analyze_composite_candidates(
-                result["columns"], ranked_single, cursor, schema, table, max_cols=3
-            )
-
-        result["pk_candidates"] = {
-            "single": (result.get("pk_candidates") or {}).get("single", []),
-            "composite": [list(c) for c in exact_combos],
-            "ranked_single": ranked_single,
-            "ranked_composite": ranked_composite,
-            "search_meta": search_meta,
-        }
-
-        _maybe_add_sample_rows(result, cursor, schema, table, body)
-
+        callback = make_progress_callback(op_id, store)
+        conn = None
         try:
-            return enrich_result_with_context(result, obj)
-        except Exception:  # noqa: BLE001 — heuristics are an enhancement; never fail the profile
-            logger.warning("Heuristic enrichment failed for %s; returning base profile.", object_id, exc_info=True)
-            return result
-    except HTTPException:
-        raise
-    except RuntimeError as exc:
-        # Fail-closed connector errors (e.g. driver missing) → 503, message is safe.
-        raise HTTPException(status_code=503, detail=str(exc))
-    finally:
-        if conn is not None:
+            callback(f'Profiling fuer "{object_id}" wird vorbereitet ...')
+            conn = get_connection(
+                host=env_cfg.get("host", ""),
+                port=int(env_cfg.get("port", 443)),
+                user=env_cfg.get("user", ""),
+                password=env_cfg.get("password", ""),
+                schema=schema,
+                on_progress=callback,
+            )
+            cursor = conn.cursor()
+
+            callback(f'Profiliere "{schema}"."{table}" ...')
+            result = profile_table(cursor, schema, table, on_progress=callback)
+            result["view"] = table  # heuristics.enrich_result_with_context keys off 'view'
+
+            callback("Bewerte Single-Column-Key-Kandidaten ...")
+            ranked_single = rank_single_candidates(result["columns"])
+            exact_combos: list = []
+            ranked_composite: list = []
+            search_meta: dict = {}
+            if body.include_composite:
+                callback("Pruefe Composite-Key-Kandidaten ...")
+                exact_combos, ranked_composite, search_meta = analyze_composite_candidates(
+                    result["columns"], ranked_single, cursor, schema, table, max_cols=3, on_progress=callback
+                )
+
+            result["pk_candidates"] = {
+                "single": (result.get("pk_candidates") or {}).get("single", []),
+                "composite": [list(c) for c in exact_combos],
+                "ranked_single": ranked_single,
+                "ranked_composite": ranked_composite,
+                "search_meta": search_meta,
+            }
+
+            if body.include_samples:
+                callback("Sample Rows [PII-GATE] pruefen ...")
+            _maybe_add_sample_rows(result, cursor, schema, table, body)
+
             try:
-                conn.close()
-            except Exception:  # noqa: BLE001
-                pass
+                callback("Profiling-Ergebnis wird angereichert ...")
+                result = enrich_result_with_context(result, obj)
+            except Exception:  # noqa: BLE001 - heuristics are an enhancement; never fail the profile
+                logger.warning("Heuristic enrichment failed for %s; returning base profile.", object_id, exc_info=True)
+            store.finish_operation(op_id, "finished", result_json=json.dumps(result))
+        except RuntimeError as exc:
+            store.finish_operation(op_id, "error", error=str(exc))
+        except Exception:  # noqa: BLE001 - unexpected internals stay out of the API result
+            logger.warning("Profile operation failed for %s", object_id, exc_info=True)
+            store.finish_operation(op_id, "error", error="Profiling failed to complete.")
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:  # noqa: BLE001
+                    pass
+
+    threading.Thread(target=_worker, daemon=True).start()
+    return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={"op_id": op_id})

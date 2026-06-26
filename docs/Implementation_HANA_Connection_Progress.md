@@ -1,6 +1,6 @@
 # Implementation Plan — Realer HANA-Connection-Pfad + Connection-UI + Progress
 
-**Adressat:** Entwicklung · **Stand:** 2026-06-22 · **Modus:** sequentiell wie HANDOVER, jeder Schritt mit Acceptance, kein Merge bei rotem Gate.
+**Adressat:** Entwicklung · **Stand:** 2026-06-26 · **Modus:** sequentiell wie HANDOVER, jeder Schritt mit Acceptance, kein Merge bei rotem Gate.
 **Zweck:** Den hdbcli-Verbindungspfad **nachweisbar lauffähig** machen, eine **Connection-/Environment-Oberfläche mit Test-Funktion** bereitstellen und **überall, wo eine hdbcli-Connection geöffnet wird** (Run, Dry-Run/Preview, Profiling/Validation, Connection-Test) einen **Live-Progress** anzeigen.
 
 > Verwandt: [`Tooldokumentation.md`](Tooldokumentation.md) §6/§10 (ENV, Deployment) · [`REVIEW_Tool_v2_Status.md`](REVIEW_Tool_v2_Status.md) (Verification-only: realer HANA-Pfad, O6) · [`HANDOVER.md`](HANDOVER.md) §5 (O6 HanaResultStore).
@@ -15,20 +15,21 @@
 - **S-1/Secrets.** Credentials kommen über `password_ref` → `secrets.get_secret`; die UI sieht **nie** ein Passwort, nur einen `secret_status` (bool) und den Referenz-Namen.
 - **G4.** Jede API-Form-Änderung ⇒ `openapi-typescript` neu generieren, `git diff --exit-code`.
 
-## 1 — Ist-Zustand (verifiziert)
+## 1 — Ist-Zustand (verifiziert 2026-06-26)
 
-| Stelle | Datei | Connection | Progress heute |
+| Stelle | Datei | Connection | Progress |
 |---|---|---|---|
-| Run | `services/api/routers/objects.py:350` (`_run_thread`) | `get_connection(...)` | ✅ `make_progress_callback` → `dq_run_progress`, SSE |
-| Dry-Run / Preview | `services/api/routers/checks.py:87` | `get_connection(...)`, **synchron** | ❌ keiner |
-| Profiling / Validation | `services/api/routers/profile.py:151` | `get_connection(...)`, **synchron** | ❌ keiner |
+| Run | `services/api/routers/objects.py:373` (`_run_thread`) | `get_connection(on_progress=callback)` ✅ | ✅ store-Protocol + SSE (op_id-basiert) |
+| Dry-Run / Preview | `services/api/routers/checks.py:18` | `get_connection(...)`, **synchron** | ❌ keiner |
+| Profiling / Validation | `services/api/routers/profile.py:105` | `get_connection(...)`, **synchron** | ❌ keiner |
 | Connection-Test | — | existiert nicht | — |
 
-- **Connection-Helper:** `packages/dq_core/connect/db_connection.py` — fertig (Retry, `statementTimeout`, `encrypt`+`sslValidateCertificate`, fail-closed). Emittiert **keine** Progress-Zeilen; öffnet **vor** `run_checks`, daher ist „Verbinde…/Verbunden" unsichtbar.
-- **Progress-Kanal:** `services/api/sse.py` — `make_progress_callback(run_id, store)` schreibt via rohem `sqlite3` in `dq_run_progress`; `sse_generator(db_path, run_id)` pollt `dq_run_progress` + `dq_runs.run_state`. **SQLite-hartverdrahtet** und **an `run_id`/`dq_runs` gekoppelt** — für Nicht-Run-Operationen kein Terminierungssignal, für HanaStore kein gültiger `db_path`.
-- **Environments:** `deps.get_environment(name)` (host/port/schema + `password_ref`→`secrets.get_secret`); `GET /api/environments` liefert nur `name`+`schema` (nie Creds). **Kein** Test-/Status-Endpoint.
-- **Result-Store HANA:** `packages/dq_core/store/hana_store.py` = Stub; `deps.get_store()` wirft bei `STORE_BACKEND=hana`.
-- **Frontend:** `store/sseStore.ts` (EventSource auf `/api/stream`), `api/runs.ts::useRunStream`, `components/LiveRunPanel.tsx`, `RunTriggerDialog.tsx`, `ObjectProfilePanel.tsx`, `ContractWorkbench` DryRunPanel. Kein Connection-Screen, kein Progress in Dry-Run/Profile.
+- **Connection-Helper:** `packages/dq_core/connect/db_connection.py` — ✅ vollständig (Retry, `statementTimeout`, `encrypt`+`sslValidateCertificate`, fail-closed). `on_progress`-Callback bereits integriert (Verbinde/Verbunden/Retry-Zeilen). `DbConnection`/`DbCursor` als `runtime_checkable Protocol` definiert (Z. 25–42). `check_connection()` vollständig implementiert (Z. 169–277).
+- **Progress-Kanal:** `services/api/sse.py` — ✅ generalisiert: `make_progress_callback(op_id, store)` schreibt via `store.append_progress` (kein raw sqlite3); `sse_generator(store, stream_id)` liest via `store.get_progress`/`get_operation`, unterstützt beliebige `op_id` (nicht nur `run_id`). Endpoints `GET /api/operations/{op_id}/events` + `GET /api/operations/{op_id}` vorhanden.
+- **Store-Protocol:** `dq_core/store/base.py` — ✅ alle Operation-Methoden definiert (`append_progress`, `get_progress`, `begin_operation`, `finish_operation`, `get_operation`). `sqlite_store.py` vollständig implementiert. Migration `008_operations.sql` existiert (inkl. `009_schedules.sql`).
+- **Environments:** `deps.get_environment(name)` ✅ (host/port/schema + `password_ref`→`secrets.get_secret`). `GET /api/environments` in `routers/environments.py` — kein `secret_status`, kein maskierter `host`, **kein** Test-/Status-Endpoint.
+- **Result-Store HANA:** `packages/dq_core/store/hana_store.py` = Stub (alle Methoden `raise NotImplementedError`); `deps.get_store()` wirft `RuntimeError` bei `STORE_BACKEND=hana`. `RESULTS_ENVIRONMENT` fehlt in `settings.py`.
+- **Frontend:** `store/sseStore.ts` (EventSource auf globalem `/api/stream`, nicht parametrisiert), `api/runs.ts::useRunStream`, `components/LiveRunPanel.tsx` vorhanden. Kein `useOperationStream`, kein `OperationProgress.tsx`, kein Connections-Screen, kein Progress in Dry-Run/Profile.
 
 ## 2 — Zielbild
 
@@ -50,43 +51,35 @@
 
 ---
 
-## WS A — Connection-Layer: Test + Progress (Voraussetzung)
+## WS A — Connection-Layer: Test + Progress ✅ Erledigt
 
 **A1 `ConnectionProtocol` + `check_connection`** `dq_core/connect/db_connection.py`
-- Typing-`Protocol` `DbConnection`/`DbCursor` (`cursor()`, `execute(sql, params=None)`, `fetchone/fetchmany/fetchall`, `description`, `close`) — dokumentiert, was Engine/Profiler erwarten; `MockConnection` und hdbcli erfüllen es.
-- `check_connection(host, port, user, password, schema, *, on_progress=None) -> dict` — öffnet via `get_connection`, führt `SELECT 1 FROM DUMMY` + `SELECT VERSION FROM M_DATABASE` (oder `SELECT * FROM SYS.M_DATABASE`) aus, optional `SELECT TOP 0 * FROM "<schema>"."<probe>"` zur Schema-Sichtbarkeit; liefert `{ok, latency_ms, server_version, schema_visible, error}`. Fehler werden in eine **sichere** Meldung übersetzt (kein Stacktrace, S-14).
+- `DbConnection`/`DbCursor` als `runtime_checkable Protocol` ✅ (Z. 25–42)
+- `check_connection(host, port, user, password, schema, *, on_progress=None) -> dict` ✅ (Z. 169–277): `SELECT 1 FROM DUMMY` + `SELECT VERSION FROM M_DATABASE`, Schema-Sichtbarkeit, sichere Fehlermeldungen (S-14)
 
-**A2 `get_connection` instrumentieren** *(additiv, optional)*
-- Optionaler Parameter `on_progress: Callable[[str], None] | None = None`. Vor `dbapi.connect`: `on_progress("Verbinde mit {host}:{port} (Schema {schema})…")`; nach Erfolg `on_progress("Verbunden (HANA {server_version})")`; im Retry-Zweig `on_progress("Transienter Verbindungsfehler — Versuch {n}/{max}…")`. **Kein** Import aus `services/` (G7).
+**A2 `get_connection` instrumentieren** ✅
+- `on_progress: ProgressCallback | None` integriert (Z. 110): Verbinde-/Verbunden-/Retry-Zeilen vor/nach `dbapi.connect`; kein `services/`-Import (G7)
 
-*Acceptance A:* Unit-Test mit einem hdbcli-Double (recorded cursor): `check_connection` liefert `ok=True`+`server_version`; bei simuliertem Auth-Fehler `ok=False`+sichere Message, **kein** Retry; bei transientem Marker Retry mit Backoff. `MockConnection`/Double erfüllen `DbConnection` (`isinstance` via `runtime_checkable`).
+*Acceptance A: erfüllt.* Unit-Tests prüfen `check_connection` mit hdbcli-Double; `MockConnection` erfüllt das Protocol.
 
 ---
 
-## WS B — Generischer Operation-/Progress-Kanal (store-getrieben)
+## WS B — Generischer Operation-/Progress-Kanal (store-getrieben) ✅ Erledigt
 
-**B1 Migration 008** `packages/dq_core/store/migrations/008_operations.sql`
-```sql
-CREATE TABLE IF NOT EXISTS dq_operations (
-  op_id TEXT PRIMARY KEY, kind TEXT NOT NULL,           -- run | dry_run | profile | connection_test
-  state TEXT NOT NULL DEFAULT 'running',                -- running | finished | error
-  started_at TEXT, finished_at TEXT,
-  result_json TEXT, error TEXT
-);
--- dq_run_progress wird wiederverwendet: run_id trägt jetzt eine beliebige op_id (Log bleibt schemagleich).
-```
-Idempotent, SQLite + HANA-Dialektvariante (siehe WS E).
+**B1 Migration 008** `packages/dq_core/store/migrations/008_operations.sql` ✅
+- `dq_operations` + `dq_progress`-Tabellen vorhanden (aktuell neueste Migration: `009_schedules.sql`). HANA-Dialektvariante fehlt noch (→ WS E1).
 
-**B2 Store-Protocol erweitern** `dq_core/store/base.py` + `sqlite_store.py` (+ `hana_store.py` WS E)
-- `append_progress(op_id, line)`, `get_progress(op_id, after_id)`, `begin_operation(op_id, kind)`, `finish_operation(op_id, state, result_json=None, error=None)`, `get_operation(op_id)`.
-- **Damit verschwindet der rohe `sqlite3`-Zugriff aus `sse.py`** — Progress läuft über das Protocol und ist HANA-tauglich (G7 bleibt: Protocol lebt in `dq_core`, kein FastAPI-Import).
+**B2 Store-Protocol erweitern** ✅
+- `dq_core/store/base.py`: alle 5 Methoden im Protocol (Z. 30–44)
+- `sqlite_store.py`: vollständig implementiert (Z. 241–306)
+- Roher `sqlite3`-Zugriff aus `sse.py` entfernt — Progress läuft über das Protocol (G7 eingehalten)
 
-**B3 SSE generalisieren** `services/api/sse.py` + `routers/stream.py`
-- `sse_generator(store, stream_id)` liest Progress über `store.get_progress`; den Terminalzustand aus `dq_runs` **oder** `dq_operations` (Helper `_stream_state(store, id)`). Terminal-Event trägt bei Operationen die `result_json`-Payload (`{"type":"finished", "result": …}`).
-- `make_progress_callback(op_id, store)` ruft `store.append_progress` (statt rohem sqlite3).
-- Endpoints: `/api/stream?run_id=` bleibt (Rückwärtskompat); zusätzlich `GET /api/operations/{op_id}/events` (SSE) + `GET /api/operations/{op_id}` (Poll-Fallback, inkl. Ergebnis).
+**B3 SSE generalisieren** ✅ `services/api/sse.py`
+- `sse_generator(store, stream_id)` liest via `store.get_progress`/`get_operation`; Terminalzustand aus `dq_runs` oder `dq_operations`
+- `make_progress_callback(op_id, store)` nutzt `store.append_progress`
+- Endpoints vorhanden: `/api/stream?run_id=` (Rückwärtskompat) + `GET /api/operations/{op_id}/events` + `GET /api/operations/{op_id}`
 
-*Acceptance B:* Eine Operation ohne `dq_runs`-Zeile streamt Progress und terminiert sauber mit `finished`+Payload; Polling liefert identischen Inhalt; zweiter Worker (zweite Store-Instanz, gleiche DB) sieht denselben Stream (F2).
+*Acceptance B: erfüllt.*
 
 ---
 
@@ -94,16 +87,16 @@ Idempotent, SQLite + HANA-Dialektvariante (siehe WS E).
 
 Gemeinsames Muster (wie der bestehende Run): Endpoint legt `op_id` an (`begin_operation`), startet Hintergrund-Thread, gibt sofort `202 {op_id}` zurück; der Thread bindet `{schema}`, öffnet die Connection **mit `on_progress=make_progress_callback(op_id, store)`**, führt aus, schreibt `finish_operation`.
 
-**C1 Run** `objects.py:_run_thread` — Connection-Phasen ergänzen: `on_progress` an `get_connection` durchreichen (eine Zeile „Verbinde…/Verbunden" vor `run_checks`). Sonst unverändert.
+**C1 Run** ✅ Erledigt — `objects.py:_run_thread` (Z. 373–398) übergibt bereits `on_progress=callback` an `get_connection`; Connection-Phasen erscheinen im Stream.
 
-**C2 Dry-Run / Preview** `routers/checks.py`
+**C2 Dry-Run / Preview** `routers/checks.py` (aktuell synchron, Z. 18–137)
 - `POST /checks/{dataset}/dry-run` → `202 {op_id}` (statt synchronem Ergebnis). Thread: validate (G1) → compile → `get_connection(on_progress=…)` → `run_checks(..., on_progress=callback, results_db=None)` → `finish_operation(op_id, "finished", result_json=<summary>)`. Der `compile_only`-Pfad (kein Environment) bleibt **synchron** (kein Connection-Open, kein Progress nötig).
 - Per-Check-Progress kommt **gratis** aus dem vorhandenen `on_progress` von `run_checks`.
 
-**C3 Profiling / Validation** `routers/profile.py`
+**C3 Profiling / Validation** `routers/profile.py` (aktuell synchron, Z. 105–197)
 - `POST /objects/{id}/profile` → `202 {op_id}`. Thread: `get_connection(on_progress=…)` → Progress je Phase: „Profiliere Spalten…", „PK-Kandidaten (composite)…", „Sample Rows [PII-GATE]…" → `finish_operation` mit dem Profil-Result. `profile_table`/`analyze_composite_candidates` bekommen einen optionalen `on_progress`-Parameter (additiv) für „Spalte k/n".
 
-**C4 Connection-Test** `routers/extract.py` (oder neuer `routers/connections.py`)
+**C4 Connection-Test** `routers/environments.py` (dort leben bereits alle anderen Environment-Endpoints)
 - `POST /api/environments/{name}/test` → `202 {op_id}`. Thread: `get_environment(name)` → `check_connection(..., on_progress=…)` → `finish_operation` mit `{ok, latency_ms, server_version, schema_visible}`. `[AUTHZ]`: steward+.
 - `GET /api/environments` zusätzlich `secret_status` (aus `secrets.secret_status(password_ref)`) + `host` maskiert (`***.example.com`) — nie Passwort.
 
@@ -142,7 +135,7 @@ Gemeinsames Muster (wie der bestehende Run): Endpoint legt `op_id` an (`begin_op
 
 **E2 `HanaStore`** `store/hana_store.py` — alle `ResultStoreProtocol`-Methoden via hdbcli implementieren (inkl. `append_progress`/`get_progress`/`*_operation` aus WS B, `try_begin_run`/Run-Guard, `get_sla`, Heatmap/Trend/Series). Connection + Ziel-Schema aus dem Datasphere-DB-User-Environment (D2).
 
-**E3 `deps.get_store()`** baut bei `STORE_BACKEND=hana` den `HanaStore` (Connection + Open-SQL-Schema auflösen) statt zu werfen.
+**E3 `deps.get_store()`** baut bei `STORE_BACKEND=hana` den `HanaStore` (Connection + Open-SQL-Schema auflösen) statt zu werfen. Zusätzlich: `RESULTS_ENVIRONMENT`-Eintrag in `services/api/settings.py` ergänzen (noch nicht vorhanden).
 
 **E4 Re-Consumption (Doku, kein Code):** Damit die Result-Tabellen in Datasphere konsumierbar sind, muss der Space das Open SQL Schema als Quelle hinzufügen / die Tabellen importieren — ein Deployment-/Konfig-Schritt. In `Tooldokumentation.md` §10 festhalten.
 
@@ -180,17 +173,18 @@ Gemeinsames Muster (wie der bestehende Run): Endpoint legt `op_id` an (`begin_op
 
 ## Sequenz & Aufwand
 
-| WS | Inhalt | hängt ab von | Aufwand (PT) |
-|----|--------|--------------|--------------|
-| A | Connection-Test + `on_progress`-Instrumentierung | — | 1–1,5 |
-| B | Operation-/Progress-Kanal (Migration 008, Store-Protocol, SSE generalisieren) | A | 2–3 |
-| C | Run/Dry-Run/Profile/Test instrumentieren (async op-Muster) | B | 2–3 |
-| D | FE: `useOperationStream`, `OperationProgress`, Connections-Screen, Dialoge | C | 3–4 |
-| E | `HanaResultStore` (O6) + HANA-Migrationen | B (Protocol) | 4–6 |
-| F | Smoke-Harness, DB-User-Härtung, Doku | A–E | 1,5–2 |
-| G | Quarantäne/Reject-Store (optional) | E | 2–3 |
+| WS | Inhalt | hängt ab von | Aufwand (PT) | Status |
+|----|--------|--------------|--------------|--------|
+| A | Connection-Test + `on_progress`-Instrumentierung | — | ~~1–1,5~~ | ✅ Erledigt |
+| B | Operation-/Progress-Kanal (Migration 008, Store-Protocol, SSE generalisieren) | A | ~~2–3~~ | ✅ Erledigt |
+| C1 | Run mit Connection-Phasen | B | ~~0,5~~ | ✅ Erledigt |
+| C2–C4 | Dry-Run/Profile async + Connection-Test-Endpoint | B | 1,5–2 | ⬜ offen |
+| D | FE: `useOperationStream`, `OperationProgress`, Connections-Screen, Dialoge | C | 3–4 | ⬜ offen |
+| E | `HanaResultStore` (O6) + HANA-Migrationen + `RESULTS_ENVIRONMENT` | B (Protocol) | 4–6 | ⬜ offen |
+| F | Smoke-Harness, DB-User-Härtung, Doku | C–E | 1,5–2 | ⬜ offen |
+| G | Quarantäne/Reject-Store (optional) | E | 2–3 | ⬜ optional |
 
-**Brutto ≈ 13,5–19,5 PT** (ohne WS G; mit Quarantäne +2–3 PT). A→B→C→D ist der kritische Pfad für „Connection-UI + Progress überall". E (Result-Store) ist für den **reinen Lese-/Dry-Run-Pfad** entkoppelt (SQLite-Result-Store genügt dort) und kann parallel laufen — wird aber für das **Full-Customer-Deployment** gebraucht.
+**Verbleibend ≈ 10–14 PT** (ohne WS G; mit Quarantäne +2–3 PT). WS A, B und C1 sind abgeschlossen — rund 4–5 PT bereits investiert. Kritischer Pfad C2–C4 → D; E läuft parallel.
 
 ## Definition of Done
 
