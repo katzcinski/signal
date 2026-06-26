@@ -25,7 +25,7 @@ sind gesetzt und werden nicht neu verhandelt.
 | UX-F6 | Token-Disziplin Spacing/Radius + geteilte Primitives | ◑ Teilweise | Primitives + `--r-full`; Radius projektweit aus Tokens. Padding/Gap-Inline-Sweep offen |
 | UX-F7 | Restpolitur (Breadcrumbs, Governance Loading/Error, Relativzeit) | ✅ Done | — |
 | UX-F8 | Button-Interaktionszustände (Hover/Active/Disabled-Kontrast) | ✅ Done | Globale `button`-Regeln (index.css) + `Button`-Disabled-Tone-Shift; `Button.test.tsx` |
-| UX-F9 | CSS-Micro-polish (::selection, FF-Scrollbar, Header-Shadow, Row-Hover) | ◻ Offen | — |
+| UX-F9 | CSS-Micro-polish (::selection, FF-Scrollbar, Header-Shadow, Row-Hover) | ✅ Done | index.css (FF-Scrollbar, `.tbl-row` Hover/:focus-within), `Table` Sticky-Header-Shadow |
 | UX-N1 | Freshness-/Volume-Zeitreihen (Band, Anomalie-Marker) | ✅ Done | Tooldoku §8 („Verlauf"-Tab) |
 | UX-N2 | Alerting & Notification-Routing | ✅ Done | Tooldoku §5/§8 (`/notifications`, Migration 005/007 `match_kind`) |
 | UX-N3 | Rollen-Landing „My work" | ✅ Done | Tooldoku §8 (`/my`) |
@@ -43,8 +43,8 @@ sind gesetzt und werden nicht neu verhandelt.
 | UX-N15 | Activity-/Audit-Feed | ✅ Done | Tooldoku §5 (`/api/activity`) |
 
 **Offen (4):** UX-F6 (◑ teilweise — Radius/Primitives erledigt, Padding/Gap-Sweep
-offen), UX-F9 (UI-Politur/Wartbarkeit, additiv) · UX-N6 (teilbarer Report) ·
-UX-N7 (Spalten-Lineage, blockiert) · UX-N9 (Schema-Drift-Screen).
+offen) · UX-N6 (teilbarer Report) · UX-N7 (Spalten-Lineage, blockiert) ·
+UX-N9 (Schema-Drift-Screen).
 
 ---
 
@@ -71,10 +71,13 @@ kodiert Disabled jetzt über einen Farbton-Shift (`--bg-2`/`--fg-3`/`--line`) st
 *Acceptance:* jeder `<button>` zeigt sichtbaren Hover mit Transition; Disabled
 ohne Tooltip erkennbar. ✓
 
-**UX-F9 CSS-Micro-polish**
-`::selection` mit Accent-Farbe; Firefox-Scrollbar slim+dunkel (`scrollbar-color`/
-`scrollbar-width`); sticky Table-Header `box-shadow: 0 1px 0 var(--line-2)` beim
-Scrollen; Row-Hover ≥100 ms CSS-Transition + `:focus-within`.
+**UX-F9 CSS-Micro-polish** — ✅ Done
+`::selection` mit Accent-Farbe lag bereits vor (`--selection-bg/-fg`, theme-bridged).
+Ergänzt: Firefox-Scrollbar slim+getönt (`scrollbar-width: thin` + `scrollbar-color`
+auf `html`, beide vererbt → wirkt überall); sticky Table-Header mit
+`box-shadow: 0 1px 0 var(--line-2)`; Row-Hover/`:focus-within` jetzt als CSS-State
+(`.tbl-row`, 120 ms Transition) statt JS-`onMouseEnter/Leave` — Tastatur-Fokus in
+einer Zelle hebt die Zeile mit hervor.
 
 **UX-N6 Teilbarer Quality-Report / Data-Docs** *(GX-Vorbild)*
 Read-only Run-Report als Link/PDF für Nicht-Nutzer. `BadgeEmbed`/`GET /api/badge/{p}`

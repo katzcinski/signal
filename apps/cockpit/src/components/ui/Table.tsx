@@ -76,6 +76,8 @@ export function Table<T>({
                 fontSize: 10, fontWeight: 600, color: active ? 'var(--fg-2)' : 'var(--fg-3)',
                 textTransform: 'uppercase', letterSpacing: '0.06em',
                 borderBottom: '1px solid var(--line)', width: c.width,
+                // UX-F9: subtle edge so the stuck header separates from rows scrolling under it.
+                boxShadow: '0 1px 0 var(--line-2)',
                 cursor: c.sortable ? 'pointer' : 'default', userSelect: 'none', whiteSpace: 'nowrap',
               }}
             >
@@ -90,6 +92,8 @@ export function Table<T>({
   const renderRow = (row: T) => (
     <tr
       key={rowKey(row)}
+      // UX-F9: hover + :focus-within handled in CSS (.tbl-row), not JS.
+      className="tbl-row"
       onClick={() => onRowClick?.(row)}
       // A11y: clickable rows are keyboard-operable (Enter/Space).
       role={onRowClick ? 'button' : undefined}
@@ -98,10 +102,7 @@ export function Table<T>({
       style={{
         borderBottom: '1px solid var(--line)',
         cursor: onRowClick ? 'pointer' : undefined,
-        transition: 'background var(--t)',
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-2)'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; }}
     >
       {columns.map(c => (
         <td key={c.key} style={{
