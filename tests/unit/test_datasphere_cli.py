@@ -328,6 +328,41 @@ def test_check_login_false_when_both_checks_fail(monkeypatch):
     assert cli.check_login() is False
 
 
+def test_check_login_uses_later_probe_when_earlier_unsupported(monkeypatch):
+    """An existing login is detected even if early probe subcommands are unknown.
+
+    Tolerance across @sap/datasphere-cli versions: the first probes return a
+    generic non-zero (unknown subcommand), a later one (e.g. whoami) succeeds.
+    """
+    cli = _cli(monkeypatch)
+    results = [
+        _completed(returncode=1, stderr="unknown command 'secrets check'"),
+        _completed(returncode=1, stderr="unknown command 'secrets show'"),
+        _completed(returncode=1, stderr="unknown flag --check"),
+        _completed(returncode=0, stdout="logged in as svc_user"),
+    ]
+    _patch_run(monkeypatch, results)
+    assert cli.check_login() is True
+
+
+def test_host_param_appended_when_env_unset(monkeypatch):
+    monkeypatch.delenv("DSP_CLI_HOST", raising=False)
+    cli = _cli(monkeypatch, host="tenant.example")
+    rec = _patch_run(monkeypatch, _completed(stdout="[]"))
+    cli.run_cli_json(["spaces", "list"])
+    assert rec.calls[0]["command"][-2:] == ["--host", "tenant.example"]
+
+
+def test_env_host_wins_over_host_param(monkeypatch):
+    monkeypatch.setenv("DSP_CLI_HOST", "env.tenant")
+    cli = _cli(monkeypatch, host="param.tenant")
+    rec = _patch_run(monkeypatch, _completed(stdout="[]"))
+    cli.run_cli_json(["spaces", "list"])
+    cmd = rec.calls[0]["command"]
+    assert cmd.count("--host") == 1
+    assert "env.tenant" in cmd and "param.tenant" not in cmd
+
+
 def test_check_login_propagates_auth_error(monkeypatch):
     cli = _cli(monkeypatch)
     _patch_run(monkeypatch, _completed(returncode=1, stderr="401 Unauthorized"))

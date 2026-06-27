@@ -1,6 +1,8 @@
 """Extract / inventory endpoints (WS1-2, WS2-6).
-F5: Extrakt-Aktualität — POST /api/extract setzt mtime, GET /api/lineage liefert
-stale-Flag anhand des konfigurierbaren Schwellwerts (EXTRACT_STALE_DAYS)."""
+F5: Extrakt-Aktualität — GET /api/lineage liefert stale-Flag anhand des
+konfigurierbaren Schwellwerts (EXTRACT_STALE_DAYS). Ohne konfigurierten
+Live-Connector ist POST /api/extract ein ehrlicher No-Op (status=skipped): es
+fasst den lokalen/Demo-Snapshot NICHT an und meldet keinen Erfolg."""
 import os
 import time
 
@@ -13,13 +15,21 @@ def test_inventory_lists_datasets(api_client):
     assert any(d["id"] == "DS_SALES_ORDERS" for d in data["datasets"])
 
 
-def test_extract_reports_counts(api_client):
+def test_extract_skipped_without_live_source(api_client):
+    """Without a configured CLI/REST source the trigger is an honest no-op.
+
+    It must report status=skipped (never 'succeeded') and source='none' so the
+    UI does not present the existing local/demo snapshot as a fresh extraction.
+    The on-disk snapshot counts are still echoed for context.
+    """
     resp = api_client.post("/api/extract")
     assert resp.status_code == 200
     data = resp.json()
+    assert data["status"] == "skipped"
+    assert data["source"] == "none"
+    assert data["extracted_at"] is None
     assert data["inventory_items"] == 1
     assert data["lineage_nodes"] == 1
-    assert data["status"] == "succeeded"
     assert data["counts"]["inventory_items"] == 1
 
 
@@ -37,12 +47,12 @@ def test_extract_trigger_requires_admin(api_client):
     assert resp.status_code == 403
 
 
-def test_extract_updates_file_mtime(api_client, tmp_path, monkeypatch):
-    """F5: POST /api/extract resets the staleness clock by touching snapshot files."""
-    import services.api.settings as settings_mod
-    import services.api.deps as deps_mod
+def test_extract_leaves_snapshot_untouched_without_live_source(api_client):
+    """Without a live connector POST /api/extract must NOT touch snapshot files.
 
-    # Use the fixture files already created by the api_client fixture
+    Re-stamping the mtime would launder the stale local/demo snapshot into
+    looking like a fresh extraction — exactly the behaviour we removed.
+    """
     import services.api.settings as sm
     settings = sm.get_settings()
     lineage_path = settings.lineage_file
@@ -54,10 +64,11 @@ def test_extract_updates_file_mtime(api_client, tmp_path, monkeypatch):
 
     resp = api_client.post("/api/extract")
     assert resp.status_code == 200
-    assert "extracted_at" in resp.json()
+    assert resp.json()["status"] == "skipped"
+    assert resp.json()["extracted_at"] is None
 
     new_mtime = os.path.getmtime(lineage_path)
-    assert new_mtime > old_mtime, "POST /api/extract must update the lineage file mtime"
+    assert new_mtime == old_mtime, "skipped extract must leave the snapshot mtime untouched"
 
 
 def test_lineage_stale_flag_when_old(api_client, monkeypatch, tmp_path):
@@ -78,8 +89,12 @@ def test_lineage_stale_flag_when_old(api_client, monkeypatch, tmp_path):
     assert data["extracted_at"] is not None
 
 
-def test_lineage_not_stale_after_extract(api_client):
-    """F5: After POST /api/extract the stale flag goes back to False."""
+def test_lineage_stays_stale_after_skipped_extract(api_client):
+    """F5: A skipped (no-source) extract does NOT clear the stale flag.
+
+    Old/demo data is honestly reported as stale; only a real live extraction
+    (which rewrites the snapshot) refreshes the staleness clock.
+    """
     import services.api.settings as sm
     settings = sm.get_settings()
 
@@ -88,10 +103,10 @@ def test_lineage_not_stale_after_extract(api_client):
     old_ts = time.time() - (settings.extract_stale_days + 5) * 86400
     os.utime(lineage_path, (old_ts, old_ts))
 
-    # Trigger extract → resets mtime
-    assert api_client.post("/api/extract").status_code == 200
+    # Trigger extract with no live source → skipped, snapshot untouched
+    assert api_client.post("/api/extract").json()["status"] == "skipped"
 
     resp = api_client.get("/api/lineage")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["stale"] is False, f"Expected stale=False after extract, got: {data}"
+    assert data["stale"] is True, f"Expected stale=True after skipped extract, got: {data}"

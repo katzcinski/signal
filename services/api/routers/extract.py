@@ -187,9 +187,12 @@ def trigger_extract(
     FastAPI runs this sync handler in a threadpool, so the blocking I/O does not
     stall the event loop. The response keeps the legacy top-level count fields
     while also returning the richer status shape used by the Phase-1 admin UI.
-    """
-    import os
 
+    When no live source (CLI/REST catalog) is configured ``run_extraction``
+    returns ``None``. In that case we report the run honestly as ``skipped`` and
+    leave the on-disk snapshot untouched — we never re-stamp the local/demo
+    snapshot as a fresh successful extraction (that would mask stale data).
+    """
     from ..extraction import run_extraction
     from ..settings import get_settings
 
@@ -245,25 +248,43 @@ def trigger_extract(
             "lineage_edges": counts["lineage_edges"],
         }
 
-    warnings: list[str] = []
-    if result is not None:
-        source = "datasphere"
-        counts = {
-            "lineage_nodes": result["lineage_nodes"],
-            "lineage_edges": result["lineage_edges"],
-            "inventory_items": result["inventory_items"],
-            "column_edges": result["column_edges"],
+    if result is None:
+        # No live extraction source configured. Do NOT touch the snapshot mtimes
+        # or claim success — that would launder the local/demo snapshot into
+        # looking like a fresh run. Report it as skipped and leave disk as-is.
+        finished_at = _utc_now_iso()
+        _LATEST_STATUS = _status_payload(
+            job_id=job_id,
+            status="skipped",
+            environment=selected_environment,
+            profile=profile,
+            spaces=spaces,
+            source="none",
+            current_step="no_live_source",
+            counts=counts,
+            settings=settings,
+            started_at=started_at,
+            updated_at=finished_at,
+            finished_at=finished_at,
+            warnings=["No live extraction source configured; nothing was extracted."],
+        )
+        return {
+            **_LATEST_STATUS,
+            "extracted_at": None,
+            "source": "none",
+            **counts,
         }
-    else:
-        warnings = ["No live extraction source configured; refreshed local snapshot timestamps."]
 
-    now_ts = datetime.now(timezone.utc).timestamp()
-    for fpath in (settings.inventory_file, settings.lineage_file):
-        path = Path(fpath)
-        if path.exists():
-            os.utime(path, (now_ts, now_ts))
-
-    extracted_at = datetime.fromtimestamp(now_ts, tz=timezone.utc).isoformat()
+    # Live extraction succeeded — run_extraction has just (re)written both
+    # snapshot files, so their mtime is already current.
+    source = "datasphere"
+    counts = {
+        "lineage_nodes": result["lineage_nodes"],
+        "lineage_edges": result["lineage_edges"],
+        "inventory_items": result["inventory_items"],
+        "column_edges": result["column_edges"],
+    }
+    extracted_at = _snapshot_timestamp(settings) or _utc_now_iso()
     _LATEST_STATUS = _status_payload(
         job_id=job_id,
         status="succeeded",
@@ -277,7 +298,6 @@ def trigger_extract(
         started_at=started_at,
         updated_at=extracted_at,
         finished_at=extracted_at,
-        warnings=warnings,
     )
     return {
         **_LATEST_STATUS,

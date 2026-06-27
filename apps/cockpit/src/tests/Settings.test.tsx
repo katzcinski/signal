@@ -19,6 +19,12 @@ vi.mock('@/api/environments', () => {
   };
 });
 
+// The Datasphere connector panel has its own react-query data flow; stub it so
+// these HANA-connection tests stay focused and need no QueryClientProvider.
+vi.mock('@/components/ConnectorPanel', () => ({
+  ConnectorPanel: () => null,
+}));
+
 import Settings from '@/pages/Settings';
 
 const baseConfig = (overrides: Partial<AdminEnvironmentsResponse> = {}): AdminEnvironmentsResponse => ({

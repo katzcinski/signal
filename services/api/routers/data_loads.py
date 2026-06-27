@@ -85,8 +85,13 @@ def _to_ms(raw: dict) -> int | None:
 
 
 def _resolve_space(space: str | None) -> str:
-    settings = get_settings()
-    return space or settings.datasphere_space_id or ""
+    # Effective space: explicit query arg → env → connector.yml (UI). Mirrors the
+    # client resolution in datasphere.get_client so a space configured via the
+    # connector UI applies to data-loads too (not only DATASPHERE_SPACE_ID).
+    if space:
+        return space
+    from ..connector_config import effective_space_id
+    return effective_space_id(get_settings())
 
 
 @router.get("/data-loads", response_model=list[DataLoadOut])

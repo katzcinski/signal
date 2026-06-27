@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { t } from '@/i18n/de';
 import { api } from './client';
 
-export type ExtractStatusValue = 'idle' | 'queued' | 'running' | 'succeeded' | 'partial' | 'failed';
+export type ExtractStatusValue = 'idle' | 'queued' | 'running' | 'succeeded' | 'partial' | 'skipped' | 'failed';
 
 export interface ExtractCounts {
   inventory_items?: number;
@@ -57,8 +57,12 @@ export function useStartExtract() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: ExtractTriggerBody) => (await api.post<ExtractStatus>('/extract', body)).data,
-    onSuccess: () => {
-      toast.success(t.inventoryAdmin.triggerOk);
+    onSuccess: data => {
+      if (data.status === 'skipped') {
+        toast.warning(t.inventoryAdmin.triggerSkipped);
+      } else {
+        toast.success(t.inventoryAdmin.triggerOk);
+      }
       void qc.invalidateQueries({ queryKey: EXTRACT_STATUS_KEY });
       void qc.invalidateQueries({ queryKey: ['objects'] });
       void qc.invalidateQueries({ queryKey: ['lineage'] });

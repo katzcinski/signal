@@ -221,21 +221,40 @@ _client_lock = threading.Lock()
 
 
 def get_client() -> DatasphereClient | None:
-    """Return the singleton DatasphereClient, or None if not configured."""
+    """Return the singleton DatasphereClient, or None if not configured.
+
+    Reads the *effective* connector config (env vars win, then ``datasphere.yml``)
+    so the REST/OAuth details can come from env or the connector UI.
+    """
+    from .connector_config import (
+        effective_base_url,
+        effective_client_id,
+        effective_client_secret,
+        effective_token_url,
+    )
     from .settings import get_settings
     global _client
     settings = get_settings()
-    if not settings.datasphere_base_url or not settings.datasphere_client_id:
+    base_url = effective_base_url(settings)
+    client_id = effective_client_id(settings)
+    if not base_url or not client_id:
         return None
     with _client_lock:
         if _client is None:
             _client = DatasphereClient(
-                base_url=settings.datasphere_base_url,
-                client_id=settings.datasphere_client_id,
-                client_secret=settings.datasphere_client_secret,
-                token_url=settings.datasphere_token_url,
+                base_url=base_url,
+                client_id=client_id,
+                client_secret=effective_client_secret(settings),
+                token_url=effective_token_url(settings),
             )
     return _client
+
+
+def reset_client() -> None:
+    """Drop the cached client so the next call rebuilds from current config."""
+    global _client
+    with _client_lock:
+        _client = None
 
 
 # ------------------------------------------------------------------
