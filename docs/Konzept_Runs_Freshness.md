@@ -38,6 +38,36 @@ Die CLI bleibt dem vorbehalten, was REST nicht zuverlaessig liefert (volles CSN
 fuer Lineage). Begruendung siehe ADR-0002 (Datasphere-DB-Zugriff) bzw.
 `datasphere.py`.
 
+## API/Typen — verifizierter Ist-Zustand (Stand der Pruefung)
+
+Damit das Konzept nicht auf nicht vorhandenen Feldern aufbaut, hier der gepruefte
+Stand der bestehenden Implementierung. **Wichtig: die hier fehlenden Felder sind
+Voraussetzung fuer die Freshness-Evidenz-Hierarchie und muessen erst geschaffen
+und an einem echten Payload verifiziert werden.**
+
+- **Modellierte Felder** (`DataLoadOut`, `services/api/routers/data_loads.py`;
+  Frontend `DataLoad`, `apps/cockpit/src/types/index.ts`): `object_id`,
+  `load_type`, `run_id`, `status`, `started_at`, `finished_at`, `duration_ms`,
+  `error_message`, `triggered_by`, `raw`.
+- **Nicht modelliert**: **kein** Row-Count / Delta / Load-Modus (initial/delta) /
+  `last_delta_at`. Solche Werte ueberleben heute nur ungetypt im `raw`-Blob —
+  sofern Datasphere sie ueberhaupt liefert.
+- **Feldnamen unbestaetigt**: `_normalise` raet Schluessel per `or`-Ketten
+  (`startTime or start_time or startedAt or createdAt` …). Es gibt **keine
+  Fixture/keinen Test**, der einen echten Replication-Run-Payload pinnt — die
+  Annahme "Delta + Row-Count vorhanden" ist aus diesem Repo **nicht verifizierbar**.
+- **Nur zwei Run-Typen abgerufen**: `datasphere.py` holt **Task Chains +
+  Replication Flows**; `load_type` ist `task_chain | replication_flow`.
+  **Transformation Flows und Persist-Tasks werden derzeit nicht abgerufen** — die
+  Abdeckung dieser Typen ist API-seitig aktuell null.
+- **Space-Aufloesung** (gefixt): `_resolve_space` nutzt jetzt `effective_space_id`
+  (explizit → env → connector.yml), konsistent zu `get_client`. Vorher env-only,
+  wodurch ein per Connector-UI gesetzter Space fuer data-loads nicht griff.
+
+Grounding-Schritt vor jedem Freshness-Build: **einen echten Replication-Flow-Run-
+Payload aus einem Tenant aufnehmen**, die tatsaechlichen Schluessel pinnen, dann
+getypte Felder (`records_transferred`, `is_delta`, `last_delta_at`) ergaenzen.
+
 ## Das Atom: Freshness pro Objekt
 
 Jeder Run bildet auf ein Dataset ab, daher ist die Praesentationseinheit die
