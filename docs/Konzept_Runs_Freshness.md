@@ -52,6 +52,38 @@ Jeder Run bildet auf ein Dataset ab, daher ist die Praesentationseinheit die
 - **Run-History-Sparkline** — die letzten N Runs als farbige Ticks (Outcome /
   Latenz). Ein Blick = "ist dieser Load verlaesslich?".
 
+## Freshness-Evidenz-Hierarchie (Run-Erfolg != Aktualitaet)
+
+Ein erfolgreicher Run beweist nicht, dass sich Daten geaendert haben: ein
+Delta-Load kann mit `records = 0` durchlaufen — der Job lief, die Tabelle ist
+aber nicht frischer. Deshalb wird Freshness nach **Evidenzguete** abgestuft, nicht
+allein aus dem Run-Erfolg:
+
+1. **Daten-Aenderungs-Evidenz (stark)** — Delta-Row-Count + `last delta at` aus dem
+   Replication-Flow-Run. `records > 0` = echte Aktualisierung; `records = 0` =
+   eigener Zustand `success-no-change` (verschieden von `failed` und von `stale`).
+2. **Lauf-Abschluss-Evidenz (schwach)** — nur Run-Endezeit/Status, ohne Counts.
+   Gilt als **obere Schranke der Staleness**, nicht als Beweis neuer Daten.
+   Sichtbar als solche kennzeichnen.
+3. **Keine Quelle** — `volume unknown` / `freshness unknown`. Nie als frisch
+   darstellen (Ehrlichkeits-Regel).
+
+Konsequenzen:
+
+- **Volume als Begleiter** — der Delta-Row-Count liefert gratis eine Volumen-Serie
+  (Sparkline) und damit Cadence-/Volumen-Anomalien (SOTA: Bigeye/Monte Carlo),
+  zumindest fuer Replication-Targets.
+- **Metrik-Semantik** — "records transferred" im Delta = *geaenderte Zeilen dieses
+  Runs*, nicht *absolute Tabellengroesse*. Gut fuer "hat sich was geaendert?";
+  fuer absolute Volumen-Anomalien braucht es eine Initial-Load-Baseline.
+- **Ungleiche Abdeckung** — Replication-Flow-Runs liefern Counts gut;
+  Transformation-Flows und Persist-Tasks oft nicht. Evidenz ist also getiert:
+  reich fuer Replication, duenner sonst → entsprechend kennzeichnen.
+- **Per-Target-Fan-out** — ein Replication Flow hat mehrere Ziel-Tables mit je
+  eigenem Count; pro Target abbilden (gleiche Run-Gruppen-Nuance wie Task Chains).
+- **Payload zuerst verifizieren** — Feldnamen/Verfuegbarkeit variieren je
+  DSP-Version und Quelltyp; vor dem Modellieren an einem echten Run pruefen.
+
 ## Wo es sichtbar wird (an bestehende Surfaces andocken, kein Silo)
 
 1. **Objekt-Detail** — primaere Heimat. Freshness-Header + Run-History-Sparkline +
@@ -60,10 +92,11 @@ Jeder Run bildet auf ein Dataset ab, daher ist die Praesentationseinheit die
    zeigt beide Achsen: *korrekt?* (Checks) und *aktuell?* (Loads). Ein gruener
    Check auf veralteten Daten wird sichtbar abgewertet.
 3. **Gate-Integration (der Signal-spezifische Hebel)** — ist der letzte Load aelter
-   als das Freshness-Fenster des Contracts, downgraden Checks auf `skipped_stale`
-   und **zitieren den Run** als Grund. Das ist die Verbindung, die nur Signal
-   herstellen kann (Load-Lineage → Quality-Gating), und sie ist dank G6 fast
-   geschenkt.
+   als das Freshness-Fenster des Contracts, wird der Check abgewertet (bevorzugt
+   `downgraded`, ausgewertet-aber-konfidenzreduziert; `skipped_stale` nur wenn der
+   Check ohne frische Daten bedeutungslos ist — siehe offene Frage 2) und der Run
+   als Grund **zitiert**. Das ist die Verbindung, die nur Signal herstellen kann
+   (Load-Lineage → Quality-Gating), und sie ist dank G6 fast geschenkt.
 4. **Lineage-/Coverage-Map** — Nodes nach Freshness einfaerben und propagieren:
    eine "frische" View, gespeist von einer veralteten Remote-Table, ist
    **effektiv veraltet**. Load-Edges = die Datenbewegungs-Realitaet hinter den
@@ -103,14 +136,52 @@ Jeder Run bildet auf ein Dataset ab, daher ist die Praesentationseinheit die
 - Keine eigene "Jobs"-Seite als Silo; Run-Info lebt in Objekt/Grid/Lineage/
   Incidents/Contracts.
 
+## Stand der Technik & offene Designfragen
+
+Vergleich mit Daten-Observability-Tools (Monte Carlo, Bigeye, dbt source
+freshness, Elementary, Atlan). Das Konzept ist bei **Lineage-Propagation** und
+**Gate-Integration** auf bzw. ueber SOTA-Niveau; folgende Punkte sind ungeloest
+oder bewusst zu entscheiden:
+
+1. **Run-Erfolg != Freshness** — adressiert durch die Evidenz-Hierarchie oben
+   (Delta-Counts > Lauf-Abschluss). SOTA-Pendant: dbt nutzt `loaded_at` in den
+   Daten, Monte Carlo nutzt Update-Zeit + Row-Count.
+2. **`skipped` vs `downgraded`** — Checks bei Staleness komplett zu ueberspringen,
+   kann eine Korrektheits-Regression hinter einem Freshness-Flag verstecken und
+   wirft zwei unabhaengige Fakten ("veraltet" / "falsch") zusammen. **Empfehlung:**
+   bevorzugt den vorhandenen State `downgraded` (ausgewertet, Konfidenz reduziert,
+   "auf veralteten Daten" annotiert) statt `skipped`. `skipped_stale` nur, wenn
+   Staleness den Check buchstaeblich bedeutungslos macht (z. B. "heute geladen").
+   *Offene Entscheidung — derzeit das groesste semantische Risiko.*
+3. **Statische Schwellen → Alert-Fatigue** — ein fixes "24 h" missfeuert bei
+   Wochenend-Cadence, Monatsende, Schedule-Wechsel. SOTA: gelernte Cadence/Anomalie
+   (Bigeye/Elementary). **Empfehlung:** erwartete Cadence pro Objekt aus
+   Run-Historie + `schedules.py` ableiten, statischer Contract-Wert nur als
+   Obergrenze.
+4. **Propagation ohne Root-Cause-Dedup** — naive Downstream-Staleness faerbt halbe
+   Landschaften rot. SOTA (Monte Carlo): Root zeigen, Derivate unterdruecken.
+   Propagation muss auf den Root-Stale-Node + Blast-Radius-Count kollabieren.
+5. **Partielle Task-Chain-Rollups** — bei Teil-Fehlschlag sind manche Objekte
+   frisch, manche stale; Reihenfolge/Abhaengigkeit zaehlt. Pro-Task-Status im
+   Chain-Run modellieren, nicht Chain-Level.
+6. **"Late" braucht erwartete naechste Ausfuehrung** — Lateness aus Signal-Schedules
+   + beobachteter Cadence definieren (siehe 3).
+7. **Skalierung** — Run-Historie pro Objekt zu pollen ist N+1 (Rate-Limits). Bulk-
+   Abruf/Caching statt Per-Objekt-Fan-out (`useObjectDataLoads`) bei Tenant-Scale.
+8. **Zwei Achsen vs. aggregierter Trust-Score** — SOTA rollt Freshness+Volume+
+   Schema+Quality zunehmend in einen Asset-Trust-Score (Atlan/MC). Signals zwei
+   explizite Achsen sind transparenter; fuer Coverage-/Exec-Views ist ein
+   optionaler Aggregat-Rollup zu entscheiden.
+
 ## Phasen
 
 - **MVP**: Objekt-Detail-Freshness + Run-Sparkline + Status-Grid-Freshness-
-  Indikator (read-only, "unknown" ohne Connector).
-- **High-Value Next**: Freshness in `skipped_stale`-Gating verdrahten, mit
-  zitiertem Run.
-- **Spaeter**: Lineage-Propagation, Timeliness-Incidents, Freshness-Guarantee-
-  Familie.
+  Indikator (read-only, "unknown" ohne Connector). Wo verfuegbar: Delta-Row-Count
+  statt nur Run-Status.
+- **High-Value Next**: Freshness ins Gating verdrahten — bevorzugt `downgraded`,
+  mit zitiertem Run (siehe offene Frage 2).
+- **Spaeter**: Lineage-Propagation (mit Root-Cause-Dedup), Timeliness-Incidents,
+  Freshness-Guarantee-Familie, gelernte Cadence.
 
 ## Bezug zu bestehenden Invarianten
 
