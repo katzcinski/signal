@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api } from './client';
 import { t } from '@/i18n/de';
@@ -24,6 +24,19 @@ export const useContract = (id: string) =>
     queryFn: () => api.get(`/contracts/${id}`).then(r => r.data),
     enabled: !!id,
     retry: false,
+  });
+
+// Vollständige Contract-Dokumente: die Liste kann Garantien aus dem Index leer
+// liefern, daher pro Contract das Einzeldokument nachladen. Für die ERD-Canvas,
+// die Spalten/Keys/referential jedes Contracts braucht.
+export const useContractDocuments = (ids: string[]) =>
+  useQueries({
+    queries: ids.map(id => ({
+      queryKey: ['contracts', id],
+      queryFn: () => api.get(`/contracts/${id}`).then(r => r.data as ContractOut),
+      enabled: !!id,
+      staleTime: 30_000,
+    })),
   });
 
 export const usePutContract = (id: string) => {
