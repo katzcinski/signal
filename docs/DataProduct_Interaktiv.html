@@ -36,8 +36,8 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:.75re
 .subtitle{color:var(--fg3);font-size:.8rem}
 
 /* Tabs */
-.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg2);padding:0 2rem;overflow-x:auto}
-.tab-btn{padding:.65rem 1.1rem;border:none;background:none;color:var(--fg3);cursor:pointer;font-size:.82rem;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg2);padding:0 .5rem;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab-btn{padding:.65rem .85rem;border:none;background:none;color:var(--fg3);cursor:pointer;font-size:.82rem;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;min-height:44px;touch-action:manipulation;-webkit-tap-highlight-color:rgba(99,102,241,.2)}
 .tab-btn:hover{color:var(--fg)}
 .tab-btn.active{color:var(--accent3);border-bottom-color:var(--accent)}
 
@@ -71,7 +71,7 @@ tr:hover td{background:var(--bg3)}
 .yaml-val-sym{color:#c4b5fd}
 .yaml-anchor{color:#94a3b8}
 .tooltip{position:fixed;z-index:999;background:#1e2436;border:1px solid var(--accent);border-radius:var(--radius);padding:.6rem .85rem;font-size:.78rem;color:var(--fg);max-width:280px;pointer-events:none;opacity:0;transition:opacity .15s;line-height:1.5}
-.tooltip.show{opacity:1}
+.tooltip.tt-show{opacity:1}
 
 /* Lifecycle FSM */
 .fsm{display:flex;align-items:center;gap:0;padding:1.5rem 0;flex-wrap:wrap}
@@ -177,13 +177,13 @@ tr:hover td{background:var(--bg3)}
 </header>
 
 <div class="tabs">
-  <button class="tab-btn active" onclick="show('overview',this)">Überblick</button>
-  <button class="tab-btn" onclick="show('anatomy',this)">Contract-Anatomie</button>
-  <button class="tab-btn" onclick="show('lifecycle',this)">Lifecycle &amp; Modi</button>
-  <button class="tab-btn" onclick="show('compile',this)">Kompilierung</button>
-  <button class="tab-btn" onclick="show('composition',this)">Produkt-Komposition</button>
-  <button class="tab-btn" onclick="show('studio',this)">Data Product Studio</button>
-  <button class="tab-btn" onclick="show('gates',this)">Security Gates</button>
+  <button class="tab-btn active" onclick="switchTab('overview',this)">Überblick</button>
+  <button class="tab-btn" onclick="switchTab('anatomy',this)">Contract-Anatomie</button>
+  <button class="tab-btn" onclick="switchTab('lifecycle',this)">Lifecycle &amp; Modi</button>
+  <button class="tab-btn" onclick="switchTab('compile',this)">Kompilierung</button>
+  <button class="tab-btn" onclick="switchTab('composition',this)">Produkt-Komposition</button>
+  <button class="tab-btn" onclick="switchTab('studio',this)">Data Product Studio</button>
+  <button class="tab-btn" onclick="switchTab('gates',this)">Security Gates</button>
 </div>
 
 <div class="content">
@@ -553,7 +553,7 @@ HDLF-Roh-File       Zwischen-Files/-Views       oder HANA-View)
 
 <script>
 // ─── TAB SWITCHING ───────────────────────────────────────────────
-function show(id, btn) {
+function switchTab(id, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + id).classList.add('active');
@@ -614,9 +614,9 @@ pre.innerHTML = yamlLines.map(l => {
 pre.querySelectorAll('[data-tip]').forEach(el => {
   el.addEventListener('mouseenter', e => {
     tt.textContent = el.dataset.tip;
-    tt.classList.add('show');
+    tt.classList.add('tt-show');
   });
-  el.addEventListener('mouseleave', () => tt.classList.remove('show'));
+  el.addEventListener('mouseleave', () => tt.classList.remove('tt-show'));
 });
 
 // ─── GUARANTEE LIST ─────────────────────────────────────────────
