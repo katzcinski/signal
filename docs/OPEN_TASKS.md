@@ -6,9 +6,8 @@
 > sie verlinkt sie und hält den aggregierten Status. Detailtiefe (Acceptance,
 > Dateipfade, Sequenz) bleibt im jeweiligen Quelldokument.
 >
-> Die UI/UX-spezifische Matrix lebt weiter in
-> [`OPEN_TASKS_UIUX.md`](OPEN_TASKS_UIUX.md); die dort offenen Punkte sind hier
-> unter **A** gespiegelt.
+> Die frühere `OPEN_TASKS_UIUX.md` ist in diese Datei **eingegangen** (Status-
+> Matrix + Detail + historischer Kontext → Abschnitt **A**).
 
 **Methode:** Status wurde gegen den Code verifiziert, nicht nur aus den Docs
 übernommen — wo Doku und Code abwichen (z. B. O3, HANA WS D), gilt der Code-Stand
@@ -32,8 +31,8 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 
 | ID | Thema | Status | Prio | Quelle |
 |----|-------|--------|------|--------|
-| **A1** | Teilbarer Quality-Report / Data-Docs-Snapshot (UX-N6) | ◻ Offen | M | `OPEN_TASKS_UIUX.md` |
-| **A2** | Schema-Drift-/Change-Screen (UX-N9) | ◻ Offen | M | `OPEN_TASKS_UIUX.md` |
+| **A1** | Teilbarer Quality-Report / Data-Docs-Snapshot (UX-N6) | ◻ Offen | M | Abschnitt A |
+| **A2** | Schema-Drift-/Change-Screen (UX-N9) | ◻ Offen | M | Abschnitt A |
 | **B**  | Spaltenebene-Lineage + Impact (UX-N7 / O3) | 🔒 Blockiert | H | `PLAN_UX-N7_Column_Lineage.md` |
 | **C**  | `HanaResultStore` (O6) + HANA-Migrationen + Smoke | ◻ Offen | H | `Implementation_HANA_Connection_Progress.md` WS E/F |
 | **D**  | Managed Service (Instanz-pro-Tenant) | ◻ Offen | H | `PLAN_Managed_Service_v1.md` |
@@ -56,9 +55,46 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 
 ---
 
-## A — UI/UX (gespiegelt aus `OPEN_TASKS_UIUX.md`)
+## A — UI/UX (früher `OPEN_TASKS_UIUX.md`)
 
-Von den 15 UX-N-Punkten sind 13 ausgeliefert; offen bleiben:
+> Aus `OPEN_TASKS_UIUX.md` übernommen. Modus wie HANDOVER: jeder Schritt mit
+> Acceptance, kein Merge bei rotem Gate. Farbsemantik (Familie ⟂ Status),
+> Mono-für-Artefakte und Carbon-≥3-von-4-Encoding sind gesetzt und werden nicht
+> neu verhandelt.
+
+### Status-Matrix
+
+| ID | Inhalt | Status | Dokumentiert / Beleg |
+|----|--------|--------|----------------------|
+| UX-F1 | Rollenmodell + Read-only-Zustände (`X-DQ-Role`, Ownership-Lock) | ✅ Done | Tooldoku §9 |
+| UX-F2 | Roh-Views/native Dialoge durch designte Oberflächen ersetzt | ✅ Done | — |
+| UX-F3 | Incident-Drawer als echter Dialog/Inspector | ✅ Done | Incidents-Inbox (R4-1) |
+| UX-F4 | A11y-Härtung (Kontrast `--fg-3`→AA, Nav-Icon-Labels) | ✅ Done | — |
+| UX-F5 | Faceted Search/Filter im Objektkatalog (URL-synced) | ✅ Done | Tooldoku §8 (`/objects`) |
+| UX-F6 | Token-Disziplin Spacing/Radius + geteilte Primitives | ✅ Done | Primitives + `--r-full` |
+| UX-F7 | Restpolitur (Breadcrumbs, Governance Loading/Error, Relativzeit) | ✅ Done | — |
+| UX-F8 | Button-Interaktionszustände (Hover/Active/Disabled-Kontrast) | ✅ Done | Globale `button`-Regeln + `Button.test.tsx` |
+| UX-F9 | CSS-Micro-polish (::selection, FF-Scrollbar, Header-Shadow, Row-Hover) | ✅ Done | index.css, `Table` Sticky-Header |
+| UX-N1 | Freshness-/Volume-Zeitreihen (Band, Anomalie-Marker) | ✅ Done | Tooldoku §8 („Verlauf"-Tab) |
+| UX-N2 | Alerting & Notification-Routing | ✅ Done | Tooldoku §5/§8 (`/notifications`, Migration 005/007) |
+| UX-N3 | Rollen-Landing „My work" | ✅ Done | Tooldoku §8 (`/my`) |
+| UX-N4 | SLA/SLO-Dashboard (Burn-down, Uptime %) | ✅ Done | Tooldoku §5 (`/sla`) |
+| UX-N5 | Run-Vergleich / Regressions-Diff | ✅ Done | Tooldoku §5/§8 (`/runs/compare`) |
+| UX-N6 | Teilbarer Quality-Report / Data-Docs (Link/PDF) | ◻ Offen | Badge existiert (`/badge/{p}`), Report-Snapshot fehlt → **A1** |
+| UX-N7 | Spaltenebene-Lineage + Impact-Analyse | 🔒 Blockiert | DAG + Impact-API + UI gegen Demo-Daten. Offen: Walker-Härtung + echter Extract → **B** |
+| UX-N8 | Check-/Expectation-Library-Browser | ✅ Done | Tooldoku §8 (`/library`) |
+| UX-N9 | Schema-Drift-/Change-Screen | ◻ Offen | — → **A2** |
+| UX-N10 | Status-Heatmap Objekt × Tag | ✅ Done | Tooldoku §8 (Cockpit) |
+| UX-N11 | Echte Charts (Threshold-/Anomalie-Band, Zeitraum-Picker) | ✅ Done | — |
+| UX-N12 | Health-Gauge mit Trendrichtung | ✅ Done | Tooldoku §8 (Cockpit) |
+| UX-N13 | Diff-Viewer (Contract-Versionen & Proposals) | ✅ Done | Tooldoku §5 (`/diff/active`) |
+| UX-N14 | Profiling-/Sample-Row-View hinter `[PII-GATE]` | ✅ Done | Tooldoku §5/§6 (`/profile`, `ALLOW_PROFILE_SAMPLES`) |
+| UX-N15 | Activity-/Audit-Feed | ✅ Done | Tooldoku §5 (`/api/activity`) |
+
+**Offen (3):** UX-N6 (teilbarer Report, **A1**) · UX-N7 (Spalten-Lineage,
+blockiert, **B**) · UX-N9 (Schema-Drift-Screen, **A2**).
+
+### Offene Punkte (Detail)
 
 - **A1 · UX-N6 — Teilbarer Quality-Report / Data-Docs.** `[M]` ◻
   `BadgeEmbed` + `GET /api/badge/{p}` existieren als Tile; der vollständige,
@@ -73,12 +109,23 @@ Von den 15 UX-N-Punkten sind 13 ausgeliefert; offen bleiben:
 
 UX-N7 (Spalten-Lineage) ist hier bewusst **nicht** dupliziert → siehe **B**.
 
+### Historischer Kontext
+
+Quelle: UI/UX-Review vom 2026-06-12 (Senior-Design-Lens) gegen Stand `b300565`,
+Marktabgleich Soda/Monte Carlo/GX/dbt/Datafold. Leitidee war, die **zeitliche und
+operative Dimension** (Zeitreihen/Alerting — was Soda/MC zum Monitoring statt
+Reporting macht) und die **Lücke zwischen Konzept und Implementierung**
+(Rollenmodell, eingebettete Lineage, designte statt Roh-Views) zu schließen.
+Tier 1 (UX-F1, UX-F2, UX-N1–N4) war der demonstrative Hebel und ist vollständig
+ausgeliefert; die Markt-Table-Stakes-Begründung steht in
+[`REVIEW_Tool_v1_Befunde.md`](REVIEW_Tool_v1_Befunde.md) §7.
+
 ---
 
 ## B — Spaltenebene-Lineage + Impact-Analyse (UX-N7 / O3) 🔒 [H]
 
 **Quelle:** [`PLAN_UX-N7_Column_Lineage.md`](PLAN_UX-N7_Column_Lineage.md);
-querschnittlich auch in `OPEN_TASKS_UIUX.md` (UX-N7), `REVIEW_Tool_v2_Status.md`
+querschnittlich auch unter **A** (UX-N7), `REVIEW_Tool_v2_Status.md`
 (#1 Column-level coverage), `Scope_OpenLineage_Emitter.md` (OL3),
 `Betriebsmodi_Lite_und_Full.md` (Spaltenebene in Coverage), `HANDOVER.md` (O3).
 

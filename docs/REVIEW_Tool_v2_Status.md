@@ -63,7 +63,7 @@ closed during the v2 pass:
 
 1. **Column-level coverage** — coverage is object-level only; GX-style "% of
    columns with guarantees" is still missing (v1 §7.2.4). *Medium.* Tracked as
-   **UX-N7** in [`OPEN_TASKS_UIUX.md`](OPEN_TASKS_UIUX.md), blocked by O3
+   **UX-N7** in [`OPEN_TASKS.md`](OPEN_TASKS.md) (§B), blocked by O3
    (`columnEdges` parser).
 2. ~~**Richer notification triggers**~~ — **Done.** Manual incident transitions
    (assign/resolve) now notify via `notify_incident_transition`; routing is
