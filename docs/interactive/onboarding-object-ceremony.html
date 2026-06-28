@@ -259,7 +259,7 @@ td.perm-overflow{overflow-x:auto}
 <div class="wrap">
   <div class="sec-label">Signal · Onboarding, Checks & Ceremony</div>
   <h2>From object to active guarantee</h2>
-  <p>How an object in Datasphere becomes a measured, versioned, compliance-tracked data product — and what ceremony is required along the way.</p>
+  <p>How an object in Datasphere becomes a measured, versioned, compliance-tracked data product, and what ceremony each mode requires.</p>
 
   <div class="hero-modes">
     <div class="mode-card lite">
@@ -294,7 +294,7 @@ td.perm-overflow{overflow-x:auto}
   </div>
 
   <div class="alert info" style="margin-top:20px">
-    <strong>Same engine, different ceremony.</strong> Both modes share one compiler, one engine, one result store, and the same security gates. The difference is entirely in the process — not in what gets measured.
+    <strong>Same engine, different ceremony.</strong> Both modes share one compiler, one engine, one result store, and the same security gates. The difference is entirely in the process, not in what gets measured.
   </div>
 </div>
 </section>
@@ -438,7 +438,7 @@ td.perm-overflow{overflow-x:auto}
 <div class="wrap">
   <div class="sec-label">03 · Contract structure</div>
   <h2>Contract anatomy</h2>
-  <p>A contract is a semantic YAML file — no SQL ever. The compiler turns it into read-only check SQL at certify/compile time. The schema is never in the contract; it is bound at runtime per environment (G2).</p>
+  <p>A contract is a semantic YAML file. No SQL, ever. The compiler turns it into read-only check SQL at certify/compile time. The schema is never in the contract; it is bound at runtime per environment (G2).</p>
 
   <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:20px">
     <div style="flex:1;min-width:280px">
@@ -477,7 +477,7 @@ td.perm-overflow{overflow-x:auto}
       </div>
       <div class="card">
         <h4 style="color:var(--cont);margin-bottom:6px">Lifecycle is never in a run's guarantee</h4>
-        <p style="font-size:12px"><code>lifecycle</code> lives in the YAML but has <strong>no effect on checks</strong> — a <code>draft</code> contract can still be compiled (dry-run) and diffed. Only <code>active</code> contracts drive compliance and the cockpit Ampel.</p>
+        <p style="font-size:12px"><code>lifecycle</code> lives in the YAML but has <strong>no effect on checks</strong>. A <code>draft</code> contract can still be compiled (dry-run) and diffed. Only <code>active</code> contracts drive compliance and the cockpit Ampel.</p>
       </div>
       <div class="card">
         <h4 style="color:var(--warn);margin-bottom:6px">Artifact trail</h4>
@@ -632,7 +632,7 @@ td.perm-overflow{overflow-x:auto}
           <div style="display:flex;gap:5px;margin-top:3px"><span class="tag std sm">standard</span><span class="tag qual sm">qual</span></div>
         </div>
       </div>
-      <div class="fam-desc">Declares a minimum fill-rate (%) per column — tolerates a small null rate instead of strict zero.</div>
+      <div class="fam-desc">Declares a minimum fill-rate (%) per column, tolerating a small null rate instead of requiring strict zero.</div>
       <div class="fam-expand">
         <div class="yaml-block">guarantees:
   completeness:
@@ -658,7 +658,7 @@ td.perm-overflow{overflow-x:auto}
           <div style="display:flex;gap:5px;margin-top:3px"><span class="tag expensive sm">expensive</span><span class="tag qual sm">qual</span></div>
         </div>
       </div>
-      <div class="fam-desc">Declares FK integrity — fact rows must have a matching dimension key.</div>
+      <div class="fam-desc">Declares FK integrity: fact rows must have a matching dimension key.</div>
       <div class="fam-expand">
         <div class="yaml-block">guarantees:
   referential:
@@ -677,7 +677,7 @@ td.perm-overflow{overflow-x:auto}
   </div>
 
   <div class="alert info">
-    <strong>Seed heuristics:</strong> When you call <code>POST /api/contracts/{p}/seed</code>, the seeder reads the inventory object, proposes <code>schema</code> from the column list, infers key candidates from column names ending in <code>ID/NO/NR/KEY/CODE</code> (marked <code>proposed: true</code> for steward confirmation), and adds <code>freshness</code> from any column containing <code>TS/TIME/DATE/LOAD</code>. It's a starting point — not a finished contract.
+    <strong>Seed heuristics:</strong> When you call <code>POST /api/contracts/{p}/seed</code>, the seeder reads the inventory object, proposes <code>schema</code> from the column list, infers key candidates from column names ending in <code>ID/NO/NR/KEY/CODE</code> (marked <code>proposed: true</code> for steward confirmation), and adds <code>freshness</code> from any column containing <code>TS/TIME/DATE/LOAD</code>. It's a starting point, not a finished contract.
   </div>
 </div>
 </section>
@@ -687,7 +687,7 @@ td.perm-overflow{overflow-x:auto}
 <div class="wrap">
   <div class="sec-label">05 · Contract lifecycle</div>
   <h2>Lifecycle state machine</h2>
-  <p>A contract moves through three states. Compliance only tracks objects in <code>active</code> state. The <code>PUT</code> endpoint always writes a <code>draft</code> — it never directly activates.</p>
+  <p>A contract moves through three states. Compliance only tracks objects in <code>active</code> state. The <code>PUT</code> endpoint always writes a <code>draft</code>. It never directly activates.</p>
 
   <div class="lc-machine">
     <div class="lc-node draft">
@@ -725,7 +725,7 @@ td.perm-overflow{overflow-x:auto}
     <div class="amend-icon">🔄</div>
     <div>
       <h4>Amending an active contract (Full mode)</h4>
-      <p style="font-size:13px;margin-top:4px">A <code>PUT</code> on an active contract always writes a <strong>draft amendment</strong> — the active version stays in <code>.active.yml</code> as the G3 diff baseline. The amendment only becomes <code>active</code> when approved. This means: an active contract can have a pending draft change without any disruption to running checks.</p>
+      <p style="font-size:13px;margin-top:4px">A <code>PUT</code> on an active contract always writes a <strong>draft amendment</strong>. The active version stays in <code>.active.yml</code> as the G3 diff baseline. The amendment only becomes <code>active</code> when approved. An active contract can have a pending draft change without disrupting running checks.</p>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
         <code>active</code>
         <span style="color:var(--fg3)">→ PUT (always draft) →</span>
@@ -775,7 +775,7 @@ td.perm-overflow{overflow-x:auto}
 <div class="wrap">
   <div class="sec-label">07 · Auth &amp; permissions</div>
   <h2>Roles &amp; write permissions</h2>
-  <p>The server is authoritative — the frontend only mirrors. Write permission is determined by <strong>role × owned_by × owners</strong> membership. Filter by role to highlight what's allowed.</p>
+  <p>The server is authoritative; the frontend only mirrors. Write permission is determined by <strong>role × owned_by × owners</strong> membership. Filter by role to highlight what's allowed.</p>
 
   <div class="roles-header">
     <button class="role-btn" onclick="filterRole('')">All</button>
@@ -816,7 +816,7 @@ td.perm-overflow{overflow-x:auto}
   <p>Two per-object settings define how and when checks run: the <strong>environment</strong> (which HANA connection to use) and the <strong>schedule</strong> (when to run automatically).</p>
 
   <h3 style="margin-bottom:8px;margin-top:24px">Environment</h3>
-  <p>An environment is a named HANA connection. Passwords are never stored in the contract or returned to the client — only a <code>password_ref</code> (e.g. <code>env:HANA_PW_PROD</code>) is stored; the value is resolved server-side at connect time.</p>
+  <p>An environment is a named HANA connection. Passwords are never stored in the contract or returned to the client. Only a <code>password_ref</code> (e.g. <code>env:HANA_PW_PROD</code>) is stored; the value is resolved server-side at connect time.</p>
 
   <div class="grid g2" style="margin:16px 0">
     <div class="card">
@@ -856,7 +856,7 @@ td.perm-overflow{overflow-x:auto}
       <div class="sched-icon">⚙️</div>
       <div class="sched-mode">internal</div>
       <div class="sched-title">Signal's own poller</div>
-      <div class="sched-desc">Signal's built-in scheduler claims the object at each <code>interval_seconds</code> (minimum 60s). The run path is identical to a manual trigger — same compliance/incident/notification side-effects. Good for PoC and self-contained setups.</div>
+      <div class="sched-desc">Signal's built-in scheduler claims the object at each <code>interval_seconds</code> (minimum 60s). The run path is identical to a manual trigger, with the same compliance/incident/notification side-effects. Good for PoCs and self-contained setups.</div>
     </div>
     <div class="sched-card">
       <div class="sched-icon">🔌</div>
@@ -867,7 +867,7 @@ td.perm-overflow{overflow-x:auto}
   </div>
 
   <div class="alert info" style="margin-top:16px">
-    <strong>Double-run guard (F2):</strong> The store registers a run as <code>running</code> before execution via a partial unique index. A second trigger while one is already running returns <code>{"status": "already_running"}</code> — atomically, without a check-then-act race, even across multiple workers.
+    <strong>Double-run guard (F2):</strong> The store registers a run as <code>running</code> before execution via a partial unique index. A second trigger while one is already running returns <code>{"status": "already_running"}</code>, atomically, with no check-then-act race, even across multiple workers.
   </div>
 </div>
 </section>
@@ -970,7 +970,7 @@ const stepData = {
   'cockpit-lite': {
     title: 'Step 6L — Cockpit: status Ampel',
     mode: 'lite',
-    desc: 'The cockpit now shows: object status (worst-of check results), family status (observability vs quality), coverage flag (● covered — active contract + passing checks). Compliance Ampel shows compliant/breached. Accessible to viewer role.',
+    desc: 'The cockpit now shows: object status (worst-of check results), family status (observability vs quality), coverage flag (● covered: active contract + passing checks). Compliance Ampel shows compliant/breached. Accessible to viewer role.',
     endpoint: 'GET /api/objects · GET /api/lineage · GET /api/runs',
     role: 'viewer (read) · steward (trigger)',
     result: 'Status grid · coverage map · compliance Ampel live',
