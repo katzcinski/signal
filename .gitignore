@@ -50,8 +50,11 @@ Thumbs.db
 *.swp
 *.swo
 
-# Claude Code tooling (local)
-.claude/
+# Claude Code tooling (local — commands/ is intentionally tracked)
+.claude/settings.json
+.claude/settings.local.json
+.claude/todos.json
+.claude/statsig.json
 
 # Build artefacts
 *.whl
