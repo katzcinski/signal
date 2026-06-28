@@ -98,7 +98,7 @@ tests/                 # pytest (unit + api)
 
 | Dokument | Inhalt |
 |---|---|
-| [`docs/OPEN_TASKS_UIUX.md`](docs/OPEN_TASKS_UIUX.md) | Status-Matrix UI/UX + verbleibende offene Punkte |
+| [`docs/OPEN_TASKS.md`](docs/OPEN_TASKS.md) | Konsolidierter Backlog über alle Bereiche (inkl. UI/UX-Status-Matrix) |
 | [`docs/REVIEW_Tool_v2_Status.md`](docs/REVIEW_Tool_v2_Status.md) | Remediation-Status v2 + offene Backend-Punkte |
 
 **Planungs- & Review-Historie** (wie es dahin kam — bei Konflikt gewinnt der Code/`Tooldokumentation.md`)

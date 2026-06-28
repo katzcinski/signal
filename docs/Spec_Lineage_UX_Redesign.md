@@ -3,7 +3,7 @@
 > **Status 2026-06-20:** Neu angelegt. Adressiert drei konkrete Beschwerden an der Lineage-Ansicht
 > (`apps/cockpit/src/pages/LineageMap.tsx`): **(1)** die Navigation springt und „resized" bei jeder
 > Interaktion, **(2)** die Knoten wirken klobig und sind schlecht scanbar, **(3)** Inspektion und
-> Bedienung fühlen sich roh statt designt an. Modus wie `OPEN_TASKS_UIUX.md` / `HANDOVER.md`: jeder
+> Bedienung fühlen sich roh statt designt an. Modus wie `OPEN_TASKS.md` / `HANDOVER.md`: jeder
 > Schritt mit Acceptance, kein Merge bei rotem Gate. Farbsemantik (Familie ⟂ Status) und
 > Mono-für-Artefakte gelten unverändert (`Konzept_DQ_Cockpit_UIUX.md` §1).
 

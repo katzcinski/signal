@@ -5,7 +5,7 @@
 > der `kind`-Diskriminator, Batches 1–6 / ADR-0001/0002) liegt außerhalb der
 > R-Sequenz. Der maßgebliche, aktuelle Stand steht in
 > [`Tooldokumentation.md`](Tooldokumentation.md); offene Punkte in
-> [`OPEN_TASKS_UIUX.md`](OPEN_TASKS_UIUX.md) und [`REVIEW_Tool_v2_Status.md`](REVIEW_Tool_v2_Status.md).
+> [`OPEN_TASKS.md`](OPEN_TASKS.md) und [`REVIEW_Tool_v2_Status.md`](REVIEW_Tool_v2_Status.md).
 
 > **Status 2026-06-12:** R0–R6 implementiert.
 > R0/R1 vollständig; R2 bis auf HANA-Store-Implementierung (O6, bewusst Stub);
