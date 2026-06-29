@@ -6,11 +6,32 @@
  * So bleibt das Rendering testbar; der stateful Container (ELK-Aufruf,
  * Trace-Berechnung, Inspector) kommt in Phase 4 obendrauf.
  */
-import { useId, type MouseEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { columnId, edgeTypeColor } from '@/lib/lineage';
 import type { PositionedChip, RoutedEdge, RoutedObjectEdge, SchematicLayout } from './layout';
 import { GEO } from './layout';
 import { dqStatusColor, laneColor, orthogonalPath } from './theme';
+
+const ZOOM_MIN = 0.2;
+const ZOOM_MAX = 2.5;
+const DRAG_THRESHOLD = 4; // px in Screen-Koordinaten
+
+interface Viewport {
+  x: number;
+  y: number;
+  k: number;
+}
+
+/** Client-Pixel → SVG-User-Koordinaten (berücksichtigt die viewBox-Skalierung). */
+function clientToUser(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } {
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return { x: clientX, y: clientY };
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const p = pt.matrixTransform(ctm.inverse());
+  return { x: p.x, y: p.y };
+}
 
 export interface SchematicBoardProps {
   layout: SchematicLayout;
@@ -39,72 +60,179 @@ export function SchematicBoard({
   onBackground,
 }: SchematicBoardProps) {
   const gridId = useId();
+  const shadowId = useId();
   const tracing = !!tracePins && tracePins.size > 0;
   const isDimmedChip = (id: string) => !!dimmedChips && dimmedChips.has(id);
 
-  return (
-    <svg
-      className="schem-board"
-      viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}
-      width={layout.width}
-      height={layout.height}
-      role="img"
-      aria-label="Schematic lineage"
-    >
-      <defs>
-        <pattern id={gridId} width={24} height={24} patternUnits="userSpaceOnUse">
-          <circle cx={1} cy={1} r={1} fill="var(--line)" opacity={0.5} />
-        </pattern>
-      </defs>
-      <rect
-        x={0}
-        y={0}
-        width={Math.max(layout.width, 1)}
-        height={Math.max(layout.height, 1)}
-        fill={`url(#${gridId})`}
-        onClick={onBackground}
-      />
+  const W = Math.max(layout.width, 1);
+  const H = Math.max(layout.height, 1);
 
-      {/* Traces unter den Chips, damit Pin-Dots die Endpunkte überdecken. */}
-      <g className="schem-traces">
-        {layout.mode === 'column'
-          ? layout.edges.map(edge => (
-              <ColumnTrace
-                key={edge.id}
-                edge={edge}
-                active={!!traceEdges && traceEdges.has(edge.id)}
-                dimmed={
-                  isDimmedChip(edge.fromNode) ||
-                  isDimmedChip(edge.toNode) ||
-                  (tracing && !(traceEdges && traceEdges.has(edge.id)))
-                }
-              />
-            ))
-          : layout.objectEdges.map(edge => (
-              <ObjectTrace
-                key={edge.id}
-                edge={edge}
-                dimmed={isDimmedChip(edge.fromNode) || isDimmedChip(edge.toNode)}
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [view, setView] = useState<Viewport>({ x: 0, y: 0, k: 1 });
+  // Pan-State: letzter Punkt (User-Koordinaten) + ob die Geste schon ein Zug ist.
+  const panRef = useRef<{ lastX: number; lastY: number; startClientX: number; startClientY: number } | null>(null);
+  const movedRef = useRef(false);
+
+  // Drag wandert über einen Pin/Chip hinweg: Auswahl unterdrücken, wenn gerade
+  // panned wurde (der Klick nach pointerup darf nicht selektieren/deselektieren).
+  const guard = useCallback(
+    <A extends unknown[]>(fn?: (...args: A) => void) =>
+      (...args: A) => {
+        if (movedRef.current) return;
+        fn?.(...args);
+      },
+    [],
+  );
+
+  const zoomAt = useCallback((factor: number, cx: number, cy: number) => {
+    setView(v => {
+      const k = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v.k * factor));
+      if (k === v.k) return v;
+      // Weltpunkt unter dem Cursor fixieren.
+      const wx = (cx - v.x) / v.k;
+      const wy = (cy - v.y) / v.k;
+      return { k, x: cx - wx * k, y: cy - wy * k };
+    });
+  }, []);
+
+  // Wheel-Zoom als non-passiver Listener, damit preventDefault das Seiten-
+  // Scrollen unterbindet (React onWheel ist passiv).
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return undefined;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const p = clientToUser(svg, e.clientX, e.clientY);
+      zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, p.x, p.y);
+    };
+    svg.addEventListener('wheel', onWheel, { passive: false });
+    return () => svg.removeEventListener('wheel', onWheel);
+  }, [zoomAt]);
+
+  const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
+    if (e.button !== 0) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    movedRef.current = false;
+    const p = clientToUser(svg, e.clientX, e.clientY);
+    panRef.current = { lastX: p.x, lastY: p.y, startClientX: e.clientX, startClientY: e.clientY };
+    svg.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: PointerEvent<SVGSVGElement>) => {
+    const pan = panRef.current;
+    const svg = svgRef.current;
+    if (!pan || !svg) return;
+    if (
+      !movedRef.current &&
+      Math.hypot(e.clientX - pan.startClientX, e.clientY - pan.startClientY) < DRAG_THRESHOLD
+    ) {
+      return;
+    }
+    movedRef.current = true;
+    const p = clientToUser(svg, e.clientX, e.clientY);
+    const dx = p.x - pan.lastX;
+    const dy = p.y - pan.lastY;
+    pan.lastX = p.x;
+    pan.lastY = p.y;
+    setView(v => ({ ...v, x: v.x + dx * v.k, y: v.y + dy * v.k }));
+  };
+
+  const endPan = (e: PointerEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (svg && svg.hasPointerCapture?.(e.pointerId)) svg.releasePointerCapture(e.pointerId);
+    panRef.current = null;
+  };
+
+  const zoomIn = () => zoomAt(1.25, W / 2, H / 2);
+  const zoomOut = () => zoomAt(1 / 1.25, W / 2, H / 2);
+  const fit = () => setView({ x: 0, y: 0, k: 1 });
+
+  return (
+    <div className="schem-stage">
+      <svg
+        ref={svgRef}
+        className="schem-board"
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label="Schematic lineage"
+        style={{ touchAction: 'none' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endPan}
+        onPointerCancel={endPan}
+      >
+        <defs>
+          <pattern id={gridId} width={26} height={26} patternUnits="userSpaceOnUse">
+            <circle cx={1} cy={1} r={1} fill="var(--line)" opacity={0.32} />
+          </pattern>
+          {/* Weiche Schlagschatten geben den Chips Tiefe statt flacher Rechtecke. */}
+          <filter id={shadowId} x="-20%" y="-20%" width="140%" height="160%">
+            <feDropShadow dx={0} dy={3} stdDeviation={4} floodColor="#000" floodOpacity={0.42} />
+          </filter>
+        </defs>
+
+        <g className="schem-viewport" transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
+          {/* Großzügiges Raster, damit beim Pannen kein leerer Rand entsteht. */}
+          <rect
+            x={-W}
+            y={-H}
+            width={W * 3}
+            height={H * 3}
+            fill={`url(#${gridId})`}
+            onClick={guard(onBackground)}
+          />
+
+          {/* Traces unter den Chips, damit Pin-Dots die Endpunkte überdecken. */}
+          <g className="schem-traces">
+            {layout.mode === 'column'
+              ? layout.edges.map(edge => (
+                  <ColumnTrace
+                    key={edge.id}
+                    edge={edge}
+                    active={!!traceEdges && traceEdges.has(edge.id)}
+                    dimmed={
+                      isDimmedChip(edge.fromNode) ||
+                      isDimmedChip(edge.toNode) ||
+                      (tracing && !(traceEdges && traceEdges.has(edge.id)))
+                    }
+                  />
+                ))
+              : layout.objectEdges.map(edge => (
+                  <ObjectTrace
+                    key={edge.id}
+                    edge={edge}
+                    dimmed={isDimmedChip(edge.fromNode) || isDimmedChip(edge.toNode)}
+                  />
+                ))}
+          </g>
+
+          <g className="schem-chips">
+            {layout.chips.map(chip => (
+              <Chip
+                key={chip.id}
+                chip={chip}
+                mode={layout.mode}
+                shadowId={shadowId}
+                dimmed={isDimmedChip(chip.id)}
+                selected={selectedChip === chip.id}
+                tracePins={tracePins}
+                selectedPin={selectedPin}
+                onSelectChip={guard(onSelectChip)}
+                onSelectPin={guard(onSelectPin)}
               />
             ))}
-      </g>
+          </g>
+        </g>
+      </svg>
 
-      <g className="schem-chips">
-        {layout.chips.map(chip => (
-          <Chip
-            key={chip.id}
-            chip={chip}
-            mode={layout.mode}
-            dimmed={isDimmedChip(chip.id)}
-            selected={selectedChip === chip.id}
-            tracePins={tracePins}
-            selectedPin={selectedPin}
-            onSelectChip={onSelectChip}
-            onSelectPin={onSelectPin}
-          />
-        ))}
-      </g>
-    </svg>
+      <div className="schem-zoom" role="group" aria-label="Zoom">
+        <button type="button" onClick={zoomIn} aria-label="Vergrößern">+</button>
+        <button type="button" onClick={zoomOut} aria-label="Verkleinern">−</button>
+        <button type="button" onClick={fit} aria-label="Ansicht zurücksetzen">⤢</button>
+      </div>
+    </div>
   );
 }
 
@@ -135,6 +263,7 @@ function ObjectTrace({ edge, dimmed }: { edge: RoutedObjectEdge; dimmed: boolean
 interface ChipProps {
   chip: PositionedChip;
   mode: 'column' | 'object';
+  shadowId: string;
   dimmed: boolean;
   selected: boolean;
   tracePins?: Set<string>;
@@ -143,11 +272,15 @@ interface ChipProps {
   onSelectPin?: (nodeId: string, pinId: string) => void;
 }
 
-function Chip({ chip, mode, dimmed, selected, tracePins, selectedPin, onSelectChip, onSelectPin }: ChipProps) {
+function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, onSelectChip, onSelectPin }: ChipProps) {
+  const clipId = useId();
   const cls = 'schem-chip' + (selected ? ' is-selected' : '') + (dimmed ? ' is-dimmed' : '');
   const tagText = `${chip.layer.toUpperCase()}${chip.system ? ` · ${chip.system}` : ''}`;
   const dqColor = chip.dqStatus ? dqStatusColor(chip.dqStatus) : null;
   const dotY = mode === 'object' ? 20 : 32;
+  const lane = laneColor(chip.laneOrder);
+  // Spalten-Chips bekommen ein abgesetztes Kopfband; Objekt-Chips sind nur Kopf.
+  const headerH = mode === 'column' ? 58 : chip.height;
   const selectChip = () => onSelectChip?.(chip.id);
   const selectPin = (event: MouseEvent<SVGElement>, pinId: string) => {
     event.stopPropagation();
@@ -156,22 +289,40 @@ function Chip({ chip, mode, dimmed, selected, tracePins, selectedPin, onSelectCh
 
   return (
     <g className={cls} transform={`translate(${chip.x}, ${chip.y})`} onClick={selectChip} style={{ cursor: 'pointer' }}>
-      <rect className="schem-chip-body" x={0} y={0} width={chip.width} height={chip.height} rx={5} />
-      <rect x={0} y={0} width={chip.width} height={3} rx={1.5} fill={laneColor(chip.laneOrder)} />
+      <clipPath id={clipId}>
+        <rect x={0} y={0} width={chip.width} height={chip.height} rx={7} />
+      </clipPath>
+      <rect
+        className="schem-chip-body"
+        x={0}
+        y={0}
+        width={chip.width}
+        height={chip.height}
+        rx={7}
+        filter={`url(#${shadowId})`}
+      />
+      {/* Kopfband, Lane-Akzent und Trennlinie, an die gerundeten Ecken geklippt. */}
+      <g clipPath={`url(#${clipId})`}>
+        <rect className="schem-chip-header" x={0} y={0} width={chip.width} height={headerH} />
+        <rect className="schem-lane" x={0} y={0} width={chip.width} height={3} fill={lane} />
+        {mode === 'column' && (
+          <line className="schem-divider" x1={0} y1={headerH} x2={chip.width} y2={headerH} />
+        )}
+      </g>
 
-      <text className="schem-tag" x={12} y={18}>
+      <text className="schem-tag" x={13} y={20}>
         {tagText}
       </text>
       <text
         className="schem-title"
-        x={12}
-        y={36}
+        x={13}
+        y={38}
         style={{ fontFamily: 'var(--font-mono)' }}
       >
         {chip.label}
       </text>
       {mode === 'object' && (
-        <text className="schem-sub" x={12} y={52}>
+        <text className="schem-sub" x={13} y={53}>
           {`${chip.pins.length} cols`}
         </text>
       )}

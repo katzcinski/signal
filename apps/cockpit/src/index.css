@@ -575,39 +575,60 @@ html {
 /* ── Schaltplan-Lineage (Circuit-Board-Ansicht) ───────────────────────────
    Farben kommen ausschließlich aus Theme-Vars; Positionen/Pfad-Geometrie
    setzt der Renderer inline. */
-.schem-board { display: block; width: 100%; height: 100%; user-select: none; }
+.schem-stage { position: relative; width: 100%; height: 100%; }
+.schem-board { display: block; width: 100%; height: 100%; user-select: none; cursor: grab; }
+.schem-board:active { cursor: grabbing; }
+
+/* Zoom-Steuerung schwebt unten rechts über dem Board. */
+.schem-zoom {
+  position: absolute; right: 14px; bottom: 14px;
+  display: flex; flex-direction: column; gap: 1px;
+  background: var(--line); border: 1px solid var(--line-2);
+  border-radius: var(--r-md); overflow: hidden; box-shadow: var(--shadow-1);
+}
+.schem-zoom button {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  background: var(--bg-2); color: var(--fg-2); border: none; cursor: pointer;
+  font-size: 16px; line-height: 1; transition: background 0.12s ease, color 0.12s ease;
+}
+.schem-zoom button:hover { background: var(--bg-3); color: var(--fg); }
 
 .schem-chip-body {
   fill: var(--bg-2);
-  stroke: var(--line);
+  stroke: var(--line-2);
   stroke-width: 1;
   transition: stroke 0.12s ease;
 }
-.schem-chip.is-selected .schem-chip-body { stroke: var(--cont); stroke-width: 1.6; }
-.schem-chip.is-dimmed { opacity: 0.22; }
+/* Abgesetztes Kopfband + Trennlinie geben dem Chip Struktur statt einer flachen Fläche. */
+.schem-chip-header { fill: var(--bg-3); }
+.schem-divider { stroke: var(--line); stroke-width: 1; }
+.schem-lane { opacity: 0.9; }
+.schem-chip.is-selected .schem-chip-body { stroke: var(--cont); stroke-width: 1.8; }
+.schem-chip.is-dimmed { opacity: 0.2; }
 
-.schem-tag { fill: var(--fg-3); font-size: 9px; font-weight: 600; letter-spacing: 0.04em; }
-.schem-title { fill: var(--fg); font-size: 12px; font-weight: 600; }
+.schem-tag { fill: var(--fg-3); font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.schem-title { fill: var(--fg); font-size: 12.5px; font-weight: 650; }
 .schem-sub { fill: var(--fg-2); font-size: 10.5px; }
 
 .schem-pin-rowbg { fill: transparent; }
-.schem-pin-rowbg:hover { fill: color-mix(in srgb, var(--cont) 9%, transparent); }
-.schem-pin-label { fill: var(--fg-2); font-size: 10.5px; }
+.schem-pin-rowbg:hover { fill: color-mix(in srgb, var(--cont) 11%, transparent); }
+.schem-pin-label { fill: var(--fg-2); font-size: 11px; }
 .schem-pin-label.is-active { fill: var(--cont); font-weight: 600; }
 .schem-pin-type { fill: var(--fg-3); font-size: 9px; }
-.schem-pin-dot { stroke: var(--bg-2); stroke-width: 1; }
+.schem-pin-dot { stroke: var(--bg-2); stroke-width: 1.2; }
 .schem-pin-dot.is-active { stroke: var(--bg-1); }
 
-.schem-trace { fill: none; stroke-width: 1.5; opacity: 0.5; }
+.schem-trace { fill: none; stroke-width: 2; opacity: 0.62; }
 .schem-trace.is-derived { stroke-dasharray: 4 3; }
-.schem-trace.is-dimmed { opacity: 0.06; }
+.schem-trace.is-dimmed { opacity: 0.07; }
 .schem-trace.is-active {
-  stroke-width: 2.2;
+  stroke-width: 2.6;
   opacity: 1;
   stroke-dasharray: 6 6;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--cont) 55%, transparent));
   animation: schem-flow 0.9s linear infinite;
 }
-.schem-obj-trace { fill: none; stroke: var(--line-2); stroke-width: 2.5; opacity: 0.55; }
+.schem-obj-trace { fill: none; stroke: var(--line-2); stroke-width: 2.5; opacity: 0.65; }
 .schem-obj-trace.is-dimmed { opacity: 0.08; }
 
 @keyframes schem-flow { to { stroke-dashoffset: -24; } }

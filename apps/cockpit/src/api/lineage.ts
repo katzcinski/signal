@@ -7,11 +7,31 @@ import type {
   LineageGraph,
 } from '@/types';
 
-export const useLineage = () =>
-  useQuery<LineageGraph>({
-    queryKey: ['lineage'],
-    queryFn: () => api.get('/lineage').then(r => r.data),
+export interface LineageScope {
+  /** Seed-Objekte: ohne Seeds wird der volle Graph geladen. */
+  seeds?: string[];
+  /** BFS-Tiefe um die Seeds (Hops in beide Richtungen). */
+  depth?: number;
+  /** Abfrage gezielt aussetzen (z. B. solange kein Seed gewählt ist). */
+  enabled?: boolean;
+}
+
+export const useLineage = (scope: LineageScope = {}) => {
+  const seeds = scope.seeds ?? [];
+  const depth = scope.depth ?? 2;
+  return useQuery<LineageGraph>({
+    // Seeds stabil sortiert in den Key, damit identische Auswahl gecacht wird.
+    queryKey: ['lineage', [...seeds].sort(), seeds.length ? depth : null],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      for (const s of seeds) params.append('seed', s);
+      if (seeds.length) params.set('depth', String(depth));
+      const qs = params.toString();
+      return api.get(`/lineage${qs ? `?${qs}` : ''}`).then(r => r.data);
+    },
+    enabled: scope.enabled ?? true,
   });
+};
 
 export function fetchColumnLineage(objectId: string): Promise<ColumnLineageObjectResponse>;
 export function fetchColumnLineage(objectId: string, column: string): Promise<ColumnLineageColumnResponse>;

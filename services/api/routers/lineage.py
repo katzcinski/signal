@@ -40,9 +40,48 @@ def _scan_contracts(contracts_dir: Path) -> tuple[list[str], set[str], set[str],
     return contracted, gate_products, contract_products, contract_kinds
 
 
+def _seed_subgraph(
+    seeds: list[str],
+    edges: list[dict],
+    column_edges: list[dict],
+    depth: int,
+) -> set[str]:
+    """Objekt-IDs im ungerichteten ``depth``-Umkreis der Seeds (inkl. Seeds).
+
+    Adjazenz aus Objekt-Edges und aus Column-Edges abgeleiteten Objektpaaren,
+    damit der Teilgraph auch dort zusammenhängt, wo nur Spalten-Lineage
+    vorliegt. Zyklensicher über das ``keep``-Set.
+    """
+    adj: dict[str, set[str]] = {}
+    for e in (*edges, *column_edges):
+        s, t = e.get("source"), e.get("target")
+        if not s or not t or s == t:
+            continue
+        adj.setdefault(s, set()).add(t)
+        adj.setdefault(t, set()).add(s)
+
+    keep: set[str] = set()
+    frontier: deque[tuple[str, int]] = deque()
+    for s in seeds:
+        if s not in keep:
+            keep.add(s)
+            frontier.append((s, 0))
+    while frontier:
+        cur, d = frontier.popleft()
+        if d >= depth:
+            continue
+        for nb in adj.get(cur, ()):
+            if nb not in keep:
+                keep.add(nb)
+                frontier.append((nb, d + 1))
+    return keep
+
+
 @router.get("")
 def get_lineage_graph(
     space: str | None = Query(default=None),
+    seed: list[str] | None = Query(default=None),
+    depth: int = Query(default=2, ge=0, le=20),
     lineage: dict = Depends(get_lineage),
     store: StoreDep = ...,
 ):
@@ -61,6 +100,24 @@ def get_lineage_graph(
         column_edges = [
             e for e in column_edges
             if e.get("source") in node_ids or e.get("target") in node_ids
+        ]
+
+    # Seed-Scoping: statt des kompletten Graphen nur den Teilgraphen rund um
+    # ein oder mehrere Seed-Objekte liefern (UX: Board nicht überfrachten).
+    # BFS in beide Richtungen über das Objekt-Adjazenznetz (echte Objekt-Edges
+    # ∪ aus Column-Edges abgeleitete Paare) bis ``depth`` Hops. Ohne Seed bleibt
+    # der volle Graph erhalten (Rückwärtskompatibilität für ObjectDetail/Tests).
+    seeds = [s for s in (seed or []) if s]
+    if seeds:
+        keep = _seed_subgraph(seeds, edges, column_edges, depth)
+        nodes = [n for n in nodes if n.get("id") in keep]
+        edges = [
+            e for e in edges
+            if e.get("source") in keep and e.get("target") in keep
+        ]
+        column_edges = [
+            e for e in column_edges
+            if e.get("source") in keep and e.get("target") in keep
         ]
 
     # Annotate with live DQ status and coverage flags

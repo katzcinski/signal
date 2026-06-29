@@ -193,7 +193,8 @@ function _truncate(s: string, max = 17): string {
 }
 
 function MiniLineageDag({ focusId }: { focusId: string }) {
-  const { data: graph, isLoading } = useLineage();
+  // Nur das direkte Umfeld des Objekts laden statt des gesamten Graphen.
+  const { data: graph, isLoading } = useLineage({ seeds: [focusId], depth: 1, enabled: !!focusId });
   const navigate = useNavigate();
 
   if (isLoading) {
