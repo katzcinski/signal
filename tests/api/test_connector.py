@@ -30,10 +30,15 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("SECRETS_FILE", str(secrets_file))
     monkeypatch.setenv("INVENTORY_FILE", str(inv))
     monkeypatch.setenv("LINEAGE_FILE", str(lin))
-    # Ensure no ambient env secret leaks into the test.
-    monkeypatch.delenv("DATASPHERE_CLIENT_SECRET", raising=False)
-    monkeypatch.delenv("DATASPHERE_BASE_URL", raising=False)
-    monkeypatch.delenv("DATASPHERE_CLIENT_ID", raising=False)
+    # Ensure no ambient env or repo .env Datasphere settings leak into the test.
+    monkeypatch.setenv("DATASPHERE_SPACE_ID", "")
+    monkeypatch.setenv("DATASPHERE_USE_CLI", "false")
+    monkeypatch.setenv("DATASPHERE_CLIENT_SECRET", "")
+    monkeypatch.setenv("DATASPHERE_BASE_URL", "")
+    monkeypatch.setenv("DATASPHERE_CLIENT_ID", "")
+    monkeypatch.setenv("DATASPHERE_AUTHORIZATION_URL", "")
+    monkeypatch.setenv("DATASPHERE_TOKEN_URL", "")
+    monkeypatch.setenv("DATASPHERE_OAUTH_SECRETS_FILE", "")
 
     import services.api.settings as settings_mod
     import services.api.deps as deps_mod
@@ -66,7 +71,9 @@ def test_put_persists_rest_config_and_stores_secret_as_ref(client):
         "space_id": "MY_SPACE", "use_cli": False,
         "cli_host": "tenant.example",
         "base_url": "https://tenant.example", "client_id": "my-cid",
+        "authorization_url": "https://tenant.example/oauth/authorize",
         "token_url": "https://tenant.example/oauth/token",
+        "oauth_secrets_file": r"C:\secrets\datasphere.json",
         "client_secret": "top-secret-value",
     })
     assert resp.status_code == 200
@@ -74,7 +81,9 @@ def test_put_persists_rest_config_and_stores_secret_as_ref(client):
     assert data["space_id"] == "MY_SPACE"
     assert data["base_url"] == "https://tenant.example"
     assert data["client_id"] == "my-cid"
+    assert data["authorization_url"] == "https://tenant.example/oauth/authorize"
     assert data["secret_configured"] is True
+    assert data["file_oauth_secrets_file"] == r"C:\secrets\datasphere.json"
     # The raw secret is never echoed back.
     assert "top-secret-value" not in json.dumps(data)
     # Catalog is now considered configured (base_url + client_id present).
@@ -115,6 +124,27 @@ def test_put_clear_secret_removes_ref(client):
         "clear_secret": True,
     })
     assert resp.json()["secret_configured"] is False
+
+
+def test_post_login_starts_cli_cmd(client, monkeypatch):
+    c, _ = client
+    from services.api import datasphere_cli
+
+    started = []
+
+    monkeypatch.setattr(datasphere_cli.DatasphereCli, "is_available", lambda self: True)
+
+    def fake_open(self):
+        command = self.login_command()
+        started.append(command)
+        return command
+
+    monkeypatch.setattr(datasphere_cli.DatasphereCli, "open_login_cmd", fake_open)
+    resp = c.post("/api/admin/connector/login")
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+    assert resp.json()["command"].startswith("datasphere login")
+    assert started
 
 
 def test_connector_requires_admin(client):

@@ -467,6 +467,8 @@ export interface GuaranteeVolume {
 export interface GuaranteeCompleteness {
   column: string;
   min_pct: number;
+  segment_by?: string;
+  max_segments?: number;
   severity?: Severity;
 }
 
@@ -483,6 +485,21 @@ export interface ContractGuarantees {
   volume?: GuaranteeVolume;
   completeness?: GuaranteeCompleteness[];
   not_null?: GuaranteeNotNull[];
+}
+
+export type ObservabilityBaseline = 'rolling' | 'seasonal';
+export type ObservabilitySeason = 'dow' | 'eom' | 'hour';
+export type ObservabilitySensitivity = 'low' | 'medium' | 'high';
+
+export interface ObservabilityFamilyConfig {
+  baseline?: ObservabilityBaseline;
+  season?: ObservabilitySeason[];
+  sensitivity?: ObservabilitySensitivity;
+}
+
+export interface ContractObservability {
+  volume?: ObservabilityFamilyConfig;
+  freshness?: ObservabilityFamilyConfig;
 }
 
 // A library-instantiated check on an internal gate (HANDOVER Iteration 1).
@@ -505,6 +522,7 @@ export interface Contract {
   version: string;
   description?: string;
   guarantees?: ContractGuarantees;
+  observability?: ContractObservability;
   checks?: GateCheck[];
 }
 
@@ -524,6 +542,7 @@ export interface ContractPutBody {
   version: string;
   description?: string;
   guarantees?: ContractGuarantees;
+  observability?: ContractObservability;
   checks?: GateCheck[];
 }
 
@@ -860,6 +879,27 @@ export interface Incident {
   resolved_at: string | null;
   contract_version: string;
   kind: ArtifactKind;
+  cluster_id?: string;
+  correlation_key?: string;
+  member_count?: number;
+  representative_incident_id?: number;
+  impacted_objects?: IncidentImpactObject[];
+}
+
+export interface IncidentImpactObject {
+  product: string;
+  distance: number;
+  label?: string;
+  business_name?: string;
+  object_type?: string;
+  space?: string;
+  layer?: string;
+  role?: string;
+  owned_by?: string;
+  owners?: string[];
+  lifecycle?: string;
+  kind?: ArtifactKind | string;
+  version?: string;
 }
 
 export interface IncidentEvent {
@@ -878,6 +918,18 @@ export interface IncidentTransitionBody {
   status: string;
   owner?: string;
   note?: string;
+}
+
+export interface IncidentRca {
+  incident_id: number;
+  probable_cause_object: string;
+  cause_confidence: number | null;
+  cause_candidates: Record<string, unknown>[];
+  affected_contracts: Record<string, unknown>[];
+  affected_internal_gates: Record<string, unknown>[];
+  recurrence_count: number;
+  recurrence_last_at: string;
+  computed_at: string;
 }
 
 // ---- Derived failing-checks view (GET /api/incidents/checks) ----

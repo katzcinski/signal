@@ -370,6 +370,79 @@ def test_check_login_propagates_auth_error(monkeypatch):
         cli.check_login()
 
 
+def test_login_command_matches_meridian_oauth_overrides(monkeypatch, tmp_path):
+    secrets_file = str(tmp_path / "datasphere-secrets.json")
+    cli = _cli(
+        monkeypatch,
+        host="https://tenant.example",
+        authorization_url="https://auth.example/oauth/authorize",
+        token_url="https://auth.example/oauth/token",
+        secrets_file=secrets_file,
+    )
+    assert cli.login_args() == [
+        "login",
+        "--host", "https://tenant.example",
+        "--authorization-url", "https://auth.example/oauth/authorize",
+        "--token-url", "https://auth.example/oauth/token",
+        "--secrets-file", secrets_file,
+    ]
+    command = cli.login_command()
+    assert command.startswith("datasphere login --host https://tenant.example")
+    assert "--authorization-url https://auth.example/oauth/authorize" in command
+    assert "--token-url https://auth.example/oauth/token" in command
+    assert f"--secrets-file {secrets_file}" in command
+
+
+def test_open_login_cmd_starts_visible_windows_terminal(monkeypatch, tmp_path):
+    monkeypatch.setattr(datasphere_cli.os, "name", "nt")
+    monkeypatch.setenv("COMSPEC", "cmd.exe")
+    cli = DatasphereCli(
+        host="https://tenant.example",
+        token_url="https://auth.example/oauth/token",
+        secrets_file=str(tmp_path / "secrets.json"),
+    )
+    cli._cli_cmd = ["cmd.exe", "/c", r"C:\tools\datasphere.cmd"]
+    calls = []
+
+    class _Proc:
+        pass
+
+    def fake_popen(command, **kwargs):
+        calls.append({"command": command, "kwargs": kwargs})
+        return _Proc()
+
+    monkeypatch.setattr(datasphere_cli.subprocess, "Popen", fake_popen)
+    display = cli.open_login_cmd()
+    assert display.startswith("datasphere login --host https://tenant.example")
+    assert calls[0]["command"][0:2] == ["cmd.exe", "/k"]
+    assert r"C:\tools\datasphere.cmd" in calls[0]["command"][2]
+    assert "--token-url https://auth.example/oauth/token" in calls[0]["command"][2]
+    assert calls[0]["kwargs"]["shell"] is False
+
+
+def test_auth_error_message_includes_oauth_login_command(monkeypatch, tmp_path):
+    cli = _cli(
+        monkeypatch,
+        authorization_url="https://auth.example/oauth/authorize",
+        token_url="https://auth.example/oauth/token",
+        secrets_file=str(tmp_path / "secrets.json"),
+    )
+
+    def fake_run(command, **kwargs):
+        if command[-3:] == ["config", "host", "show"]:
+            return _completed(stdout="https://tenant.example\n")
+        return _completed(returncode=1, stderr="HTTP 401 Unauthorized")
+
+    _patch_run(monkeypatch, fake_run)
+    with pytest.raises(CliAuthError) as exc:
+        cli.run_cli_json(["objects", "views", "list"], retries=0)
+    message = str(exc.value)
+    assert "datasphere login --host https://tenant.example" in message
+    assert "--authorization-url https://auth.example/oauth/authorize" in message
+    assert "--token-url https://auth.example/oauth/token" in message
+    assert "--secrets-file" in message
+
+
 # ----------------------------------------------------------------------
 # list_spaces / list_objects paging + fallback
 # ----------------------------------------------------------------------

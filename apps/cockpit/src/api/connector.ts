@@ -12,18 +12,26 @@ export interface ConnectorStatus {
   config_file: string;
   base_url: string;
   client_id: string;
+  authorization_url: string;
   token_url: string;
+  oauth_secrets_file: string;
   secret_configured: boolean;
+  login_command: string;
   file_space_id: string;
   file_use_cli: boolean;
   file_cli_host: string;
   file_base_url: string;
   file_client_id: string;
+  file_authorization_url: string;
   file_token_url: string;
+  file_oauth_secrets_file: string;
   env_space_id: string;
   env_use_cli: boolean;
   env_base_url: string;
   env_client_id: string;
+  env_authorization_url: string;
+  env_token_url: string;
+  env_oauth_secrets_file: string;
 }
 
 export interface ConnectorSave {
@@ -32,9 +40,16 @@ export interface ConnectorSave {
   cli_host?: string;
   base_url?: string;
   client_id?: string;
+  authorization_url?: string;
   token_url?: string;
+  oauth_secrets_file?: string;
   client_secret?: string;
   clear_secret?: boolean;
+}
+
+export interface ConnectorLoginStart {
+  ok: boolean;
+  command: string;
 }
 
 export function useConnectorStatus() {
@@ -64,6 +79,20 @@ export function useSaveConnector() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['connector-status'] });
       qc.invalidateQueries({ queryKey: EXTRACT_STATUS_KEY });
+    },
+  });
+}
+
+export function useStartConnectorLogin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const resp = await fetch('/api/admin/connector/login', { method: 'POST' });
+      if (!resp.ok) throw new Error(`${resp.status}`);
+      return resp.json() as Promise<ConnectorLoginStart>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['connector-status'] });
     },
   });
 }

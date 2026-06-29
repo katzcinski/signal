@@ -100,3 +100,11 @@ def test_internal_gate_rejected():
 
 def test_deterministic():
     assert to_odcs(_full_contract()) == to_odcs(_full_contract())
+
+
+def test_observability_not_exported():
+    contract = _full_contract()
+    contract["observability"] = {
+        "volume": {"baseline": "seasonal", "season": ["dow"], "sensitivity": "high"}
+    }
+    assert "observability" not in json.dumps(to_odcs(contract))

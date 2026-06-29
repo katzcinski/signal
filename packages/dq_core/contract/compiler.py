@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from dataclasses import dataclass
 from typing import Any, Iterable
 
 from ..library.check_library import check_by_id, load_library
@@ -28,6 +29,15 @@ _UNBOUND_TOKEN = re.compile(r":?<[A-Za-z0-9_]+>")
 
 class CompileError(ValueError):
     pass
+
+
+@dataclass(frozen=True)
+class SegmentDetailSpec:
+    check_name: str
+    segment_column: str
+    detail_sql: str
+    threshold_value: float
+    max_segments: int
 
 
 def _ident(value: Any, where: str, known: set[str] | None = None) -> str:
@@ -274,9 +284,23 @@ def compile_contract(
     for i, comp in enumerate(g.get("completeness") or []):
         col = _ident(comp.get("column"), f"guarantees.completeness[{i}].column", cols)
         max_null_pct = round(100.0 - float(comp.get("min_pct", 100)), 4)
-        checks.append(_mk("completeness_pct", dataset, {"<SPALTE>": col},
-                          name=f"completeness_{col}", expect=f"<= {max_null_pct}",
-                          severity=_severity(comp, "warn"), owner=owner, unit="%", kind=kind))
+        segment_by = comp.get("segment_by")
+        if segment_by:
+            seg = _ident(segment_by, f"guarantees.completeness[{i}].segment_by", cols)
+            checks.append(CheckDef(
+                name=f"completeness_{col}_by_{seg}",
+                sql=_segment_scalar_sql(dataset, col, seg, max_null_pct),
+                expect="= 0",
+                severity=_severity(comp, "warn"),
+                type="completeness_pct_segment",
+                unit="segments",
+                owned_by=owner,
+                kind=kind,
+            ))
+        else:
+            checks.append(_mk("completeness_pct", dataset, {"<SPALTE>": col},
+                              name=f"completeness_{col}", expect=f"<= {max_null_pct}",
+                              severity=_severity(comp, "warn"), owner=owner, unit="%", kind=kind))
 
     for i, nn in enumerate(g.get("not_null") or []):
         sev = _severity(nn, "fail")
@@ -314,10 +338,99 @@ def compiler_hash(contract: dict[str, Any]) -> str:
     """A4: Determinismus-Hash = f(Contract-Inhalt, Library-Version)."""
     import yaml
     contract_hash = hashlib.sha256(
-        yaml.safe_dump(contract, sort_keys=True).encode()
+        yaml.safe_dump(_compiled_contract_payload(contract), sort_keys=True).encode()
     ).hexdigest()[:16]
     library_version = str(load_library().get("version", "1"))
     return hashlib.sha256(f"{contract_hash}:{library_version}".encode()).hexdigest()[:16]
+
+
+def compiled_contract_hash(contract: dict[str, Any]) -> str:
+    """Hash only fields that can change compiled checks.yml output."""
+    import yaml
+    return hashlib.sha256(
+        yaml.safe_dump(_compiled_contract_payload(contract), sort_keys=True).encode()
+    ).hexdigest()[:16]
+
+
+def _compiled_contract_payload(contract: dict[str, Any]) -> dict[str, Any]:
+    payload = dict(contract)
+    payload.pop("observability", None)
+    return payload
+
+
+def segment_detail_specs(
+    contract: dict[str, Any],
+    *,
+    schema: str = "{schema}",
+    inventory_columns: set[str] | None = None,
+) -> list[SegmentDetailSpec]:
+    dataset = _ident(contract.get("dataset") or contract.get("product"), "dataset")
+    g = contract.get("guarantees") or {}
+    specs: list[SegmentDetailSpec] = []
+    for i, comp in enumerate(g.get("completeness") or []):
+        if not comp.get("segment_by"):
+            continue
+        col = _ident(comp.get("column"), f"guarantees.completeness[{i}].column", inventory_columns)
+        seg = _ident(comp.get("segment_by"), f"guarantees.completeness[{i}].segment_by", inventory_columns)
+        max_null_pct = round(100.0 - float(comp.get("min_pct", 100)), 4)
+        max_segments = int(comp.get("max_segments") or 50)
+        max_segments = min(max(max_segments, 1), 500)
+        sql = _segment_detail_sql(dataset, col, seg, max_null_pct, max_segments, schema=schema)
+        specs.append(SegmentDetailSpec(
+            check_name=f"completeness_{col}_by_{seg}",
+            segment_column=seg,
+            detail_sql=sql,
+            threshold_value=max_null_pct,
+            max_segments=max_segments,
+        ))
+    return specs
+
+
+def _segment_null_pct_expr(column: str) -> str:
+    return (
+        f'ROUND(100.0 * COUNT(CASE WHEN "{column}" IS NULL THEN 1 END) '
+        "/ NULLIF(COUNT(*), 0), 2)"
+    )
+
+
+def _segment_select_sql(
+    dataset: str,
+    column: str,
+    segment_column: str,
+    threshold: float,
+    *,
+    schema: str = "{schema}",
+) -> str:
+    expr = _segment_null_pct_expr(column)
+    return (
+        f'SELECT "{segment_column}" AS segment_value, {expr} AS actual_value '
+        f'FROM "{schema}"."{dataset}" '
+        f'GROUP BY "{segment_column}" '
+        f'HAVING {expr} > {threshold}'
+    )
+
+
+def _segment_scalar_sql(dataset: str, column: str, segment_column: str, threshold: float) -> str:
+    return (
+        "SELECT COUNT(*) FROM ("
+        + _segment_select_sql(dataset, column, segment_column, threshold)
+        + ") violating_segments"
+    )
+
+
+def _segment_detail_sql(
+    dataset: str,
+    column: str,
+    segment_column: str,
+    threshold: float,
+    max_segments: int,
+    *,
+    schema: str = "{schema}",
+) -> str:
+    return (
+        _segment_select_sql(dataset, column, segment_column, threshold, schema=schema)
+        + f" ORDER BY actual_value DESC LIMIT {int(max_segments)}"
+    )
 
 
 def bind_schema(config: DatasetConfig, schema: str) -> DatasetConfig:

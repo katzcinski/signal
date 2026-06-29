@@ -32,7 +32,9 @@ _DEFAULTS: dict[str, Any] = {
     "cli_host": "",
     "base_url": "",
     "client_id": "",
+    "authorization_url": "",
     "token_url": "",
+    "oauth_secrets_file": "",
     "secret_ref": "",
 }
 
@@ -51,7 +53,9 @@ def read_connector_config(connector_file: str) -> dict[str, Any]:
         "cli_host": str(data.get("cli_host") or ""),
         "base_url": str(data.get("base_url") or ""),
         "client_id": str(data.get("client_id") or ""),
+        "authorization_url": str(data.get("authorization_url") or ""),
         "token_url": str(data.get("token_url") or ""),
+        "oauth_secrets_file": str(data.get("oauth_secrets_file") or ""),
         "secret_ref": str(data.get("secret_ref") or ""),
     }
 
@@ -66,7 +70,9 @@ def write_connector_config(connector_file: str, cfg: dict[str, Any]) -> None:
         "cli_host": str(cfg.get("cli_host") or ""),
         "base_url": str(cfg.get("base_url") or ""),
         "client_id": str(cfg.get("client_id") or ""),
+        "authorization_url": str(cfg.get("authorization_url") or ""),
         "token_url": str(cfg.get("token_url") or ""),
+        "oauth_secrets_file": str(cfg.get("oauth_secrets_file") or ""),
         # NIE der Klartext — nur die Referenz (S-13).
         "secret_ref": str(cfg.get("secret_ref") or ""),
     }
@@ -105,7 +111,11 @@ def effective_cli_host(settings: Any) -> str:
     env_val = str(os.environ.get("DSP_CLI_HOST", "") or "")
     if env_val:
         return env_val
-    return str(_file_cfg(settings).get("cli_host") or "")
+    file_cfg = _file_cfg(settings)
+    file_host = str(file_cfg.get("cli_host") or "")
+    if file_host:
+        return file_host
+    return str(getattr(settings, "datasphere_base_url", "") or file_cfg.get("base_url") or "")
 
 
 def effective_base_url(settings: Any) -> str:
@@ -124,12 +134,28 @@ def effective_client_id(settings: Any) -> str:
     return str(_file_cfg(settings).get("client_id") or "")
 
 
+def effective_authorization_url(settings: Any) -> str:
+    """Effective CLI OAuth2 authorization URL: env var wins, then datasphere.yml."""
+    env_val = str(getattr(settings, "datasphere_authorization_url", "") or "")
+    if env_val:
+        return env_val
+    return str(_file_cfg(settings).get("authorization_url") or "")
+
+
 def effective_token_url(settings: Any) -> str:
     """Effective OAuth2 token URL override: env var wins, then datasphere.yml."""
     env_val = str(getattr(settings, "datasphere_token_url", "") or "")
     if env_val:
         return env_val
     return str(_file_cfg(settings).get("token_url") or "")
+
+
+def effective_oauth_secrets_file(settings: Any) -> str:
+    """Effective Datasphere CLI OAuth secrets-file path: env var wins, then file."""
+    env_val = str(getattr(settings, "datasphere_oauth_secrets_file", "") or "")
+    if env_val:
+        return env_val
+    return str(_file_cfg(settings).get("oauth_secrets_file") or "")
 
 
 def effective_secret_ref(settings: Any) -> str:

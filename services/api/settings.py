@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     diagnostics_ttl_days: int = Field(default=7)
     allow_profile_samples: bool = Field(default=False)
     profile_sample_columns: list[str] = Field(default=[])
+    segment_value_columns: list[str] = Field(default=[])
 
     # F5: Staleness threshold for inventory/lineage extract (days)
     extract_stale_days: int = Field(default=7)
@@ -75,6 +76,7 @@ class Settings(BaseSettings):
     # absent, webhook_url acts as an implicit default target. Every target URL is
     # still validated against webhook_allowlist (no SSRF bypass via routing).
     notifications_file: str = Field(default="notifications.yml")
+    incident_cluster_window_minutes: int = Field(default=15, ge=1, le=1440)
 
     # Datasphere connector config file (runtime alternative to env vars, git-ignored)
     connector_file: str = Field(default="datasphere.yml")
@@ -85,7 +87,9 @@ class Settings(BaseSettings):
     datasphere_base_url: str = Field(default="")
     datasphere_client_id: str = Field(default="")
     datasphere_client_secret: str = Field(default="")
+    datasphere_authorization_url: str = Field(default="")
     datasphere_token_url: str = Field(default="")
+    datasphere_oauth_secrets_file: str = Field(default="")
     datasphere_space_id: str = Field(default="")
     # Tier-2 extraction: REST/OAuth catalog is the default source; set true to
     # also use the local @sap/datasphere-cli when available (richest CSN).

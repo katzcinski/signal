@@ -98,6 +98,9 @@ class DatasphereCli:
         self,
         *,
         host: str | None = None,
+        authorization_url: str | None = None,
+        token_url: str | None = None,
+        secrets_file: str | None = None,
         timeout_sec: int = DEFAULT_TIMEOUT_SEC,
         retries: int = DEFAULT_RETRIES,
         retry_delay_sec: int = DEFAULT_RETRY_DELAY_SEC,
@@ -106,6 +109,9 @@ class DatasphereCli:
         # wins (resolved per-call in ``_run_cli_once``); this is the fallback so
         # the host can also be set from the connector UI.
         self._host = (host or "").strip() or None
+        self._authorization_url = (authorization_url or "").strip() or None
+        self._token_url = (token_url or "").strip() or None
+        self._secrets_file = (secrets_file or "").strip() or None
         self.timeout_sec = timeout_sec
         self.retries = retries
         self.retry_delay_sec = retry_delay_sec
@@ -207,6 +213,71 @@ class DatasphereCli:
             except CliError:
                 logger.debug("CLI login check via %s failed; trying next.", argv)
         return False
+
+    def login_args(
+        self,
+        *,
+        host: str | None = None,
+        code: str | None = None,
+        force: bool = False,
+    ) -> list[str]:
+        """Return the Meridian-style ``datasphere login`` argv.
+
+        The Datasphere CLI reads OAuth client details interactively or from the
+        optional secrets file. We only pass non-secret connection details here.
+        """
+        args = ["login"]
+        effective_host = (host or os.environ.get("DSP_CLI_HOST") or self._host or "").strip()
+        if effective_host:
+            args += ["--host", effective_host]
+        if self._authorization_url:
+            args += ["--authorization-url", self._authorization_url]
+        if self._token_url:
+            args += ["--token-url", self._token_url]
+        if self._secrets_file:
+            args += ["--secrets-file", self._secrets_file]
+        if code:
+            args += ["--code", code]
+        if force:
+            args.append("--force")
+        return args
+
+    def login_command(self, *, host: str | None = None) -> str:
+        """Human-readable CLI login command, with OAuth overrides included."""
+        return _display_cli_command(self.login_args(host=host))
+
+    def open_login_cmd(self) -> str:
+        """Open an interactive Windows CMD for ``datasphere login``.
+
+        This mirrors Meridian's operator flow: login remains interactive and
+        visible, while this service only supplies non-secret connection details.
+        """
+        if os.name != "nt":
+            raise CliError("CMD-Login kann nur unter Windows gestartet werden.")
+
+        cli_program = self._terminal_cli_program()
+        login_args = self.login_args()
+        command_line = subprocess.list2cmdline([cli_program, *login_args])
+        comspec = os.environ.get("COMSPEC", "cmd.exe")
+        try:
+            subprocess.Popen(
+                [comspec, "/k", command_line],
+                shell=False,
+                creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
+            )
+        except FileNotFoundError as exc:
+            raise CliError(f"CMD kann nicht gestartet werden: {comspec!r}") from exc
+        return self.login_command()
+
+    def _terminal_cli_program(self) -> str:
+        cli_cmd = self._cli_command()
+        if (
+            os.name == "nt"
+            and len(cli_cmd) >= 3
+            and cli_cmd[1].lower() in {"/c", "/k"}
+        ):
+            return cli_cmd[2]
+        return cli_cmd[0]
 
     # ------------------------------------------------------------------
     # Spaces / objects
@@ -498,9 +569,7 @@ class DatasphereCli:
                 host = None
             finally:
                 self._building_auth_message = False
-        login_cmd = "datasphere login"
-        if host:
-            login_cmd += f" --host {host}"
+        login_cmd = self.login_command(host=host)
         return (
             "Datasphere CLI verlangt eine Authentifizierung, dieses Tool "
             "erwartet aber nicht-interaktive JSON-Ausgabe.\n"
@@ -548,3 +617,15 @@ def _is_auth_error(text: str) -> bool:
 def _is_rate_limit(text: str) -> bool:
     cleaned = _strip_terminal_control(text).lower()
     return any(token in cleaned for token in ("429", "rate limit", "too many requests"))
+
+
+def _display_cli_command(args: list[str]) -> str:
+    return "datasphere " + " ".join(_quote_display_arg(arg) for arg in args)
+
+
+def _quote_display_arg(value: str) -> str:
+    if not value:
+        return '""'
+    if re.search(r'\s|"', value):
+        return '"' + value.replace('"', r'\"') + '"'
+    return value

@@ -31,6 +31,25 @@ def test_valid_contract_passes():
     assert errors == []
 
 
+def test_top_level_observability_is_valid():
+    ok = {
+        **VALID_CONTRACT,
+        "observability": {
+            "volume": {"baseline": "seasonal", "season": ["dow", "eom"], "sensitivity": "medium"},
+            "freshness": {"baseline": "rolling", "sensitivity": "high"},
+        },
+    }
+    assert validate_contract(ok) == []
+
+
+def test_trend_observability_is_deferred():
+    bad = {
+        **VALID_CONTRACT,
+        "observability": {"volume": {"baseline": "trend"}},
+    }
+    assert validate_contract(bad)
+
+
 def test_shipped_contracts_validate_green():
     """S-5-Regression: der eigene Repo-Contract darf nicht am Validator scheitern."""
     contracts_dir = Path(__file__).parents[2] / "contracts"

@@ -25,6 +25,18 @@ VALID_KINDS = {"internal_gate", "consumer_contract", "provider_contract"}
 _IDENT = {"type": "string", "pattern": SAFE_IDENTIFIER.pattern}
 _IDENT_LIST = {"type": "array", "items": _IDENT, "minItems": 1}
 _SEVERITY = {"enum": sorted(VALID_SEVERITIES)}
+_OBS_BASELINE = {"enum": ["rolling", "seasonal"]}
+_OBS_SEASON = {"type": "array", "items": {"enum": ["dow", "eom", "hour"]}, "uniqueItems": True}
+_OBS_SENSITIVITY = {"enum": ["low", "medium", "high"]}
+_OBS_FAMILY = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "baseline": _OBS_BASELINE,
+        "season": _OBS_SEASON,
+        "sensitivity": _OBS_SENSITIVITY,
+    },
+}
 
 # Canonical contract schema v1 (HANDOVER §1.5). additionalProperties: false is
 # the structural half of G1 — an `sql:`/`query:` key anywhere is rejected.
@@ -44,6 +56,14 @@ CONTRACT_SCHEMA: dict[str, Any] = {
         "description": {"type": "string"},
         # Accepted but ignored by the compiler; written by proposal accepts.
         "quality_proposals": {"type": "array"},
+        "observability": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "volume": _OBS_FAMILY,
+                "freshness": _OBS_FAMILY,
+            },
+        },
         "guarantees": {
             "type": "object",
             "additionalProperties": False,
@@ -138,6 +158,8 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                         "properties": {
                             "column": _IDENT,
                             "min_pct": {"type": "number", "minimum": 0, "maximum": 100},
+                            "segment_by": _IDENT,
+                            "max_segments": {"type": "integer", "minimum": 1, "maximum": 500},
                             "severity": _SEVERITY,
                         },
                     },

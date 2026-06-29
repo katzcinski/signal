@@ -43,6 +43,22 @@ def test_results_endpoint(api_client):
     assert api_client.get("/api/runs/nope/results").status_code == 404
 
 
+def test_segment_results_endpoint(api_client):
+    import services.api.deps as deps_mod
+    store = _seed_run(deps_mod.get_store().db_path, with_diagnostics=False)
+    store.save_segment_results(
+        "run-1",
+        "amount_not_null",
+        "REGION",
+        [{"segment_value": "DE", "actual_value": 7.5, "threshold_value": 0.5}],
+    )
+
+    resp = api_client.get("/api/runs/run-1/results/amount_not_null/segments")
+    assert resp.status_code == 200
+    assert resp.json()[0]["segment_value"] == "DE"
+    assert api_client.get("/api/runs/run-1/results/missing/segments").status_code == 404
+
+
 def test_diagnostics_endpoint_authz_and_gate(api_client):
     import services.api.deps as deps_mod
     _seed_run(deps_mod.get_store().db_path, with_diagnostics=False)

@@ -209,15 +209,26 @@ def _resolve_with_store(
 def _format_payload(target_type: str, ctx: dict[str, Any]) -> dict[str, Any]:
     summary = f"DQ breach: {ctx['product']} v{ctx['contract_version'] or '?'} ({ctx['severity']})"
     failed = ", ".join(ctx["failed_checks"]) or "—"
+    impact = _impact_summary(ctx.get("impacted_objects") or [])
+    impact_line = f"\nImpact: {impact}" if impact else ""
     if target_type == "slack":
         return {
             "text": (
                 f":rotating_light: *{summary}*\n"
-                f"Failed checks: {failed}\n"
+                f"Failed checks: {failed}{impact_line}\n"
                 f"<{ctx['link']}|Open in cockpit>"
             )
         }
     if target_type == "teams":
+        facts = [
+            {"name": "Product", "value": ctx["product"]},
+            {"name": "Version", "value": ctx["contract_version"] or "?"},
+            {"name": "Severity", "value": ctx["severity"]},
+            {"name": "Failed checks", "value": failed},
+            {"name": "Run", "value": ctx["run_id"]},
+        ]
+        if impact:
+            facts.append({"name": "Impact", "value": impact})
         return {
             "@type": "MessageCard",
             "@context": "http://schema.org/extensions",
@@ -226,13 +237,7 @@ def _format_payload(target_type: str, ctx: dict[str, Any]) -> dict[str, Any]:
             "title": summary,
             "sections": [
                 {
-                    "facts": [
-                        {"name": "Product", "value": ctx["product"]},
-                        {"name": "Version", "value": ctx["contract_version"] or "?"},
-                        {"name": "Severity", "value": ctx["severity"]},
-                        {"name": "Failed checks", "value": failed},
-                        {"name": "Run", "value": ctx["run_id"]},
-                    ],
+                    "facts": facts,
                     "text": f"[Open in cockpit]({ctx['link']})",
                 }
             ],
@@ -242,9 +247,25 @@ def _format_payload(target_type: str, ctx: dict[str, Any]) -> dict[str, Any]:
         k: ctx.get(k)
         for k in (
             "product", "compliance", "run_id", "contract_version",
-            "failed_checks", "severity", "title", "incident_id", "kind", "link", "ts",
+            "failed_checks", "severity", "title", "incident_id", "kind",
+            "cluster_id", "member_count", "affected_products", "probable_cause",
+            "impacted_objects", "link", "ts",
         )
     }
+
+
+def _impact_summary(impacted_objects: list[dict[str, Any]]) -> str:
+    labels = [
+        str(item.get("product") or item.get("object") or "")
+        for item in impacted_objects
+        if isinstance(item, dict) and (item.get("product") or item.get("object"))
+    ]
+    if not labels:
+        return ""
+    shown = ", ".join(labels[:3])
+    if len(labels) > 3:
+        shown = f"{shown} (+{len(labels) - 3})"
+    return shown
 
 
 def _format_transition_payload(target_type: str, ctx: dict[str, Any]) -> dict[str, Any]:
@@ -305,6 +326,10 @@ def notify_incident_transition(
     store: Any = None,
     space: str = "",
     kind: str = "consumer_contract",
+    cluster_id: str = "",
+    member_count: int = 1,
+    affected_products: list[str] | None = None,
+    probable_cause: str = "",
 ) -> None:
     """Fire incident-transition notifications on status changes and owner assignment.
 
@@ -358,6 +383,11 @@ def notify_breach(
     store: Any = None,
     space: str = "",
     kind: str = "consumer_contract",
+    cluster_id: str = "",
+    member_count: int = 1,
+    affected_products: list[str] | None = None,
+    probable_cause: str = "",
+    impacted_objects: list[dict[str, Any]] | None = None,
 ) -> None:
     """Fire breach/incident-open notifications to all routed channels.
 
@@ -381,6 +411,11 @@ def notify_breach(
         "title": title,
         "incident_id": incident_id,
         "kind": kind,
+        "cluster_id": cluster_id,
+        "member_count": member_count,
+        "affected_products": affected_products or [],
+        "probable_cause": probable_cause,
+        "impacted_objects": impacted_objects or [],
         "link": f"/objects/{product}?run={run_id}",
         "ts": datetime.now(timezone.utc).isoformat(),
     }

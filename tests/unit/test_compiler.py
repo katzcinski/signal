@@ -72,6 +72,16 @@ def test_compiler_hash_changes_with_contract():
     assert compiler_hash(base) != compiler_hash(changed)
 
 
+def test_observability_only_change_does_not_change_compiler_output():
+    base = _shipped_contract()
+    changed = yaml.safe_load(yaml.safe_dump(base))
+    changed["observability"] = {
+        "volume": {"baseline": "seasonal", "season": ["dow"], "sensitivity": "high"}
+    }
+    assert dataset_config_to_yaml(compile_contract(base)) == dataset_config_to_yaml(compile_contract(changed))
+    assert compiler_hash(base) == compiler_hash(changed)
+
+
 def test_injection_in_key_columns_raises():
     """S-4: der frühere Verifikationsfall 'A" OR 1=1 --' muss hart scheitern."""
     bad = {
@@ -140,6 +150,27 @@ def test_completeness_maps_min_pct_to_null_quote():
     }
     config = compile_contract(contract)
     assert config.checks[0].expect == "<= 0.5"
+
+
+def test_segmented_completeness_compiles_scalar_count():
+    contract = {
+        "product": "X", "dataset": "X", "version": "1.0.0",
+        "guarantees": {
+            "completeness": [{
+                "column": "AMOUNT",
+                "min_pct": 99.5,
+                "segment_by": "REGION",
+                "max_segments": 20,
+            }]
+        },
+    }
+    config = compile_contract(contract)
+    check = config.checks[0]
+    assert check.name == "completeness_AMOUNT_by_REGION"
+    assert check.type == "completeness_pct_segment"
+    assert check.expect == "= 0"
+    assert check.sql.startswith("SELECT COUNT(*) FROM (")
+    assert 'GROUP BY "REGION"' in check.sql
 
 
 def test_parse_iso_duration():

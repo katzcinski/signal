@@ -24,7 +24,9 @@ def _settings(tmp_path, **env):
         datasphere_base_url=env.get("base_url", ""),
         datasphere_client_id=env.get("client_id", ""),
         datasphere_client_secret=env.get("client_secret", ""),
+        datasphere_authorization_url=env.get("authorization_url", ""),
         datasphere_token_url=env.get("token_url", ""),
+        datasphere_oauth_secrets_file=env.get("oauth_secrets_file", ""),
     )
 
 
@@ -33,13 +35,19 @@ def test_roundtrip_persists_new_fields(tmp_path):
     cc.write_connector_config(path, {
         "space_id": "MY_SPACE", "use_cli": True, "cli_host": "tenant.example",
         "base_url": "https://t.example", "client_id": "cid",
-        "token_url": "https://t.example/oauth/token", "secret_ref": "DATASPHERE_CLIENT_SECRET",
+        "authorization_url": "https://auth.example/oauth/authorize",
+        "token_url": "https://t.example/oauth/token",
+        "oauth_secrets_file": r"C:\secrets\datasphere.json",
+        "secret_ref": "DATASPHERE_CLIENT_SECRET",
     })
     cfg = cc.read_connector_config(path)
     assert cfg == {
         "space_id": "MY_SPACE", "use_cli": True, "cli_host": "tenant.example",
         "base_url": "https://t.example", "client_id": "cid",
-        "token_url": "https://t.example/oauth/token", "secret_ref": "DATASPHERE_CLIENT_SECRET",
+        "authorization_url": "https://auth.example/oauth/authorize",
+        "token_url": "https://t.example/oauth/token",
+        "oauth_secrets_file": r"C:\secrets\datasphere.json",
+        "secret_ref": "DATASPHERE_CLIENT_SECRET",
     }
 
 
@@ -67,14 +75,26 @@ def test_env_wins_over_file(tmp_path):
 def test_file_used_when_env_unset(tmp_path):
     cc.write_connector_config(str(tmp_path / "datasphere.yml"), {
         "space_id": "FILE_SPACE", "cli_host": "file.tenant", "base_url": "https://file.example",
-        "client_id": "file_cid", "token_url": "https://file.example/t",
+        "client_id": "file_cid",
+        "authorization_url": "https://file.example/a",
+        "token_url": "https://file.example/t",
+        "oauth_secrets_file": "secrets.json",
     })
     s = _settings(tmp_path)
     assert cc.effective_space_id(s) == "FILE_SPACE"
     assert cc.effective_cli_host(s) == "file.tenant"
     assert cc.effective_base_url(s) == "https://file.example"
     assert cc.effective_client_id(s) == "file_cid"
+    assert cc.effective_authorization_url(s) == "https://file.example/a"
     assert cc.effective_token_url(s) == "https://file.example/t"
+    assert cc.effective_oauth_secrets_file(s) == "secrets.json"
+
+
+def test_cli_host_falls_back_to_base_url_when_not_set(tmp_path):
+    cc.write_connector_config(str(tmp_path / "datasphere.yml"), {
+        "base_url": "https://file.example",
+    })
+    assert cc.effective_cli_host(_settings(tmp_path)) == "https://file.example"
 
 
 def test_secret_configured_via_env(tmp_path):

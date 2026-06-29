@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react';
-import { useConnectorStatus, useSaveConnector } from '@/api/connector';
+import { useConnectorStatus, useSaveConnector, useStartConnectorLogin } from '@/api/connector';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { Panel } from '@/components/ui/Panel';
@@ -26,12 +26,15 @@ function StatusLine({ ok, label, detail }: { ok: boolean; label: string; detail?
 export function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
   const { data, isLoading } = useConnectorStatus();
   const save = useSaveConnector();
+  const startLogin = useStartConnectorLogin();
   const [spaceId, setSpaceId] = useState<string | null>(null);
   const [useCli, setUseCli] = useState<boolean | null>(null);
   const [cliHost, setCliHost] = useState<string | null>(null);
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [authorizationUrl, setAuthorizationUrl] = useState<string | null>(null);
   const [tokenUrl, setTokenUrl] = useState<string | null>(null);
+  const [oauthSecretsFile, setOauthSecretsFile] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
 
@@ -40,9 +43,14 @@ export function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
   const effectiveCliHost = cliHost ?? (data?.file_cli_host ?? '');
   const effectiveBaseUrl = baseUrl ?? (data?.file_base_url ?? '');
   const effectiveClientId = clientId ?? (data?.file_client_id ?? '');
+  const effectiveAuthorizationUrl = authorizationUrl ?? (data?.file_authorization_url ?? '');
   const effectiveTokenUrl = tokenUrl ?? (data?.file_token_url ?? '');
+  const effectiveOauthSecretsFile = oauthSecretsFile ?? (data?.file_oauth_secrets_file ?? '');
   // Env vars take precedence over the file → those fields are read-only.
-  const envOverride = Boolean(data?.env_space_id || data?.env_use_cli || data?.env_base_url || data?.env_client_id);
+  const envOverride = Boolean(
+    data?.env_space_id || data?.env_use_cli || data?.env_base_url || data?.env_client_id
+      || data?.env_authorization_url || data?.env_token_url || data?.env_oauth_secrets_file,
+  );
 
   const handleSave = () => {
     save.mutate(
@@ -52,14 +60,17 @@ export function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
         cli_host: effectiveCliHost,
         base_url: effectiveBaseUrl,
         client_id: effectiveClientId,
+        authorization_url: effectiveAuthorizationUrl,
         token_url: effectiveTokenUrl,
+        oauth_secrets_file: effectiveOauthSecretsFile,
         client_secret: clientSecret || undefined,
       },
       {
         onSuccess: () => {
           setSavedMsg(t.connector.saved);
           setSpaceId(null); setUseCli(null); setCliHost(null);
-          setBaseUrl(null); setClientId(null); setTokenUrl(null); setClientSecret('');
+          setBaseUrl(null); setClientId(null); setAuthorizationUrl(null);
+          setTokenUrl(null); setOauthSecretsFile(null); setClientSecret('');
         },
         onError: () => setSavedMsg(t.connector.saveError),
       },
@@ -69,6 +80,13 @@ export function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
   const sourceDot = (mode: string | undefined) => {
     if (mode === 'cli' || mode === 'catalog') return 'var(--status-pass)';
     return 'var(--status-warn)';
+  };
+
+  const handleStartLogin = () => {
+    startLogin.mutate(undefined, {
+      onSuccess: () => setSavedMsg(t.connector.loginStarted),
+      onError: () => setSavedMsg(t.connector.loginStartError),
+    });
   };
 
   return (
@@ -92,7 +110,16 @@ export function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
               <StatusLine ok={data.cli_logged_in} label={data.cli_logged_in ? t.connector.cliLoggedIn : t.connector.cliNotLoggedIn}
                 detail={data.cli_host ?? undefined} />
               {!data.cli_logged_in && (
-                <p style={{ ...muted, fontSize: 11 }}>{t.connector.loginHint}</p>
+                <>
+                  <pre style={{ ...muted, fontSize: 11, margin: 0, whiteSpace: 'pre-wrap' }}>
+                    {data.login_command || t.connector.loginHint}
+                  </pre>
+                  {canEdit && (
+                    <Button size="sm" disabled={startLogin.isPending} onClick={handleStartLogin}>
+                      {t.connector.openLogin}
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -153,12 +180,30 @@ export function ConnectorPanel({ canEdit }: { canEdit: boolean }) {
                   style={{ width: '100%' }}
                 />
               </Field>
+              <Field label={t.connector.authorizationUrl} hint={t.connector.authorizationUrlHint}>
+                <Input
+                  value={effectiveAuthorizationUrl}
+                  disabled={!canEdit || Boolean(data.env_authorization_url)}
+                  onChange={e => setAuthorizationUrl(e.target.value)}
+                  placeholder="https://my-tenant.authentication.eu10.hana.ondemand.com/oauth/authorize"
+                  style={{ width: '100%' }}
+                />
+              </Field>
               <Field label={t.connector.tokenUrl} hint={t.connector.tokenUrlHint}>
                 <Input
                   value={effectiveTokenUrl}
-                  disabled={!canEdit}
+                  disabled={!canEdit || Boolean(data.env_token_url)}
                   onChange={e => setTokenUrl(e.target.value)}
                   placeholder="https://my-tenant.authentication.eu10.hana.ondemand.com/oauth/token"
+                  style={{ width: '100%' }}
+                />
+              </Field>
+              <Field label={t.connector.oauthSecretsFile} hint={t.connector.oauthSecretsFileHint}>
+                <Input
+                  value={effectiveOauthSecretsFile}
+                  disabled={!canEdit || Boolean(data.env_oauth_secrets_file)}
+                  onChange={e => setOauthSecretsFile(e.target.value)}
+                  placeholder="C:\\...\\datasphere-secrets.json"
                   style={{ width: '100%' }}
                 />
               </Field>

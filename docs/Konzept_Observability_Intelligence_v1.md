@@ -1,5 +1,10 @@
 # Konzept: Observability-Intelligence v1 (Tier-1-Features)
 
+> **Handover-Hinweis (2026-06-29):** Die implementierungsreife Fassung nach
+> Grill-Entscheidungen steht in
+> [`HANDOVER_Observability_Intelligence_v1_Implementation.md`](HANDOVER_Observability_Intelligence_v1_Implementation.md).
+> Bei Widerspruch gewinnt das Handover.
+
 **Stand:** 2026-06-29 · **Status:** Konzept (Entwurf) · **Bezug:**
 [`Marktanalyse_DQ_Observability_2026.md`](Marktanalyse_DQ_Observability_2026.md) (Tier 1),
 [`Tooldokumentation.md`](Tooldokumentation.md) (implementierter Stand)

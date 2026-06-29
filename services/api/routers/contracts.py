@@ -89,6 +89,7 @@ def _contract_out(store, product: str, data: dict[str, Any]) -> ContractOut:
         lifecycle=data.get("lifecycle", "draft"),
         description=str(data.get("description") or ""),
         guarantees=data.get("guarantees") or {},
+        observability=data.get("observability") or {},
         checks=data.get("checks") or [],
         compliance=compliance_row["compliance"] if compliance_row else None,
         certified=_active_snapshot_path(product).exists(),
@@ -152,6 +153,7 @@ def list_contracts(
             version=row["version"] or "0.1.0",
             lifecycle=row["lifecycle"] or "draft",
             guarantees={},
+            observability={},
             compliance=compliance_row["compliance"] if compliance_row else None,
         ))
     return result
@@ -434,7 +436,11 @@ def _compile_contract_data(product: str, data: dict[str, Any], inventory: list[d
     the existing-wins merge against any `checks/<product>/checks.yml` on disk but
     writes nothing — the caller owns persistence. May raise CompileError.
     """
-    from dq_core.contract.compiler import compile_contract as _compile, compiler_hash
+    from dq_core.contract.compiler import (
+        compile_contract as _compile,
+        compiled_contract_hash,
+        compiler_hash,
+    )
     from dq_core.engine.check_engine import dataset_config_to_yaml
     from dq_core.engine.models import CheckDef
     from dq_core.library.check_library import load_library
@@ -455,9 +461,7 @@ def _compile_contract_data(product: str, data: dict[str, Any], inventory: list[d
 
     config = _compile(data, inventory_columns=inventory_columns)
 
-    contract_hash = hashlib.sha256(
-        yaml.safe_dump(data, sort_keys=True).encode()
-    ).hexdigest()[:16]
+    contract_hash = compiled_contract_hash(data)
     library_version = str(load_library().get("version", "1"))
     det_hash = compiler_hash(data)
 
@@ -851,8 +855,8 @@ def _update_index(store, product: str, data: dict) -> None:
         conn = sqlite3.connect(store.db_path, check_same_thread=False)
         conn.execute(
             """INSERT OR REPLACE INTO contract_index
-               (product, lifecycle, owned_by, version, head_hash, updated_at)
-               VALUES (?,?,?,?,?,?)""",
+               (product, lifecycle, owned_by, version, head_hash, updated_at, kind)
+               VALUES (?,?,?,?,?,?,?)""",
             (
                 product,
                 data.get("lifecycle", "draft"),
@@ -860,6 +864,7 @@ def _update_index(store, product: str, data: dict) -> None:
                 str(data.get("version", "0.1.0")),
                 hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:16],
                 now,
+                data.get("kind", "internal_gate"),
             ),
         )
         conn.commit()

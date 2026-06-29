@@ -56,6 +56,7 @@ def list_incidents(
     status: str | None = Query(default=None),
     severity: str | None = Query(default=None),
     kind: str | None = Query(default=None),
+    group: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     store: StoreDep = ...,
@@ -64,6 +65,10 @@ def list_incidents(
         raise HTTPException(status_code=422, detail=f"Unknown status {status!r}")
     if kind and kind not in VALID_INCIDENT_KIND:
         raise HTTPException(status_code=422, detail=f"Unknown kind {kind!r}")
+    if group and group != "cluster":
+        raise HTTPException(status_code=422, detail=f"Unknown group {group!r}")
+    if group == "cluster":
+        return store.list_incident_clusters(status=status, severity=severity, kind=kind, limit=limit, offset=offset)
     return store.list_incidents(status=status, severity=severity, kind=kind, limit=limit, offset=offset)
 
 
@@ -123,6 +128,16 @@ def get_incident(incident_id: int, store: StoreDep = ...):
     if not incident:
         raise HTTPException(status_code=404, detail=f"Incident {incident_id} not found")
     return incident
+
+
+@router.get("/{incident_id}/rca")
+def get_incident_rca(incident_id: int, store: StoreDep = ...):
+    if not store.get_incident(incident_id):
+        raise HTTPException(status_code=404, detail=f"Incident {incident_id} not found")
+    snapshot = store.get_incident_rca(incident_id)
+    if not snapshot:
+        raise HTTPException(status_code=404, detail=f"RCA snapshot for incident {incident_id} not found")
+    return snapshot
 
 
 @router.post("/{incident_id}/transition")

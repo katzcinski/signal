@@ -95,6 +95,33 @@ def test_webhook_payload_is_structured():
     assert p["failed_checks"] == ["c1", "c2"]
 
 
+def test_webhook_payload_carries_cluster_fields():
+    p = notify._format_payload("webhook", {
+        **_ctx(),
+        "cluster_id": "cluster_1",
+        "member_count": 3,
+        "affected_products": ["A", "B"],
+        "probable_cause": "SRC",
+        "impacted_objects": [{"product": "B", "distance": 1}],
+        "kind": "consumer_contract",
+    })
+    assert p["cluster_id"] == "cluster_1"
+    assert p["member_count"] == 3
+    assert p["probable_cause"] == "SRC"
+    assert p["impacted_objects"] == [{"product": "B", "distance": 1}]
+
+
+def test_chat_payloads_include_impact_summary():
+    ctx = {**_ctx(), "impacted_objects": [{"product": "B"}, {"product": "C"}]}
+
+    slack = notify._format_payload("slack", ctx)
+    teams = notify._format_payload("teams", ctx)
+
+    assert "Impact: B, C" in slack["text"]
+    facts = teams["sections"][0]["facts"]
+    assert {"name": "Impact", "value": "B, C"} in facts
+
+
 # ---- notify_breach delegates to SSRF-safe sender ----
 
 def test_notify_breach_fires_each_target_with_allowlist(tmp_path, monkeypatch):

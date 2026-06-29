@@ -3,12 +3,24 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 from pathlib import Path
 from typing import Any, Generator
 
 from ..engine.models import CheckResult, RunSummary
 from ..library.check_library import check_ids_where
+
+
+@dataclass(frozen=True)
+class IncidentOpenResult:
+    incident_id: int
+    created: bool
+    cluster_id: str = ""
+    correlation_key: str = ""
+    is_representative: bool = True
+    member_count: int = 1
 
 
 class ResultStore:
@@ -207,6 +219,50 @@ class ResultStore:
                 data = {}
             out.append({"check_name": r["check_name"], "row": data})
         return out
+
+    def save_segment_results(
+        self,
+        run_id: str,
+        check_name: str,
+        segment_column: str,
+        rows: list[dict[str, Any]],
+    ) -> None:
+        """Persist allowlisted aggregate segment details for one check."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            conn.execute(
+                "DELETE FROM dq_segment_results WHERE run_id=? AND check_name=?",
+                (run_id, check_name),
+            )
+            for rank, row in enumerate(rows, 1):
+                conn.execute(
+                    """INSERT INTO dq_segment_results
+                       (run_id, check_name, segment_column, segment_value,
+                        actual_value, threshold_value, rank, created_at)
+                       VALUES (?,?,?,?,?,?,?,?)""",
+                    (
+                        run_id,
+                        check_name,
+                        segment_column,
+                        str(row.get("segment_value", "")),
+                        row.get("actual_value"),
+                        row.get("threshold_value"),
+                        rank,
+                        now,
+                    ),
+                )
+
+    def get_segment_results(self, run_id: str, check_name: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT id, run_id, check_name, segment_column, segment_value,
+                          actual_value, threshold_value, rank, created_at
+                   FROM dq_segment_results
+                   WHERE run_id=? AND check_name=?
+                   ORDER BY rank, id""",
+                (run_id, check_name),
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     def try_begin_run(self, summary: RunSummary) -> bool:
         """F2: Run-Registrierung mit Store-seitigem Doppellauf-Schutz.
@@ -464,6 +520,7 @@ class ResultStore:
         contract_version: str = "",
         kind: str = "consumer_contract",
         actor: str = "",
+        impacted_objects: list[dict[str, Any]] | None = None,
     ) -> int | None:
         """Eröffnet ein Incident — höchstens EINES je product+Breach-Episode:
         existiert bereits ein ungelöstes Incident für das Produkt, wird nur
@@ -476,6 +533,11 @@ class ResultStore:
                 (product,),
             ).fetchone()
             if row:
+                if impacted_objects is not None:
+                    conn.execute(
+                        "UPDATE dq_incidents SET impacted_objects=? WHERE id=?",
+                        (json.dumps(impacted_objects), row["id"]),
+                    )
                 conn.execute(
                     "INSERT INTO dq_incident_events(incident_id, at, actor, action, note) "
                     "VALUES (?,?,?,?,?)",
@@ -486,10 +548,11 @@ class ResultStore:
             cur = conn.execute(
                 """INSERT INTO dq_incidents
                    (product, run_id, severity, status, title, failed_checks,
-                    opened_at, contract_version, kind)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                    opened_at, contract_version, kind, impacted_objects)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
                 (product, run_id, severity, "open", title,
-                 json.dumps(failed_checks), now, contract_version, kind),
+                 json.dumps(failed_checks), now, contract_version, kind,
+                 json.dumps(impacted_objects or [])),
             )
             incident_id = cur.lastrowid
             conn.execute(
@@ -498,6 +561,79 @@ class ResultStore:
                 (incident_id, now, actor, "opened", title),
             )
             return incident_id
+
+    def open_incident_record(
+        self,
+        product: str,
+        run_id: str,
+        severity: str,
+        title: str,
+        failed_checks: list[str],
+        contract_version: str = "",
+        kind: str = "consumer_contract",
+        actor: str = "",
+        impacted_objects: list[dict[str, Any]] | None = None,
+    ) -> IncidentOpenResult | None:
+        """Open or update an incident and return creation metadata."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_incidents WHERE product=? AND status != 'resolved' "
+                "ORDER BY id DESC LIMIT 1",
+                (product,),
+            ).fetchone()
+            if row:
+                if impacted_objects is not None:
+                    conn.execute(
+                        "UPDATE dq_incidents SET impacted_objects=? WHERE id=?",
+                        (json.dumps(impacted_objects), row["id"]),
+                    )
+                conn.execute(
+                    "INSERT INTO dq_incident_events(incident_id, at, actor, action, note) "
+                    "VALUES (?,?,?,?,?)",
+                    (
+                        row["id"],
+                        now,
+                        actor,
+                        "note",
+                        f"Erneuter Breach in Run {run_id}: {', '.join(failed_checks)}",
+                    ),
+                )
+                cluster_id = row["cluster_id"] or ""
+                return IncidentOpenResult(
+                    incident_id=int(row["id"]),
+                    created=False,
+                    cluster_id=cluster_id,
+                    correlation_key=row["correlation_key"] or "",
+                    is_representative=self._is_cluster_representative(conn, int(row["id"])),
+                    member_count=self._cluster_member_count(conn, cluster_id),
+                )
+
+            cur = conn.execute(
+                """INSERT INTO dq_incidents
+                   (product, run_id, severity, status, title, failed_checks,
+                    opened_at, contract_version, kind, impacted_objects)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    product,
+                    run_id,
+                    severity,
+                    "open",
+                    title,
+                    json.dumps(failed_checks),
+                    now,
+                    contract_version,
+                    kind,
+                    json.dumps(impacted_objects or []),
+                ),
+            )
+            incident_id = int(cur.lastrowid)
+            conn.execute(
+                "INSERT INTO dq_incident_events(incident_id, at, actor, action, note) "
+                "VALUES (?,?,?,?,?)",
+                (incident_id, now, actor, "opened", title),
+            )
+            return IncidentOpenResult(incident_id=incident_id, created=True)
 
     def auto_resolve_incidents(self, product: str, run_id: str) -> None:
         """Recovery: offener Incident wird automatisch gelöst, mit Event."""
@@ -705,10 +841,16 @@ class ResultStore:
     def _incident_row(row) -> dict[str, Any]:
         d = dict(row)
         d["kind"] = d.get("kind") or "consumer_contract"
+        d["cluster_id"] = d.get("cluster_id") or ""
+        d["correlation_key"] = d.get("correlation_key") or ""
         try:
             d["failed_checks"] = json.loads(d.get("failed_checks") or "[]")
         except (TypeError, ValueError):
             d["failed_checks"] = []
+        try:
+            d["impacted_objects"] = json.loads(d.get("impacted_objects") or "[]")
+        except (TypeError, ValueError):
+            d["impacted_objects"] = []
         return d
 
     def count_open_incidents(self, kind: str) -> int:
@@ -718,6 +860,218 @@ class ResultStore:
                 (kind,),
             ).fetchone()
             return int(row["n"] if row else 0)
+
+    def assign_incident_cluster(self, incident_id: int, correlation_key: str) -> dict[str, Any]:
+        """Assign an incident to a stable cluster and refresh representative data."""
+        key = str(correlation_key or "").strip() or f"incident:{incident_id}"
+        cluster_id = "cluster_" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            incident = conn.execute(
+                "SELECT * FROM dq_incidents WHERE id=?", (incident_id,)
+            ).fetchone()
+            if not incident:
+                return {}
+            existing = conn.execute(
+                "SELECT * FROM dq_incident_clusters WHERE cluster_id=?", (cluster_id,)
+            ).fetchone()
+            if not existing:
+                conn.execute(
+                    """INSERT INTO dq_incident_clusters
+                       (cluster_id, correlation_key, representative_incident_id,
+                        opened_at, updated_at, member_count)
+                       VALUES (?,?,?,?,?,?)""",
+                    (cluster_id, key, incident_id, now, now, 1),
+                )
+            conn.execute(
+                "UPDATE dq_incidents SET cluster_id=?, correlation_key=? WHERE id=?",
+                (cluster_id, key, incident_id),
+            )
+            member_count = self._cluster_member_count(conn, cluster_id)
+            representative = self._choose_cluster_representative(conn, cluster_id)
+            representative_id = int(representative["id"]) if representative else incident_id
+            conn.execute(
+                """UPDATE dq_incident_clusters
+                   SET representative_incident_id=?, updated_at=?, member_count=?
+                   WHERE cluster_id=?""",
+                (representative_id, now, member_count, cluster_id),
+            )
+            return {
+                "cluster_id": cluster_id,
+                "correlation_key": key,
+                "representative_incident_id": representative_id,
+                "is_representative": representative_id == incident_id,
+                "member_count": member_count,
+            }
+
+    def list_incident_clusters(
+        self,
+        status: str | None = None,
+        severity: str | None = None,
+        kind: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        where, params = ["i.cluster_id IS NOT NULL", "i.cluster_id != ''"], []
+        if status:
+            where.append("i.status=?")
+            params.append(status)
+        if severity:
+            where.append("i.severity=?")
+            params.append(severity)
+        if kind:
+            where.append("i.kind=?")
+            params.append(kind)
+        clause = "WHERE " + " AND ".join(where)
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"""SELECT c.*, i.*
+                    FROM dq_incident_clusters c
+                    JOIN dq_incidents i ON i.id = c.representative_incident_id
+                    {clause}
+                    ORDER BY c.updated_at DESC
+                    LIMIT ? OFFSET ?""",
+                (*params, limit, offset),
+            ).fetchall()
+            out: list[dict[str, Any]] = []
+            for row in rows:
+                item = self._incident_row(row)
+                item["cluster_id"] = row["cluster_id"]
+                item["correlation_key"] = row["correlation_key"]
+                item["representative_incident_id"] = row["representative_incident_id"]
+                item["member_count"] = row["member_count"]
+                out.append(item)
+            return out
+
+    def _cluster_member_count(self, conn: sqlite3.Connection, cluster_id: str | None) -> int:
+        if not cluster_id:
+            return 1
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM dq_incidents WHERE cluster_id=?",
+            (cluster_id,),
+        ).fetchone()
+        return int(row["n"] if row else 1)
+
+    def _is_cluster_representative(self, conn: sqlite3.Connection, incident_id: int) -> bool:
+        row = conn.execute(
+            "SELECT cluster_id FROM dq_incidents WHERE id=?", (incident_id,)
+        ).fetchone()
+        if not row or not row["cluster_id"]:
+            return True
+        rep = self._choose_cluster_representative(conn, row["cluster_id"])
+        return bool(rep and int(rep["id"]) == incident_id)
+
+    def _choose_cluster_representative(self, conn: sqlite3.Connection, cluster_id: str):
+        severity_rank = {"critical": 3, "fail": 2, "warn": 1}
+        kind_rank = {"consumer_contract": 2, "provider_contract": 2, "internal_gate": 1}
+        rows = conn.execute(
+            "SELECT * FROM dq_incidents WHERE cluster_id=?", (cluster_id,)
+        ).fetchall()
+        if not rows:
+            return None
+        return sorted(
+            rows,
+            key=lambda r: (
+                -severity_rank.get(r["severity"], 0),
+                -kind_rank.get(r["kind"] or "internal_gate", 0),
+                r["id"],
+            ),
+        )[0]
+
+    def save_incident_rca(self, incident_id: int, snapshot: dict[str, Any]) -> None:
+        computed_at = snapshot.get("computed_at") or datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT OR REPLACE INTO dq_incident_rca
+                   (incident_id, probable_cause_object, cause_confidence,
+                    cause_candidates_json, affected_contracts_json,
+                    affected_internal_gates_json, recurrence_count,
+                    recurrence_last_at, computed_at)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (
+                    incident_id,
+                    snapshot.get("probable_cause_object") or "",
+                    snapshot.get("cause_confidence"),
+                    json.dumps(snapshot.get("cause_candidates") or []),
+                    json.dumps(snapshot.get("affected_contracts") or []),
+                    json.dumps(snapshot.get("affected_internal_gates") or []),
+                    int(snapshot.get("recurrence_count") or 0),
+                    snapshot.get("recurrence_last_at") or "",
+                    computed_at,
+                ),
+            )
+
+    def get_incident_rca(self, incident_id: int) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_incident_rca WHERE incident_id=?", (incident_id,)
+            ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        parsed: dict[str, list[Any]] = {}
+        for src, dst in (
+            ("cause_candidates_json", "cause_candidates"),
+            ("affected_contracts_json", "affected_contracts"),
+            ("affected_internal_gates_json", "affected_internal_gates"),
+        ):
+            try:
+                parsed[dst] = json.loads(d.get(src) or "[]")
+            except (TypeError, ValueError):
+                parsed[dst] = []
+        return {
+            "incident_id": d["incident_id"],
+            "probable_cause_object": d.get("probable_cause_object") or "",
+            "cause_confidence": d.get("cause_confidence"),
+            **parsed,
+            "recurrence_count": d.get("recurrence_count") or 0,
+            "recurrence_last_at": d.get("recurrence_last_at") or "",
+            "computed_at": d.get("computed_at") or "",
+        }
+
+    def get_contract_index(self) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute("SELECT * FROM contract_index").fetchall()
+            return [dict(r) for r in rows]
+
+    def get_recent_failures(self, before_at: str, window_minutes: int = 120) -> list[dict[str, Any]]:
+        from datetime import timedelta
+
+        before = _parse_iso(before_at) or datetime.now(timezone.utc)
+        after = before - timedelta(minutes=int(window_minutes))
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT r.dataset, r.run_id, r.started_at, cr.check_name,
+                          cr.check_type, cr.severity, cr.passed, cr.state, cr.kind
+                   FROM dq_check_results cr
+                   JOIN dq_runs r ON cr.run_id = r.run_id
+                   WHERE cr.passed=0 AND cr.state IN ('executed','error')
+                     AND r.run_state='finished'
+                   ORDER BY r.started_at DESC"""
+            ).fetchall()
+        out = []
+        for row in rows:
+            at = _parse_iso(row["started_at"])
+            if at and after <= at <= before:
+                out.append(dict(row))
+        return out
+
+    def get_prior_incidents(self, product: str, before_at: str, days: int = 90) -> list[dict[str, Any]]:
+        from datetime import timedelta
+
+        before = _parse_iso(before_at) or datetime.now(timezone.utc)
+        after = before - timedelta(days=int(days))
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM dq_incidents WHERE product=? ORDER BY opened_at DESC",
+                (product,),
+            ).fetchall()
+        out = []
+        for row in rows:
+            opened = _parse_iso(row["opened_at"])
+            if opened and after <= opened < before:
+                out.append(self._incident_row(row))
+        return out
 
     # ------------------------------------------------------------------
     # SLA über Zeitfenster (R4-3) — aus dem Compliance-Event-Log
@@ -894,6 +1248,7 @@ class ResultStore:
         "row_count": "volume",
         "volume_anomaly": "volume",
         "freshness": "freshness",
+        "freshness_anomaly": "freshness",
     }
 
     def get_metric_series(self, dataset: str, limit: int = 200) -> dict[str, Any]:
@@ -1249,3 +1604,11 @@ class ResultStore:
                 {**dict(r), "status": status_map.get(r["worst_score"], "unknown")}
                 for r in rows
             ]
+
+
+def _parse_iso(value: str) -> datetime | None:
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None

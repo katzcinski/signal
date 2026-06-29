@@ -112,6 +112,7 @@ const toPutBody = (c: Contract | ContractPutBody): ContractPutBody => ({
   version: c.version,
   description: c.description,
   guarantees: c.guarantees ?? {},
+  observability: c.observability ?? {},
   checks: c.checks ?? [],
 });
 

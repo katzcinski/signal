@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from ..auth.provider import PrincipalDep
-from ..deps import StoreDep, get_environment, get_inventory
+from ..deps import StoreDep, get_environment, get_inventory, get_lineage
 from ..schemas.object_schemas import ObjectDetailOut, ObjectOut
 from ..schemas.run_schemas import RunListItem, RunSummaryOut
 from ..sse import make_progress_callback
@@ -228,6 +228,17 @@ class RunTriggerIn(BaseModel):
 
 def _active_contract_for(object_id: str) -> tuple[str, str]:
     """F3: (contract_version, contract_hash) des aktiven Contracts, sonst ('', '')."""
+    data, content = _load_active_contract_data(object_id)
+    if data:
+        return (
+            str(data.get("version", "")),
+            hashlib.sha256(content.encode()).hexdigest()[:16],
+        )
+    return "", ""
+
+
+def _load_active_contract_data(object_id: str) -> tuple[dict[str, Any] | None, str]:
+    """Return active contract data plus raw content for hash attribution."""
     import yaml
     from pathlib import Path
     base = Path(get_settings().contracts_dir)
@@ -237,11 +248,8 @@ def _active_contract_for(object_id: str) -> tuple[str, str]:
             content = path.read_text(encoding="utf-8")
             data = yaml.safe_load(content) or {}
             if data.get("lifecycle") == "active":
-                return (
-                    str(data.get("version", "")),
-                    hashlib.sha256(content.encode()).hexdigest()[:16],
-                )
-    return "", ""
+                return data, content
+    return None, ""
 
 
 def _active_contract_owner(object_id: str) -> tuple[str, list[str]]:
@@ -262,6 +270,152 @@ def _active_contract_owner(object_id: str) -> tuple[str, list[str]]:
                     owners = [owners]
                 return str(data.get("owned_by", "")), [str(o) for o in owners]
     return "", []
+
+
+def _persist_segment_details(
+    *,
+    store,
+    conn,
+    run_id: str,
+    summary,
+    active_contract: dict[str, Any] | None,
+    resolved_schema: str,
+    settings,
+) -> None:
+    if not active_contract:
+        return
+    allow = {str(c).upper() for c in (settings.segment_value_columns or [])}
+    if not allow:
+        return
+    from dq_core.contract.compiler import segment_detail_specs
+
+    result_by_name = {r.name: r for r in summary.results}
+    specs = segment_detail_specs(active_contract, schema=resolved_schema)
+    for spec in specs:
+        if spec.segment_column.upper() not in allow:
+            continue
+        result = result_by_name.get(spec.check_name)
+        if not result or result.passed or result.state != "executed":
+            continue
+        rows = _fetch_segment_rows(conn, spec.detail_sql, spec.threshold_value)
+        if rows:
+            store.save_segment_results(run_id, spec.check_name, spec.segment_column, rows)
+
+
+def _fetch_segment_rows(conn, sql: str, threshold_value: float) -> list[dict[str, Any]]:
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        raw = cursor.fetchall() if hasattr(cursor, "fetchall") else []
+        out = []
+        for row in raw:
+            segment_value = row[0]
+            actual_value = row[1] if len(row) > 1 else None
+            out.append({
+                "segment_value": segment_value,
+                "actual_value": actual_value,
+                "threshold_value": threshold_value,
+            })
+        return out
+    except Exception:
+        return []
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+
+
+def _persist_rca_for_incident(store, incident_id: int) -> dict[str, Any]:
+    incident = store.get_incident(incident_id)
+    if not incident:
+        return {}
+    run = store.get_run(incident.get("run_id", ""))
+    if not run:
+        return {}
+    from dq_core.obs.rca import analyze_incident
+
+    snapshot = analyze_incident(
+        incident=incident,
+        run=run,
+        lineage=get_lineage(),
+        contract_index=store.get_contract_index(),
+        recent_failures=store.get_recent_failures(run.get("started_at", ""), window_minutes=120),
+        prior_incidents=store.get_prior_incidents(
+            incident.get("product", ""),
+            incident.get("opened_at") or run.get("started_at", ""),
+            days=90,
+        ),
+        window_minutes=120,
+    )
+    store.save_incident_rca(incident_id, snapshot)
+    return snapshot
+
+
+def _impact_for_incident(
+    *,
+    object_id: str,
+    inventory: list[dict],
+    store,
+) -> list[dict[str, Any]]:
+    try:
+        from dq_core.lineage.impact import downstream_impact
+
+        return downstream_impact(
+            lineage=get_lineage(),
+            root=object_id,
+            inventory=inventory,
+            contract_index=store.get_contract_index(),
+        )
+    except Exception:
+        return []
+
+
+def _correlation_key(
+    *,
+    product: str,
+    severity: str,
+    run_id: str,
+    started_at: str,
+    results,
+    rca: dict[str, Any] | None,
+    window_minutes: int,
+) -> str:
+    bucket = _window_bucket(started_at, window_minutes)
+    cause = (rca or {}).get("probable_cause_object")
+    if cause:
+        return f"cause:{cause}|window:{bucket}"
+    family = _failure_family(results)
+    if family:
+        return f"run:{run_id}|family:{family}"
+    return f"product:{product}|severity:{severity}|window:{bucket}"
+
+
+def _window_bucket(at: str, window_minutes: int) -> str:
+    try:
+        dt = datetime.fromisoformat(str(at).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+    except Exception:
+        dt = datetime.now(timezone.utc)
+    window = max(1, int(window_minutes or 15))
+    minute = (dt.minute // window) * window
+    return dt.replace(minute=minute, second=0, microsecond=0).isoformat()
+
+
+def _failure_family(results) -> str:
+    for result in results:
+        if result.passed or result.state != "executed":
+            continue
+        if result.type in {"schema", "type_conformance", "column_count"}:
+            return "schema"
+        if result.type in {"row_count", "volume_anomaly", "volume_delta"}:
+            return "volume"
+        if result.type in {"freshness", "freshness_anomaly", "sap_replication_lag"}:
+            return "freshness"
+    return "quality" if any(not r.passed and r.state == "executed" for r in results) else ""
 
 
 @router.post("/{object_id}/run", status_code=status.HTTP_202_ACCEPTED)
@@ -344,6 +498,7 @@ def start_object_run(
     run_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     contract_version, contract_hash = _active_contract_for(object_id)
+    active_contract, _active_contract_content = _load_active_contract_data(object_id)
     resolved_schema = (env_cfg or {}).get("schema") or obj.get("schema") or "LOCAL"
 
     # F2: Registry im Store, Doppellauf-Schutz über partiellen Unique-Index —
@@ -381,6 +536,19 @@ def start_object_run(
                 config = DatasetConfig(dataset=object_id, schema=resolved_schema)
 
             bind_schema(config, resolved_schema)  # [SCHEMA-MAP]
+            try:
+                from dq_core.obs.baselines import BaselineManager
+                from dq_core.obs.resolver import resolve_observability_checks
+                resolution = resolve_observability_checks(
+                    config,
+                    active_contract,
+                    BaselineManager(store),
+                    started_at=now,
+                )
+                config = resolution.config
+                downgraded_results = resolution.downgraded_results
+            except Exception:
+                downgraded_results = []
             callback = make_progress_callback(run_id, store)
 
             if env_cfg is not None:
@@ -409,15 +577,28 @@ def start_object_run(
             summary.actor = actor
             summary.contract_version = contract_version
             summary.contract_hash = contract_hash
+            if downgraded_results:
+                from dq_core.obs.resolver import append_downgraded
+                summary = append_downgraded(summary, downgraded_results)
             store.save_run(summary)
+            _persist_segment_details(
+                store=store,
+                conn=conn,
+                run_id=run_id,
+                summary=summary,
+                active_contract=active_contract,
+                resolved_schema=resolved_schema,
+                settings=settings,
+            )
 
             # WS5-1: Baselines aus den Zeitreihen der Obs-Checks aktualisieren —
             # Rolling-Stats (Mean/Stddev/Perzentile/MAD) für volume/freshness.
             try:
                 from dq_core.obs.baselines import BaselineManager
                 manager = BaselineManager(store)
+                observability = (active_contract or {}).get("observability") or {}
                 for result in summary.results:
-                    if result.type not in ("row_count", "volume_anomaly", "freshness", "sap_replication_lag"):
+                    if result.type not in ("row_count", "freshness", "sap_replication_lag"):
                         continue
                     history = store.get_check_history(object_id, result.name, limit=50)
                     values = []
@@ -428,6 +609,27 @@ def start_object_run(
                             continue
                     if values:
                         manager.update_baseline(object_id, result.name, values)
+                        family = "volume" if result.type == "row_count" else "freshness"
+                        obs_cfg = observability.get(family) if isinstance(observability, dict) else None
+                        if isinstance(obs_cfg, dict) and obs_cfg.get("baseline") == "seasonal":
+                            season = list(obs_cfg.get("season") or ["dow"])
+                            bucket_key = manager.bucket_key_for(summary.started_at, season)
+                            bucket_values = []
+                            for h in history:
+                                if manager.bucket_key_for(h.get("started_at", ""), season) != bucket_key:
+                                    continue
+                                try:
+                                    bucket_values.append(float(h["actual_value"]))
+                                except (TypeError, ValueError):
+                                    continue
+                            if bucket_values:
+                                manager.update_baseline(
+                                    object_id,
+                                    result.name,
+                                    bucket_values,
+                                    strategy="seasonal",
+                                    bucket_key=bucket_key,
+                                )
             except Exception:
                 pass  # Baselines sind Beobachtung, nie Run-kritisch
 
@@ -438,7 +640,11 @@ def start_object_run(
             if lifecycle == "active" and kind in ("consumer_contract", "provider_contract"):
                 from dq_core.contract.compliance import compute_compliance
                 previous = store.get_compliance(object_id)
-                new_compliance = compute_compliance(summary.results)
+                contract_results = [
+                    r for r in summary.results
+                    if r.kind in ("consumer_contract", "provider_contract")
+                ]
+                new_compliance = compute_compliance(contract_results)
                 store.set_compliance(object_id, contract_version, new_compliance, run_id)
                 newly_breached = new_compliance == "breached" and (
                     not previous or previous.get("compliance") != "breached"
@@ -446,16 +652,21 @@ def start_object_run(
                 if newly_breached:
                     # R4-1: Breach-Episode → persistentes Incident mit Timeline
                     failed = [
-                        r.name for r in summary.results
+                        r.name for r in contract_results
                         if not r.passed and r.state == "executed"
                         and r.severity in ("fail", "critical")
                     ]
                     worst = "critical" if any(
                         r.severity == "critical" and not r.passed and r.state == "executed"
-                        for r in summary.results
+                        for r in contract_results
                     ) else "fail"
                     title = f"Contract-Breach: {object_id} v{contract_version or '?'}"
-                    incident_id = store.open_incident(
+                    impacted_objects = _impact_for_incident(
+                        object_id=object_id,
+                        inventory=inventory,
+                        store=store,
+                    )
+                    incident_record = store.open_incident_record(
                         product=object_id,
                         run_id=run_id,
                         severity=worst,
@@ -464,32 +675,55 @@ def start_object_run(
                         contract_version=contract_version,
                         kind=kind,
                         actor="system",
+                        impacted_objects=impacted_objects,
                     )
+                    incident_id = incident_record.incident_id if incident_record else None
+                    rca = _persist_rca_for_incident(store, incident_id) if incident_record and incident_record.created else {}
+                    cluster = {}
+                    if incident_record:
+                        key = _correlation_key(
+                            product=object_id,
+                            severity=worst,
+                            run_id=run_id,
+                            started_at=summary.started_at,
+                            results=contract_results,
+                            rca=rca,
+                            window_minutes=settings.incident_cluster_window_minutes,
+                        )
+                        cluster = store.assign_incident_cluster(incident_id, key)
                     # R4-2: route the breach/incident-open to the owner's
                     # channel(s) (Slack/Teams/webhook). SSRF-safe per target.
                     from ..notify import notify_breach
                     owned_by, owners = _active_contract_owner(object_id)
                     space = next(
                         (o.get("space", "") for o in inventory
-                         if (o.get("id") or o.get("technicalName") or o.get("name")) == object_id),
+                        if (o.get("id") or o.get("technicalName") or o.get("name")) == object_id),
                         "",
                     )
-                    notify_breach(
-                        product=object_id,
-                        compliance=new_compliance,
-                        run_id=run_id,
-                        contract_version=contract_version,
-                        failed_checks=failed,
-                        severity=worst,
-                        title=title,
-                        incident_id=incident_id,
-                        owned_by=owned_by,
-                        owners=owners,
-                        settings=settings,
-                        store=store,
-                        space=space,
-                        kind=kind,
-                    )
+                    if incident_record and (
+                        cluster.get("member_count", 1) == 1 or cluster.get("is_representative", True)
+                    ):
+                        notify_breach(
+                            product=object_id,
+                            compliance=new_compliance,
+                            run_id=run_id,
+                            contract_version=contract_version,
+                            failed_checks=failed,
+                            severity=worst,
+                            title=title,
+                            incident_id=incident_id,
+                            owned_by=owned_by,
+                            owners=owners,
+                            settings=settings,
+                            store=store,
+                            space=space,
+                            kind=kind,
+                            cluster_id=cluster.get("cluster_id", ""),
+                            member_count=cluster.get("member_count", 1),
+                            affected_products=[x.get("product") for x in rca.get("affected_contracts", [])],
+                            probable_cause=rca.get("probable_cause_object", ""),
+                            impacted_objects=impacted_objects,
+                        )
                 elif new_compliance == "compliant" and previous and previous.get("compliance") == "breached":
                     store.auto_resolve_incidents(object_id, run_id)
             elif lifecycle == "active" and kind == "internal_gate":
@@ -510,7 +744,12 @@ def start_object_run(
                         for r in summary.results
                     ) else "fail"
                     title = f"Engineering-Signal: {object_id} (Gate)"
-                    incident_id = store.open_incident(
+                    impacted_objects = _impact_for_incident(
+                        object_id=object_id,
+                        inventory=inventory,
+                        store=store,
+                    )
+                    incident_record = store.open_incident_record(
                         product=object_id,
                         run_id=run_id,
                         severity=worst,
@@ -519,7 +758,22 @@ def start_object_run(
                         contract_version=contract_version,
                         kind="internal_gate",
                         actor="system",
+                        impacted_objects=impacted_objects,
                     )
+                    incident_id = incident_record.incident_id if incident_record else None
+                    rca = _persist_rca_for_incident(store, incident_id) if incident_record and incident_record.created else {}
+                    cluster = {}
+                    if incident_record:
+                        key = _correlation_key(
+                            product=object_id,
+                            severity=worst,
+                            run_id=run_id,
+                            started_at=summary.started_at,
+                            results=summary.results,
+                            rca=rca,
+                            window_minutes=settings.incident_cluster_window_minutes,
+                        )
+                        cluster = store.assign_incident_cluster(incident_id, key)
                     from ..notify import notify_breach
                     owned_by, owners = _active_contract_owner(object_id)
                     space = next(
@@ -527,7 +781,9 @@ def start_object_run(
                          if (o.get("id") or o.get("technicalName") or o.get("name")) == object_id),
                         "",
                     )
-                    if not had_active_signal:
+                    if not had_active_signal and incident_record and (
+                        cluster.get("member_count", 1) == 1 or cluster.get("is_representative", True)
+                    ):
                         notify_breach(
                             product=object_id,
                             compliance="signal",
@@ -543,6 +799,11 @@ def start_object_run(
                             store=store,
                             space=space,
                             kind="internal_gate",
+                            cluster_id=cluster.get("cluster_id", ""),
+                            member_count=cluster.get("member_count", 1),
+                            affected_products=[x.get("product") for x in rca.get("affected_contracts", [])],
+                            probable_cause=rca.get("probable_cause_object", ""),
+                            impacted_objects=impacted_objects,
                         )
                 else:
                     store.auto_resolve_incidents(object_id, run_id)

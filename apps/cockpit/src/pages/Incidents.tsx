@@ -48,6 +48,7 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState('');
   const closeRef = useRef<HTMLButtonElement>(null);
+  const impactedObjects = incident?.impacted_objects ?? [];
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -229,6 +230,54 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
             ) : incident.failed_checks.map(c => (
               <div key={c} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)', padding: '2px 0' }}>• {c}</div>
             ))}
+          </div>
+
+          {/* Downstream impact snapshot from the incident-open moment. */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+              {t.incidents.downstreamImpact}
+            </div>
+            {impactedObjects.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.incidents.noDownstreamImpact}</div>
+            ) : impactedObjects.slice(0, 6).map(row => (
+              <button
+                key={`${row.product}:${row.distance}`}
+                onClick={() => navigate(`/objects/${encodeURIComponent(row.product)}?tab=lineage`)}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr auto',
+                  gap: 8,
+                  width: '100%',
+                  textAlign: 'left',
+                  background: 'transparent',
+                  border: '1px solid var(--line)',
+                  borderRadius: 'var(--r)',
+                  color: 'var(--fg)',
+                  padding: '6px 8px',
+                  marginBottom: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {row.product}
+                  </span>
+                  {(row.object_type || row.space) && (
+                    <span style={{ display: 'block', color: 'var(--fg-3)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {[row.object_type, row.space].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
+                </span>
+                <span style={{ color: 'var(--fg-3)', fontSize: 11, alignSelf: 'center' }}>
+                  d{row.distance}
+                </span>
+              </button>
+            ))}
+            {impactedObjects.length > 6 && (
+              <div style={{ fontSize: 11, color: 'var(--fg-3)' }}>
+                +{impactedObjects.length - 6} {t.incidents.moreImpacted}
+              </div>
+            )}
           </div>
 
           {/* Event timeline */}

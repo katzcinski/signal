@@ -61,6 +61,58 @@ def test_incident_filters(tmp_path):
     assert store.list_incidents(status="resolved") == []
 
 
+def test_incident_record_clustering_and_rca_snapshot(tmp_path):
+    store = ResultStore(tmp_path / "t.db")
+    first = store.open_incident_record(
+        "A",
+        "r1",
+        "fail",
+        "t",
+        ["c"],
+        "",
+        kind="consumer_contract",
+        impacted_objects=[{"product": "B", "distance": 1}],
+    )
+    second = store.open_incident_record("B", "r2", "critical", "t", ["c"], "", kind="internal_gate")
+    assert first and second and first.created and second.created
+    assert store.get_incident(first.incident_id)["impacted_objects"] == [
+        {"product": "B", "distance": 1}
+    ]
+
+    again = store.open_incident_record(
+        "A",
+        "r3",
+        "fail",
+        "again",
+        ["c"],
+        "",
+        kind="consumer_contract",
+        impacted_objects=[{"product": "C", "distance": 1}],
+    )
+    assert again and not again.created
+    assert store.get_incident(first.incident_id)["impacted_objects"] == [
+        {"product": "C", "distance": 1}
+    ]
+
+    c1 = store.assign_incident_cluster(first.incident_id, "cause:SRC|window:1")
+    c2 = store.assign_incident_cluster(second.incident_id, "cause:SRC|window:1")
+    assert c1["cluster_id"] == c2["cluster_id"]
+    assert c2["member_count"] == 2
+    grouped = store.list_incident_clusters()
+    assert len(grouped) == 1
+    assert grouped[0]["member_count"] == 2
+
+    store.save_incident_rca(first.incident_id, {
+        "probable_cause_object": "SRC",
+        "cause_confidence": 0.7,
+        "affected_contracts": [{"product": "A"}],
+        "affected_internal_gates": [{"product": "B"}],
+        "cause_candidates": [],
+        "recurrence_count": 0,
+    })
+    assert store.get_incident_rca(first.incident_id)["probable_cause_object"] == "SRC"
+
+
 # ---------------------------------------------------------------- SLA
 
 def test_sla_windows(tmp_path, monkeypatch):

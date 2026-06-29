@@ -211,6 +211,17 @@ def get_run_diagnostics(
     return store.get_diagnostics(run_id, check_name)
 
 
+@router.get("/{run_id}/results/{check_name}/segments")
+def get_run_result_segments(run_id: str, check_name: str, store: StoreDep = ...):
+    run = store.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found")
+    names = {r.get("check_name") for r in run.get("results", [])}
+    if check_name not in names:
+        raise HTTPException(status_code=404, detail=f"Check {check_name!r} not found in run {run_id!r}")
+    return store.get_segment_results(run_id, check_name)
+
+
 @router.get("/{run_id}/events")
 def get_run_events(run_id: str, store: StoreDep = ...):
     """Polling fallback for SSE (A5): returns persisted progress lines."""
