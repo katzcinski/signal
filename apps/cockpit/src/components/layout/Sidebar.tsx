@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/ui';
 // symbols (⬡ ⊞ ⟁ …) that rendered inconsistently and carried no label. Each is
 // a 16px stroke icon; semantics come from the adjacent aria-label/title, so the
 // collapsed rail stays navigable for keyboard and screen-reader users.
-type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'canvas' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin' | 'environments';
+type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin' | 'environments';
 
 function Icon({ name }: { name: IconKey }) {
   const common = {
@@ -21,7 +21,6 @@ function Icon({ name }: { name: IconKey }) {
     case 'objects':    return <svg {...common}><path d="M12 3 4 7l8 4 8-4-8-4Z" /><path d="M4 12l8 4 8-4" /><path d="M4 17l8 4 8-4" /></svg>;
     case 'products':   return <svg {...common}><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="9" y="14" width="6" height="6" rx="1" /><path d="M10 7h4M12 10v4" /></svg>;
     case 'contracts':  return <svg {...common}><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v4h4" /><path d="M10 13h6M10 17h6" /></svg>;
-    case 'canvas':     return <svg {...common}><rect x="3" y="4" width="7" height="6" rx="1" /><rect x="14" y="14" width="7" height="6" rx="1" /><path d="M10 7h4a3 3 0 0 1 3 3v4" /></svg>;
     case 'lineage':    return <svg {...common}><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="12" r="2.5" /><circle cx="6" cy="18" r="2.5" /><path d="M8.2 7.3 15.8 11M8.2 16.7 15.8 13" /></svg>;
     case 'schedules':  return <svg {...common}><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 1.6" /></svg>;
     case 'incidents':  return <svg {...common}><path d="M5 21V4l13 .5L14 8l4 3.5L5 12" /></svg>;
@@ -54,7 +53,6 @@ const DQ_BLOCK: NavItem[] = [
 
 const GOVERN_BLOCK: NavItem[] = [
   { to: '/contracts',  label: t.nav.contracts,   icon: 'contracts' },
-  { to: '/canvas',     label: t.nav.canvas,      icon: 'canvas' },
   { to: '/compliance', label: t.nav.compliance,  icon: 'compliance' },
 ];
 

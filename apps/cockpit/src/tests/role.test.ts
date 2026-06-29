@@ -104,7 +104,6 @@ describe('navForRole', () => {
       '/library',
       'divider',
       '/contracts',
-      '/canvas',
       '/compliance',
       'divider',
       '/environments',
