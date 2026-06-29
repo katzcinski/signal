@@ -170,6 +170,8 @@ Result-Store-Schema über nummerierte, idempotente Migrationen (`packages/dq_cor
 | `004_incident_lifecycle` | Incident-Tabellen + Timeline |
 | `005_notification_routing` | Notification-Kanäle/Regeln/Mutes |
 | `007_incident_kind` | `dq_incidents.kind` (Engineering-Signal vs. Contract-Breach, Backfill `consumer_contract`) + `dq_notification_rules.match_kind` (Wildcard wenn leer) |
+| `014_schema_snapshots` | Shift-Left-Schema-Drift: `dq_schema_snapshots` (Quellschema-Historie) + `dq_schema_drift` (Drift-Befunde gegen das Contract-Versprechen) |
+| `015_profile_snapshots` | Data-Diff: `dq_profile_snapshots` (Aggregat-Profile als Snapshots für Distribution-/Key-Diff, ohne Sample-Rows) |
 
 > Nummer 006 ist im Repo nicht belegt (übersprungen): Der `kind`-Diskriminator (Batch 2) lebt als Contract-Metadatum im YAML/Git und brauchte keine Store-Migration. Der Runner gleicht per Dateiname gegen `schema_migrations` ab; Lücken in der Nummerierung sind unkritisch.
 
@@ -205,7 +207,8 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | POST | `/api/objects/{id}/profile` | Profil-Lauf (Stats-Tuple) |
 | GET | `/api/runs` · `/api/runs/{id}` | Läufe (paginiert `limit/offset`) / Detail |
 | GET | `/api/runs/{id}/results` · `/diagnostics` · `/events` | Ergebnisse · PII-gated Rohzeilen · SSE |
-| GET | `/api/runs/compare?base=&head=` | Lauf-/Versions-Vergleich (Statuswechsel je Check) |
+| GET | `/api/runs/compare?base=&head=` | Lauf-/Versions-Vergleich (Statuswechsel je Check, inkl. `value_delta` vorher→nachher — B-1 Data-Diff) |
+| POST | `/api/objects/{id}/diff` | Data-Diff zweier Profil-Snapshots: `distribution` (Verteilungs-Diff) bzw. `keys` (Key-Reconciliation) `[AUTHZ steward+]` |
 
 ### Contracts
 
@@ -216,6 +219,7 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | POST | `/api/contracts/{product}/seed` | Draft aus Inventar erzeugen |
 | POST | `/api/contracts/{product}/promote` | `internal_gate` → `consumer_contract`-Draft (Copy-Semantik) `[AUTHZ]` |
 | POST | `/api/contracts/{product}/diff` · GET `/diff/active` · `/version-diff` | Breaking-Report (liefert `kind`, `ceremony_required`, `blocking`) |
+| GET | `/api/contracts/{product}/drift` | Shift-Left-Report: weicht die **Quelle** vom Schema-Versprechen ab (read-only; Persistenz + kind-aware Incident laufen beim Extrakt) |
 | POST | `/api/contracts/{product}/approve` | Full-Modus: Draft → active (G3 nur `*_contract` + 1 Commit) `[AUTHZ]` |
 | POST | `/api/contracts/{product}/certify` | **Lite-Modus: save → active → compile in einem Schritt** `[AUTHZ]` |
 | POST | `/api/contracts/{product}/compile?dry_run=` | Garantien → Checks (persistiert nur `active`) |

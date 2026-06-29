@@ -519,6 +519,102 @@ class ResultStore:
                      f"Folgelauf {run_id} vollständig grün — automatisch gelöst."),
                 )
 
+    # ------------------------------------------------------------------
+    # Profil-Snapshots (Konzept Data-Diff §B) — Distribution-/Key-Diff
+    # ------------------------------------------------------------------
+
+    def save_profile_snapshot(
+        self, object_name: str, stats: dict[str, Any], environment: str = ""
+    ) -> int:
+        """Aggregat-Profil ablegen (ohne sample_rows — G8)."""
+        now = datetime.now(timezone.utc).isoformat()
+        stats = {k: v for k, v in (stats or {}).items() if k != "sample_rows"}
+        with self._conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO dq_profile_snapshots(object_name, environment, captured_at, stats_json) "
+                "VALUES (?,?,?,?)",
+                (object_name, environment or "", now, json.dumps(stats)),
+            )
+            return int(cur.lastrowid)
+
+    def list_profile_snapshots(self, object_name: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Snapshot-Metadaten (ohne stats-Body) für den Auswahl-Picker."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT id, object_name, environment, captured_at FROM dq_profile_snapshots "
+                "WHERE object_name=? ORDER BY id DESC LIMIT ?",
+                (object_name, limit),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_profile_snapshot(self, snapshot_id: int) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_profile_snapshots WHERE id=?", (snapshot_id,)
+            ).fetchone()
+        if not row:
+            return None
+        out = dict(row)
+        out["stats"] = json.loads(out.pop("stats_json"))
+        return out
+
+    # ------------------------------------------------------------------
+    # Schema-Drift (Konzept Shift-Left §A) — Snapshots + Drift-Befunde
+    # ------------------------------------------------------------------
+
+    def save_schema_snapshot(
+        self, object_name: str, columns: list[dict[str, Any]], inventory_hash: str
+    ) -> int:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO dq_schema_snapshots(object_name, captured_at, columns_json, inventory_hash) "
+                "VALUES (?,?,?,?)",
+                (object_name, now, json.dumps(columns), inventory_hash),
+            )
+            return int(cur.lastrowid)
+
+    def get_latest_schema_snapshot(self, object_name: str) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_schema_snapshots WHERE object_name=? "
+                "ORDER BY id DESC LIMIT 1",
+                (object_name,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def record_schema_drift(
+        self,
+        object_name: str,
+        findings: list[dict[str, Any]],
+        contract_version: str = "",
+        incident_id: int | None = None,
+    ) -> None:
+        """Persistiert die je Extrakt erkannten Drift-Befunde (Historie)."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            for f in findings:
+                conn.execute(
+                    "INSERT INTO dq_schema_drift(object_name, detected_at, category, "
+                    "column_name, before_value, after_value, breaking, contract_version, incident_id) "
+                    "VALUES (?,?,?,?,?,?,?,?,?)",
+                    (
+                        object_name, now, f.get("category", ""),
+                        f.get("column", ""), str(f.get("before", "")),
+                        str(f.get("after", "")), int(bool(f.get("breaking"))),
+                        contract_version, incident_id,
+                    ),
+                )
+
+    def get_schema_drift(self, object_name: str, limit: int = 100) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM dq_schema_drift WHERE object_name=? "
+                "ORDER BY id DESC LIMIT ?",
+                (object_name, limit),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     def list_incidents(
         self,
         status: str | None = None,

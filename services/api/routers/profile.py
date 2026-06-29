@@ -40,6 +40,15 @@ class ProfileRequest(BaseModel):
     sample_limit: int = 20
 
 
+class DiffRequest(BaseModel):
+    """§B: Data-Diff zweier gespeicherter Profil-Snapshots. Ohne IDs werden die
+    zwei jüngsten Snapshots des Objekts verglichen (base = älterer)."""
+    base_snapshot_id: int | None = None
+    head_snapshot_id: int | None = None
+    mode: str = "distribution"          # distribution | keys
+    key_columns: list[str] | None = None
+
+
 def _sample_payload(
     *,
     enabled: bool,
@@ -203,6 +212,11 @@ def profile_object(
                 result = enrich_result_with_context(result, obj)
             except Exception:  # noqa: BLE001 - heuristics are an enhancement; never fail the profile
                 logger.warning("Heuristic enrichment failed for %s; returning base profile.", object_id, exc_info=True)
+            # §B.3: Aggregat-Profil als Snapshot ablegen (Basis für Data-Diff).
+            try:
+                store.save_profile_snapshot(object_id, result, environment=body.environment or "")
+            except Exception:  # noqa: BLE001 - Snapshot ist additiv; Profil bleibt nutzbar
+                logger.warning("Profile snapshot persist failed for %s", object_id, exc_info=True)
             store.finish_operation(op_id, "finished", result_json=json.dumps(result))
         except RuntimeError as exc:
             store.finish_operation(op_id, "error", error=str(exc))
@@ -218,3 +232,57 @@ def profile_object(
 
     threading.Thread(target=_worker, daemon=True).start()
     return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={"op_id": op_id})
+
+
+@router.post("/{object_id}/diff")
+def diff_object(
+    object_id: str,
+    principal: PrincipalDep,
+    body: DiffRequest = Body(default=DiffRequest()),
+    store: StoreDep = ...,
+):
+    """§B.2/§B.3: Distribution- bzw. Key-Reconciliation-Diff zweier Profil-Snapshots.
+
+    Liest ausschließlich gespeicherte Aggregat-Snapshots (kein HANA, keine
+    Rohzeilen — G8). Snapshots entstehen bei `POST /objects/{id}/profile`."""
+    from dq_core.profile.diff import diff_profiles, reconcile_keys
+
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(status_code=403, detail="Diff requires steward role or higher.")
+
+    base_id = body.base_snapshot_id
+    head_id = body.head_snapshot_id
+    if base_id is None or head_id is None:
+        snaps = store.list_profile_snapshots(object_id, limit=2)
+        if len(snaps) < 2:
+            raise HTTPException(
+                status_code=422,
+                detail="Mindestens zwei Profil-Snapshots nötig (erst profilieren).",
+            )
+        # list ist DESC (neuester zuerst): head = neuer, base = älter.
+        head_id = head_id if head_id is not None else snaps[0]["id"]
+        base_id = base_id if base_id is not None else snaps[1]["id"]
+
+    base_snap = store.get_profile_snapshot(int(base_id))
+    head_snap = store.get_profile_snapshot(int(head_id))
+    if not base_snap or not head_snap:
+        raise HTTPException(status_code=404, detail="Snapshot nicht gefunden.")
+
+    base_stats = base_snap["stats"]
+    head_stats = head_snap["stats"]
+
+    result: dict[str, Any] = {
+        "object_id": object_id,
+        "mode": body.mode,
+        "base": {"snapshot_id": base_snap["id"], "captured_at": base_snap["captured_at"],
+                 "environment": base_snap["environment"]},
+        "head": {"snapshot_id": head_snap["id"], "captured_at": head_snap["captured_at"],
+                 "environment": head_snap["environment"]},
+    }
+
+    if body.mode == "keys":
+        key_columns = body.key_columns or (base_stats.get("pk_candidates") or {}).get("single") or []
+        result["reconciliation"] = reconcile_keys(base_stats, head_stats, key_columns)
+    else:
+        result["distribution"] = diff_profiles(base_stats, head_stats)
+    return result
