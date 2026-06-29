@@ -16,6 +16,7 @@ import { BadgeEmbed } from '@/components/BadgeEmbed';
 import { MinedProposalsCallout } from '@/components/MinedProposalsCallout';
 import { ObservabilityTimeseries } from '@/components/ObservabilityTimeseries';
 import { ObjectProfilePanel } from '@/components/ObjectProfilePanel';
+import { ObjectDiffPanel } from '@/components/ObjectDiffPanel';
 import { SchedulePanel } from '@/components/SchedulePanel';
 import { ColumnLineagePanel } from '@/components/lineage/ColumnLineagePanel';
 import { Spark } from '@/components/ui/Spark';
@@ -25,7 +26,7 @@ import { useRoleStore, canProfileObject, canWriteContract } from '@/store/role';
 import { t } from '@/i18n/de';
 import type { CheckResult, ContractOut, RunListItem } from '@/types';
 
-type Tab = 'checks' | 'runs' | 'timeseries' | 'contract' | 'lineage' | 'schedule';
+type Tab = 'checks' | 'runs' | 'timeseries' | 'contract' | 'lineage' | 'schedule' | 'diff';
 
 // ---------------------------------------------------------------------------
 // Structured contract view — replaces raw JSON.stringify
@@ -517,7 +518,7 @@ export default function ObjectDetail() {
       )}
 
       <div style={{ borderBottom: '1px solid var(--line)', marginBottom: 20 }}>
-        {(['checks', 'runs', 'timeseries', 'contract', 'lineage', 'schedule'] as Tab[]).map(tabKey => (
+        {(['checks', 'runs', 'timeseries', 'contract', 'lineage', 'schedule', 'diff'] as Tab[]).map(tabKey => (
           <button key={tabKey} onClick={() => setTab(tabKey)} style={TAB_STYLE(tabKey)}>
             {t.objectDetail.tabs[tabKey] ?? tabKey}
           </button>
@@ -593,6 +594,10 @@ export default function ObjectDetail() {
 
       {tab === 'schedule' && (
         <SchedulePanel objectId={obj.id} />
+      )}
+
+      {tab === 'diff' && (
+        <ObjectDiffPanel objectId={obj.id} />
       )}
 
       {latestRun && (

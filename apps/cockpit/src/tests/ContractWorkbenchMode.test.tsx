@@ -58,6 +58,7 @@ vi.mock('@/api/contracts', () => ({
       windows: { '7d': null, '30d': null, '90d': null },
     },
   }),
+  useSchemaDrift: () => ({ data: undefined, isLoading: false, isError: false }),
 }));
 
 vi.mock('@/api/operations', () => ({

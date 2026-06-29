@@ -4,7 +4,22 @@ import type {
   ObjectSummary, RunListItem, CheckHistoryPoint, EnvironmentsResponse,
   OperationStart,
   ObjectTimeseries,
+  ObjectDiffResult,
 } from '@/types';
+
+export interface ObjectDiffBody {
+  mode?: 'distribution' | 'keys';
+  base_snapshot_id?: number;
+  head_snapshot_id?: number;
+  key_columns?: string[];
+}
+
+// §B.2/§B.3: Data-Diff zweier gespeicherter Profil-Snapshots (Distribution/Keys).
+export const useObjectDiff = (id: string) =>
+  useMutation<ObjectDiffResult, unknown, ObjectDiffBody>({
+    mutationFn: (body: ObjectDiffBody = {}) =>
+      api.post(`/objects/${id}/diff`, { mode: 'distribution', ...body }).then(r => r.data),
+  });
 
 export const useObjects = () =>
   useQuery<ObjectSummary[]>({

@@ -52,6 +52,24 @@ function TransitionBadge({ transition }: { transition: CheckTransition }) {
   );
 }
 
+// B-1 Value-Diff (§B.2): vorher → nachher je Check, mit Richtung & Δ%.
+function ValueCell({ change }: { change: CheckChange }) {
+  const vd = change.value_delta;
+  if (!vd || (vd.base == null && vd.head == null)) return <span style={{ color: 'var(--fg-3)' }}>—</span>;
+  const hasPct = vd.pct_delta != null && vd.pct_delta !== 0;
+  const up = (vd.abs_delta ?? 0) > 0;
+  return (
+    <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+      <span style={{ color: 'var(--fg-2)' }}>{vd.base ?? '—'} → {vd.head ?? '—'}</span>
+      {hasPct && (
+        <span style={{ color: up ? 'var(--status-warn)' : 'var(--cont)', marginLeft: 6 }}>
+          {up ? '▲' : '▼'} {Math.abs(vd.pct_delta as number)}%
+        </span>
+      )}
+    </span>
+  );
+}
+
 function RunOption(r: RunListItem) {
   const when = r.started_at ? new Date(r.started_at).toLocaleString() : r.run_id.slice(0, 8);
   return `${r.dataset} · ${r.run_id.slice(0, 8)} · ${when} · ${r.overall_status}`;
@@ -105,6 +123,7 @@ export default function RunCompare() {
     { key: 'check_name', header: t.compare.colCheck, mono: true, render: c => c.check_name },
     { key: 'base', header: t.compare.colBase, render: c => <StatusBadge status={c.base_status} /> },
     { key: 'head', header: t.compare.colHead, render: c => <StatusBadge status={c.head_status} /> },
+    { key: 'value', header: t.compare.colValue, render: c => <ValueCell change={c} /> },
     { key: 'change', header: t.compare.colChange, render: c => <TransitionBadge transition={c.transition} /> },
   ];
 

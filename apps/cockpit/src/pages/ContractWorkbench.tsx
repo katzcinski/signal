@@ -13,6 +13,7 @@ import { useOperationStream } from '@/api/operations';
 import { useLibrary } from '@/api/library';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { OperationProgress } from '@/components/OperationProgress';
+import { SchemaDriftBanner } from '@/components/SchemaDriftBanner';
 import { StatePill } from '@/components/ui/StatePill';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -1468,6 +1469,8 @@ function EditorPane({ product, onPromote, promotePending }: {
         {approve.isError && <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{extractValidationErrors(approve.error).join(' · ') || t.common.error}</span>}
         {deprecate.isError && <span style={{ color: 'var(--status-fail)', fontSize: 12 }}>{t.common.error}</span>}
       </div>
+
+      <SchemaDriftBanner product={product} />
 
       {confirmAction && (
         <div style={{ ...cardStyle, border: `1px solid ${confirmAction === 'deprecate' ? 'var(--status-fail)' : 'var(--cont)'}` }}>

@@ -277,11 +277,20 @@ export interface RunCompareHeader {
   warnings: number;
 }
 
+// B-1 Value-Diff (§B.2): vorher/nachher je Check inkl. Delta (numerisch wo möglich).
+export interface ValueDelta {
+  base: string | number | null;
+  head: string | number | null;
+  abs_delta: number | null;
+  pct_delta: number | null;
+}
+
 export interface CheckChange {
   check_name: string;
   base_status: CheckCompareStatus | null;
   head_status: CheckCompareStatus | null;
   transition: CheckTransition;
+  value_delta?: ValueDelta;
 }
 
 export interface RunCompare {
@@ -923,3 +932,101 @@ export type SSEEvent =
   | { type: 'progress'; run_id: string; ts: string; line: string }
   | { type: 'run_finished'; run_id: string; overall_status: OverallStatus }
   | { type: 'run_error'; run_id: string; error: string };
+
+// ---- Shift-Left-Schema-Drift (GET /api/contracts/{product}/drift) — Konzept §A ----
+export type SchemaDriftCategory =
+  | 'column_added' | 'column_removed' | 'type_changed'
+  | 'nullable_relaxed' | 'key_changed';
+
+export interface SchemaDriftFinding {
+  category: SchemaDriftCategory;
+  column: string;
+  before: string;
+  after: string;
+  breaking: boolean;
+}
+
+export interface SchemaDriftSummary {
+  total: number;
+  breaking: number;
+  has_breaking: boolean;
+  by_category: Record<string, number>;
+}
+
+export interface SchemaDriftHistoryRow {
+  id: number;
+  object_name: string;
+  detected_at: string;
+  category: string;
+  column_name: string;
+  before_value: string;
+  after_value: string;
+  breaking: number;
+  contract_version: string;
+  incident_id: number | null;
+}
+
+export interface SchemaDriftReport {
+  product: string;
+  dataset: string;
+  object_found: boolean;
+  kind: string;
+  findings: SchemaDriftFinding[];
+  summary: SchemaDriftSummary;
+  history: SchemaDriftHistoryRow[];
+}
+
+// ---- Data-Diff über Profil-Snapshots (POST /api/objects/{id}/diff) — Konzept §B ----
+export interface MetricDelta {
+  base: number | null;
+  head: number | null;
+  delta: number | null;
+}
+
+export interface ColumnDiff {
+  column: string;
+  metrics: Record<string, MetricDelta>;
+  changed: boolean;
+}
+
+export interface DistributionDiff {
+  row_count: { base: number | null; head: number | null; delta: number | null; pct_delta: number | null };
+  column_count: { base: number | null; head: number | null; delta: number | null };
+  columns: ColumnDiff[];
+  added_columns: string[];
+  removed_columns: string[];
+  changed_columns: string[];
+}
+
+export interface KeyReconKey {
+  column: string;
+  base_distinct: number | null;
+  head_distinct: number | null;
+  distinct_delta: number | null;
+  base_duplicates: boolean;
+  head_duplicates: boolean;
+}
+
+export interface KeyReconciliation {
+  key_columns: string[];
+  base_rows: number | null;
+  head_rows: number | null;
+  row_delta: number | null;
+  row_pct_delta: number | null;
+  keys: KeyReconKey[];
+}
+
+export interface ObjectDiffSnapshotRef {
+  snapshot_id: number;
+  captured_at: string;
+  environment: string;
+}
+
+export interface ObjectDiffResult {
+  object_id: string;
+  mode: 'distribution' | 'keys';
+  base: ObjectDiffSnapshotRef;
+  head: ObjectDiffSnapshotRef;
+  distribution?: DistributionDiff;
+  reconciliation?: KeyReconciliation;
+}
