@@ -48,12 +48,17 @@ def _settings(tmp_path):
 def test_run_extraction_writes_meridian_shaped_files(tmp_path, monkeypatch):
     monkeypatch.setattr(catalog_mod, "get_catalog_client", lambda: _FakeCatalog())
     settings = _settings(tmp_path)
+    progress: list[str] = []
 
     assert extraction_available(settings) is True
-    summary = run_extraction(settings)
+    summary = run_extraction(settings, on_progress=progress.append)
     assert summary is not None
     assert summary["inventory_items"] == 1
     assert summary["column_edges"] >= 2
+    assert summary["source"] == "datasphere-catalog"
+    assert any(line == "Source   : datasphere-catalog" for line in progress)
+    assert any(line == "[views] listing..." for line in progress)
+    assert any(line.startswith("@@progress ") for line in progress)
 
     inv = json.loads((tmp_path / "inventory.json").read_text(encoding="utf-8"))
     assert inv["meta"]["schemaVersion"]
