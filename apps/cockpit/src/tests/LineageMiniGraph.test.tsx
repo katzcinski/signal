@@ -40,4 +40,22 @@ describe('LineageMiniGraph', () => {
     expect(screen.getByTestId('lineage-mini-graph')).toBeTruthy();
     expect(cytoscapeMock.cytoscape).toHaveBeenCalled();
   });
+
+  it('renders a dedicated sparse state for a single-node graph', () => {
+    const graph: LineageGraph = {
+      nodes: [
+        { id: 'OUT', label: 'DEMO_BUS_06', layer: 'Business', role: 'consumption' },
+      ],
+      edges: [],
+    };
+
+    render(
+      <MemoryRouter>
+        <LineageMiniGraph subgraph={graph} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('lineage-mini-graph-sparse')).toBeTruthy();
+    expect(screen.getByText(/single mapped lineage node/i)).toBeTruthy();
+  });
 });

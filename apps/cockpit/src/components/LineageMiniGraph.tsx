@@ -67,12 +67,65 @@ function nodeColor(node: LineageNode, theme: ThemeTokens): string {
   return theme.line2;
 }
 
+function SparseLineageState({ node }: { node: LineageNode }) {
+  const label = lineageNodeLabel(node);
+  const meta = [node.layer, node.role].filter(Boolean).join(' · ');
+  return (
+    <div
+      data-testid="lineage-mini-graph-sparse"
+      style={{
+        alignItems: 'center',
+        background:
+          'radial-gradient(circle at top, color-mix(in srgb, var(--cont) 14%, transparent), transparent 58%), var(--bg-1)',
+        border: '1px solid var(--line)',
+        borderRadius: 'var(--r-lg)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--s3)',
+        justifyContent: 'center',
+        minHeight: 260,
+        padding: 'var(--s6)',
+        textAlign: 'center',
+      }}
+    >
+      <div style={{ color: 'var(--fg-3)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+        Product lineage
+      </div>
+      <div
+        style={{
+          background: 'var(--bg-2)',
+          border: '1px solid color-mix(in srgb, var(--cont) 55%, var(--line))',
+          borderRadius: 'var(--r-lg)',
+          boxShadow: '0 14px 32px rgba(0,0,0,0.14)',
+          minWidth: 220,
+          padding: '14px 18px',
+        }}
+      >
+        <div style={{ color: 'var(--fg)', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700 }}>
+          {label}
+        </div>
+        {meta && (
+          <div style={{ color: 'var(--fg-3)', fontSize: 11, marginTop: 5 }}>
+            {meta}
+          </div>
+        )}
+      </div>
+      <div style={{ color: 'var(--fg-2)', fontSize: 12, lineHeight: 1.6, maxWidth: 420 }}>
+        This product currently resolves to a single mapped lineage node. No connected upstream or downstream neighbors are
+        present in the current extract.
+      </div>
+    </div>
+  );
+}
+
 export function LineageMiniGraph({ subgraph }: LineageMiniGraphProps) {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const sparse = subgraph.nodes.length <= 1 || subgraph.edges.length === 0;
+  const graphHeight = Math.max(280, Math.min(420, 220 + subgraph.nodes.length * 28));
 
   useEffect(() => {
-    if (!ref.current || subgraph.nodes.length === 0) return undefined;
+    if (!ref.current || subgraph.nodes.length === 0 || sparse) return undefined;
 
     const theme = resolveTheme();
     const cy = Cytoscape({
@@ -108,11 +161,11 @@ export function LineageMiniGraph({ subgraph }: LineageMiniGraphProps) {
             'font-family': theme.fontMono,
             'font-size': 10,
             'font-weight': 600,
-            'height': 30,
-            'padding': 8,
+            'height': 34,
+            'padding': 10,
             'text-halign': 'center',
             'text-valign': 'center',
-            'text-max-width': '120px',
+            'text-max-width': '150px',
             'text-wrap': 'ellipsis',
             'width': 'label',
           } as Record<string, unknown>,
@@ -123,9 +176,10 @@ export function LineageMiniGraph({ subgraph }: LineageMiniGraphProps) {
             'arrow-scale': 0.7,
             'curve-style': 'bezier',
             'line-color': theme.line2,
+            'line-opacity': 0.9,
             'target-arrow-color': theme.line2,
             'target-arrow-shape': 'triangle',
-            'width': 1.4,
+            'width': 1.6,
           } as Record<string, unknown>,
         },
         {
@@ -152,21 +206,21 @@ export function LineageMiniGraph({ subgraph }: LineageMiniGraphProps) {
     cy.layout({
       name: 'dagre',
       rankDir: 'LR',
-      nodeSep: 36,
-      rankSep: 76,
+      nodeSep: 42,
+      rankSep: 88,
       fit: true,
-      padding: 26,
+      padding: 30,
     } as Cytoscape.LayoutOptions).run();
 
     window.setTimeout(() => {
-      if (!cy.destroyed()) cy.fit(undefined, 26);
+      if (!cy.destroyed()) cy.fit(undefined, 30);
     }, 0);
 
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined' && ref.current) {
       ro = new ResizeObserver(() => {
         cy.resize();
-        cy.fit(undefined, 26);
+        cy.fit(undefined, 30);
       });
       ro.observe(ref.current);
     }
@@ -185,19 +239,29 @@ export function LineageMiniGraph({ subgraph }: LineageMiniGraphProps) {
     );
   }
 
+  if (sparse) {
+    return <SparseLineageState node={subgraph.nodes[0]} />;
+  }
+
   return (
-    <div
-      ref={ref}
-      data-testid="lineage-mini-graph"
-      style={{
-        background: 'var(--bg-1)',
-        border: '1px solid var(--line)',
-        borderRadius: 'var(--r-lg)',
-        height: 360,
-        minHeight: 320,
-        overflow: 'hidden',
-        width: '100%',
-      }}
-    />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+      <div style={{ color: 'var(--fg-3)', fontSize: 11 }}>
+        {subgraph.nodes.length} nodes · {subgraph.edges.length} edges
+      </div>
+      <div
+        ref={ref}
+        data-testid="lineage-mini-graph"
+        style={{
+          background:
+            'radial-gradient(circle at top left, color-mix(in srgb, var(--cont) 10%, transparent), transparent 52%), var(--bg-1)',
+          border: '1px solid var(--line)',
+          borderRadius: 'var(--r-lg)',
+          height: graphHeight,
+          minHeight: 280,
+          overflow: 'hidden',
+          width: '100%',
+        }}
+      />
+    </div>
   );
 }
