@@ -5,6 +5,22 @@ Live-Connector ist POST /api/extract ein ehrlicher No-Op (status=skipped): es
 fasst den lokalen/Demo-Snapshot NICHT an und meldet keinen Erfolg."""
 import os
 import time
+from typing import Any
+
+
+def _wait_for_finished(api_client, op_id: str) -> dict[str, Any]:
+    for _ in range(40):
+        resp = api_client.get(f"/api/operations/{op_id}")
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        if body["state"] in {"finished", "error"}:
+            return body
+        time.sleep(0.05)
+    raise AssertionError("extract operation did not finish")
+
+
+def _visible_progress(operation: dict[str, Any]) -> list[str]:
+    return [row["line"] for row in operation["progress"] if not row["line"].startswith("@@progress ")]
 
 
 def test_inventory_lists_datasets(api_client):
@@ -23,8 +39,8 @@ def test_extract_skipped_without_live_source(api_client):
     The on-disk snapshot counts are still echoed for context.
     """
     resp = api_client.post("/api/extract")
-    assert resp.status_code == 200
-    data = resp.json()
+    assert resp.status_code == 202
+    data = _wait_for_finished(api_client, resp.json()["op_id"])["result"]
     assert data["status"] == "skipped"
     assert data["source"] == "none"
     assert data["extracted_at"] is None
@@ -47,6 +63,50 @@ def test_extract_trigger_requires_admin(api_client):
     assert resp.status_code == 403
 
 
+def test_extract_streams_live_object_progress(api_client, monkeypatch):
+    import services.api.connector_config as connector_mod
+    import services.api.datasphere_catalog as catalog_mod
+
+    class _FakeCatalog:
+        def list_objects(self, space):
+            return [{
+                "technicalName": "v_OrderSummary",
+                "objectType": "views",
+                "status": "Deployed",
+                "businessName": "Order Summary",
+            }]
+
+        def read_object_definition(self, space, name):
+            return {
+                "query": {
+                    "SELECT": {
+                        "from": {"ref": ["Sales_Orders"], "as": "o"},
+                        "columns": [
+                            {"ref": ["o", "OrderID"], "as": "OrderID"},
+                            {"func": "SUM", "args": [{"ref": ["o", "Amount"]}], "as": "TotalAmount"},
+                        ],
+                    }
+                }
+            }
+
+    monkeypatch.setattr(connector_mod, "effective_space_id", lambda settings: "DEMO_SPACE")
+    monkeypatch.setattr(catalog_mod, "get_catalog_client", lambda: _FakeCatalog())
+
+    started = api_client.post("/api/extract")
+    assert started.status_code == 202
+
+    operation = _wait_for_finished(api_client, started.json()["op_id"])
+    assert operation["kind"] == "inventory_extract"
+    assert operation["state"] == "finished"
+    assert operation["result"]["status"] == "succeeded"
+    assert operation["result"]["source"] == "datasphere-catalog"
+
+    progress = _visible_progress(operation)
+    assert "Source   : datasphere-catalog" in progress
+    assert "[views] listing..." in progress
+    assert any("v_OrderSummary" in line for line in progress)
+
+
 def test_extract_leaves_snapshot_untouched_without_live_source(api_client):
     """Without a live connector POST /api/extract must NOT touch snapshot files.
 
@@ -63,9 +123,10 @@ def test_extract_leaves_snapshot_untouched_without_live_source(api_client):
     old_mtime = os.path.getmtime(lineage_path)
 
     resp = api_client.post("/api/extract")
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "skipped"
-    assert resp.json()["extracted_at"] is None
+    assert resp.status_code == 202
+    result = _wait_for_finished(api_client, resp.json()["op_id"])["result"]
+    assert result["status"] == "skipped"
+    assert result["extracted_at"] is None
 
     new_mtime = os.path.getmtime(lineage_path)
     assert new_mtime == old_mtime, "skipped extract must leave the snapshot mtime untouched"
@@ -103,8 +164,9 @@ def test_lineage_stays_stale_after_skipped_extract(api_client):
     old_ts = time.time() - (settings.extract_stale_days + 5) * 86400
     os.utime(lineage_path, (old_ts, old_ts))
 
-    # Trigger extract with no live source → skipped, snapshot untouched
-    assert api_client.post("/api/extract").json()["status"] == "skipped"
+    started = api_client.post("/api/extract")
+    assert started.status_code == 202
+    assert _wait_for_finished(api_client, started.json()["op_id"])["result"]["status"] == "skipped"
 
     resp = api_client.get("/api/lineage")
     assert resp.status_code == 200

@@ -13,7 +13,7 @@ function tone(state?: OperationStatus['state']) {
 export function OperationProgress<T = unknown>({ operation }: Props<T>) {
   if (!operation) return null;
 
-  const lines = operation.progress ?? [];
+  const lines = (operation.progress ?? []).filter(line => !line.line.startsWith('@@progress '));
   const color = tone(operation.state);
 
   return (

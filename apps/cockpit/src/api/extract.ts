@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { t } from '@/i18n/de';
+import type { OperationStart } from '@/types';
 import { api } from './client';
 
 export type ExtractStatusValue = 'idle' | 'queued' | 'running' | 'succeeded' | 'partial' | 'skipped' | 'failed';
@@ -13,6 +14,7 @@ export interface ExtractCounts {
 }
 
 export interface ExtractStatus {
+  op_id: string | null;
   job_id: string | null;
   status: ExtractStatusValue;
   environment: string;
@@ -29,6 +31,19 @@ export interface ExtractStatus {
   runtime_artifact_paths: Record<string, string>;
   published_snapshot_timestamp: string | null;
   can_trigger: boolean;
+}
+
+export interface ExtractSchemaDriftSummary {
+  checked: number;
+  drifted: number;
+  breaking: number;
+  errors: number;
+}
+
+export interface ExtractOperationResult extends Omit<ExtractStatus, 'can_trigger'> {
+  can_trigger?: boolean;
+  extracted_at: string | null;
+  schema_drift?: ExtractSchemaDriftSummary;
 }
 
 export interface ExtractTriggerBody {
@@ -56,17 +71,10 @@ export function useExtractStatus() {
 export function useStartExtract() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: ExtractTriggerBody) => (await api.post<ExtractStatus>('/extract', body)).data,
-    onSuccess: data => {
-      if (data.status === 'skipped') {
-        toast.warning(t.inventoryAdmin.triggerSkipped);
-      } else {
-        toast.success(t.inventoryAdmin.triggerOk);
-      }
+    mutationFn: async (body: ExtractTriggerBody) => (await api.post<OperationStart>('/extract', body)).data,
+    onSuccess: () => {
+      toast.success(t.inventoryAdmin.triggerStarted);
       void qc.invalidateQueries({ queryKey: EXTRACT_STATUS_KEY });
-      void qc.invalidateQueries({ queryKey: ['objects'] });
-      void qc.invalidateQueries({ queryKey: ['lineage'] });
-      void qc.invalidateQueries({ queryKey: ['inventory'] });
     },
     onError: () => {
       toast.error(t.inventoryAdmin.triggerError);

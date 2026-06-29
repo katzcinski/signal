@@ -8,8 +8,10 @@ served by the dedicated `lineage` router.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 from pathlib import Path
 import re
+import threading
 from typing import Any
 from uuid import uuid4
 
@@ -24,6 +26,7 @@ require_admin = require_roles("admin")
 require_steward = require_roles("steward", "owner", "admin")
 
 _ENV_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+_NO_LIVE_SOURCE_WARNING = "No live extraction source configured; nothing was extracted."
 
 
 class ExtractIn(BaseModel):
@@ -52,10 +55,10 @@ _LATEST_STATUS: dict[str, Any] | None = None
 
 
 def _run_drift_sweep(store: Any, settings: Any) -> dict[str, int]:
-    """Shift-Left (§A.3): nach erfolgreichem Extrakt das frische Quellschema gegen
-    jeden **aktiven** Contract diffen, Snapshots/Drift persistieren und bei
-    breaking-Drift kind-aware ein Incident eröffnen. Nie die Extraktion versenken —
-    Drift-Fehler werden geschluckt und gezählt."""
+    """Run schema-drift persistence after a successful extract.
+
+    Drift is additive: failures are counted but never fail the extract itself.
+    """
     import json as _json
 
     import yaml as _yaml
@@ -65,14 +68,17 @@ def _run_drift_sweep(store: Any, settings: Any) -> dict[str, int]:
     summary = {"checked": 0, "drifted": 0, "breaking": 0, "errors": 0}
     try:
         inv_path = Path(settings.inventory_file)
-        inventory = (_json.loads(inv_path.read_text(encoding="utf-8")) or {}).get("objects", []) \
-            if inv_path.exists() else []
+        inventory = (
+            (_json.loads(inv_path.read_text(encoding="utf-8")) or {}).get("objects", [])
+            if inv_path.exists()
+            else []
+        )
         contracts_dir = Path(settings.contracts_dir)
         if not contracts_dir.exists():
             return summary
         for path in sorted(contracts_dir.glob("*.y*ml")):
             if path.name.endswith(".active.yml"):
-                continue  # zertifizierte Snapshots überspringen
+                continue
             try:
                 contract = _yaml.safe_load(path.read_text(encoding="utf-8")) or {}
                 if contract.get("lifecycle", "draft") != "active":
@@ -86,9 +92,9 @@ def _run_drift_sweep(store: Any, settings: Any) -> dict[str, int]:
                     summary["drifted"] += 1
                 if report["summary"]["has_breaking"]:
                     summary["breaking"] += 1
-            except Exception:  # noqa: BLE001 - ein kaputter Contract darf den Sweep nicht stoppen
+            except Exception:  # noqa: BLE001 - one broken contract must not stop the sweep
                 summary["errors"] += 1
-    except Exception:  # noqa: BLE001 - Drift ist additiv; Extraktion bleibt erfolgreich
+    except Exception:  # noqa: BLE001 - drift is additive; extract stays successful
         summary["errors"] += 1
     return summary
 
@@ -132,7 +138,7 @@ def _mask_host(host: str) -> str:
 
 
 def _safe_ref(ref: str) -> str:
-    """Gibt die Secret-Referenz zurück, maskiert aber plain:-Direktwerte (S-13)."""
+    """Return the secret reference, masking any inline plain: value."""
     return "" if ref.startswith("plain:") else ref
 
 
@@ -168,7 +174,6 @@ def _legacy_config_entry(body: EnvironmentConfigIn, existing: dict[str, Any] | N
         entry["password_ref"] = body.password_ref.strip()
         entry.pop("password", None)
     elif body.password:
-        # Legacy local-dev compatibility. New UI paths use password_ref only.
         entry["password"] = body.password
         entry.pop("password_ref", None)
     return entry
@@ -181,7 +186,7 @@ def _validate_environment_name(name: str) -> None:
 
 def _status_payload(
     *,
-    job_id: str | None,
+    op_id: str | None,
     status: str,
     environment: str,
     profile: str | None,
@@ -197,7 +202,8 @@ def _status_payload(
     error: str | None = None,
 ) -> dict[str, Any]:
     return {
-        "job_id": job_id,
+        "op_id": op_id,
+        "job_id": op_id,
         "status": status,
         "environment": environment,
         "profile": profile or environment,
@@ -215,7 +221,7 @@ def _status_payload(
     }
 
 
-@router.post("/extract")
+@router.post("/extract", status_code=status.HTTP_202_ACCEPTED)
 def trigger_extract(
     body: ExtractIn | None = Body(default=None),
     environment: str = Query(default="default"),
@@ -224,132 +230,181 @@ def trigger_extract(
     inventory: list[dict] = Depends(get_inventory),
     lineage: dict = Depends(get_lineage),
 ):
-    """Extract inventory/lineage and report counts.
-
-    FastAPI runs this sync handler in a threadpool, so the blocking I/O does not
-    stall the event loop. The response keeps the legacy top-level count fields
-    while also returning the richer status shape used by the Phase-1 admin UI.
-
-    When no live source (CLI/REST catalog) is configured ``run_extraction``
-    returns ``None``. In that case we report the run honestly as ``skipped`` and
-    leave the on-disk snapshot untouched — we never re-stamp the local/demo
-    snapshot as a fresh successful extraction (that would mask stale data).
-    """
-    from ..extraction import run_extraction
+    """Start an operation-backed inventory extraction and return its ``op_id``."""
+    from ..extraction import PROGRESS_META_PREFIX, run_extraction
     from ..settings import get_settings
+    from ..sse import make_progress_callback
 
     settings = get_settings()
     selected_environment = (body.environment if body and body.environment else environment) or "default"
     profile = body.profile if body else None
     spaces = body.spaces if body else []
-    job_id = str(uuid4())
+    op_id = str(uuid4())
     started_at = _utc_now_iso()
+    baseline_counts = _counts(inventory, lineage)
 
-    counts = _counts(inventory, lineage)
-    source = "local"
     global _LATEST_STATUS
     _LATEST_STATUS = _status_payload(
-        job_id=job_id,
+        op_id=op_id,
         status="running",
         environment=selected_environment,
         profile=profile,
         spaces=spaces,
-        source=source,
+        source="datasphere",
         current_step="starting",
-        counts=counts,
+        counts=baseline_counts,
         settings=settings,
         started_at=started_at,
     )
+
+    if not store.begin_operation(op_id, "inventory_extract", created_by=principal.sub):
+        raise HTTPException(status_code=409, detail="Operation already exists.")
 
     space_override = spaces[0].strip() if spaces else None
+    persist_progress = make_progress_callback(op_id, store)
 
-    try:
-        result = run_extraction(settings, space_id=space_override or None)
-    except Exception as exc:  # noqa: BLE001 - surface extraction failure, never 500 silently
-        error = f"Extraction failed: {exc}"
+    def _set_latest(
+        *,
+        current_status: str,
+        current_step: str,
+        current_counts: dict[str, int],
+        source: str,
+        updated_at: str | None = None,
+        finished_at: str | None = None,
+        warnings: list[str] | None = None,
+        error: str | None = None,
+    ) -> dict[str, Any]:
+        global _LATEST_STATUS
         _LATEST_STATUS = _status_payload(
-            job_id=job_id,
-            status="failed",
+            op_id=op_id,
+            status=current_status,
             environment=selected_environment,
             profile=profile,
             spaces=spaces,
-            source="datasphere",
-            current_step="failed",
-            counts=counts,
+            source=source,
+            current_step=current_step,
+            counts=current_counts,
             settings=settings,
             started_at=started_at,
-            finished_at=_utc_now_iso(),
+            updated_at=updated_at,
+            finished_at=finished_at,
+            warnings=warnings,
             error=error,
         )
-        return {
-            **_LATEST_STATUS,
-            "extracted_at": None,
-            "source": "datasphere",
-            "inventory_items": counts["inventory_items"],
-            "lineage_nodes": counts["lineage_nodes"],
-            "lineage_edges": counts["lineage_edges"],
-        }
+        return _LATEST_STATUS
 
-    if result is None:
-        # No live extraction source configured. Do NOT touch the snapshot mtimes
-        # or claim success — that would launder the local/demo snapshot into
-        # looking like a fresh run. Report it as skipped and leave disk as-is.
-        finished_at = _utc_now_iso()
-        _LATEST_STATUS = _status_payload(
-            job_id=job_id,
-            status="skipped",
-            environment=selected_environment,
-            profile=profile,
-            spaces=spaces,
-            source="none",
-            current_step="no_live_source",
-            counts=counts,
-            settings=settings,
-            started_at=started_at,
-            updated_at=finished_at,
-            finished_at=finished_at,
-            warnings=["No live extraction source configured; nothing was extracted."],
-        )
-        return {
-            **_LATEST_STATUS,
-            "extracted_at": None,
-            "source": "none",
-            **counts,
-        }
+    def _emit_progress(line: str = "", meta: dict[str, Any] | None = None) -> None:
+        if meta:
+            persist_progress(
+                f"{PROGRESS_META_PREFIX}{json.dumps({'kind': 'extract', **meta}, ensure_ascii=False, sort_keys=True)}"
+            )
+        if line:
+            persist_progress(line)
 
-    # Live extraction succeeded — run_extraction has just (re)written both
-    # snapshot files, so their mtime is already current.
-    source = "datasphere"
-    counts = {
-        "lineage_nodes": result["lineage_nodes"],
-        "lineage_edges": result["lineage_edges"],
-        "inventory_items": result["inventory_items"],
-        "column_edges": result["column_edges"],
-    }
-    extracted_at = _snapshot_timestamp(settings) or _utc_now_iso()
-    # Shift-Left (§A.3): Schema-Drift gegen das frisch extrahierte Inventar prüfen.
-    drift = _run_drift_sweep(store, settings)
-    _LATEST_STATUS = _status_payload(
-        job_id=job_id,
-        status="succeeded",
-        environment=selected_environment,
-        profile=profile,
-        spaces=spaces,
-        source=source,
-        current_step="published_snapshot",
-        counts=counts,
-        settings=settings,
-        started_at=started_at,
-        updated_at=extracted_at,
-        finished_at=extracted_at,
-    )
-    return {
-        **_LATEST_STATUS,
-        "extracted_at": extracted_at,
-        "source": source,
-        "schema_drift": drift,
-        **counts,
-    }
+    def _worker() -> None:
+        try:
+            _set_latest(
+                current_status="running",
+                current_step="extracting_objects",
+                current_counts=baseline_counts,
+                source="datasphere",
+                updated_at=_utc_now_iso(),
+            )
+            result = run_extraction(
+                settings,
+                space_id=space_override or None,
+                on_progress=lambda line: _emit_progress(line),
+            )
+
+            if result is None:
+                finished_at = _utc_now_iso()
+                warnings = [_NO_LIVE_SOURCE_WARNING]
+                payload = {
+                    **_set_latest(
+                        current_status="skipped",
+                        current_step="no_live_source",
+                        current_counts=baseline_counts,
+                        source="none",
+                        updated_at=finished_at,
+                        finished_at=finished_at,
+                        warnings=warnings,
+                    ),
+                    "extracted_at": None,
+                    "source": "none",
+                    **baseline_counts,
+                }
+                _emit_progress(
+                    _NO_LIVE_SOURCE_WARNING,
+                    {"phase": "complete", "status": "skipped", "source": "none"},
+                )
+                store.finish_operation(op_id, "finished", result_json=json.dumps(payload))
+                return
+
+            live_counts = {
+                "lineage_nodes": result["lineage_nodes"],
+                "lineage_edges": result["lineage_edges"],
+                "inventory_items": result["inventory_items"],
+                "column_edges": result["column_edges"],
+            }
+            source = str(result.get("source") or "datasphere")
+
+            _set_latest(
+                current_status="running",
+                current_step="schema_drift",
+                current_counts=live_counts,
+                source=source,
+                updated_at=_utc_now_iso(),
+            )
+            _emit_progress(
+                "Schema-drift sweep...",
+                {"phase": "schema_drift", "status": "running", "source": source},
+            )
+            drift = _run_drift_sweep(store, settings)
+            _emit_progress(
+                (
+                    "Schema-drift sweep complete: "
+                    f"{drift['checked']} checked, {drift['drifted']} drifted, "
+                    f"{drift['breaking']} breaking"
+                ),
+                {"phase": "schema_drift", "status": "finished", "source": source, **drift},
+            )
+
+            extracted_at = _snapshot_timestamp(settings) or _utc_now_iso()
+            payload = {
+                **_set_latest(
+                    current_status="succeeded",
+                    current_step="published_snapshot",
+                    current_counts=live_counts,
+                    source=source,
+                    updated_at=extracted_at,
+                    finished_at=extracted_at,
+                ),
+                "extracted_at": extracted_at,
+                "source": source,
+                "schema_drift": drift,
+                **live_counts,
+            }
+            store.finish_operation(op_id, "finished", result_json=json.dumps(payload))
+        except Exception as exc:  # noqa: BLE001 - surface extraction failure, never 500 silently
+            error = f"Extraction failed: {exc}"
+            finished_at = _utc_now_iso()
+            _set_latest(
+                current_status="failed",
+                current_step="failed",
+                current_counts=baseline_counts,
+                source="datasphere",
+                updated_at=finished_at,
+                finished_at=finished_at,
+                error=error,
+            )
+            _emit_progress(
+                error,
+                {"phase": "complete", "status": "failed", "source": "datasphere"},
+            )
+            store.finish_operation(op_id, "error", error=error)
+
+    threading.Thread(target=_worker, daemon=True).start()
+    return {"op_id": op_id}
 
 
 @router.get("/extract/status")
@@ -369,11 +424,11 @@ def extract_status(
         }
 
     snapshot_ts = _snapshot_timestamp(settings)
-    status = "succeeded" if snapshot_ts else "idle"
+    current_status = "succeeded" if snapshot_ts else "idle"
     return {
         **_status_payload(
-            job_id=None,
-            status=status,
+            op_id=None,
+            status=current_status,
             environment="default",
             profile="default",
             spaces=[],
@@ -395,7 +450,7 @@ def list_inventory(inventory: list[dict] = Depends(get_inventory)):
 
 @router.get("/environments")
 def list_environments():
-    """Environment-Namen für den RunTriggerDialog — NIE Credentials (S-13)."""
+    """Environment names for the run trigger dialog, never credentials."""
     from ..secrets import secret_status
 
     envs = read_environments()
@@ -451,8 +506,6 @@ def test_environment_connection(
     store: StoreDep = ...,
 ):
     """Start a live HANA/Datasphere connection test for an environment."""
-    import json
-    import threading
     import uuid
 
     from dq_core.connect.db_connection import check_connection
