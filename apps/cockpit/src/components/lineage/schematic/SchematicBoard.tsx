@@ -39,6 +39,7 @@ export function SchematicBoard({
   onBackground,
 }: SchematicBoardProps) {
   const gridId = useId();
+  const shadowId = useId();
   const tracing = !!tracePins && tracePins.size > 0;
   const isDimmedChip = (id: string) => !!dimmedChips && dimmedChips.has(id);
 
@@ -52,9 +53,13 @@ export function SchematicBoard({
       aria-label="Schematic lineage"
     >
       <defs>
-        <pattern id={gridId} width={24} height={24} patternUnits="userSpaceOnUse">
-          <circle cx={1} cy={1} r={1} fill="var(--line)" opacity={0.5} />
+        <pattern id={gridId} width={26} height={26} patternUnits="userSpaceOnUse">
+          <circle cx={1} cy={1} r={1} fill="var(--line)" opacity={0.32} />
         </pattern>
+        {/* Weiche Schlagschatten geben den Chips Tiefe statt flacher Rechtecke. */}
+        <filter id={shadowId} x="-20%" y="-20%" width="140%" height="160%">
+          <feDropShadow dx={0} dy={3} stdDeviation={4} floodColor="#000" floodOpacity={0.42} />
+        </filter>
       </defs>
       <rect
         x={0}
@@ -95,6 +100,7 @@ export function SchematicBoard({
             key={chip.id}
             chip={chip}
             mode={layout.mode}
+            shadowId={shadowId}
             dimmed={isDimmedChip(chip.id)}
             selected={selectedChip === chip.id}
             tracePins={tracePins}
@@ -135,6 +141,7 @@ function ObjectTrace({ edge, dimmed }: { edge: RoutedObjectEdge; dimmed: boolean
 interface ChipProps {
   chip: PositionedChip;
   mode: 'column' | 'object';
+  shadowId: string;
   dimmed: boolean;
   selected: boolean;
   tracePins?: Set<string>;
@@ -143,11 +150,15 @@ interface ChipProps {
   onSelectPin?: (nodeId: string, pinId: string) => void;
 }
 
-function Chip({ chip, mode, dimmed, selected, tracePins, selectedPin, onSelectChip, onSelectPin }: ChipProps) {
+function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, onSelectChip, onSelectPin }: ChipProps) {
+  const clipId = useId();
   const cls = 'schem-chip' + (selected ? ' is-selected' : '') + (dimmed ? ' is-dimmed' : '');
   const tagText = `${chip.layer.toUpperCase()}${chip.system ? ` · ${chip.system}` : ''}`;
   const dqColor = chip.dqStatus ? dqStatusColor(chip.dqStatus) : null;
   const dotY = mode === 'object' ? 20 : 32;
+  const lane = laneColor(chip.laneOrder);
+  // Spalten-Chips bekommen ein abgesetztes Kopfband; Objekt-Chips sind nur Kopf.
+  const headerH = mode === 'column' ? 58 : chip.height;
   const selectChip = () => onSelectChip?.(chip.id);
   const selectPin = (event: MouseEvent<SVGElement>, pinId: string) => {
     event.stopPropagation();
@@ -156,22 +167,40 @@ function Chip({ chip, mode, dimmed, selected, tracePins, selectedPin, onSelectCh
 
   return (
     <g className={cls} transform={`translate(${chip.x}, ${chip.y})`} onClick={selectChip} style={{ cursor: 'pointer' }}>
-      <rect className="schem-chip-body" x={0} y={0} width={chip.width} height={chip.height} rx={5} />
-      <rect x={0} y={0} width={chip.width} height={3} rx={1.5} fill={laneColor(chip.laneOrder)} />
+      <clipPath id={clipId}>
+        <rect x={0} y={0} width={chip.width} height={chip.height} rx={7} />
+      </clipPath>
+      <rect
+        className="schem-chip-body"
+        x={0}
+        y={0}
+        width={chip.width}
+        height={chip.height}
+        rx={7}
+        filter={`url(#${shadowId})`}
+      />
+      {/* Kopfband, Lane-Akzent und Trennlinie, an die gerundeten Ecken geklippt. */}
+      <g clipPath={`url(#${clipId})`}>
+        <rect className="schem-chip-header" x={0} y={0} width={chip.width} height={headerH} />
+        <rect className="schem-lane" x={0} y={0} width={chip.width} height={3} fill={lane} />
+        {mode === 'column' && (
+          <line className="schem-divider" x1={0} y1={headerH} x2={chip.width} y2={headerH} />
+        )}
+      </g>
 
-      <text className="schem-tag" x={12} y={18}>
+      <text className="schem-tag" x={13} y={20}>
         {tagText}
       </text>
       <text
         className="schem-title"
-        x={12}
-        y={36}
+        x={13}
+        y={38}
         style={{ fontFamily: 'var(--font-mono)' }}
       >
         {chip.label}
       </text>
       {mode === 'object' && (
-        <text className="schem-sub" x={12} y={52}>
+        <text className="schem-sub" x={13} y={53}>
           {`${chip.pins.length} cols`}
         </text>
       )}
