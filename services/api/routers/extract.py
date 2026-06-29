@@ -51,6 +51,48 @@ class EnvironmentConfigIn(BaseModel):
 _LATEST_STATUS: dict[str, Any] | None = None
 
 
+def _run_drift_sweep(store: Any, settings: Any) -> dict[str, int]:
+    """Shift-Left (§A.3): nach erfolgreichem Extrakt das frische Quellschema gegen
+    jeden **aktiven** Contract diffen, Snapshots/Drift persistieren und bei
+    breaking-Drift kind-aware ein Incident eröffnen. Nie die Extraktion versenken —
+    Drift-Fehler werden geschluckt und gezählt."""
+    import json as _json
+
+    import yaml as _yaml
+
+    from ..schema_drift_service import inventory_columns_for, persist_and_alert
+
+    summary = {"checked": 0, "drifted": 0, "breaking": 0, "errors": 0}
+    try:
+        inv_path = Path(settings.inventory_file)
+        inventory = (_json.loads(inv_path.read_text(encoding="utf-8")) or {}).get("objects", []) \
+            if inv_path.exists() else []
+        contracts_dir = Path(settings.contracts_dir)
+        if not contracts_dir.exists():
+            return summary
+        for path in sorted(contracts_dir.glob("*.y*ml")):
+            if path.name.endswith(".active.yml"):
+                continue  # zertifizierte Snapshots überspringen
+            try:
+                contract = _yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+                if contract.get("lifecycle", "draft") != "active":
+                    continue
+                cols = inventory_columns_for(inventory, contract.get("dataset") or contract.get("product") or "")
+                if cols is None:
+                    continue
+                report = persist_and_alert(store, contract, cols)
+                summary["checked"] += 1
+                if report["findings"]:
+                    summary["drifted"] += 1
+                if report["summary"]["has_breaking"]:
+                    summary["breaking"] += 1
+            except Exception:  # noqa: BLE001 - ein kaputter Contract darf den Sweep nicht stoppen
+                summary["errors"] += 1
+    except Exception:  # noqa: BLE001 - Drift ist additiv; Extraktion bleibt erfolgreich
+        summary["errors"] += 1
+    return summary
+
+
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -285,6 +327,8 @@ def trigger_extract(
         "column_edges": result["column_edges"],
     }
     extracted_at = _snapshot_timestamp(settings) or _utc_now_iso()
+    # Shift-Left (§A.3): Schema-Drift gegen das frisch extrahierte Inventar prüfen.
+    drift = _run_drift_sweep(store, settings)
     _LATEST_STATUS = _status_payload(
         job_id=job_id,
         status="succeeded",
@@ -303,6 +347,7 @@ def trigger_extract(
         **_LATEST_STATUS,
         "extracted_at": extracted_at,
         "source": source,
+        "schema_drift": drift,
         **counts,
     }
 

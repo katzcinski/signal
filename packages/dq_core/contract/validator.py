@@ -56,6 +56,29 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                         "columns": _IDENT_LIST,
                         "mode": {"enum": ["closed", "open"]},
                         "severity": _SEVERITY,
+                        # Optionale, rein deklarative Typ-/Nullability-/Key-Spezifikation
+                        # (Konzept §A.5). Trägt KEIN SQL — Schlüssel sind Spaltennamen
+                        # (S2-Identifier), Werte sind Enum-/Boolean-Metadaten. Speist den
+                        # Schema-Drift-Detektor (type_changed/nullable_relaxed/key_changed).
+                        "types": {
+                            "type": "object",
+                            "propertyNames": {"pattern": SAFE_IDENTIFIER.pattern},
+                            "additionalProperties": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "type": {
+                                        "enum": [
+                                            "string", "integer", "decimal",
+                                            "boolean", "date", "time",
+                                            "timestamp", "binary",
+                                        ]
+                                    },
+                                    "nullable": {"type": "boolean"},
+                                    "key": {"type": "boolean"},
+                                },
+                            },
+                        },
                     },
                 },
                 "keys": {

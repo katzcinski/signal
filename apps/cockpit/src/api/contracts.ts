@@ -4,7 +4,7 @@ import { api } from './client';
 import { t } from '@/i18n/de';
 import type {
   ContractOut, ContractPutBody, ContractVersionDiff, DiffReport,
-  InventoryResponse, SlaResponse,
+  InventoryResponse, SchemaDriftReport, SlaResponse,
 } from '@/types';
 
 // List items may carry EMPTY guarantees (served from the index) — always
@@ -89,6 +89,15 @@ export const useContractVersionDiff = (product: string, enabled = true) =>
   useQuery<ContractVersionDiff>({
     queryKey: ['contracts', product, 'version-diff'],
     queryFn: () => api.get(`/contracts/${product}/version-diff`).then(r => r.data),
+    enabled: !!product && enabled,
+    retry: false,
+  });
+
+// Shift-Left (§A): read-only Report, ob die Quelle vom Schema-Versprechen abweicht.
+export const useSchemaDrift = (product: string, enabled = true) =>
+  useQuery<SchemaDriftReport>({
+    queryKey: ['contracts', product, 'drift'],
+    queryFn: () => api.get(`/contracts/${product}/drift`).then(r => r.data),
     enabled: !!product && enabled,
     retry: false,
   });

@@ -40,6 +40,32 @@ def _transition(base: str | None, head: str | None) -> str:
     return "changed"
 
 
+def _to_number(value) -> float | None:
+    """actual_value wird als String persistiert — best-effort numerische Sicht."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _value_delta(base, head) -> dict:
+    """B-1 (§B.2): vorher/nachher je Check, inkl. absolutem und prozentualem Delta.
+    Nicht-numerische actual_values liefern nur base/head (delta = None)."""
+    b, h = _to_number(base), _to_number(head)
+    abs_delta = (h - b) if (b is not None and h is not None) else None
+    pct_delta = None
+    if abs_delta is not None and b not in (None, 0):
+        pct_delta = round(abs_delta / abs(b) * 100, 2)
+    return {
+        "base": base,
+        "head": head,
+        "abs_delta": abs_delta,
+        "pct_delta": pct_delta,
+    }
+
+
 def _result_out(row: dict) -> CheckResultOut:
     """Map a raw dq_check_results row to the API/FE field names."""
     return CheckResultOut(
@@ -118,8 +144,13 @@ def compare_runs(
     if not head_run:
         raise HTTPException(status_code=404, detail=f"Run {head!r} not found")
 
-    base_status = {r.name: _check_status(r) for r in (_result_out(x) for x in base_run.get("results", []))}
-    head_status = {r.name: _check_status(r) for r in (_result_out(x) for x in head_run.get("results", []))}
+    base_out = [_result_out(x) for x in base_run.get("results", [])]
+    head_out = [_result_out(x) for x in head_run.get("results", [])]
+    base_status = {r.name: _check_status(r) for r in base_out}
+    head_status = {r.name: _check_status(r) for r in head_out}
+    # B-1 Value-Diff (§B.2): actual_value je Check, numerisch wo möglich.
+    base_actual = {r.name: r.actual_value for r in base_out}
+    head_actual = {r.name: r.actual_value for r in head_out}
 
     changes = []
     summary = {"regressed": 0, "recovered": 0, "added": 0, "removed": 0, "changed": 0, "unchanged": 0}
@@ -133,6 +164,7 @@ def compare_runs(
             "base_status": b,
             "head_status": h,
             "transition": transition,
+            "value_delta": _value_delta(base_actual.get(name), head_actual.get(name)),
         })
 
     return {

@@ -331,6 +331,46 @@ def diff_contract(
     }
 
 
+@router.get("/{product}/drift")
+def schema_drift_report(
+    product: str,
+    store: StoreDep = ...,
+    inventory: list[dict] = Depends(get_inventory),
+):
+    """Shift-Left (§A): Read-only-Report, ob die **Quelle** vom Schema-Versprechen
+    des Contracts abweicht. Persistenz + Incident laufen beim Extrakt, nicht hier.
+    Liefert zusätzlich die jüngste gespeicherte Drift-Historie."""
+    from ..schema_drift_service import evaluate_contract_drift, inventory_columns_for
+
+    _validate_product(product)
+    contract = _load_contract(product)
+    if not contract:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+
+    dataset = contract.get("dataset") or product
+    columns = inventory_columns_for(inventory, dataset)
+    if columns is None:
+        return {
+            "product": product,
+            "dataset": dataset,
+            "object_found": False,
+            "kind": contract.get("kind", "internal_gate"),
+            "findings": [],
+            "summary": {"total": 0, "breaking": 0, "has_breaking": False, "by_category": {}},
+            "history": store.get_schema_drift(dataset),
+        }
+
+    report = evaluate_contract_drift(contract, columns)
+    return {
+        "product": product,
+        "dataset": dataset,
+        "object_found": True,
+        "kind": contract.get("kind", "internal_gate"),
+        **report,
+        "history": store.get_schema_drift(dataset),
+    }
+
+
 @router.get("/{product}/diff/active")
 @router.get("/{product}/version-diff")
 def version_diff_contract(product: str):
