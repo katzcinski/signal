@@ -795,6 +795,35 @@ export const t = {
     accept: 'Übernehmen',
     snooze: 'Zurückstellen',
     reject: 'Ablehnen',
+    groupByLabel: 'Gruppieren nach',
+    groupBy: {
+      product: 'Objekt',
+      kind: 'Typ',
+      confidence: 'Konfidenz',
+      status: 'Status',
+      direction: 'Richtung',
+      none: 'Keine',
+    } as Record<string, string>,
+    clusterMeta: {
+      open: '{n} offen',
+      total: '{n} gesamt',
+      avgConfidence: 'Ø {n}% Konfidenz',
+    },
+    // Group-header labels for closed-domain clusters.
+    kindLabel: {
+      internal_gate: 'Gate',
+      contract: 'Contract',
+    } as Record<string, string>,
+    confidenceLabel: {
+      high: 'Hohe Konfidenz (≥ 80%)',
+      medium: 'Mittlere Konfidenz (50–79%)',
+      low: 'Niedrige Konfidenz (< 50%)',
+    } as Record<string, string>,
+    directionLabel: {
+      tightened: 'Verschärft',
+      loosened: 'Gelockert',
+      changed: 'Geändert',
+    } as Record<string, string>,
   },
   governance: {
     title: 'Compliance',
