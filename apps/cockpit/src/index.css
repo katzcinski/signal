@@ -610,6 +610,28 @@ html {
 .schem-title { fill: var(--fg); font-size: 12.5px; font-weight: 650; }
 .schem-sub { fill: var(--fg-2); font-size: 10.5px; }
 
+/* Spalten-Expander im Kopf — eigenständige Affordance, getrennt vom
+   Nachbar-Expand-Handle. Chevron rotiert beim Aufklappen. */
+.schem-col-toggle-hit {
+  fill: var(--bg-2);
+  stroke: var(--line-2);
+  stroke-width: 1;
+  transition: fill 0.12s ease, stroke 0.12s ease;
+}
+.schem-col-toggle:hover .schem-col-toggle-hit {
+  fill: color-mix(in srgb, var(--cont) 16%, var(--bg-2));
+  stroke: var(--cont);
+}
+.schem-col-toggle-icon {
+  fill: none;
+  stroke: var(--fg-2);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.schem-col-toggle:hover .schem-col-toggle-icon { stroke: var(--cont); }
+.schem-col-toggle.is-open .schem-col-toggle-icon { stroke: var(--cont); }
+
 .schem-pin-rowbg { fill: transparent; }
 .schem-pin-rowbg:hover { fill: color-mix(in srgb, var(--cont) 11%, transparent); }
 .schem-pin-label { fill: var(--fg-2); font-size: 11px; }

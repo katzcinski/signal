@@ -1,19 +1,19 @@
 /**
  * ELK-Layout fürs Schaltplan-Board.
  *
- * Wandelt das Schaltplan-Modell (Chips/Pins/Traces) in einen ELK-Graphen mit
- * Ports pro Pin (WEST = Eingang, EAST = Ausgang) und lässt ELK Layered +
- * orthogonales Routing rechnen. Ergebnis: positionierte Chips, Pin-Reihen-Y und
- * Polyline-Punkte je Trace fürs SVG.
+ * Hybrid (per-Node): Jeder Chip wird entweder eingeklappt (portlos, objHeight)
+ * oder expandiert (ein Port je Pin-Richtung, chipHeight) gelayoutet. ELK rechnet
+ * Layered + orthogonales Routing. Ergebnis: positionierte Chips, Pin-Reihen-Y,
+ * Polyline-Punkte je Spalten-Trace und je aggregierter Objekt-Kante.
  *
  * Aufgeteilt in pure Funktionen (buildElkGraph / mapElkResult) und den async
  * Runner (layoutSchematic), damit Graph-Aufbau und Ergebnis-Mapping ohne
- * laufende ELK-Engine deterministisch unit-testbar bleiben.
+ * laufende ELK-Engine deterministisch unit-testbar bleiben. Welche Kanten
+ * Spalten- bzw. Objekt-Ebene sind, entscheidet die geteilte partitionEdges().
  */
 import ELK, { type ELK as ElkInstance, type ElkNode, type ElkPort } from 'elkjs/lib/elk.bundled.js';
+import { partitionEdges } from './model';
 import type { SchematicChip, SchematicEdge, SchematicModel, SchematicPin } from './model';
-
-export type ViewMode = 'column' | 'object';
 
 /** Geometrie — an das Mockup angelehnt. */
 export const GEO = {
@@ -58,57 +58,54 @@ const ROOT_OPTIONS: Record<string, string> = {
 
 /**
  * Baut den ELK-Eingabegraphen. Pure — keine ELK-Ausführung.
- * Column-Mode: ein Port je Pin-Richtung, Kanten Port→Port.
- * Object-Mode: portlose Chips, aggregierte Objekt-zu-Objekt-Kanten.
+ * Expandierte Chips: ein Port je Pin-Richtung, Kanten Port→Port zwischen zwei
+ * expandierten Knoten. Alle übrigen Paare: portlose Endknoten, aggregierte
+ * Objekt-zu-Objekt-Kante.
  */
-export function buildElkGraph(model: SchematicModel, mode: ViewMode): ElkNode {
-  return mode === 'object' ? buildObjectGraph(model) : buildColumnGraph(model);
-}
+export function buildElkGraph(model: SchematicModel, expanded: ReadonlySet<string>): ElkNode {
+  const { columnEdges, objectEdges } = partitionEdges(model, expanded);
 
-function buildColumnGraph(model: SchematicModel): ElkNode {
-  const children: ElkNode[] = model.chips.map(chip => {
-    const ports: ElkPort[] = [];
-    chip.pins.forEach((pin, idx) => {
-      const y = pinRowY(idx);
-      if (pin.hasIncoming) ports.push(port(westPortId(chip.id, pin.id), 'WEST', 0, y));
-      if (pin.hasOutgoing) ports.push(port(eastPortId(chip.id, pin.id), 'EAST', GEO.nodeWidth, y));
-    });
+  const children: ElkNode[] = model.chips.map((chip): ElkNode => {
+    if (expanded.has(chip.id)) {
+      const ports: ElkPort[] = [];
+      chip.pins.forEach((pin, idx) => {
+        const y = pinRowY(idx);
+        if (pin.hasIncoming) ports.push(port(westPortId(chip.id, pin.id), 'WEST', 0, y));
+        if (pin.hasOutgoing) ports.push(port(eastPortId(chip.id, pin.id), 'EAST', GEO.nodeWidth, y));
+      });
+      return {
+        id: chip.id,
+        width: GEO.nodeWidth,
+        height: chipHeight(chip.pins.length),
+        layoutOptions: {
+          'elk.portConstraints': 'FIXED_POS',
+          'elk.partitioning.partition': String(chip.laneOrder),
+        },
+        ports,
+      };
+    }
     return {
       id: chip.id,
       width: GEO.nodeWidth,
-      height: chipHeight(chip.pins.length),
-      layoutOptions: {
-        'elk.portConstraints': 'FIXED_POS',
-        'elk.partitioning.partition': String(chip.laneOrder),
-      },
-      ports,
+      height: GEO.objHeight,
+      layoutOptions: { 'elk.partitioning.partition': String(chip.laneOrder) },
     };
   });
 
-  const edges = model.edges.map(e => ({
-    id: e.id,
-    sources: [eastPortId(e.fromNode, e.fromPin)],
-    targets: [westPortId(e.toNode, e.toPin)],
-  }));
-
-  return { id: 'root', layoutOptions: ROOT_OPTIONS, children, edges };
-}
-
-function buildObjectGraph(model: SchematicModel): ElkNode {
-  const children: ElkNode[] = model.chips.map(chip => ({
-    id: chip.id,
-    width: GEO.nodeWidth,
-    height: GEO.objHeight,
-    layoutOptions: { 'elk.partitioning.partition': String(chip.laneOrder) },
-  }));
-
-  // Echte Objekt-Edges ∪ aus Column-Edges abgeleitete Paare (im Modell bereits
-  // dedupliziert) — so ist der Objekt-Graph auch ohne Spalten-Lineage vollständig.
-  const edges = model.objectEdges.map(e => ({
-    id: objEdgeId(e.from, e.to),
-    sources: [e.from],
-    targets: [e.to],
-  }));
+  const edges = [
+    ...columnEdges.map(e => ({
+      id: e.id,
+      sources: [eastPortId(e.fromNode, e.fromPin)],
+      targets: [westPortId(e.toNode, e.toPin)],
+    })),
+    // Objekt-Kanten hängen am Knoten selbst (kein Port) — ELK routet sie an den
+    // Knotenrand, auch wenn das Ziel als expandierter Chip feste Ports trägt.
+    ...objectEdges.map(e => ({
+      id: objEdgeId(e.from, e.to),
+      sources: [e.from],
+      targets: [e.to],
+    })),
+  ];
 
   return { id: 'root', layoutOptions: ROOT_OPTIONS, children, edges };
 }
@@ -129,6 +126,8 @@ export interface PositionedChip extends Omit<SchematicChip, 'pins'> {
   y: number;
   width: number;
   height: number;
+  /** Spalten ausgeklappt (Ports/Pin-Reihen) oder eingeklappt (Objekt-Karte). */
+  expanded: boolean;
   pins: PositionedPin[];
 }
 
@@ -137,7 +136,7 @@ export interface RoutedEdge extends SchematicEdge {
   points: Array<{ x: number; y: number }>;
 }
 
-/** Aggregierte Objekt-zu-Objekt-Kante im Object-Mode. */
+/** Aggregierte Objekt-zu-Objekt-Kante. */
 export interface RoutedObjectEdge {
   id: string;
   fromNode: string;
@@ -146,9 +145,10 @@ export interface RoutedObjectEdge {
 }
 
 export interface SchematicLayout {
-  mode: ViewMode;
   chips: PositionedChip[];
+  /** Pin-zu-Pin-Traces zwischen expandierten Chips. */
   edges: RoutedEdge[];
+  /** Aggregierte Objekt-Kanten für alle übrigen Paare. */
   objectEdges: RoutedObjectEdge[];
   width: number;
   height: number;
@@ -166,46 +166,47 @@ function sectionPoints(node: ElkNode, edgeId: string): Array<{ x: number; y: num
 
 /**
  * Mappt das ELK-Ergebnis zurück aufs Schaltplan-Modell. Pure — nimmt den von
- * ELK befüllten Graphen und das Quellmodell.
+ * ELK befüllten Graphen, das Quellmodell und denselben Expansions-Zustand wie
+ * buildElkGraph, damit die Kanten-Partition identisch ist.
  */
-export function mapElkResult(model: SchematicModel, mode: ViewMode, result: ElkNode): SchematicLayout {
+export function mapElkResult(
+  model: SchematicModel,
+  expanded: ReadonlySet<string>,
+  result: ElkNode,
+): SchematicLayout {
   const posById = new Map<string, ElkNode>();
   for (const c of result.children ?? []) posById.set(c.id, c);
 
   const chips: PositionedChip[] = model.chips.map(chip => {
     const p = posById.get(chip.id);
     const { pins, ...rest } = chip;
+    const isExpanded = expanded.has(chip.id);
     return {
       ...rest,
+      expanded: isExpanded,
       x: p?.x ?? 0,
       y: p?.y ?? 0,
       width: p?.width ?? GEO.nodeWidth,
-      height: p?.height ?? chipHeight(chip.pins.length),
+      height: p?.height ?? (isExpanded ? chipHeight(chip.pins.length) : GEO.objHeight),
       pins: pins.map((pin, idx) => ({ ...pin, rowY: pinRowY(idx) })),
     };
   });
 
-  const edges: RoutedEdge[] =
-    mode === 'column'
-      ? model.edges.map(e => ({ ...e, points: sectionPoints(result, e.id) }))
-      : [];
+  const { columnEdges, objectEdges: objPairs } = partitionEdges(model, expanded);
 
-  const objectEdges: RoutedObjectEdge[] = [];
-  if (mode === 'object') {
-    for (const e of result.edges ?? []) {
-      const parts = e.id.split(SEP);
-      if (parts[0] !== OBJ_EDGE) continue;
-      objectEdges.push({
-        id: e.id,
-        fromNode: parts[1],
-        toNode: parts[2],
-        points: sectionPoints(result, e.id),
-      });
-    }
-  }
+  const edges: RoutedEdge[] = columnEdges.map(e => ({
+    ...e,
+    points: sectionPoints(result, e.id),
+  }));
+
+  const objectEdges: RoutedObjectEdge[] = objPairs.map(o => ({
+    id: objEdgeId(o.from, o.to),
+    fromNode: o.from,
+    toNode: o.to,
+    points: sectionPoints(result, objEdgeId(o.from, o.to)),
+  }));
 
   return {
-    mode,
     chips,
     edges,
     objectEdges,
@@ -221,8 +222,11 @@ function getElk(): ElkInstance {
 }
 
 /** Async Layout-Runner: baut den Graphen, lässt ELK rechnen, mappt zurück. */
-export async function layoutSchematic(model: SchematicModel, mode: ViewMode): Promise<SchematicLayout> {
-  const graph = buildElkGraph(model, mode);
+export async function layoutSchematic(
+  model: SchematicModel,
+  expanded: ReadonlySet<string>,
+): Promise<SchematicLayout> {
+  const graph = buildElkGraph(model, expanded);
   const result = await getElk().layout(graph);
-  return mapElkResult(model, mode, result);
+  return mapElkResult(model, expanded, result);
 }

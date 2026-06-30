@@ -23,9 +23,12 @@ const EDGES: RawColumnEdge[] = [
   },
 ];
 const model = buildSchematicModel(NODES, EDGES);
+const ALL = new Set(['INB', 'HRM']);
+const NONE = new Set<string>();
 
-// Deterministisches Layout ohne ELK-Engine.
-function fakeLayout(mode: 'column' | 'object' = 'column') {
+// Deterministisches Layout ohne ELK-Engine. Per Default beide Chips expandiert
+// (Spalten-Ebene); für den eingeklappten Fall NONE übergeben.
+function fakeLayout(expanded: ReadonlySet<string> = ALL) {
   const result: ElkNode = {
     id: 'root',
     width: 700,
@@ -41,7 +44,7 @@ function fakeLayout(mode: 'column' | 'object' = 'column') {
       sections: [{ id: 's', startPoint: { x: 240, y: 81 }, endPoint: { x: 400, y: 111 } }],
     })),
   };
-  return mapElkResult(model, mode, result);
+  return mapElkResult(model, expanded, result);
 }
 
 describe('theme helpers', () => {
@@ -105,7 +108,7 @@ describe('SchematicBoard', () => {
     expect(dimmed).toBeTruthy();
   });
 
-  it('renders aggregated object edges in object mode', () => {
+  it('renders aggregated object edges when both chips are collapsed', () => {
     const objResult: ElkNode = {
       id: 'root', width: 700, height: 200,
       children: [
@@ -114,10 +117,27 @@ describe('SchematicBoard', () => {
       ],
       edges: [{ id: 'objedge:INB:HRM', sources: [], targets: [], sections: [{ id: 's', startPoint: { x: 240, y: 32 }, endPoint: { x: 400, y: 32 } }] }],
     };
-    const { container } = render(<SchematicBoard layout={mapElkResult(model, 'object', objResult)} />);
+    const { container } = render(<SchematicBoard layout={mapElkResult(model, NONE, objResult)} />);
     expect(container.querySelector('.schem-obj-trace')).toBeTruthy();
-    expect(screen.getAllByText('2 cols').length).toBe(2); // beide Chips
+    expect(screen.getAllByText('2 cols').length).toBe(2); // beide Chips eingeklappt
+    // Eingeklappt: keine Pin-Labels.
+    expect(screen.queryByText('VBELN')).not.toBeInTheDocument();
+  });
 
+  it('fires onToggleColumns from the column chevron without selecting the chip', () => {
+    const onToggleColumns = vi.fn();
+    const onSelectChip = vi.fn();
+    const { container } = render(
+      <SchematicBoard
+        layout={fakeLayout(NONE)}
+        onToggleColumns={onToggleColumns}
+        onSelectChip={onSelectChip}
+      />,
+    );
+    const toggle = container.querySelector('.schem-col-toggle')!;
+    fireEvent.click(toggle);
+    expect(onToggleColumns).toHaveBeenCalledWith('INB');
+    expect(onSelectChip).not.toHaveBeenCalled();
   });
 
   it('calls onBackground when the canvas backdrop is clicked', () => {
