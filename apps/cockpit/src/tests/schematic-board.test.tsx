@@ -24,8 +24,8 @@ const EDGES: RawColumnEdge[] = [
 ];
 const model = buildSchematicModel(NODES, EDGES);
 
-// Deterministisches Layout ohne ELK-Engine.
-function fakeLayout(mode: 'column' | 'object' = 'column') {
+// Deterministisches Layout ohne ELK-Engine. Default: beide Chips ausgeklappt.
+function fakeLayout(expanded: Set<string> = new Set(['INB', 'HRM'])) {
   const result: ElkNode = {
     id: 'root',
     width: 700,
@@ -41,7 +41,7 @@ function fakeLayout(mode: 'column' | 'object' = 'column') {
       sections: [{ id: 's', startPoint: { x: 240, y: 81 }, endPoint: { x: 400, y: 111 } }],
     })),
   };
-  return mapElkResult(model, mode, result);
+  return mapElkResult(model, expanded, result);
 }
 
 describe('theme helpers', () => {
@@ -105,7 +105,7 @@ describe('SchematicBoard', () => {
     expect(dimmed).toBeTruthy();
   });
 
-  it('renders aggregated object edges in object mode', () => {
+  it('renders aggregated object edges when both ends are collapsed', () => {
     const objResult: ElkNode = {
       id: 'root', width: 700, height: 200,
       children: [
@@ -114,10 +114,20 @@ describe('SchematicBoard', () => {
       ],
       edges: [{ id: 'objedge:INB:HRM', sources: [], targets: [], sections: [{ id: 's', startPoint: { x: 240, y: 32 }, endPoint: { x: 400, y: 32 } }] }],
     };
-    const { container } = render(<SchematicBoard layout={mapElkResult(model, 'object', objResult)} />);
+    const { container } = render(<SchematicBoard layout={mapElkResult(model, new Set(), objResult)} />);
     expect(container.querySelector('.schem-obj-trace')).toBeTruthy();
-    expect(screen.getAllByText('2 cols').length).toBe(2); // beide Chips
+    expect(screen.getAllByText('2 cols').length).toBe(2); // beide Chips eingeklappt
+  });
 
+  it('toggles a chip\'s columns via the header chevron', () => {
+    const onToggleColumns = vi.fn();
+    const { container } = render(
+      <SchematicBoard layout={fakeLayout(new Set())} onToggleColumns={onToggleColumns} />,
+    );
+    const chevrons = container.querySelectorAll('.schem-coltoggle');
+    expect(chevrons.length).toBe(2); // beide Chips haben Spalten
+    fireEvent.click(chevrons[0]);
+    expect(onToggleColumns).toHaveBeenCalledWith('INB');
   });
 
   it('renders an expand handle only for expandable chips and fires onExpand', () => {

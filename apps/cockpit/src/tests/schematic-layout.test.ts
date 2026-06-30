@@ -6,10 +6,14 @@ import {
   GEO,
   layoutSchematic,
   mapElkResult,
+  partitionEdges,
   pinRowY,
 } from '@/components/lineage/schematic/layout';
 import type { ElkNode } from 'elkjs/lib/elk.bundled.js';
 import type { LineageNode } from '@/types';
+
+const ALL = new Set(['INB', 'HRM']);
+const NONE = new Set<string>();
 
 const NODES: LineageNode[] = [
   { id: 'INB', layer: 'Source', layerCode: 'r', columns: ['VBELN', 'NETWR'] },
@@ -32,8 +36,25 @@ describe('geometry', () => {
   });
 });
 
-describe('buildElkGraph (column)', () => {
-  const graph = buildElkGraph(model, 'column');
+describe('partitionEdges', () => {
+  it('routes pin-to-pin only when both ends are expanded', () => {
+    const both = partitionEdges(model, ALL);
+    expect(both.columnEdges).toHaveLength(2);
+    expect(both.objectPairs).toHaveLength(0);
+
+    const none = partitionEdges(model, NONE);
+    expect(none.columnEdges).toHaveLength(0);
+    expect(none.objectPairs).toEqual([{ from: 'INB', to: 'HRM' }]);
+
+    // Hybrid: nur ein Ende offen → das Paar bleibt eine Objekt-Kante.
+    const half = partitionEdges(model, new Set(['INB']));
+    expect(half.columnEdges).toHaveLength(0);
+    expect(half.objectPairs).toEqual([{ from: 'INB', to: 'HRM' }]);
+  });
+});
+
+describe('buildElkGraph (expanded)', () => {
+  const graph = buildElkGraph(model, ALL);
 
   it('emits a WEST port for incoming and EAST for outgoing pins', () => {
     const inb = graph.children!.find(c => c.id === 'INB')!;
@@ -61,13 +82,25 @@ describe('buildElkGraph (column)', () => {
   });
 });
 
-describe('buildElkGraph (object)', () => {
+describe('buildElkGraph (collapsed)', () => {
   it('drops ports and aggregates column traces to one object edge', () => {
-    const graph = buildElkGraph(model, 'object');
+    const graph = buildElkGraph(model, NONE);
     const hrm = graph.children!.find(c => c.id === 'HRM')!;
-    expect(hrm.ports).toBeUndefined();
+    expect(hrm.ports).toHaveLength(0);
+    expect(hrm.height).toBe(GEO.objHeight);
     expect(graph.edges).toHaveLength(1);
     expect(graph.edges![0].sources).toEqual(['INB']);
+  });
+
+  it('lays out a hybrid graph: one node expanded, one collapsed', () => {
+    const graph = buildElkGraph(model, new Set(['HRM']));
+    const inb = graph.children!.find(c => c.id === 'INB')!;
+    const hrm = graph.children!.find(c => c.id === 'HRM')!;
+    expect(inb.ports).toHaveLength(0); // eingeklappt
+    expect(hrm.ports!.length).toBeGreaterThan(0); // ausgeklappt
+    // Gemischtes Paar → eine Objekt-Kante, keine Pin-Kanten.
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.edges![0].id).toContain('objedge');
   });
 });
 
@@ -91,7 +124,7 @@ describe('mapElkResult', () => {
         },
       ],
     };
-    const layout = mapElkResult(model, 'column', result);
+    const layout = mapElkResult(model, ALL, result);
     expect(layout.width).toBe(600);
     const hrm = layout.chips.find(c => c.id === 'HRM')!;
     expect(hrm.x).toBe(360);
@@ -108,7 +141,7 @@ describe('mapElkResult', () => {
 
 describe('layoutSchematic (ELK integration)', () => {
   it('lays Source left of Harmonization and routes every trace', async () => {
-    const layout = await layoutSchematic(model, 'column');
+    const layout = await layoutSchematic(model, ALL);
     const inb = layout.chips.find(c => c.id === 'INB')!;
     const hrm = layout.chips.find(c => c.id === 'HRM')!;
     expect(inb.x).toBeLessThan(hrm.x); // RIGHT direction, source partition first

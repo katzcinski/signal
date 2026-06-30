@@ -46,7 +46,7 @@ async function pickSeed(label = 'INB') {
 }
 
 describe('SchematicLineage container', () => {
-  it('gates on a seed and renders the board once one is chosen', async () => {
+  it('gates on a seed and renders a collapsed board once one is chosen', async () => {
     render(<SchematicLineage />);
     // Vor der Seed-Auswahl: Empty-State, kein Board.
     expect(screen.getByText('Lineage gezielt laden')).toBeInTheDocument();
@@ -54,32 +54,33 @@ describe('SchematicLineage container', () => {
 
     await pickSeed('INB');
 
-    // Board-only Pin-Label bestätigt, dass der Graph gerendert ist
-    // (Chip-Titel "INB" käme doppelt vor — auch als Seed-Chip).
-    expect(await screen.findByText('VBELN')).toBeInTheDocument();
+    // Default eingeklappt: Chips zeigen die Spaltenanzahl, noch keine Pins.
+    expect(await screen.findAllByText('2 cols')).not.toHaveLength(0);
+    expect(screen.queryByText('VBELN')).not.toBeInTheDocument();
     // Layer-Sidebar + System-Chips aus den Daten.
     expect(screen.getByText('S/4HANA')).toBeInTheDocument();
     expect(screen.getByText('Datasphere')).toBeInTheDocument();
   });
 
+  it('expands all columns to reveal pins', async () => {
+    render(<SchematicLineage />);
+    await pickSeed('INB');
+    await screen.findAllByText('2 cols');
+    fireEvent.click(screen.getByText('Alle Spalten'));
+    // Nach dem Ausklappen (Relayout) erscheinen die Pin-Labels.
+    expect(await screen.findByText('VBELN')).toBeInTheDocument();
+  });
+
   it('traces a column and surfaces its transformation in the inspector', async () => {
     render(<SchematicLineage />);
     await pickSeed('INB');
+    await screen.findAllByText('2 cols');
+    fireEvent.click(screen.getByText('Alle Spalten'));
     const pin = await screen.findByText('NET_VALUE_USD');
     fireEvent.click(pin);
     // Inspector zeigt den Transformations-Codeblock (pre), nicht nur den SVG-Tooltip.
     await waitFor(() => {
       expect(screen.getByText(/CURRENCY_CONVERSION/, { selector: 'pre' })).toBeInTheDocument();
-    });
-  });
-
-  it('switches to object level and shows column counts', async () => {
-    render(<SchematicLineage />);
-    await pickSeed('INB');
-    await screen.findByText('VBELN');
-    fireEvent.click(screen.getByText('Objekt-Ebene'));
-    await waitFor(() => {
-      expect(screen.getAllByText('2 cols').length).toBeGreaterThan(0);
     });
   });
 });

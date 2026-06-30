@@ -8,7 +8,7 @@ import { useLineage } from '@/api/lineage';
 import { useObjects } from '@/api/objects';
 import { t } from '@/i18n/de';
 import { buildSchematicModel } from './model';
-import { layoutSchematic, type SchematicLayout, type ViewMode } from './layout';
+import { layoutSchematic, type SchematicLayout } from './layout';
 import { traceCircuit, type CircuitTrace } from './trace';
 import { SchematicBoard } from './SchematicBoard';
 import { SchematicInspector, type InspectorSelection } from './SchematicInspector';
@@ -26,7 +26,9 @@ export default function SchematicLineage() {
   const roots = useMemo(() => [...new Set([...seeds, ...expanded])], [seeds, expanded]);
   const { data, isLoading } = useLineage({ seeds: roots, depth: 1, enabled: roots.length > 0 });
   const { data: objects } = useObjects();
-  const [viewMode, setViewMode] = useState<ViewMode>('column');
+  // Spalten-Ausklappung pro Knoten: leer = alles eingeklappt (Objekt-Ebene),
+  // Knoten gezielt aufklappen, um seine Spalten + pin-genaue Lineage zu sehen.
+  const [columnsExpanded, setColumnsExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [hiddenLayers, setHiddenLayers] = useState<Set<string>>(new Set());
   const [hiddenSystems, setHiddenSystems] = useState<Set<string>>(new Set());
@@ -50,14 +52,14 @@ export default function SchematicLineage() {
     }
     const token = ++layoutToken.current;
     setLayoutBusy(true);
-    layoutSchematic(model, viewMode)
+    layoutSchematic(model, columnsExpanded)
       .then(result => {
         if (token === layoutToken.current) setLayout(result);
       })
       .finally(() => {
         if (token === layoutToken.current) setLayoutBusy(false);
       });
-  }, [model, viewMode]);
+  }, [model, columnsExpanded]);
 
   const layers = useMemo(() => {
     const seen = new Map<string, { key: string; label: string; order: number; count: number }>();
@@ -111,11 +113,25 @@ export default function SchematicLineage() {
       return next;
     });
 
-  // Object-Mode kennt keinen Spalten-Trace.
-  const setView = (mode: ViewMode) => {
-    setViewMode(mode);
-    if (mode === 'object') setTrace(null);
+  // Spalten eines Knotens ein-/ausklappen. Beim Einklappen einen aktiven
+  // Spalten-Trace verwerfen, falls er an diesem Knoten hing.
+  const toggleColumns = (id: string) =>
+    setColumnsExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        setTrace(null);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  const expandAllColumns = () => setColumnsExpanded(new Set(model.chips.map(c => c.id)));
+  const collapseAllColumns = () => {
+    setColumnsExpanded(new Set());
+    setTrace(null);
   };
+  const allColumnsOpen = model.chips.length > 0 && columnsExpanded.size >= model.chips.length;
 
   const seedOptions = objects ?? [];
   const seedName = (id: string) => seedOptions.find(o => o.id === id)?.name ?? id;
@@ -197,22 +213,13 @@ export default function SchematicLineage() {
               placeholder={S.searchPlaceholder}
               aria-label={S.searchPlaceholder}
             />
-            <div style={toggle}>
-              <button
-                type="button"
-                style={toggleBtn(viewMode === 'column')}
-                onClick={() => setView('column')}
-              >
-                {S.columnLevel}
-              </button>
-              <button
-                type="button"
-                style={toggleBtn(viewMode === 'object')}
-                onClick={() => setView('object')}
-              >
-                {S.objectLevel}
-              </button>
-            </div>
+            <button
+              type="button"
+              style={chip(allColumnsOpen)}
+              onClick={allColumnsOpen ? collapseAllColumns : expandAllColumns}
+            >
+              {allColumnsOpen ? S.collapseAllColumns : S.expandAllColumns}
+            </button>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {systems.map(sys => {
                 const active = !hiddenSystems.has(sys);
@@ -280,6 +287,7 @@ export default function SchematicLineage() {
               selectedPin={selection?.pin ? { node: selection.node, pin: selection.pin } : null}
               expandableChips={expandableChips}
               onExpandChip={expandNode}
+              onToggleColumns={toggleColumns}
               onSelectChip={selectChip}
               onSelectPin={selectPin}
               onBackground={clearSelection}
@@ -379,13 +387,6 @@ const searchInput: CSSProperties = {
   flex: 1, minWidth: 160, maxWidth: 320, background: 'var(--bg-1)', border: '1px solid var(--line)',
   borderRadius: 'var(--r-md)', color: 'var(--fg)', fontSize: 13, padding: '8px 11px', outline: 'none',
 };
-const toggle: CSSProperties = {
-  display: 'flex', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden',
-};
-const toggleBtn = (active: boolean): CSSProperties => ({
-  background: active ? 'var(--cont)' : 'transparent', color: active ? '#fff' : 'var(--fg-2)',
-  border: 'none', fontSize: 12, fontWeight: 600, padding: '7px 12px', cursor: 'pointer',
-});
 const chip = (active: boolean): CSSProperties => ({
   fontSize: 11.5, fontWeight: 500, padding: '6px 10px', borderRadius: 'var(--r-full)',
   border: `1px solid ${active ? 'var(--cont)' : 'var(--line)'}`,

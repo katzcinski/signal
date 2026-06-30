@@ -628,6 +628,11 @@ html {
 .schem-pin-dot { stroke: var(--bg-2); stroke-width: 1.2; }
 .schem-pin-dot.is-active { stroke: var(--bg-1); }
 
+/* Spalten-Chevron (Pins eines Knotens ein-/ausklappen). */
+.schem-chevron { fill: none; stroke: var(--fg-3); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transform-origin: center; transition: stroke 0.12s ease; }
+.schem-coltoggle:hover .schem-chevron { stroke: var(--fg); }
+.schem-coltoggle.is-open .schem-chevron { transform: rotate(180deg); }
+
 /* Expand-Handle (versteckte Nachbarn einblenden). */
 .schem-expand circle { fill: var(--bg-3); stroke: var(--line-2); stroke-width: 1; transition: fill 0.12s ease, stroke 0.12s ease; }
 .schem-expand line { stroke: var(--fg-2); stroke-width: 1.6; stroke-linecap: round; }

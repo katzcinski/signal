@@ -46,6 +46,8 @@ export interface SchematicBoardProps {
   /** Chips mit noch versteckten Nachbarn → Expand-Handle. */
   expandableChips?: Set<string>;
   onExpandChip?: (nodeId: string) => void;
+  /** Spalten eines Chips ein-/ausklappen. */
+  onToggleColumns?: (nodeId: string) => void;
   onSelectChip?: (nodeId: string) => void;
   onSelectPin?: (nodeId: string, pinId: string) => void;
   onBackground?: () => void;
@@ -60,6 +62,7 @@ export function SchematicBoard({
   selectedPin,
   expandableChips,
   onExpandChip,
+  onToggleColumns,
   onSelectChip,
   onSelectPin,
   onBackground,
@@ -221,28 +224,28 @@ export function SchematicBoard({
             onClick={guard(onBackground)}
           />
 
-          {/* Traces unter den Chips, damit Pin-Dots die Endpunkte überdecken. */}
+          {/* Traces unter den Chips, damit Pin-Dots die Endpunkte überdecken.
+              Hybrid: Objekt-Traces (eingeklappte Paare) + Pin-Traces (ausgeklappte). */}
           <g className="schem-traces">
-            {layout.mode === 'column'
-              ? layout.edges.map(edge => (
-                  <ColumnTrace
-                    key={edge.id}
-                    edge={edge}
-                    active={!!traceEdges && traceEdges.has(edge.id)}
-                    dimmed={
-                      isDimmedChip(edge.fromNode) ||
-                      isDimmedChip(edge.toNode) ||
-                      (tracing && !(traceEdges && traceEdges.has(edge.id)))
-                    }
-                  />
-                ))
-              : layout.objectEdges.map(edge => (
-                  <ObjectTrace
-                    key={edge.id}
-                    edge={edge}
-                    dimmed={isDimmedChip(edge.fromNode) || isDimmedChip(edge.toNode)}
-                  />
-                ))}
+            {layout.objectEdges.map(edge => (
+              <ObjectTrace
+                key={edge.id}
+                edge={edge}
+                dimmed={isDimmedChip(edge.fromNode) || isDimmedChip(edge.toNode)}
+              />
+            ))}
+            {layout.edges.map(edge => (
+              <ColumnTrace
+                key={edge.id}
+                edge={edge}
+                active={!!traceEdges && traceEdges.has(edge.id)}
+                dimmed={
+                  isDimmedChip(edge.fromNode) ||
+                  isDimmedChip(edge.toNode) ||
+                  (tracing && !(traceEdges && traceEdges.has(edge.id)))
+                }
+              />
+            ))}
           </g>
 
           <g className="schem-chips">
@@ -250,7 +253,6 @@ export function SchematicBoard({
               <Chip
                 key={chip.id}
                 chip={chip}
-                mode={layout.mode}
                 shadowId={shadowId}
                 dimmed={isDimmedChip(chip.id)}
                 selected={selectedChip === chip.id}
@@ -258,6 +260,7 @@ export function SchematicBoard({
                 selectedPin={selectedPin}
                 expandable={!!expandableChips && expandableChips.has(chip.id)}
                 onExpand={guard(onExpandChip)}
+                onToggleColumns={guard(onToggleColumns)}
                 onSelectChip={guard(onSelectChip)}
                 onSelectPin={guard(onSelectPin)}
               />
@@ -407,7 +410,6 @@ function ObjectTrace({ edge, dimmed }: { edge: RoutedObjectEdge; dimmed: boolean
 
 interface ChipProps {
   chip: PositionedChip;
-  mode: 'column' | 'object';
   shadowId: string;
   dimmed: boolean;
   selected: boolean;
@@ -415,19 +417,25 @@ interface ChipProps {
   selectedPin?: { node: string; pin: string } | null;
   expandable?: boolean;
   onExpand?: (nodeId: string) => void;
+  onToggleColumns?: (nodeId: string) => void;
   onSelectChip?: (nodeId: string) => void;
   onSelectPin?: (nodeId: string, pinId: string) => void;
 }
 
-function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, expandable, onExpand, onSelectChip, onSelectPin }: ChipProps) {
+function Chip({ chip, shadowId, dimmed, selected, tracePins, selectedPin, expandable, onExpand, onToggleColumns, onSelectChip, onSelectPin }: ChipProps) {
   const clipId = useId();
+  const open = chip.expanded;
+  const hasColumns = chip.pins.length > 0;
   const cls = 'schem-chip' + (selected ? ' is-selected' : '') + (dimmed ? ' is-dimmed' : '');
   const tagText = `${chip.layer.toUpperCase()}${chip.system ? ` · ${chip.system}` : ''}`;
   const dqColor = chip.dqStatus ? dqStatusColor(chip.dqStatus) : null;
-  const dotY = mode === 'object' ? 20 : 32;
+  const dotY = open ? 32 : 20;
+  // Eingeklappt liegen die Status-Dots in derselben Zeile wie das Chevron →
+  // nach links rücken, damit sie sich nicht überlappen.
+  const dotInset = hasColumns && !open ? 18 : 0;
   const lane = laneColor(chip.laneOrder);
-  // Spalten-Chips bekommen ein abgesetztes Kopfband; Objekt-Chips sind nur Kopf.
-  const headerH = mode === 'column' ? 58 : chip.height;
+  // Ausgeklappte Chips bekommen ein abgesetztes Kopfband; eingeklappte sind nur Kopf.
+  const headerH = open ? 58 : chip.height;
   const selectChip = () => onSelectChip?.(chip.id);
   const selectPin = (event: MouseEvent<SVGElement>, pinId: string) => {
     event.stopPropagation();
@@ -436,6 +444,10 @@ function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, 
   const expand = (event: MouseEvent<SVGElement>) => {
     event.stopPropagation();
     onExpand?.(chip.id);
+  };
+  const toggleColumns = (event: MouseEvent<SVGElement>) => {
+    event.stopPropagation();
+    onToggleColumns?.(chip.id);
   };
 
   return (
@@ -456,10 +468,24 @@ function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, 
       <g clipPath={`url(#${clipId})`}>
         <rect className="schem-chip-header" x={0} y={0} width={chip.width} height={headerH} />
         <rect className="schem-lane" x={0} y={0} width={chip.width} height={3} fill={lane} />
-        {mode === 'column' && (
+        {open && (
           <line className="schem-divider" x1={0} y1={headerH} x2={chip.width} y2={headerH} />
         )}
       </g>
+
+      {/* Spalten-Chevron oben rechts: klappt die Pins dieses Knotens ein/aus. */}
+      {hasColumns && (
+        <g
+          className={'schem-coltoggle' + (open ? ' is-open' : '')}
+          transform={`translate(${chip.width - 13}, 15)`}
+          onClick={toggleColumns}
+          style={{ cursor: 'pointer' }}
+        >
+          <rect x={-9} y={-9} width={18} height={18} rx={3} fill="transparent" />
+          <path className="schem-chevron" d="M -3.5 -1.5 L 0 2 L 3.5 -1.5" />
+          <title>{open ? 'Spalten ausblenden' : 'Spalten einblenden'}</title>
+        </g>
+      )}
 
       <text className="schem-tag" x={13} y={20}>
         {tagText}
@@ -472,25 +498,25 @@ function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, 
       >
         {chip.label}
       </text>
-      {mode === 'object' && (
+      {!open && (
         <text className="schem-sub" x={13} y={53}>
           {`${chip.pins.length} cols`}
         </text>
       )}
 
-      {/* Status-/Contract-Dots oben rechts. */}
+      {/* Status-/Contract-Dots oben rechts (links vom Spalten-Chevron). */}
       {dqColor && (
-        <circle cx={chip.width - 14} cy={dotY} r={4} fill={dqColor}>
+        <circle cx={chip.width - 14 - dotInset} cy={dotY} r={4} fill={dqColor}>
           <title>{`DQ: ${chip.dqStatus}`}</title>
         </circle>
       )}
       {chip.hasContract && (
-        <circle cx={chip.width - (dqColor ? 28 : 14)} cy={dotY} r={4} fill="var(--cont)">
+        <circle cx={chip.width - (dqColor ? 28 : 14) - dotInset} cy={dotY} r={4} fill="var(--cont)">
           <title>Contract bound</title>
         </circle>
       )}
 
-      {mode === 'column' &&
+      {open &&
         chip.pins.map(pin => {
           const key = columnId(chip.id, pin.id);
           const active =
