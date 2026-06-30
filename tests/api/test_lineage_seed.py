@@ -70,3 +70,21 @@ def test_isolated_seed_returns_itself(api_client):
     resp = api_client.get("/api/lineage", params={"seed": "X", "depth": 3})
     assert _ids(resp) == {"X"}
     assert resp.json()["edges"] == []
+
+
+def test_nodes_carry_full_graph_degree(api_client):
+    _seed_chain(api_client)
+    # Auch im engen Teilgraphen kennt jeder Knoten seinen vollen Objektgrad,
+    # damit das Cockpit Expand-Handles für versteckte Nachbarn zeigen kann.
+    resp = api_client.get("/api/lineage", params={"seed": "B", "depth": 1})
+    deg = {n["id"]: n["degree"] for n in resp.json()["nodes"]}
+    assert deg["B"] == 2          # A und C
+    assert deg["A"] == 1          # nur B (D ist nicht sichtbar, zählt aber nicht für A)
+    assert deg["C"] == 2          # B und D — D ist versteckt → Expand-Affordance
+    assert "D" not in deg         # nicht im Teilgraphen
+
+
+def test_isolated_node_has_zero_degree(api_client):
+    _seed_chain(api_client)
+    resp = api_client.get("/api/lineage", params={"seed": "X", "depth": 0})
+    assert resp.json()["nodes"][0]["degree"] == 0

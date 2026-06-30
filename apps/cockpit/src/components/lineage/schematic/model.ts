@@ -54,6 +54,8 @@ export interface SchematicChip {
   hasBoundaryContract: boolean;
   hasInternalGate: boolean;
   coverageFlag?: string;
+  /** Voller Objektgrad im Gesamtgraphen (für Expand-on-Click). */
+  degree: number;
   pins: SchematicPin[];
 }
 
@@ -263,6 +265,7 @@ export function buildSchematicModel(
       hasBoundaryContract: Boolean(n.has_boundary_contract),
       hasInternalGate: Boolean(n.has_internal_gate),
       coverageFlag: n.coverage_flag,
+      degree: n.degree ?? 0,
       pins,
     };
   });

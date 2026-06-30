@@ -641,6 +641,8 @@ export interface LineageNode {
   system?: string;
   // Coverage annotation fields (from /api/lineage)
   coverage_flag?: '●' | '◐' | '▲' | '○';
+  /** Voller (ungerichteter) Objektgrad im Gesamtgraphen — für Expand-Affordances. */
+  degree?: number;
   dq_status?: string;
   has_contract?: boolean;
   has_internal_gate?: boolean;

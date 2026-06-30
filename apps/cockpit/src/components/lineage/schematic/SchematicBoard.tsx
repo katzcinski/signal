@@ -43,6 +43,9 @@ export interface SchematicBoardProps {
   dimmedChips?: Set<string>;
   selectedChip?: string | null;
   selectedPin?: { node: string; pin: string } | null;
+  /** Chips mit noch versteckten Nachbarn → Expand-Handle. */
+  expandableChips?: Set<string>;
+  onExpandChip?: (nodeId: string) => void;
   onSelectChip?: (nodeId: string) => void;
   onSelectPin?: (nodeId: string, pinId: string) => void;
   onBackground?: () => void;
@@ -55,6 +58,8 @@ export function SchematicBoard({
   dimmedChips,
   selectedChip,
   selectedPin,
+  expandableChips,
+  onExpandChip,
   onSelectChip,
   onSelectPin,
   onBackground,
@@ -68,7 +73,22 @@ export function SchematicBoard({
   const H = Math.max(layout.height, 1);
 
   const svgRef = useRef<SVGSVGElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<Viewport>({ x: 0, y: 0, k: 1 });
+
+  // Container-Pixelmaße verfolgen — die Minimap braucht sie, um das aktuelle
+  // Sichtfenster im Welt-Koordinatensystem zu berechnen.
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(entries => {
+      const r = entries[0]?.contentRect;
+      if (r) setStageSize({ w: r.width, h: r.height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   // Pan-State: letzter Punkt (User-Koordinaten) + ob die Geste schon ein Zug ist.
   const panRef = useRef<{ lastX: number; lastY: number; startClientX: number; startClientY: number } | null>(null);
   const movedRef = useRef(false);
@@ -148,11 +168,28 @@ export function SchematicBoard({
   const zoomOut = () => zoomAt(1 / 1.25, W / 2, H / 2);
   const fit = () => setView({ x: 0, y: 0, k: 1 });
 
+  // Weltpunkt in die Bildschirmmitte rücken (Minimap-Navigation).
+  const centerOn = useCallback(
+    (wx: number, wy: number) => {
+      const { w: cw, h: ch } = stageSize;
+      if (!cw || !ch) return;
+      const s = Math.min(cw / W, ch / H);
+      const offX = (cw - s * W) / 2;
+      const offY = (ch - s * H) / 2;
+      setView(v => ({ ...v, x: (cw / 2 - offX) / s - v.k * wx, y: (ch / 2 - offY) / s - v.k * wy }));
+    },
+    [stageSize, W, H],
+  );
+
+  // Level-of-Detail: herausgezoomt blendet CSS die Pin-Details aus, damit der
+  // Graph als Übersicht lesbar bleibt statt als Textgewimmel.
+  const lod = view.k < 0.55;
+
   return (
-    <div className="schem-stage">
+    <div className="schem-stage" ref={stageRef}>
       <svg
         ref={svgRef}
-        className="schem-board"
+        className={'schem-board' + (lod ? ' is-lod' : '')}
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="xMidYMid meet"
         role="img"
@@ -219,6 +256,8 @@ export function SchematicBoard({
                 selected={selectedChip === chip.id}
                 tracePins={tracePins}
                 selectedPin={selectedPin}
+                expandable={!!expandableChips && expandableChips.has(chip.id)}
+                onExpand={guard(onExpandChip)}
                 onSelectChip={guard(onSelectChip)}
                 onSelectPin={guard(onSelectPin)}
               />
@@ -232,7 +271,113 @@ export function SchematicBoard({
         <button type="button" onClick={zoomOut} aria-label="Verkleinern">−</button>
         <button type="button" onClick={fit} aria-label="Ansicht zurücksetzen">⤢</button>
       </div>
+
+      {layout.chips.length > 1 && (
+        <Minimap chips={layout.chips} W={W} H={H} view={view} stageSize={stageSize} onCenter={centerOn} />
+      )}
     </div>
+  );
+}
+
+const MINIMAP_W = 168;
+
+/** Übersichtskarte mit Sichtfenster-Rahmen; Klick/Zug zentriert die Hauptansicht. */
+function Minimap({
+  chips,
+  W,
+  H,
+  view,
+  stageSize,
+  onCenter,
+}: {
+  chips: PositionedChip[];
+  W: number;
+  H: number;
+  view: Viewport;
+  stageSize: { w: number; h: number };
+  onCenter: (wx: number, wy: number) => void;
+}) {
+  const ref = useRef<SVGSVGElement>(null);
+  const dragging = useRef(false);
+
+  const MH = Math.max(70, Math.min(150, Math.round((MINIMAP_W * H) / W)));
+  const sm = Math.min(MINIMAP_W / W, MH / H);
+  const mox = (MINIMAP_W - sm * W) / 2;
+  const moy = (MH - sm * H) / 2;
+  const toMini = (wx: number, wy: number) => ({ x: wx * sm + mox, y: wy * sm + moy });
+
+  // Aktuell sichtbares Welt-Rechteck aus view + Container-Maßen.
+  const { w: cw, h: ch } = stageSize;
+  let vx = 0;
+  let vy = 0;
+  let vw = W;
+  let vh = H;
+  if (cw > 0 && ch > 0) {
+    const s = Math.min(cw / W, ch / H);
+    const offX = (cw - s * W) / 2;
+    const offY = (ch - s * H) / 2;
+    vx = (-offX / s - view.x) / view.k;
+    vy = (-offY / s - view.y) / view.k;
+    vw = cw / s / view.k;
+    vh = ch / s / view.k;
+  }
+  const vp = toMini(vx, vy);
+
+  const navigate = (clientX: number, clientY: number) => {
+    const svg = ref.current;
+    if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    const wx = (clientX - r.left - mox) / sm;
+    const wy = (clientY - r.top - moy) / sm;
+    onCenter(wx, wy);
+  };
+
+  return (
+    <svg
+      ref={ref}
+      className="schem-minimap"
+      width={MINIMAP_W}
+      height={MH}
+      role="img"
+      aria-label="Übersicht"
+      style={{ touchAction: 'none' }}
+      onPointerDown={e => {
+        dragging.current = true;
+        ref.current?.setPointerCapture(e.pointerId);
+        navigate(e.clientX, e.clientY);
+      }}
+      onPointerMove={e => {
+        if (dragging.current) navigate(e.clientX, e.clientY);
+      }}
+      onPointerUp={e => {
+        dragging.current = false;
+        ref.current?.releasePointerCapture(e.pointerId);
+      }}
+    >
+      <rect className="schem-minimap-bg" x={0} y={0} width={MINIMAP_W} height={MH} rx={4} />
+      {chips.map(c => {
+        const p = toMini(c.x, c.y);
+        return (
+          <rect
+            key={c.id}
+            className="schem-minimap-chip"
+            x={p.x}
+            y={p.y}
+            width={Math.max(2, c.width * sm)}
+            height={Math.max(2, c.height * sm)}
+            rx={1}
+            fill={laneColor(c.laneOrder)}
+          />
+        );
+      })}
+      <rect
+        className="schem-minimap-view"
+        x={vp.x}
+        y={vp.y}
+        width={Math.max(4, vw * sm)}
+        height={Math.max(4, vh * sm)}
+      />
+    </svg>
   );
 }
 
@@ -268,11 +413,13 @@ interface ChipProps {
   selected: boolean;
   tracePins?: Set<string>;
   selectedPin?: { node: string; pin: string } | null;
+  expandable?: boolean;
+  onExpand?: (nodeId: string) => void;
   onSelectChip?: (nodeId: string) => void;
   onSelectPin?: (nodeId: string, pinId: string) => void;
 }
 
-function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, onSelectChip, onSelectPin }: ChipProps) {
+function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, expandable, onExpand, onSelectChip, onSelectPin }: ChipProps) {
   const clipId = useId();
   const cls = 'schem-chip' + (selected ? ' is-selected' : '') + (dimmed ? ' is-dimmed' : '');
   const tagText = `${chip.layer.toUpperCase()}${chip.system ? ` · ${chip.system}` : ''}`;
@@ -285,6 +432,10 @@ function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, 
   const selectPin = (event: MouseEvent<SVGElement>, pinId: string) => {
     event.stopPropagation();
     onSelectPin?.(chip.id, pinId);
+  };
+  const expand = (event: MouseEvent<SVGElement>) => {
+    event.stopPropagation();
+    onExpand?.(chip.id);
   };
 
   return (
@@ -393,6 +544,21 @@ function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, 
             </g>
           );
         })}
+
+      {/* Expand-Handle: blendet die noch versteckten Nachbarn dieses Knotens ein. */}
+      {expandable && (
+        <g
+          className="schem-expand"
+          transform={`translate(${chip.width / 2}, ${chip.height})`}
+          onClick={expand}
+          style={{ cursor: 'pointer' }}
+        >
+          <circle r={9} />
+          <line x1={-4} y1={0} x2={4} y2={0} />
+          <line x1={0} y1={-4} x2={0} y2={4} />
+          <title>Nachbarn einblenden</title>
+        </g>
+      )}
     </g>
   );
 }

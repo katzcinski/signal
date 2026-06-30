@@ -120,6 +120,17 @@ describe('SchematicBoard', () => {
 
   });
 
+  it('renders an expand handle only for expandable chips and fires onExpand', () => {
+    const onExpandChip = vi.fn();
+    const { container } = render(
+      <SchematicBoard layout={fakeLayout()} expandableChips={new Set(['INB'])} onExpandChip={onExpandChip} />,
+    );
+    const handles = container.querySelectorAll('.schem-expand');
+    expect(handles.length).toBe(1); // nur INB ist erweiterbar, HRM nicht
+    fireEvent.click(handles[0]);
+    expect(onExpandChip).toHaveBeenCalledWith('INB');
+  });
+
   it('calls onBackground when the canvas backdrop is clicked', () => {
     const onBackground = vi.fn();
     const { container } = render(<SchematicBoard layout={fakeLayout()} onBackground={onBackground} />);

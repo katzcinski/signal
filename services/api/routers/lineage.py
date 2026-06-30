@@ -40,6 +40,18 @@ def _scan_contracts(contracts_dir: Path) -> tuple[list[str], set[str], set[str],
     return contracted, gate_products, contract_products, contract_kinds
 
 
+def _object_degrees(edges: list[dict], column_edges: list[dict]) -> dict[str, int]:
+    """Objekt-ID → Anzahl distinkter (ungerichteter) Nachbarn im vollen Graphen."""
+    adj: dict[str, set[str]] = {}
+    for e in (*edges, *column_edges):
+        s, t = e.get("source"), e.get("target")
+        if not s or not t or s == t:
+            continue
+        adj.setdefault(s, set()).add(t)
+        adj.setdefault(t, set()).add(s)
+    return {k: len(v) for k, v in adj.items()}
+
+
 def _seed_subgraph(
     seeds: list[str],
     edges: list[dict],
@@ -102,6 +114,11 @@ def get_lineage_graph(
             if e.get("source") in node_ids or e.get("target") in node_ids
         ]
 
+    # Voller (nur Space-gefilterter) Objektgrad je Knoten — VOR dem Seed-Filter,
+    # damit ein Blattknoten im Teilgraphen weiß, dass er noch versteckte Nachbarn
+    # hat (Expand-Affordance im Cockpit).
+    full_degree = _object_degrees(edges, column_edges)
+
     # Seed-Scoping: statt des kompletten Graphen nur den Teilgraphen rund um
     # ein oder mehrere Seed-Objekte liefern (UX: Board nicht überfrachten).
     # BFS in beide Richtungen über das Objekt-Adjazenznetz (echte Objekt-Edges
@@ -134,6 +151,10 @@ def get_lineage_graph(
         contract_products=contract_products,
         contract_kinds=contract_kinds,
     )
+
+    # Expand-Affordance: voller Objektgrad je Knoten (unabhängig vom Teilgraphen).
+    for n in annotated_nodes:
+        n["degree"] = full_degree.get(n.get("id"), 0)
 
     # F5: Extrakt-Alter — FE zeigt eine Staleness-Warnung darauf an.
     extract_age_days = None

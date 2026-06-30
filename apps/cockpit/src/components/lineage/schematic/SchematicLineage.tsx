@@ -17,17 +17,14 @@ import type { ObjectSummary } from '@/types';
 
 const S = t.lineage.schematic;
 
-const DEPTH_OPTIONS: Array<{ value: number; label: string }> = [
-  { value: 1, label: '1' },
-  { value: 2, label: '2' },
-  { value: 3, label: '3' },
-  { value: 20, label: S.depthAll },
-];
-
 export default function SchematicLineage() {
   const [seeds, setSeeds] = useState<string[]>([]);
-  const [depth, setDepth] = useState(2);
-  const { data, isLoading } = useLineage({ seeds, depth, enabled: seeds.length > 0 });
+  // Expand-on-Click: Knoten, deren Nachbarschaft eingeblendet ist. Die BFS-
+  // Wurzeln sind Seeds ∪ expandierte Knoten, jeweils einen Hop tief — so wächst
+  // der Graph inkrementell statt über eine globale Tiefe.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const roots = useMemo(() => [...new Set([...seeds, ...expanded])], [seeds, expanded]);
+  const { data, isLoading } = useLineage({ seeds: roots, depth: 1, enabled: roots.length > 0 });
   const { data: objects } = useObjects();
   const [viewMode, setViewMode] = useState<ViewMode>('column');
   const [search, setSearch] = useState('');
@@ -122,12 +119,44 @@ export default function SchematicLineage() {
 
   const seedOptions = objects ?? [];
   const seedName = (id: string) => seedOptions.find(o => o.id === id)?.name ?? id;
-  const addSeed = (id: string) => setSeeds(prev => (prev.includes(id) ? prev : [...prev, id]));
+  const addSeed = (id: string) =>
+    setSeeds(prev => {
+      if (prev.includes(id)) return prev;
+      setExpanded(ex => new Set(ex).add(id));
+      return [...prev, id];
+    });
   const removeSeed = (id: string) => {
     setSeeds(prev => prev.filter(s => s !== id));
+    setExpanded(ex => {
+      const next = new Set(ex);
+      next.delete(id);
+      return next;
+    });
     clearSelection();
   };
+  const expandNode = (id: string) => setExpanded(ex => new Set(ex).add(id));
+  const resetExpansion = () => setExpanded(new Set(seeds));
   const hasSeeds = seeds.length > 0;
+
+  // Ein sichtbarer Knoten ist erweiterbar, solange sein voller Objektgrad höher
+  // ist als die Zahl der aktuell sichtbaren Nachbarn.
+  const expandableChips = useMemo(() => {
+    const visible = new Map<string, Set<string>>();
+    const link = (a: string, b: string) => {
+      let set = visible.get(a);
+      if (!set) visible.set(a, (set = new Set()));
+      set.add(b);
+    };
+    for (const e of model.objectEdges) {
+      link(e.from, e.to);
+      link(e.to, e.from);
+    }
+    const out = new Set<string>();
+    for (const c of model.chips) {
+      if (c.degree > (visible.get(c.id)?.size ?? 0)) out.add(c.id);
+    }
+    return out;
+  }, [model.objectEdges, model.chips]);
 
   return (
     <div style={page}>
@@ -155,18 +184,11 @@ export default function SchematicLineage() {
               <SeedSearch options={seedOptions} selected={seeds} onAdd={addSeed} />
             </div>
 
-            <div style={toggle} aria-label={S.depthLabel}>
-              {DEPTH_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  style={toggleBtn(depth === opt.value)}
-                  onClick={() => setDepth(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            {expanded.size > seeds.length && (
+              <button type="button" style={chip(false)} onClick={resetExpansion}>
+                {S.resetExpansion}
+              </button>
+            )}
 
             <input
               style={searchInput}
@@ -256,6 +278,8 @@ export default function SchematicLineage() {
               dimmedChips={dimmedChips}
               selectedChip={selection && !selection.pin ? selection.node : null}
               selectedPin={selection?.pin ? { node: selection.node, pin: selection.pin } : null}
+              expandableChips={expandableChips}
+              onExpandChip={expandNode}
               onSelectChip={selectChip}
               onSelectPin={selectPin}
               onBackground={clearSelection}

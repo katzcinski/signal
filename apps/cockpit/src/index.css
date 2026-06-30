@@ -593,6 +593,16 @@ html {
 }
 .schem-zoom button:hover { background: var(--bg-3); color: var(--fg); }
 
+/* Minimap unten links: Übersicht + Sichtfenster-Rahmen. */
+.schem-minimap {
+  position: absolute; left: 14px; bottom: 14px;
+  border: 1px solid var(--line-2); border-radius: var(--r-md);
+  box-shadow: var(--shadow-1); cursor: pointer; user-select: none;
+}
+.schem-minimap-bg { fill: color-mix(in srgb, var(--bg-1) 88%, transparent); }
+.schem-minimap-chip { opacity: 0.85; }
+.schem-minimap-view { fill: color-mix(in srgb, var(--cont) 16%, transparent); stroke: var(--cont); stroke-width: 1; }
+
 .schem-chip-body {
   fill: var(--bg-2);
   stroke: var(--line-2);
@@ -617,6 +627,16 @@ html {
 .schem-pin-type { fill: var(--fg-3); font-size: 9px; }
 .schem-pin-dot { stroke: var(--bg-2); stroke-width: 1.2; }
 .schem-pin-dot.is-active { stroke: var(--bg-1); }
+
+/* Expand-Handle (versteckte Nachbarn einblenden). */
+.schem-expand circle { fill: var(--bg-3); stroke: var(--line-2); stroke-width: 1; transition: fill 0.12s ease, stroke 0.12s ease; }
+.schem-expand line { stroke: var(--fg-2); stroke-width: 1.6; stroke-linecap: round; }
+.schem-expand:hover circle { fill: var(--cont); stroke: var(--cont); }
+.schem-expand:hover line { stroke: #fff; }
+
+/* Level-of-Detail: herausgezoomt verschwinden die Pin-Details. */
+.schem-board.is-lod .schem-pin-label,
+.schem-board.is-lod .schem-pin-type { opacity: 0; }
 
 .schem-trace { fill: none; stroke-width: 2; opacity: 0.62; }
 .schem-trace.is-derived { stroke-dasharray: 4 3; }
