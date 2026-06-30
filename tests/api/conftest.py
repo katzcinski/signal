@@ -34,11 +34,18 @@ def api_client(tmp_path, monkeypatch):
     monkeypatch.setenv("CHECKS_DIR", str(checks))
     monkeypatch.setenv("INVENTORY_FILE", str(inv))
     monkeypatch.setenv("LINEAGE_FILE", str(lin))
+    monkeypatch.setenv("CONNECTOR_FILE", str(tmp_path / "datasphere.yml"))
+    monkeypatch.setenv("ENVIRONMENTS_FILE", str(tmp_path / "environments.yml"))
+    monkeypatch.setenv("SECRETS_FILE", str(tmp_path / "secrets.local.yml"))
 
     import services.api.settings as settings_mod
     import services.api.deps as deps_mod
+    import services.api.datasphere as datasphere_mod
+    import services.api.datasphere_catalog as catalog_mod
     settings_mod._settings = None
     deps_mod._store_instance = None
+    datasphere_mod.reset_client()
+    catalog_mod.reset_catalog_client()
 
     from services.api.main import create_app
     client = TestClient(create_app())
@@ -46,3 +53,5 @@ def api_client(tmp_path, monkeypatch):
 
     settings_mod._settings = None
     deps_mod._store_instance = None
+    datasphere_mod.reset_client()
+    catalog_mod.reset_catalog_client()

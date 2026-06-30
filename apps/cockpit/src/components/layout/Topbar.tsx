@@ -7,6 +7,7 @@ import { useRoleStore, ROLES, ROLE_META, type Role } from '@/store/role';
 interface Props {
   onToggleSidebar: () => void;
   onOpenPalette: () => void;
+  paletteOpen: boolean;
 }
 
 // Theme switcher. Each theme is a token set applied via data-theme on <html>
@@ -82,7 +83,7 @@ function RoleSwitcher() {
   );
 }
 
-export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
+export function Topbar({ onToggleSidebar, onOpenPalette, paletteOpen }: Props) {
   const density = useUIStore(s => s.density);
   const toggleDensity = useUIStore(s => s.toggleDensity);
   return (
@@ -92,6 +93,7 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
       flexShrink: 0,
     }}>
       <button
+        type="button"
         onClick={onToggleSidebar}
         style={{
           background: 'none', border: 'none', color: 'var(--fg-2)',
@@ -106,7 +108,12 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
         </svg>
       </button>
       <button
+        type="button"
         onClick={onOpenPalette}
+        aria-label={t.palette.placeholder}
+        aria-haspopup="dialog"
+        aria-expanded={paletteOpen}
+        aria-controls="command-palette-dialog"
         style={{
           background: 'var(--bg-2)', border: '1px solid var(--line)',
           color: 'var(--fg-2)', borderRadius: 'var(--r-md)', padding: 'var(--s1) var(--s2) var(--s1) var(--s3)',
@@ -118,11 +125,12 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
           background: 'var(--bg-0)', border: '1px solid var(--line-2)',
           borderRadius: 3, padding: '1px 5px', fontSize: 10,
           fontFamily: 'var(--font-mono)', color: 'var(--fg-3)',
-        }}>⌘K</kbd>
+        }}>Ctrl/Cmd K</kbd>
       </button>
       <div style={{ flex: 1 }} />
       <ThemeSwitcher />
       <button
+        type="button"
         onClick={toggleDensity}
         title={t.density.toggle}
         aria-label={t.density.toggle}
@@ -131,7 +139,7 @@ export function Topbar({ onToggleSidebar, onOpenPalette }: Props) {
           borderRadius: 'var(--r-md)', padding: '4px 10px', fontSize: 12, cursor: 'pointer',
         }}
       >
-        ↕ {density === 'compact' ? t.density.compact : t.density.comfortable}
+        Dichte: {density === 'compact' ? t.density.compact : t.density.comfortable}
       </button>
       <RoleSwitcher />
     </header>

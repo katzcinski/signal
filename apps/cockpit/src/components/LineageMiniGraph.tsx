@@ -229,7 +229,7 @@ export function LineageMiniGraph({ subgraph }: LineageMiniGraphProps) {
       ro?.disconnect();
       cy.destroy();
     };
-  }, [navigate, subgraph]);
+  }, [navigate, sparse, subgraph]);
 
   if (subgraph.nodes.length === 0) {
     return (

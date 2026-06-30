@@ -403,7 +403,7 @@
 
 /* R6-5 cmdk command palette. */
 [cmdk-input] {
-  width: 100%; background: none; border: none; outline: none;
+  width: 100%; background: none; border: none;
   border-bottom: 1px solid var(--line); padding: 14px 16px;
   font-size: 14px; color: var(--fg); font-family: var(--font-ui);
 }
@@ -493,6 +493,36 @@ html, body, #root {
   text-rendering: optimizeLegibility;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: var(--s3);
+  left: var(--s3);
+  z-index: 1100;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-2);
+  background: var(--bg-1);
+  color: var(--fg);
+  transform: translateY(-160%);
+  transition: transform var(--t);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 /* The signal theme leans into a data-instrument feel: line up digits across
    tables, KPIs and charts. Scoped to the theme so classic stays untouched. */
 [data-theme="signal"], [data-theme="signal"] body {
@@ -532,6 +562,8 @@ a {
 button {
   font-family: inherit;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   /* UX-F8: every button transitions, so hover/active read as a state change
      rather than an instant jump. */
   transition: filter var(--t), background var(--t), border-color var(--t),
@@ -562,8 +594,13 @@ button:disabled { cursor: not-allowed; }
 /* UX-F9: slim, theme-tinted scrollbars in Firefox (WebKit handled above).
    Both properties are inherited, so setting them on html cascades everywhere. */
 html {
+  color-scheme: dark;
   scrollbar-width: thin;
   scrollbar-color: var(--line-2) var(--scroll-track);
+}
+
+html[data-theme="daylight"] {
+  color-scheme: light;
 }
 
 /* UX-F9: table row hover/keyboard-focus as a CSS state (≥100 ms transition),

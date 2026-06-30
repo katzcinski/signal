@@ -1,10 +1,17 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from '../CommandPalette';
-import { useSseStore } from '@/store/sseStore';
-import { useUIStore } from '@/store/ui';
+import { useUIStore, type Theme } from '@/store/ui';
 import { useObjects } from '@/api/objects';
+
+const THEME_COLOR: Record<Theme, string> = {
+  classic: '#090B0F',
+  signal: '#0A0C0F',
+  blueprint: '#071726',
+  daylight: '#E9E4DA',
+  amber: '#0A0805',
+};
 
 function SystemHealthStrip() {
   const { data: objects = [] } = useObjects();
@@ -30,17 +37,27 @@ interface Props { children: ReactNode }
 export function Shell({ children }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const connect = useSseStore(s => s.connect);
+  const shellContentRef = useRef<HTMLDivElement>(null);
   const density = useUIStore(s => s.density);
   const theme = useUIStore(s => s.theme);
-
-  useEffect(() => { connect(); }, [connect]);
 
   // R6-7: drive density tokens off a root data attribute.
   useEffect(() => { document.documentElement.dataset.density = density; }, [density]);
 
-  // Drive the theme token set off a root data attribute (see index.css).
-  useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
+  // Drive the theme token set off a root data attribute and keep browser chrome in sync.
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    themeMeta?.setAttribute('content', THEME_COLOR[theme]);
+  }, [theme]);
+
+  useEffect(() => {
+    const node = shellContentRef.current;
+    if (!node) return;
+    if (paletteOpen) node.setAttribute('inert', '');
+    else node.removeAttribute('inert');
+    return () => node.removeAttribute('inert');
+  }, [paletteOpen]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -56,14 +73,21 @@ export function Shell({ children }: Props) {
 
   return (
     <div className="shell-root" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-0)' }}>
-      <SystemHealthStrip />
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <Sidebar collapsed={collapsed} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <Topbar onToggleSidebar={() => setCollapsed(c => !c)} onOpenPalette={() => setPaletteOpen(true)} />
-          <main style={{ flex: 1, overflow: 'auto', padding: 'var(--page-pad)' }}>
-            {children}
-          </main>
+      <a className="skip-link" href="#main-content">Zum Inhalt springen</a>
+      <div ref={shellContentRef} aria-hidden={paletteOpen}>
+        <SystemHealthStrip />
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <Sidebar collapsed={collapsed} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Topbar
+              onToggleSidebar={() => setCollapsed(c => !c)}
+              onOpenPalette={() => setPaletteOpen(true)}
+              paletteOpen={paletteOpen}
+            />
+            <main id="main-content" tabIndex={-1} style={{ flex: 1, overflow: 'auto', padding: 'var(--page-pad)' }}>
+              {children}
+            </main>
+          </div>
         </div>
       </div>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}

@@ -82,9 +82,9 @@ def test_environments_no_secrets(api_client, tmp_path, monkeypatch):
         "name": "dev",
         "schema": "DEV_SCHEMA",
         "host": "***.example.com",
-        "password_ref": "",
         "secret_status": True,
     }]
+    assert set(body["environments"][0]) == {"name", "schema", "host", "secret_status"}
     assert "SECRET" not in resp.text  # S-13: nie Credentials ausliefern
 
     settings_mod._settings = None

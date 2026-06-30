@@ -60,11 +60,16 @@ describe('UI primitives (UX-F6)', () => {
       </div>,
     );
 
-    fireEvent.focus(screen.getByRole('combobox', { name: 'Pick' }));
+    const combobox = screen.getByRole('combobox', { name: 'Pick' });
+    expect(combobox).toHaveAttribute('aria-autocomplete', 'list');
+    expect((combobox as HTMLInputElement).style.outline).toBe('');
+
+    fireEvent.focus(combobox);
 
     const listbox = screen.getByRole('listbox');
     expect(screen.getByTestId('clip')).not.toContainElement(listbox);
     expect(listbox.parentElement).toBe(document.body);
     expect(listbox.style.position).toBe('fixed');
+    expect(combobox).toHaveAttribute('aria-controls', listbox.id);
   });
 });

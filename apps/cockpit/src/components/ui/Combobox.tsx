@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 interface Props {
@@ -11,11 +11,12 @@ interface Props {
 }
 
 /**
- * Filter-as-you-type dropdown over a fixed option set. NO free text:
- * the committed value can only ever be one of `options` — typing merely
+ * Filter-as-you-type dropdown over a fixed option set. No free text:
+ * the committed value can only ever be one of `options` - typing merely
  * filters; blur/Escape reverts the input to the last committed value.
  */
 export function Combobox({ options, value, onChange, placeholder, ariaLabel, width = 200 }: Props) {
+  const id = useId();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(value);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -116,7 +117,12 @@ export function Combobox({ options, value, onChange, placeholder, ariaLabel, wid
       <input
         role="combobox"
         aria-expanded={open}
+        aria-controls={open ? `${id}-listbox` : undefined}
+        aria-activedescendant={open && filtered[clamped] ? `${id}-option-${clamped}` : undefined}
+        aria-autocomplete="list"
         aria-label={ariaLabel ?? placeholder}
+        autoComplete="off"
+        spellCheck={false}
         value={text}
         placeholder={placeholder}
         onChange={e => { setText(e.target.value); setOpen(true); setActiveIndex(0); }}
@@ -125,11 +131,12 @@ export function Combobox({ options, value, onChange, placeholder, ariaLabel, wid
         style={{
           width: '100%', background: 'var(--bg-2)', border: '1px solid var(--line-2)',
           color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12,
-          fontFamily: 'var(--font-mono)', outline: 'none',
+          fontFamily: 'var(--font-mono)',
         }}
       />
       {open && listboxStyle && createPortal(
         <div
+          id={`${id}-listbox`}
           ref={listboxRef}
           role="listbox"
           style={{
@@ -139,12 +146,15 @@ export function Combobox({ options, value, onChange, placeholder, ariaLabel, wid
           }}
         >
           {filtered.length === 0 ? (
-            <div style={{ padding: '6px 10px', fontSize: 11, color: 'var(--fg-3)' }}>—</div>
+            <div style={{ padding: '6px 10px', fontSize: 11, color: 'var(--fg-3)' }}>-</div>
           ) : filtered.slice(0, 50).map((o, i) => (
             <button
+              id={`${id}-option-${i}`}
               key={o}
+              type="button"
               role="option"
               aria-selected={o === value}
+              tabIndex={-1}
               // mousedown beats the input blur/doc-click handler
               onMouseDown={e => { e.preventDefault(); commit(o); }}
               onMouseEnter={() => setActiveIndex(i)}

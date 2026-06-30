@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
 import { toast } from 'sonner';
@@ -11,11 +11,15 @@ import { t } from '@/i18n/de';
 const ROUTES = [
   { label: t.nav.cockpit, path: '/' },
   { label: t.nav.objects, path: '/objects' },
+  { label: t.nav.products, path: '/products' },
   { label: t.nav.contracts, path: '/contracts' },
   { label: t.nav.lineage, path: '/lineage' },
   { label: t.nav.incidents, path: '/incidents' },
   { label: t.nav.proposals, path: '/proposals' },
   { label: t.nav.compliance, path: '/compliance' },
+  { label: t.nav.library, path: '/library' },
+  { label: t.nav.schedules, path: '/schedules' },
+  { label: t.nav.notifications, path: '/notifications' },
 ];
 
 interface Props { onClose: () => void }
@@ -23,12 +27,50 @@ interface Props { onClose: () => void }
 // R6-5: cmdk-based palette — pages, object/contract open (deep-link), run
 // actions, and a persisted Recent group.
 export function CommandPalette({ onClose }: Props) {
+  const titleId = useId();
   const [query, setQuery] = useState('');
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
   const { data: objects = [] } = useObjects();
   const { data: contracts = [] } = useContracts();
   const recents = useUIStore(s => s.recents);
   const pushRecent = useUIStore(s => s.pushRecent);
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => previousFocusRef.current?.focus();
+  }, []);
+
+  const trapFocus = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      onClose();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length === 0) {
+      e.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   const go = (path: string, label: string) => { pushRecent(`${path}|${label}`); navigate(path); onClose(); };
 
@@ -50,12 +92,27 @@ export function CommandPalette({ onClose }: Props) {
   return (
     <div
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh' }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh',
+        overscrollBehavior: 'contain',
+      }}
     >
       <div
+        id="command-palette-dialog"
+        ref={dialogRef}
         onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-lg)', width: 560, overflow: 'hidden', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}
+        onKeyDown={trapFocus}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        style={{
+          background: 'var(--bg-2)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-lg)',
+          width: 560, maxWidth: 'min(560px, calc(100vw - 24px))', overflow: 'hidden',
+          boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+        }}
       >
+        <h2 id={titleId} className="sr-only">{t.palette.placeholder}</h2>
         <Command label={t.palette.placeholder} shouldFilter>
           <Command.Input autoFocus value={query} onValueChange={setQuery} placeholder={t.palette.placeholder} />
           <Command.List>
@@ -65,7 +122,7 @@ export function CommandPalette({ onClose }: Props) {
               <Command.Group heading={t.palette.recent}>
                 {recentItems.map(r => (
                   <Command.Item key={`recent:${r.path}`} value={`recent ${r.label}`} onSelect={() => go(r.path, r.label)}>
-                    <span style={{ color: 'var(--fg-3)' }}>↩</span> {r.label}
+                    {r.label}
                   </Command.Item>
                 ))}
               </Command.Group>
@@ -90,13 +147,13 @@ export function CommandPalette({ onClose }: Props) {
 
             <Command.Group heading={t.palette.actions}>
               {objects.slice(0, 50).map(o => (
-                <Command.Item key={`run:${o.id}`} value={`run checks ausführen ${o.name} ${o.id}`} onSelect={() => runChecks(o.id)}>
-                  <span style={{ color: 'var(--cont)' }}>▶</span> {t.palette.runChecks} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</span>
+                <Command.Item key={`run:${o.id}`} value={`run checks ${o.name} ${o.id}`} onSelect={() => runChecks(o.id)}>
+                  {t.palette.runChecks} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</span>
                 </Command.Item>
               ))}
               {contracts.slice(0, 50).map(c => (
-                <Command.Item key={`contract:${c.product}`} value={`contract ${c.product} öffnen`} onSelect={() => go(`/contracts?product=${c.product}`, c.product)}>
-                  <span style={{ color: 'var(--fg-3)' }}>⊟</span> {t.palette.openContract} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{c.product}</span>
+                <Command.Item key={`contract:${c.product}`} value={`contract ${c.product} open`} onSelect={() => go(`/contracts?product=${c.product}`, c.product)}>
+                  {t.palette.openContract} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{c.product}</span>
                 </Command.Item>
               ))}
             </Command.Group>

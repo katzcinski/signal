@@ -1,7 +1,9 @@
-import { useState, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useLibrary } from '@/api/library';
 import { t } from '@/i18n/de';
 import { FamilyTag } from '@/components/ui/FamilyTag';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import type { CheckDef, CheckFamily } from '@/types';
 
 const chipBtn = (active: boolean): CSSProperties => ({
@@ -12,15 +14,25 @@ const chipBtn = (active: boolean): CSSProperties => ({
   fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
 });
 
+function isCheckFamily(value: string): value is CheckFamily {
+  return value === 'observability' || value === 'quality';
+}
+
 function CheckCard({ check }: { check: CheckDef }) {
   return (
-    <div style={{
+    <article style={{
       background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)',
       padding: 14, display: 'flex', flexDirection: 'column', gap: 'var(--s2)', minWidth: 0,
+      contentVisibility: 'auto', containIntrinsicSize: '280px',
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s2)' }}>
+      <header style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s2)' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, overflowWrap: 'anywhere' }}>{check.label}</div>
+          <h2 style={{
+            fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600,
+            overflowWrap: 'anywhere', textWrap: 'pretty',
+          }}>
+            {check.label}
+          </h2>
           {check.short && (
             <div style={{ fontSize: 12, color: 'var(--fg-2)', marginTop: 4, lineHeight: 1.4 }}>{check.short}</div>
           )}
@@ -32,7 +44,7 @@ function CheckCard({ check }: { check: CheckDef }) {
             background: 'var(--bg-2)', color: 'var(--fg-3)', border: '1px solid var(--line-2)',
           }}>{check.category}</span>
         </div>
-      </div>
+      </header>
       <div style={{ fontSize: 10, color: 'var(--fg-3)' }}>
         {t.library.gating.label}: <span style={{ color: 'var(--fg-2)' }}>{t.library.gating[check.gating]}</span>
       </div>
@@ -64,63 +76,149 @@ function CheckCard({ check }: { check: CheckDef }) {
           </div>
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
 export default function CheckLibrary() {
   const { data: library, isLoading } = useLibrary();
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
-  const [family, setFamily] = useState<CheckFamily | ''>('');
+  const [, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useSearchParamState('q');
+  const [category, setCategory] = useSearchParamState('category');
+  const [family, setFamily] = useSearchParamState('family');
 
+  const activeFamily = isCheckFamily(family) ? family : '';
+  const hasFilters = search !== '' || category !== '' || activeFamily !== '';
   const q = search.toLowerCase();
   const checks = (library?.checks ?? []).filter(c => {
     if (category && c.category !== category) return false;
-    if (family && c.family !== family) return false;
+    if (activeFamily && c.family !== activeFamily) return false;
     const haystack = [c.id, c.label, c.short, c.help, c.example].join(' ').toLowerCase();
     if (q && !haystack.includes(q)) return false;
     return true;
   });
+  const resultLabel = checks.length === 1
+    ? t.library.resultsOne.replace('{count}', String(checks.length))
+    : t.library.resultsMany.replace('{count}', String(checks.length));
 
   return (
-    <div className="page-full">
-      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.library.title}</h1>
+    <section className="page-full" aria-labelledby="check-library-title">
+      <h1
+        id="check-library-title"
+        style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, textWrap: 'balance' }}
+      >
+        {t.library.title}
+      </h1>
 
-      <div style={{ display: 'flex', gap: 'var(--s2)', marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          type="search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder={t.library.searchPlaceholder}
-          style={{
-            background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-            color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '6px 10px', fontSize: 12, minWidth: 220,
-          }}
-        />
-        <button style={chipBtn(category === '')} onClick={() => setCategory('')}>
-          {t.library.allCategories}
-        </button>
-        {(library?.categories ?? []).map(cat => (
-          <button
-            key={cat}
-            style={chipBtn(category === cat)}
-            onClick={() => setCategory(category === cat ? '' : cat)}
-          >{cat}</button>
-        ))}
-      </div>
+      <div style={{
+        display: 'grid',
+        gap: 'var(--s4)',
+        marginBottom: 16,
+        padding: 'var(--s4)',
+        background: 'var(--bg-1)',
+        border: '1px solid var(--line)',
+        borderRadius: 'var(--r-lg)',
+      }}>
+        <div style={{ display: 'grid', gap: 'var(--s2)' }}>
+          <label className="mono-label" htmlFor="library-search">
+            {t.library.searchLabel}
+          </label>
+          <input
+            id="library-search"
+            name="check-search"
+            type="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t.library.searchPlaceholder}
+            autoComplete="off"
+            spellCheck={false}
+            style={{
+              background: 'var(--bg-2)', border: '1px solid var(--line-2)',
+              color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '8px 10px', fontSize: 12,
+              minWidth: 220, maxWidth: 420,
+            }}
+          />
+        </div>
 
-      <div style={{ display: 'flex', gap: 'var(--s2)', marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <button style={chipBtn(family === '')} onClick={() => setFamily('')}>
-          {t.library.allFamilies}
-        </button>
-        {(library?.families ?? []).map(fam => (
-          <button
-            key={fam}
-            style={chipBtn(family === fam)}
-            onClick={() => setFamily(family === fam ? '' : fam)}
-          >{t.library.family[fam]}</button>
-        ))}
+        <fieldset style={{ border: 'none', display: 'grid', gap: 'var(--s2)', minWidth: 0 }}>
+          <legend className="mono-label" style={{ marginBottom: 'var(--s1)' }}>
+            {t.library.categoryLabel}
+          </legend>
+          <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              style={chipBtn(category === '')}
+              aria-pressed={category === ''}
+              onClick={() => setCategory('')}
+            >
+              {t.library.allCategories}
+            </button>
+            {(library?.categories ?? []).map(cat => (
+              <button
+                key={cat}
+                type="button"
+                style={chipBtn(category === cat)}
+                aria-pressed={category === cat}
+                onClick={() => setCategory(category === cat ? '' : cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset style={{ border: 'none', display: 'grid', gap: 'var(--s2)', minWidth: 0 }}>
+          <legend className="mono-label" style={{ marginBottom: 'var(--s1)' }}>
+            {t.library.familyLabel}
+          </legend>
+          <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              style={chipBtn(activeFamily === '')}
+              aria-pressed={activeFamily === ''}
+              onClick={() => setFamily('')}
+            >
+              {t.library.allFamilies}
+            </button>
+            {(library?.families ?? []).map(fam => (
+              <button
+                key={fam}
+                type="button"
+                style={chipBtn(activeFamily === fam)}
+                aria-pressed={activeFamily === fam}
+                onClick={() => setFamily(activeFamily === fam ? '' : fam)}
+              >
+                {t.library.family[fam]}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <div style={{ display: 'flex', gap: 'var(--s3)', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div aria-live="polite" style={{ fontSize: 12, color: 'var(--fg-2)' }}>
+            {resultLabel}
+          </div>
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchParams(prev => {
+                  const params = new URLSearchParams(prev);
+                  params.delete('q');
+                  params.delete('category');
+                  params.delete('family');
+                  return params;
+                }, { replace: true });
+              }}
+              style={{
+                ...chipBtn(false),
+                color: 'var(--fg-2)',
+              }}
+            >
+              {t.library.clearFilters}
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading && <div style={{ color: 'var(--fg-3)' }}>{t.common.loading}</div>}
@@ -129,9 +227,12 @@ export default function CheckLibrary() {
         <div style={{ color: 'var(--fg-3)', fontSize: 14 }}>{t.library.noResults}</div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 'var(--s3)' }}>
+      <div
+        aria-live="polite"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 'var(--s3)' }}
+      >
         {checks.map(c => <CheckCard key={c.id} check={c} />)}
       </div>
-    </div>
+    </section>
   );
 }
