@@ -11,7 +11,7 @@
  * laufende ELK-Engine deterministisch unit-testbar bleiben. Welche Kanten
  * Spalten- bzw. Objekt-Ebene sind, entscheidet die geteilte partitionEdges().
  */
-import ELK, { type ELK as ElkInstance, type ElkNode, type ElkPort } from 'elkjs/lib/elk.bundled.js';
+import type { ELK as ElkInstance, ElkNode, ElkPort } from 'elkjs/lib/elk.bundled.js';
 import { partitionEdges } from './model';
 import type { SchematicChip, SchematicEdge, SchematicModel, SchematicPin } from './model';
 
@@ -216,8 +216,11 @@ export function mapElkResult(
 }
 
 let elkInstance: ElkInstance | null = null;
-function getElk(): ElkInstance {
-  if (!elkInstance) elkInstance = new ELK();
+async function getElk(): Promise<ElkInstance> {
+  if (!elkInstance) {
+    const { default: ELK } = await import('elkjs/lib/elk.bundled.js');
+    elkInstance = new ELK();
+  }
   return elkInstance;
 }
 
@@ -227,6 +230,6 @@ export async function layoutSchematic(
   expanded: ReadonlySet<string>,
 ): Promise<SchematicLayout> {
   const graph = buildElkGraph(model, expanded);
-  const result = await getElk().layout(graph);
+  const result = await (await getElk()).layout(graph);
   return mapElkResult(model, expanded, result);
 }

@@ -2,16 +2,8 @@ import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from '../CommandPalette';
-import { useUIStore, type Theme } from '@/store/ui';
+import { useUIStore } from '@/store/ui';
 import { useObjects } from '@/api/objects';
-
-const THEME_COLOR: Record<Theme, string> = {
-  classic: '#090B0F',
-  signal: '#0A0C0F',
-  blueprint: '#071726',
-  daylight: '#E9E4DA',
-  amber: '#0A0805',
-};
 
 function SystemHealthStrip() {
   const { data: objects = [] } = useObjects();
@@ -45,10 +37,13 @@ export function Shell({ children }: Props) {
   useEffect(() => { document.documentElement.dataset.density = density; }, [density]);
 
   // Drive the theme token set off a root data attribute and keep browser chrome in sync.
+  // Read the active --bg-0 straight from the resolved theme so the meta tag never
+  // drifts from the canonical per-theme values in index.css.
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    const themeMeta = document.querySelector('meta[name="theme-color"]');
-    themeMeta?.setAttribute('content', THEME_COLOR[theme]);
+    const root = document.documentElement;
+    root.dataset.theme = theme;
+    const bg0 = getComputedStyle(root).getPropertyValue('--bg-0').trim();
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg0);
   }, [theme]);
 
   useEffect(() => {

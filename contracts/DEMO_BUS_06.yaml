@@ -5,7 +5,6 @@ owned_by: product
 owners:
 - team-ops
 version: 1.0.0
-lifecycle: active
 description: Operational signal pack for downstream monitoring consumers.
 guarantees:
   schema:
@@ -14,7 +13,8 @@ guarantees:
     - BUS_COL_02
     - BUS_COL_03
     - BUS_COL_04
-    mode: closed
+    - BUS_COL_05
+    mode: open
   keys:
   - columns:
     - BUS_COL_01
@@ -32,3 +32,6 @@ guarantees:
     column: BUS_COL_01
     max_age: PT24H
     severity: warn
+observability: {}
+checks: []
+lifecycle: draft

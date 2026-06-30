@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { LineageMiniGraph } from '@/components/LineageMiniGraph';
@@ -22,7 +22,7 @@ vi.mock('cytoscape', () => ({ default: cytoscapeMock.cytoscape }));
 vi.mock('cytoscape-dagre', () => ({ default: {} }));
 
 describe('LineageMiniGraph', () => {
-  it('renders without crashing for a minimal graph', () => {
+  it('renders without crashing for a minimal graph', async () => {
     const graph: LineageGraph = {
       nodes: [
         { id: 'RAW', layer: 'source', role: 'source' },
@@ -38,7 +38,7 @@ describe('LineageMiniGraph', () => {
     );
 
     expect(screen.getByTestId('lineage-mini-graph')).toBeTruthy();
-    expect(cytoscapeMock.cytoscape).toHaveBeenCalled();
+    await waitFor(() => expect(cytoscapeMock.cytoscape).toHaveBeenCalled());
   });
 
   it('renders a dedicated sparse state for a single-node graph', () => {

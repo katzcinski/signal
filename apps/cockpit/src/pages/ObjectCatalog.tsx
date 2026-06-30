@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useDeferredValue, useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useObjects } from '@/api/objects';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
@@ -19,6 +19,9 @@ const chipBtn = (active: boolean): CSSProperties => ({
   color: active ? '#fff' : 'var(--fg-3)',
   fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' as const,
 });
+
+const FAMILIES = ['observability', 'quality', 'contract'] as const;
+const STATUSES = ['pass', 'warn', 'fail', 'critical', 'unknown'] as const;
 
 function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
@@ -45,18 +48,19 @@ export default function ObjectCatalog() {
   const [statusFilter, setStatusFilter] = useSearchParamState('dqstatus');
   const [peekId, setPeekId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const deferredTextFilter = useDeferredValue(textFilter);
 
-  const spaces = [...new Set(objects.map(o => o.space))].sort();
-  const q = textFilter.toLowerCase();
-  const rows = objects.filter(o => {
+  const spaces = useMemo(() => [...new Set(objects.map(o => o.space))].sort(), [objects]);
+  const q = deferredTextFilter.trim().toLowerCase();
+  const rows = useMemo(() => objects.filter(o => {
     if (spaceFilter && o.space !== spaceFilter) return false;
     if (familyFilter && o.family !== familyFilter) return false;
     if (statusFilter && o.status !== statusFilter) return false;
     if (q && !o.name.toLowerCase().includes(q) && !o.space.toLowerCase().includes(q) && !(o.owned_by ?? '').toLowerCase().includes(q)) return false;
     return true;
-  });
+  }), [objects, spaceFilter, familyFilter, statusFilter, q]);
 
-  const columns: ColDef<ObjectSummary>[] = [
+  const columns = useMemo<ColDef<ObjectSummary>[]>(() => [
     {
       key: 'name', header: t.objects.colName, mono: true, sortable: true, sortValue: o => o.name,
       render: o => (
@@ -96,7 +100,7 @@ export default function ObjectCatalog() {
       key: 'last_run', header: t.objects.colLastRun, mono: true, sortable: true, sortValue: o => o.last_run ?? '',
       render: o => <span style={{ fontSize: 11 }}>{o.last_run ? new Date(o.last_run).toLocaleString() : '—'}</span>,
     },
-  ];
+  ], [navigate]);
 
   if (isLoading) return (
     <div className="page-full">
@@ -105,8 +109,6 @@ export default function ObjectCatalog() {
     </div>
   );
 
-  const FAMILIES = ['observability', 'quality', 'contract'] as const;
-  const STATUSES = ['pass', 'warn', 'fail', 'critical', 'unknown'] as const;
   const hasActiveFilter = !!(textFilter || familyFilter || statusFilter || spaceFilter);
 
   return (
@@ -115,6 +117,9 @@ export default function ObjectCatalog() {
         <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.objects.title}</h1>
         <input
           type="search"
+          name="object-search"
+          autoComplete="off"
+          spellCheck={false}
           value={textFilter}
           onChange={e => setTextFilter(e.target.value)}
           placeholder={t.objects.searchPlaceholder}

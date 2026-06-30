@@ -33,7 +33,7 @@ export const useUIStore = create<UIState>()(
       density: 'comfortable',
       setDensity: (density) => set({ density }),
       toggleDensity: () => set((s) => ({ density: s.density === 'compact' ? 'comfortable' : 'compact' })),
-      theme: 'classic',
+      theme: 'signal',
       setTheme: (theme) => set({ theme }),
       // Advance to the next theme in the cycle (used by the keyboard-less toggle).
       toggleTheme: () => set((s) => ({ theme: THEMES[(THEMES.indexOf(s.theme) + 1) % THEMES.length] })),

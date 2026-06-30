@@ -1,6 +1,6 @@
+import { lazy, Suspense } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useProduct } from '@/api/products';
-import { LineageMiniGraph } from '@/components/LineageMiniGraph';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Panel } from '@/components/ui/Panel';
@@ -14,6 +14,10 @@ import type {
   ProductPort,
   ProductUpstreamRiskEntry,
 } from '@/types';
+
+const LineageMiniGraph = lazy(() =>
+  import('@/components/LineageMiniGraph').then(module => ({ default: module.LineageMiniGraph })),
+);
 
 function OwnerChips({ owners }: { owners: string[] }) {
   return (
@@ -182,7 +186,9 @@ export default function ProductDetail() {
         </Panel>
 
         <Panel title={t.products.lineageTitle} family="observability">
-          <LineageMiniGraph subgraph={data.subgraph} />
+          <Suspense fallback={<div style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.common.loading}</div>}>
+            <LineageMiniGraph subgraph={data.subgraph} />
+          </Suspense>
         </Panel>
       </div>
     </div>

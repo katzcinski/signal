@@ -36,6 +36,7 @@ os.environ.setdefault("CONTRACTS_DIR", "contracts")
 os.environ.setdefault("CHECKS_DIR", "checks")
 os.environ.setdefault("PRODUCTS_DIR", "products")
 
+from dq_core.engine.expectation import evaluate
 from dq_core.engine.models import CheckResult, RunSummary
 from dq_core.store.sqlite_store import ResultStore
 
@@ -465,27 +466,28 @@ DEMO_PROFILE_SCENARIOS: dict[str, list[dict[str, Any]]] = {
 }
 
 
-def _passes(actual: float, expect_str: str) -> bool:
-    if expect_str.startswith("= "):
-        return actual == float(expect_str[2:])
-    if expect_str.startswith("<= "):
-        return actual <= float(expect_str[3:])
-    if expect_str.startswith("BETWEEN "):
-        parts = expect_str.split()
-        return float(parts[1]) <= actual <= float(parts[3])
-    return True
-
-
-def _overall_status(results: list[CheckResult]) -> str:
-    if any(not result.passed and result.severity == "critical" for result in results):
-        return "critical"
-    failed = [result for result in results if not result.passed and result.severity in {"critical", "fail"}]
-    if failed:
-        return "fail"
-    warnings = [result for result in results if not result.passed and result.severity == "warn"]
-    if warnings:
-        return "warn"
-    return "pass"
+def _summary_counts(results: list[CheckResult]) -> tuple[int, int, int, str]:
+    """Roll up results into (passed, failed, warnings, overall_status) in one pass."""
+    passed = failed = warnings = 0
+    critical = False
+    for result in results:
+        if result.passed:
+            passed += 1
+        elif result.severity in {"critical", "fail"}:
+            failed += 1
+            if result.severity == "critical":
+                critical = True
+        elif result.severity == "warn":
+            warnings += 1
+    if critical:
+        overall = "critical"
+    elif failed:
+        overall = "fail"
+    elif warnings:
+        overall = "warn"
+    else:
+        overall = "pass"
+    return passed, failed, warnings, overall
 
 
 def _seed_run_id(dataset: str, run_idx: int) -> str:
@@ -520,7 +522,7 @@ def seed_run_history(store: ResultStore, *, base_now: datetime | None = None) ->
             for check in checks:
                 lo, hi = actuals_range.get(check["name"], (0.0, 10.0))
                 actual = round(rng.uniform(lo, hi), 2)
-                passed = _passes(actual, check["expect"])
+                passed = evaluate(actual, check["expect"])
                 results.append(
                     CheckResult(
                         name=check["name"],
@@ -535,17 +537,18 @@ def seed_run_history(store: ResultStore, *, base_now: datetime | None = None) ->
                         kind=scenario.get("kind", "internal_gate"),
                     )
                 )
+            passed, failed, warnings, overall = _summary_counts(results)
             summary = RunSummary(
                 run_id=run_id,
                 dataset=dataset,
                 schema=scenario.get("schema", dataset),
                 started_at=started.isoformat(),
                 finished_at=finished.isoformat(),
-                overall_status=_overall_status(results),
+                overall_status=overall,
                 total=len(results),
-                passed=sum(1 for result in results if result.passed),
-                failed=sum(1 for result in results if not result.passed and result.severity in {"critical", "fail"}),
-                warnings=sum(1 for result in results if not result.passed and result.severity == "warn"),
+                passed=passed,
+                failed=failed,
+                warnings=warnings,
                 results=results,
                 triggered_by="seed",
                 actor="seed_script",

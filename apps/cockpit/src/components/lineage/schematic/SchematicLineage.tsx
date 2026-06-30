@@ -184,6 +184,9 @@ export default function SchematicLineage() {
 
             <input
               style={searchInput}
+              name="lineage-search"
+              autoComplete="off"
+              spellCheck={false}
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={S.searchPlaceholder}
@@ -293,10 +296,18 @@ function SeedSearch({
   const matches = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const chosen = new Set(selected);
-    return options
-      .filter(o => !chosen.has(o.id))
-      .filter(o => !needle || o.name.toLowerCase().includes(needle) || o.id.toLowerCase().includes(needle))
-      .slice(0, 8);
+    const next: ObjectSummary[] = [];
+    for (const option of options) {
+      if (chosen.has(option.id)) continue;
+      if (
+        needle &&
+        !option.name.toLowerCase().includes(needle) &&
+        !option.id.toLowerCase().includes(needle)
+      ) continue;
+      next.push(option);
+      if (next.length === 8) break;
+    }
+    return next;
   }, [options, selected, q]);
 
   const pick = (id: string) => {
@@ -309,6 +320,9 @@ function SeedSearch({
     <div style={seedSearchWrap}>
       <input
         style={seedSearchInput}
+        name="lineage-seed-search"
+        autoComplete="off"
+        spellCheck={false}
         value={q}
         autoFocus={autoFocus}
         onChange={e => {
@@ -357,7 +371,7 @@ const toolbar: CSSProperties = {
 const titleStyle: CSSProperties = { fontSize: 15, fontWeight: 600, color: 'var(--fg)' };
 const searchInput: CSSProperties = {
   flex: 1, minWidth: 160, maxWidth: 320, background: 'var(--bg-1)', border: '1px solid var(--line)',
-  borderRadius: 'var(--r-md)', color: 'var(--fg)', fontSize: 13, padding: '8px 11px', outline: 'none',
+  borderRadius: 'var(--r-md)', color: 'var(--fg)', fontSize: 13, padding: '8px 11px',
 };
 const toggle: CSSProperties = {
   display: 'flex', background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', overflow: 'hidden',
@@ -404,7 +418,7 @@ const seedChipX: CSSProperties = {
 const seedSearchWrap: CSSProperties = { position: 'relative' };
 const seedSearchInput: CSSProperties = {
   minWidth: 180, background: 'var(--bg-1)', border: '1px dashed var(--line-2)', borderRadius: 'var(--r-md)',
-  color: 'var(--fg)', fontSize: 13, padding: '7px 11px', outline: 'none',
+  color: 'var(--fg)', fontSize: 13, padding: '7px 11px',
 };
 const seedDropdown: CSSProperties = {
   position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 20, minWidth: 240, maxWidth: 320,

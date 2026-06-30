@@ -33,7 +33,7 @@ function chip(active: boolean): React.CSSProperties {
     border: `1px solid ${active ? 'var(--cont)' : 'var(--line-2)'}`,
     background: active ? 'color-mix(in srgb, var(--cont) 16%, transparent)' : 'transparent',
     color: active ? 'var(--fg)' : 'var(--fg-3)',
-    transition: 'var(--t)',
+    transition: 'background var(--t), border-color var(--t), color var(--t)',
   };
 }
 

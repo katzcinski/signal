@@ -1,11 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Cytoscape from 'cytoscape';
-import dagre from 'cytoscape-dagre';
+import type Cytoscape from 'cytoscape';
 import { lineageNodeLabel } from '@/lib/lineage';
 import type { LineageGraph, LineageNode } from '@/types';
 
-Cytoscape.use(dagre as Parameters<typeof Cytoscape.use>[0]);
+let dagreRegistered = false;
+
+function registerDagre(CytoscapeFactory: typeof Cytoscape, dagre: unknown) {
+  if (dagreRegistered) return;
+  CytoscapeFactory.use(dagre as Parameters<typeof CytoscapeFactory.use>[0]);
+  dagreRegistered = true;
+}
 
 interface LineageMiniGraphProps {
   subgraph: LineageGraph;
@@ -127,107 +132,123 @@ export function LineageMiniGraph({ subgraph }: LineageMiniGraphProps) {
   useEffect(() => {
     if (!ref.current || subgraph.nodes.length === 0 || sparse) return undefined;
 
-    const theme = resolveTheme();
-    const cy = Cytoscape({
-      container: ref.current,
-      elements: {
-        nodes: subgraph.nodes.map(node => ({
-          data: {
-            ...node,
-            id: node.id,
-            label: lineageNodeLabel(node),
-            color: nodeColor(node, theme),
-          },
-        })),
-        edges: subgraph.edges.map((edge, index) => ({
-          data: {
-            ...edge,
-            id: edge.id || `${edge.source}->${edge.target}:${index}`,
-            source: edge.source,
-            target: edge.target,
-          },
-        })),
-      },
-      style: [
-        {
-          selector: 'node',
-          style: {
-            'label': 'data(label)',
-            'shape': 'roundrectangle',
-            'background-color': theme.bg2,
-            'border-color': 'data(color)',
-            'border-width': 2,
-            'color': theme.fg,
-            'font-family': theme.fontMono,
-            'font-size': 10,
-            'font-weight': 600,
-            'height': 34,
-            'padding': 10,
-            'text-halign': 'center',
-            'text-valign': 'center',
-            'text-max-width': '150px',
-            'text-wrap': 'ellipsis',
-            'width': 'label',
-          } as Record<string, unknown>,
-        },
-        {
-          selector: 'edge',
-          style: {
-            'arrow-scale': 0.7,
-            'curve-style': 'bezier',
-            'line-color': theme.line2,
-            'line-opacity': 0.9,
-            'target-arrow-color': theme.line2,
-            'target-arrow-shape': 'triangle',
-            'width': 1.6,
-          } as Record<string, unknown>,
-        },
-        {
-          selector: 'node:selected',
-          style: {
-            'background-color': theme.cont,
-            'border-color': theme.fg2,
-          } as Record<string, unknown>,
-        },
-      ],
-      layout: { name: 'preset' },
-      maxZoom: 2.2,
-      minZoom: 0.25,
-      userPanningEnabled: true,
-      userZoomingEnabled: true,
-      wheelSensitivity: 0.2,
-    });
-
-    cy.on('tap', 'node', event => {
-      const id = String(event.target.id());
-      if (id) navigate(`/objects/${encodeURIComponent(id)}`);
-    });
-
-    cy.layout({
-      name: 'dagre',
-      rankDir: 'LR',
-      nodeSep: 42,
-      rankSep: 88,
-      fit: true,
-      padding: 30,
-    } as Cytoscape.LayoutOptions).run();
-
-    window.setTimeout(() => {
-      if (!cy.destroyed()) cy.fit(undefined, 30);
-    }, 0);
-
+    let cancelled = false;
+    let cy: Cytoscape.Core | null = null;
     let ro: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined' && ref.current) {
-      ro = new ResizeObserver(() => {
-        cy.resize();
-        cy.fit(undefined, 30);
+    const container = ref.current;
+
+    const init = async () => {
+      const [{ default: CytoscapeFactory }, { default: dagre }] = await Promise.all([
+        import('cytoscape'),
+        import('cytoscape-dagre'),
+      ]);
+      if (cancelled || !container) return;
+      registerDagre(CytoscapeFactory, dagre);
+
+      const theme = resolveTheme();
+      cy = CytoscapeFactory({
+        container,
+        elements: {
+          nodes: subgraph.nodes.map(node => ({
+            data: {
+              ...node,
+              id: node.id,
+              label: lineageNodeLabel(node),
+              color: nodeColor(node, theme),
+            },
+          })),
+          edges: subgraph.edges.map((edge, index) => ({
+            data: {
+              ...edge,
+              id: edge.id || `${edge.source}->${edge.target}:${index}`,
+              source: edge.source,
+              target: edge.target,
+            },
+          })),
+        },
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'label': 'data(label)',
+              'shape': 'roundrectangle',
+              'background-color': theme.bg2,
+              'border-color': 'data(color)',
+              'border-width': 2,
+              'color': theme.fg,
+              'font-family': theme.fontMono,
+              'font-size': 10,
+              'font-weight': 600,
+              'height': 34,
+              'padding': 10,
+              'text-halign': 'center',
+              'text-valign': 'center',
+              'text-max-width': '150px',
+              'text-wrap': 'ellipsis',
+              'width': 'label',
+            } as Record<string, unknown>,
+          },
+          {
+            selector: 'edge',
+            style: {
+              'arrow-scale': 0.7,
+              'curve-style': 'bezier',
+              'line-color': theme.line2,
+              'line-opacity': 0.9,
+              'target-arrow-color': theme.line2,
+              'target-arrow-shape': 'triangle',
+              'width': 1.6,
+            } as Record<string, unknown>,
+          },
+          {
+            selector: 'node:selected',
+            style: {
+              'background-color': theme.cont,
+              'border-color': theme.fg2,
+            } as Record<string, unknown>,
+          },
+        ],
+        layout: { name: 'preset' },
+        maxZoom: 2.2,
+        minZoom: 0.25,
+        userPanningEnabled: true,
+        userZoomingEnabled: true,
+        wheelSensitivity: 0.2,
       });
-      ro.observe(ref.current);
-    }
+
+      cy.on('tap', 'node', event => {
+        const id = String(event.target.id());
+        if (id) navigate(`/objects/${encodeURIComponent(id)}`);
+      });
+
+      cy.layout({
+        name: 'dagre',
+        rankDir: 'LR',
+        nodeSep: 42,
+        rankSep: 88,
+        fit: true,
+        padding: 30,
+      } as Cytoscape.LayoutOptions).run();
+
+      window.setTimeout(() => {
+        if (!cy?.destroyed()) cy?.fit(undefined, 30);
+      }, 0);
+
+      if (typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver(() => {
+          cy?.resize();
+          cy?.fit(undefined, 30);
+        });
+        ro.observe(container);
+      }
+    };
+
+    void init();
 
     return () => {
+      cancelled = true;
       ro?.disconnect();
-      cy.destroy();
+      cy?.destroy();
     };
   }, [navigate, sparse, subgraph]);
 

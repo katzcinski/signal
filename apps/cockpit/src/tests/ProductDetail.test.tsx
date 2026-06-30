@@ -35,7 +35,7 @@ vi.mock('@/api/products', () => ({
 }));
 
 describe('ProductDetail', () => {
-  it('hides findings and upstream risk sections when empty', () => {
+  it('hides findings and upstream risk sections when empty', async () => {
     render(
       <MemoryRouter initialEntries={['/products/sales_product']}>
         <Routes>
@@ -48,5 +48,6 @@ describe('ProductDetail', () => {
     expect(screen.queryByText('Findings')).toBeNull();
     expect(screen.queryByText('Upstream Risk')).toBeNull();
     expect(screen.getByText('Ports')).toBeTruthy();
+    expect(await screen.findByText('Mini graph')).toBeTruthy();
   });
 });
