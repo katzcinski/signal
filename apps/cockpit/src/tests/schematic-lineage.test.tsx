@@ -45,6 +45,14 @@ async function pickSeed(label = 'INB') {
   fireEvent.mouseDown(option);
 }
 
+/** Spalten eines Chips über den Kopf-Chevron ausklappen. */
+async function expandColumns(label: string) {
+  const toggle = await screen.findByRole('button', {
+    name: new RegExp(`Spalten anzeigen.*${label}`),
+  });
+  fireEvent.click(toggle);
+}
+
 describe('SchematicLineage container', () => {
   it('gates on a seed and renders the board once one is chosen', async () => {
     render(<SchematicLineage />);
@@ -54,9 +62,11 @@ describe('SchematicLineage container', () => {
 
     await pickSeed('INB');
 
-    // Board-only Pin-Label bestätigt, dass der Graph gerendert ist
-    // (Chip-Titel "INB" käme doppelt vor — auch als Seed-Chip).
-    expect(await screen.findByText('VBELN')).toBeInTheDocument();
+    // Default: alles eingeklappt (Objekt-Ebene) — Spaltenanzahl statt Pin-Labels.
+    await waitFor(() => {
+      expect(screen.getAllByText('2 cols').length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText('VBELN')).not.toBeInTheDocument();
     // Layer-Sidebar + System-Chips aus den Daten.
     expect(screen.getByText('S/4HANA')).toBeInTheDocument();
     expect(screen.getByText('Datasphere')).toBeInTheDocument();
@@ -65,6 +75,8 @@ describe('SchematicLineage container', () => {
   it('traces a column and surfaces its transformation in the inspector', async () => {
     render(<SchematicLineage />);
     await pickSeed('INB');
+    // Spalten müssen erst ausgeklappt werden, bevor ein Pin tracebar ist.
+    await expandColumns('HRM');
     const pin = await screen.findByText('NET_VALUE_USD');
     fireEvent.click(pin);
     // Inspector zeigt den Transformations-Codeblock (pre), nicht nur den SVG-Tooltip.
@@ -73,13 +85,20 @@ describe('SchematicLineage container', () => {
     });
   });
 
-  it('switches to object level and shows column counts', async () => {
+  it('expands a single node\'s columns on the chevron click', async () => {
     render(<SchematicLineage />);
     await pickSeed('INB');
-    await screen.findByText('VBELN');
-    fireEvent.click(screen.getByText('Objekt-Ebene'));
+    // Eingeklappt: keine Spalten-Pins sichtbar.
     await waitFor(() => {
       expect(screen.getAllByText('2 cols').length).toBeGreaterThan(0);
     });
+    expect(screen.queryByText('SALES_DOC')).not.toBeInTheDocument();
+
+    await expandColumns('HRM');
+
+    // Nur HRM ausgeklappt → dessen Pins erscheinen, INB bleibt eingeklappt.
+    expect(await screen.findByText('SALES_DOC')).toBeInTheDocument();
+    expect(screen.queryByText('VBELN')).not.toBeInTheDocument();
+    expect(screen.getByText('Alle Spalten einklappen')).toBeInTheDocument();
   });
 });

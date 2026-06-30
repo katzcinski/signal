@@ -473,8 +473,9 @@ export const t = {
     kpiUnvalidated: '>30d unvalidiert',
     unvalidatedTitle: 'Seit >30 Tagen nicht validiert',
     schematic: {
-      columnLevel: 'Spalten-Ebene',
-      objectLevel: 'Objekt-Ebene',
+      expandColumns: 'Spalten anzeigen',
+      collapseColumns: 'Spalten ausblenden',
+      collapseAll: 'Alle Spalten einklappen',
       searchPlaceholder: 'Objekte oder Spalten suchen…',
       layers: 'Layer',
       systems: 'Systeme',

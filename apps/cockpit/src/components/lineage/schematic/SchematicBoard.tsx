@@ -8,9 +8,12 @@
  */
 import { useCallback, useEffect, useId, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { columnId, edgeTypeColor } from '@/lib/lineage';
+import { t } from '@/i18n/de';
 import type { PositionedChip, RoutedEdge, RoutedObjectEdge, SchematicLayout } from './layout';
 import { GEO } from './layout';
 import { dqStatusColor, laneColor, orthogonalPath } from './theme';
+
+const T = t.lineage.schematic;
 
 const ZOOM_MIN = 0.2;
 const ZOOM_MAX = 2.5;
@@ -45,6 +48,8 @@ export interface SchematicBoardProps {
   selectedPin?: { node: string; pin: string } | null;
   onSelectChip?: (nodeId: string) => void;
   onSelectPin?: (nodeId: string, pinId: string) => void;
+  /** Spalten dieses Chips ein-/ausklappen (Chevron im Kopf). */
+  onToggleColumns?: (nodeId: string) => void;
   onBackground?: () => void;
 }
 
@@ -57,6 +62,7 @@ export function SchematicBoard({
   selectedPin,
   onSelectChip,
   onSelectPin,
+  onToggleColumns,
   onBackground,
 }: SchematicBoardProps) {
   const gridId = useId();
@@ -184,28 +190,29 @@ export function SchematicBoard({
             onClick={guard(onBackground)}
           />
 
-          {/* Traces unter den Chips, damit Pin-Dots die Endpunkte überdecken. */}
+          {/* Traces unter den Chips, damit Pin-Dots die Endpunkte überdecken.
+              Hybrid: aggregierte Objekt-Kanten und Pin-zu-Pin-Traces koexistieren
+              je nach Expansions-Zustand der Endknoten. */}
           <g className="schem-traces">
-            {layout.mode === 'column'
-              ? layout.edges.map(edge => (
-                  <ColumnTrace
-                    key={edge.id}
-                    edge={edge}
-                    active={!!traceEdges && traceEdges.has(edge.id)}
-                    dimmed={
-                      isDimmedChip(edge.fromNode) ||
-                      isDimmedChip(edge.toNode) ||
-                      (tracing && !(traceEdges && traceEdges.has(edge.id)))
-                    }
-                  />
-                ))
-              : layout.objectEdges.map(edge => (
-                  <ObjectTrace
-                    key={edge.id}
-                    edge={edge}
-                    dimmed={isDimmedChip(edge.fromNode) || isDimmedChip(edge.toNode)}
-                  />
-                ))}
+            {layout.objectEdges.map(edge => (
+              <ObjectTrace
+                key={edge.id}
+                edge={edge}
+                dimmed={isDimmedChip(edge.fromNode) || isDimmedChip(edge.toNode)}
+              />
+            ))}
+            {layout.edges.map(edge => (
+              <ColumnTrace
+                key={edge.id}
+                edge={edge}
+                active={!!traceEdges && traceEdges.has(edge.id)}
+                dimmed={
+                  isDimmedChip(edge.fromNode) ||
+                  isDimmedChip(edge.toNode) ||
+                  (tracing && !(traceEdges && traceEdges.has(edge.id)))
+                }
+              />
+            ))}
           </g>
 
           <g className="schem-chips">
@@ -213,7 +220,6 @@ export function SchematicBoard({
               <Chip
                 key={chip.id}
                 chip={chip}
-                mode={layout.mode}
                 shadowId={shadowId}
                 dimmed={isDimmedChip(chip.id)}
                 selected={selectedChip === chip.id}
@@ -221,6 +227,7 @@ export function SchematicBoard({
                 selectedPin={selectedPin}
                 onSelectChip={guard(onSelectChip)}
                 onSelectPin={guard(onSelectPin)}
+                onToggleColumns={guard(onToggleColumns)}
               />
             ))}
           </g>
@@ -262,7 +269,6 @@ function ObjectTrace({ edge, dimmed }: { edge: RoutedObjectEdge; dimmed: boolean
 
 interface ChipProps {
   chip: PositionedChip;
-  mode: 'column' | 'object';
   shadowId: string;
   dimmed: boolean;
   selected: boolean;
@@ -270,22 +276,41 @@ interface ChipProps {
   selectedPin?: { node: string; pin: string } | null;
   onSelectChip?: (nodeId: string) => void;
   onSelectPin?: (nodeId: string, pinId: string) => void;
+  onToggleColumns?: (nodeId: string) => void;
 }
 
-function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, onSelectChip, onSelectPin }: ChipProps) {
+function Chip({
+  chip,
+  shadowId,
+  dimmed,
+  selected,
+  tracePins,
+  selectedPin,
+  onSelectChip,
+  onSelectPin,
+  onToggleColumns,
+}: ChipProps) {
   const clipId = useId();
+  const expanded = chip.expanded;
   const cls = 'schem-chip' + (selected ? ' is-selected' : '') + (dimmed ? ' is-dimmed' : '');
   const tagText = `${chip.layer.toUpperCase()}${chip.system ? ` · ${chip.system}` : ''}`;
   const dqColor = chip.dqStatus ? dqStatusColor(chip.dqStatus) : null;
-  const dotY = mode === 'object' ? 20 : 32;
+  const dotY = 18;
   const lane = laneColor(chip.laneOrder);
-  // Spalten-Chips bekommen ein abgesetztes Kopfband; Objekt-Chips sind nur Kopf.
-  const headerH = mode === 'column' ? 58 : chip.height;
+  // Expandierte Chips bekommen ein abgesetztes Kopfband + Pin-Reihen; eingeklappte
+  // sind reine Objekt-Karten (Kopf == ganzer Chip).
+  const headerH = expanded ? GEO.headerH : chip.height;
+  const hasPins = chip.pins.length > 0;
   const selectChip = () => onSelectChip?.(chip.id);
   const selectPin = (event: MouseEvent<SVGElement>, pinId: string) => {
     event.stopPropagation();
     onSelectPin?.(chip.id, pinId);
   };
+  const toggleColumns = (event: MouseEvent<SVGElement>) => {
+    event.stopPropagation();
+    onToggleColumns?.(chip.id);
+  };
+  const toggleLabel = `${expanded ? T.collapseColumns : T.expandColumns} – ${chip.label}`;
 
   return (
     <g className={cls} transform={`translate(${chip.x}, ${chip.y})`} onClick={selectChip} style={{ cursor: 'pointer' }}>
@@ -305,7 +330,7 @@ function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, 
       <g clipPath={`url(#${clipId})`}>
         <rect className="schem-chip-header" x={0} y={0} width={chip.width} height={headerH} />
         <rect className="schem-lane" x={0} y={0} width={chip.width} height={3} fill={lane} />
-        {mode === 'column' && (
+        {expanded && (
           <line className="schem-divider" x1={0} y1={headerH} x2={chip.width} y2={headerH} />
         )}
       </g>
@@ -321,7 +346,7 @@ function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, 
       >
         {chip.label}
       </text>
-      {mode === 'object' && (
+      {!expanded && (
         <text className="schem-sub" x={13} y={53}>
           {`${chip.pins.length} cols`}
         </text>
@@ -339,7 +364,34 @@ function Chip({ chip, mode, shadowId, dimmed, selected, tracePins, selectedPin, 
         </circle>
       )}
 
-      {mode === 'column' &&
+      {/* Spalten-Expander: eigene Affordance im Kopf, klar getrennt vom
+          Nachbar-Expand-Handle. Nur sichtbar, wenn der Chip Spalten hat. */}
+      {hasPins && (
+        <g
+          className={'schem-col-toggle' + (expanded ? ' is-open' : '')}
+          role="button"
+          aria-label={toggleLabel}
+          onClick={toggleColumns}
+          style={{ cursor: 'pointer' }}
+        >
+          <title>{toggleLabel}</title>
+          <rect
+            className="schem-col-toggle-hit"
+            x={chip.width - 30}
+            y={28}
+            width={24}
+            height={20}
+            rx={5}
+          />
+          <path
+            className="schem-col-toggle-icon"
+            d="M -3.5 -2.5 L 0 1.5 L 3.5 -2.5"
+            transform={`translate(${chip.width - 18}, 38)${expanded ? '' : ' rotate(-90)'}`}
+          />
+        </g>
+      )}
+
+      {expanded &&
         chip.pins.map(pin => {
           const key = columnId(chip.id, pin.id);
           const active =

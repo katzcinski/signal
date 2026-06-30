@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSchematicModel,
   flattenColumnIndex,
+  partitionEdges,
   type RawColumnEdge,
 } from '@/components/lineage/schematic/model';
 import { columnId } from '@/lib/lineage';
@@ -106,6 +107,44 @@ describe('buildSchematicModel', () => {
 
   it('exposes a stable pin key matching columnId', () => {
     expect(model.pinKeyOf('DS_INB', 'VBELN')).toBe(columnId('DS_INB', 'VBELN'));
+  });
+});
+
+describe('partitionEdges', () => {
+  const model = buildSchematicModel(NODES, EDGES);
+
+  it('draws pin-to-pin only when both ends are expanded', () => {
+    const { columnEdges, objectEdges } = partitionEdges(model, new Set(['DS_INB', 'DS_HRM']));
+    expect(columnEdges).toHaveLength(2);
+    // Das Paar ist voll über Spalten-Kanten abgebildet → keine Objekt-Kante.
+    expect(objectEdges).toHaveLength(0);
+  });
+
+  it('aggregates to a single object edge when only one side is expanded', () => {
+    const { columnEdges, objectEdges } = partitionEdges(model, new Set(['DS_INB']));
+    expect(columnEdges).toHaveLength(0);
+    expect(objectEdges.map(o => `${o.from}>${o.to}`)).toEqual(['DS_INB>DS_HRM']);
+  });
+
+  it('aggregates everything when nothing is expanded', () => {
+    const { columnEdges, objectEdges } = partitionEdges(model, new Set());
+    expect(columnEdges).toHaveLength(0);
+    expect(objectEdges).toHaveLength(1);
+  });
+
+  it('keeps a coarse object edge between two expanded nodes that lack column lineage', () => {
+    // HRM -> BUS existiert nur als grobe Objekt-Edge (keine Column-Edges).
+    const m = buildSchematicModel(
+      [
+        { id: 'HRM', layer: 'Harmonization', layerCode: 'ic', columns: ['b'] },
+        { id: 'BUS', layer: 'Business', layerCode: 'bc', columns: ['c'] },
+      ],
+      [],
+      [{ source: 'HRM', target: 'BUS' }],
+    );
+    const { columnEdges, objectEdges } = partitionEdges(m, new Set(['HRM', 'BUS']));
+    expect(columnEdges).toHaveLength(0);
+    expect(objectEdges.map(o => `${o.from}>${o.to}`)).toEqual(['HRM>BUS']);
   });
 });
 

@@ -280,3 +280,40 @@ function addExtra(map: Map<string, Set<string>>, object: string, column: string)
   set.add(column);
   map.set(object, set);
 }
+
+/** Ergebnis der Kanten-Partitionierung für den hybriden (per-Node) Modus. */
+export interface PartitionedEdges {
+  /** Pin-zu-Pin-Kanten — nur zwischen zwei expandierten Chips. */
+  columnEdges: SchematicEdge[];
+  /** Aggregierte Objekt-zu-Objekt-Kanten für alle übrigen Paare. */
+  objectEdges: ObjectEdge[];
+}
+
+// ' ' als Separator: kommt in Objekt-IDs nicht vor.
+const pairKey = (from: string, to: string) => `${from} ${to}`;
+
+/**
+ * Partitioniert die Kanten des Modells nach dem hybriden Expansions-Zustand:
+ * Ein Knotenpaar wird genau dann auf Spalten-Ebene (Pin-zu-Pin) gezeichnet,
+ * wenn **beide** Enden expandiert sind und mindestens eine Column-Edge tragen;
+ * sonst aggregiert es zu einer einzigen Objekt-Kante.
+ *
+ * Bewusst rein und an **einer** Stelle, damit Graph-Aufbau (buildElkGraph) und
+ * Ergebnis-Mapping (mapElkResult) dieselbe Aufteilung sehen und nie driften.
+ */
+export function partitionEdges(
+  model: SchematicModel,
+  expanded: ReadonlySet<string>,
+): PartitionedEdges {
+  const bothExpanded = (a: string, b: string) => expanded.has(a) && expanded.has(b);
+
+  const columnEdges = model.edges.filter(e => bothExpanded(e.fromNode, e.toNode));
+  // Paare, die tatsächlich als Spalten-Kanten gezeichnet werden. Nur diese
+  // werden aus den Objekt-Kanten entfernt — ein voll expandiertes Paar ohne
+  // Column-Edges (nur grobe Objekt-Edge) bleibt sichtbar.
+  const columnPairs = new Set(columnEdges.map(e => pairKey(e.fromNode, e.toNode)));
+
+  const objectEdges = model.objectEdges.filter(o => !columnPairs.has(pairKey(o.from, o.to)));
+
+  return { columnEdges, objectEdges };
+}

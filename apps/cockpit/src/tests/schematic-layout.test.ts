@@ -23,6 +23,8 @@ const EDGES: RawColumnEdge[] = [
   },
 ];
 const model = buildSchematicModel(NODES, EDGES);
+const ALL = new Set(['INB', 'HRM']);
+const NONE = new Set<string>();
 
 describe('geometry', () => {
   it('stacks pin rows below the header', () => {
@@ -32,8 +34,8 @@ describe('geometry', () => {
   });
 });
 
-describe('buildElkGraph (column)', () => {
-  const graph = buildElkGraph(model, 'column');
+describe('buildElkGraph (both expanded)', () => {
+  const graph = buildElkGraph(model, ALL);
 
   it('emits a WEST port for incoming and EAST for outgoing pins', () => {
     const inb = graph.children!.find(c => c.id === 'INB')!;
@@ -61,13 +63,31 @@ describe('buildElkGraph (column)', () => {
   });
 });
 
-describe('buildElkGraph (object)', () => {
+describe('buildElkGraph (none expanded)', () => {
   it('drops ports and aggregates column traces to one object edge', () => {
-    const graph = buildElkGraph(model, 'object');
+    const graph = buildElkGraph(model, NONE);
     const hrm = graph.children!.find(c => c.id === 'HRM')!;
     expect(hrm.ports).toBeUndefined();
     expect(graph.edges).toHaveLength(1);
+    expect(graph.edges![0].id).toBe('objedge:INB:HRM');
     expect(graph.edges![0].sources).toEqual(['INB']);
+  });
+});
+
+describe('buildElkGraph (hybrid — one side expanded)', () => {
+  it('routes a mixed pair as a single aggregated object edge, not pin-to-pin', () => {
+    // Nur INB expandiert: HRM bleibt portlos → das Paar aggregiert.
+    const graph = buildElkGraph(model, new Set(['INB']));
+    const inb = graph.children!.find(c => c.id === 'INB')!;
+    const hrm = graph.children!.find(c => c.id === 'HRM')!;
+    // INB hat Ports (für eigene Spalten-Lineage-Dots), HRM nicht.
+    expect(inb.ports!.length).toBeGreaterThan(0);
+    expect(hrm.ports).toBeUndefined();
+    // Keine Pin-zu-Pin-Kante, sondern eine aggregierte Objekt-Kante.
+    expect(graph.edges).toHaveLength(1);
+    expect(graph.edges![0].id).toBe('objedge:INB:HRM');
+    expect(graph.edges![0].sources).toEqual(['INB']);
+    expect(graph.edges![0].targets).toEqual(['HRM']);
   });
 });
 
@@ -91,10 +111,11 @@ describe('mapElkResult', () => {
         },
       ],
     };
-    const layout = mapElkResult(model, 'column', result);
+    const layout = mapElkResult(model, ALL, result);
     expect(layout.width).toBe(600);
     const hrm = layout.chips.find(c => c.id === 'HRM')!;
     expect(hrm.x).toBe(360);
+    expect(hrm.expanded).toBe(true);
     expect(hrm.pins[0].rowY).toBe(pinRowY(0));
     const edge = layout.edges.find(e => e.id === model.edges[0].id)!;
     expect(edge.points).toEqual([
@@ -108,7 +129,7 @@ describe('mapElkResult', () => {
 
 describe('layoutSchematic (ELK integration)', () => {
   it('lays Source left of Harmonization and routes every trace', async () => {
-    const layout = await layoutSchematic(model, 'column');
+    const layout = await layoutSchematic(model, ALL);
     const inb = layout.chips.find(c => c.id === 'INB')!;
     const hrm = layout.chips.find(c => c.id === 'HRM')!;
     expect(inb.x).toBeLessThan(hrm.x); // RIGHT direction, source partition first
@@ -116,5 +137,16 @@ describe('layoutSchematic (ELK integration)', () => {
     for (const e of layout.edges) {
       expect(e.points.length).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  it('routes an aggregated object edge into a one-sided-expanded pair', async () => {
+    // Nur INB expandiert → das Paar INB→HRM aggregiert; ELK muss die Objekt-
+    // Kante trotz fester Ports an INB an den HRM-Rand routen.
+    const layout = await layoutSchematic(model, new Set(['INB']));
+    expect(layout.edges).toHaveLength(0);
+    expect(layout.objectEdges).toHaveLength(1);
+    expect(layout.objectEdges[0].points.length).toBeGreaterThanOrEqual(2);
+    expect(layout.chips.find(c => c.id === 'INB')!.expanded).toBe(true);
+    expect(layout.chips.find(c => c.id === 'HRM')!.expanded).toBe(false);
   });
 });

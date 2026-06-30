@@ -8,7 +8,7 @@ import { useLineage } from '@/api/lineage';
 import { useObjects } from '@/api/objects';
 import { t } from '@/i18n/de';
 import { buildSchematicModel } from './model';
-import { layoutSchematic, type SchematicLayout, type ViewMode } from './layout';
+import { layoutSchematic, type SchematicLayout } from './layout';
 import { traceCircuit, type CircuitTrace } from './trace';
 import { SchematicBoard } from './SchematicBoard';
 import { SchematicInspector, type InspectorSelection } from './SchematicInspector';
@@ -29,7 +29,10 @@ export default function SchematicLineage() {
   const [depth, setDepth] = useState(2);
   const { data, isLoading } = useLineage({ seeds, depth, enabled: seeds.length > 0 });
   const { data: objects } = useObjects();
-  const [viewMode, setViewMode] = useState<ViewMode>('column');
+  // Per-Node-Expansion: Knoten-IDs, deren Spalten ausgeklappt sind. Default leer
+  // → alles eingeklappt (Objekt-Ebene). Spalten-Lineage entsteht nur zwischen
+  // zwei expandierten Knoten.
+  const [columnsExpanded, setColumnsExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [hiddenLayers, setHiddenLayers] = useState<Set<string>>(new Set());
   const [hiddenSystems, setHiddenSystems] = useState<Set<string>>(new Set());
@@ -53,14 +56,14 @@ export default function SchematicLineage() {
     }
     const token = ++layoutToken.current;
     setLayoutBusy(true);
-    layoutSchematic(model, viewMode)
+    layoutSchematic(model, columnsExpanded)
       .then(result => {
         if (token === layoutToken.current) setLayout(result);
       })
       .finally(() => {
         if (token === layoutToken.current) setLayoutBusy(false);
       });
-  }, [model, viewMode]);
+  }, [model, columnsExpanded]);
 
   const layers = useMemo(() => {
     const seen = new Map<string, { key: string; label: string; order: number; count: number }>();
@@ -114,10 +117,21 @@ export default function SchematicLineage() {
       return next;
     });
 
-  // Object-Mode kennt keinen Spalten-Trace.
-  const setView = (mode: ViewMode) => {
-    setViewMode(mode);
-    if (mode === 'object') setTrace(null);
+  // Spalten eines Knotens ein-/ausklappen. Beim Einklappen eines Knotens, der
+  // gerade einen getracten Pin hält, den Trace verwerfen (er wäre nicht mehr
+  // sichtbar).
+  const toggleColumns = (id: string) => {
+    setColumnsExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    if (columnsExpanded.has(id) && selection?.node === id && selection.pin) clearSelection();
+  };
+  const collapseAll = () => {
+    setColumnsExpanded(new Set());
+    if (selection?.pin) clearSelection();
   };
 
   const seedOptions = objects ?? [];
@@ -175,22 +189,11 @@ export default function SchematicLineage() {
               placeholder={S.searchPlaceholder}
               aria-label={S.searchPlaceholder}
             />
-            <div style={toggle}>
-              <button
-                type="button"
-                style={toggleBtn(viewMode === 'column')}
-                onClick={() => setView('column')}
-              >
-                {S.columnLevel}
+            {columnsExpanded.size > 0 && (
+              <button type="button" style={chip(true)} onClick={collapseAll}>
+                {S.collapseAll}
               </button>
-              <button
-                type="button"
-                style={toggleBtn(viewMode === 'object')}
-                onClick={() => setView('object')}
-              >
-                {S.objectLevel}
-              </button>
-            </div>
+            )}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {systems.map(sys => {
                 const active = !hiddenSystems.has(sys);
@@ -258,6 +261,7 @@ export default function SchematicLineage() {
               selectedPin={selection?.pin ? { node: selection.node, pin: selection.pin } : null}
               onSelectChip={selectChip}
               onSelectPin={selectPin}
+              onToggleColumns={toggleColumns}
               onBackground={clearSelection}
             />
           )}
