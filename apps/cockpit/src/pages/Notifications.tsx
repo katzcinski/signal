@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDeleteButton } from '@/components/ui/ControlPrimitives';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
@@ -66,7 +67,15 @@ function ChannelsSection({ channels, canEdit }: { channels: NotificationChannel[
             />
             {c.enabled ? t.notifications.enabled : t.notifications.disabled}
           </label>
-          {canEdit && <Button variant="ghost" size="sm" onClick={() => del.mutate(c.id)}>{t.notifications.delete}</Button>}
+          {canEdit && (
+            <ConfirmDeleteButton
+              label={t.notifications.delete}
+              confirmLabel={t.common.confirm}
+              cancelLabel={t.common.cancel}
+              disabled={del.isPending}
+              onConfirm={() => del.mutate(c.id)}
+            />
+          )}
         </div>
       ))}
       {canEdit && (
@@ -134,7 +143,15 @@ function RulesSection({ rules, channels, canEdit }: { rules: NotificationRule[];
           <span style={{ fontSize: 11, color: 'var(--fg-2)', flex: 1 }}>{facets(r)}</span>
           <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{t.notifications.routesTo}</span>
           <span style={{ fontSize: 12, color: 'var(--cont)' }}>{channelName(r.channel_id)}</span>
-          {canEdit && <Button variant="ghost" size="sm" onClick={() => del.mutate(r.id)}>{t.notifications.delete}</Button>}
+          {canEdit && (
+            <ConfirmDeleteButton
+              label={t.notifications.delete}
+              confirmLabel={t.common.confirm}
+              cancelLabel={t.common.cancel}
+              disabled={del.isPending}
+              onConfirm={() => del.mutate(r.id)}
+            />
+          )}
         </div>
       ))}
       {canEdit && channels.length > 0 && (
@@ -201,7 +218,15 @@ function MutesSection({ mutes, canEdit }: { mutes: NotificationMute[]; canEdit: 
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--fg-3)' }}>
               {new Date(m.starts_at).toLocaleString()} – {new Date(m.ends_at).toLocaleString()}
             </span>
-            {canEdit && <Button variant="ghost" size="sm" onClick={() => del.mutate(m.id)}>{t.notifications.delete}</Button>}
+            {canEdit && (
+              <ConfirmDeleteButton
+                label={t.notifications.delete}
+                confirmLabel={t.common.confirm}
+                cancelLabel={t.common.cancel}
+                disabled={del.isPending}
+                onConfirm={() => del.mutate(m.id)}
+              />
+            )}
           </div>
         );
       })}

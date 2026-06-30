@@ -35,7 +35,7 @@ vi.mock('@/api/products', () => ({
 }));
 
 describe('ProductDetail', () => {
-  it('hides findings and upstream risk sections when empty', async () => {
+  it('shows empty-state summary cards and hides detail sections when empty', async () => {
     render(
       <MemoryRouter initialEntries={['/products/sales_product']}>
         <Routes>
@@ -45,9 +45,10 @@ describe('ProductDetail', () => {
     );
 
     expect(screen.getAllByText('sales_product').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Findings')).toBeNull();
-    expect(screen.queryByText('Upstream Risk')).toBeNull();
-    expect(screen.getByText('Ports')).toBeTruthy();
+    expect(screen.getByText('No active findings across ports or interior objects.')).toBeTruthy();
+    expect(screen.getByText('No pinned-version drift or upstream breach signals detected.')).toBeTruthy();
+    expect(screen.queryByText('Pinned')).toBeNull();
+    expect(screen.getAllByText('Ports').length).toBeGreaterThan(0);
     expect(await screen.findByText('Mini graph')).toBeTruthy();
   });
 });

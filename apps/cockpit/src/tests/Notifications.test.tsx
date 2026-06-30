@@ -1,16 +1,20 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { t } from '@/i18n/de';
 import type { NotificationConfig } from '@/types';
 
-const h = vi.hoisted(() => ({ cfg: { current: null as NotificationConfig | null } }));
+const h = vi.hoisted(() => ({
+  cfg: { current: null as NotificationConfig | null },
+  deleteChannel: vi.fn(),
+}));
 
 // Mock the API layer so the page renders without react-query/axios.
 vi.mock('@/api/notifications', () => {
   const noopMut = () => ({ mutate: () => {}, isPending: false });
   return {
     useNotificationConfig: () => ({ data: h.cfg.current, isLoading: false, isError: false, refetch: () => {} }),
-    useCreateChannel: noopMut, usePatchChannel: noopMut, useDeleteChannel: noopMut,
+    useCreateChannel: noopMut, usePatchChannel: noopMut,
+    useDeleteChannel: () => ({ mutate: h.deleteChannel, isPending: false }),
     useCreateRule: noopMut, useDeleteRule: noopMut,
     useCreateMute: noopMut, useDeleteMute: noopMut,
   };
@@ -27,6 +31,10 @@ const baseConfig = (overrides: Partial<NotificationConfig> = {}): NotificationCo
 });
 
 describe('Notifications page (UX-N2)', () => {
+  beforeEach(() => {
+    h.deleteChannel.mockClear();
+  });
+
   it('renders channels and rule facets routing to the channel', () => {
     h.cfg.current = baseConfig();
     render(<Notifications />);
@@ -44,5 +52,16 @@ describe('Notifications page (UX-N2)', () => {
     expect(screen.getByText(t.role.readOnlyBanner)).toBeInTheDocument();
     expect(screen.queryByText(t.notifications.addChannel)).not.toBeInTheDocument();
     expect(screen.queryByText(t.notifications.addMute)).not.toBeInTheDocument();
+  });
+
+  it('requires confirmation before deleting a channel', () => {
+    h.cfg.current = baseConfig();
+    render(<Notifications />);
+
+    fireEvent.click(screen.getAllByText(t.notifications.delete)[0]);
+    expect(h.deleteChannel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText(t.common.confirm));
+    expect(h.deleteChannel).toHaveBeenCalledWith(1);
   });
 });
