@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useProposals, useProposalAction } from '@/api/proposals';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { t } from '@/i18n/de';
 import { diffExpect, OP_SYMBOL } from '@/lib/diff';
+import { clusterProposals, type ClusterDimension, type ProposalCluster } from '@/lib/proposalClusters';
 import { useRoleStore, canAcceptProposal } from '@/store/role';
 import type { Proposal } from '@/types';
 import { useNavigate } from 'react-router-dom';
@@ -160,17 +162,115 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
   );
 }
 
+const CARD_GRID: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s4)',
+};
+
+const SECTION_HEADING: React.CSSProperties = {
+  fontSize: 13, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12,
+};
+
+const GROUP_OPTIONS: ClusterDimension[] = ['product', 'kind', 'confidence', 'status', 'direction', 'none'];
+
+// Resolve the German header label for a cluster key along the active dimension.
+function clusterLabel(dim: ClusterDimension, key: string): string {
+  switch (dim) {
+    case 'product': return key;
+    case 'kind': return t.proposals.kindLabel[key] ?? key;
+    case 'confidence': return t.proposals.confidenceLabel[key] ?? key;
+    case 'status': return t.proposals.statusLabel[key] ?? key;
+    case 'direction': return t.proposals.directionLabel[key] ?? key;
+    case 'none': return '';
+  }
+}
+
+// UX: a steward scanning many proposals wants to attack them by object (or
+// another property) rather than one flat wall. This segmented control drives
+// clustering; default groups by object ("nach Objekt").
+function GroupByControl({ value, onChange }: { value: ClusterDimension; onChange: (d: ClusterDimension) => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
+      <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{t.proposals.groupByLabel}</span>
+      <div style={{ display: 'inline-flex', background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: 2 }}>
+        {GROUP_OPTIONS.map(opt => {
+          const active = opt === value;
+          return (
+            <button
+              key={opt}
+              onClick={() => onChange(opt)}
+              aria-pressed={active}
+              style={{
+                background: active ? 'var(--bg-1)' : 'transparent',
+                border: active ? '1px solid var(--line-2)' : '1px solid transparent',
+                color: active ? 'var(--fg)' : 'var(--fg-3)',
+                borderRadius: 'var(--r)', padding: '4px 10px', fontSize: 11,
+                cursor: 'pointer', fontWeight: active ? 500 : 400,
+              }}
+            >
+              {t.proposals.groupBy[opt]}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ClusterMeta({ cluster }: { cluster: ProposalCluster }) {
+  const parts = [
+    cluster.openCount > 0 ? t.proposals.clusterMeta.open.replace('{n}', String(cluster.openCount)) : null,
+    t.proposals.clusterMeta.total.replace('{n}', String(cluster.count)),
+    t.proposals.clusterMeta.avgConfidence.replace('{n}', String(Math.round(cluster.avgConfidence * 100))),
+  ].filter(Boolean) as string[];
+  return (
+    <span style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'center', flexWrap: 'wrap' }}>
+      {parts.map((p, i) => (
+        <span key={i} style={{
+          fontSize: 10, color: 'var(--fg-3)', background: 'var(--bg-3)',
+          border: '1px solid var(--line-2)', borderRadius: 'var(--r)', padding: '1px 7px',
+        }}>{p}</span>
+      ))}
+    </span>
+  );
+}
+
+function ClusterSection({ dim, cluster }: { dim: ClusterDimension; cluster: ProposalCluster }) {
+  return (
+    <details open style={{ marginBottom: 'var(--s4)' }}>
+      <summary style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s3)',
+        cursor: 'pointer', listStyle: 'none', padding: 'var(--s2) 0', marginBottom: 12,
+        borderBottom: '1px solid var(--line)',
+      }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)' }}>
+          {clusterLabel(dim, cluster.key)}
+        </span>
+        <ClusterMeta cluster={cluster} />
+      </summary>
+      <div style={CARD_GRID}>
+        {cluster.proposals.map(p => <ProposalCard key={p.id} proposal={p} />)}
+      </div>
+    </details>
+  );
+}
+
 export default function Proposals() {
   const { data: proposals = [], isLoading, isError, refetch } = useProposals();
   const role = useRoleStore(s => s.role);
-  const pending = proposals.filter(p => p.status === 'open');
-  const others  = proposals.filter(p => p.status !== 'open');
+  const [groupBy, setGroupBy] = useState<ClusterDimension>('product');
 
   if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</div>;
 
+  const pending = proposals.filter(p => p.status === 'open');
+  const others  = proposals.filter(p => p.status !== 'open');
+  const clusters = groupBy === 'none' ? [] : clusterProposals(proposals, groupBy);
+
   return (
     <div className="page-full">
-      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.proposals.title}</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s3)', flexWrap: 'wrap', marginBottom: 16 }}>
+        <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.proposals.title}</h1>
+        {proposals.length > 0 && <GroupByControl value={groupBy} onChange={setGroupBy} />}
+      </div>
       {!canAcceptProposal(role) && <ReadOnlyBanner />}
       {isError && <ErrorBanner onRetry={() => refetch()} />}
       {!isError && proposals.length === 0 && (
@@ -178,18 +278,25 @@ export default function Proposals() {
           {t.proposals.empty}
         </div>
       )}
-      {pending.length > 0 && (
+
+      {/* Clustered view: group by object (default) or another property. */}
+      {groupBy !== 'none' && clusters.map(c => (
+        <ClusterSection key={c.key || 'all'} dim={groupBy} cluster={c} />
+      ))}
+
+      {/* Flat view ("Keine"): keep the classic open/reviewed split. */}
+      {groupBy === 'none' && pending.length > 0 && (
         <>
-          <h2 style={{ fontSize: 13, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>{t.proposals.pending} ({pending.length})</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s4)', marginBottom: 24 }}>
+          <h2 style={SECTION_HEADING}>{t.proposals.pending} ({pending.length})</h2>
+          <div style={{ ...CARD_GRID, marginBottom: 24 }}>
             {pending.map(p => <ProposalCard key={p.id} proposal={p} />)}
           </div>
         </>
       )}
-      {others.length > 0 && (
+      {groupBy === 'none' && others.length > 0 && (
         <>
-          <h2 style={{ fontSize: 13, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>{t.proposals.reviewed} ({others.length})</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--s4)' }}>
+          <h2 style={SECTION_HEADING}>{t.proposals.reviewed} ({others.length})</h2>
+          <div style={CARD_GRID}>
             {others.map(p => <ProposalCard key={p.id} proposal={p} />)}
           </div>
         </>
