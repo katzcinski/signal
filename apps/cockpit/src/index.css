@@ -40,6 +40,14 @@
   /* Typography */
   --font-ui: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --fs-eyebrow: 11px;
+  --fs-h1: 24px;
+  --fs-h2: 18px;
+  --fs-body: 13px;
+  --fs-meta: 12px;
+  --lh-tight: 1.2;
+  --lh-body: 1.5;
+  --lh-meta: 1.35;
 
   /* Radius */
   --r: 4px;

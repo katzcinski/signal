@@ -9,7 +9,6 @@ import { useLineage } from '@/api/lineage';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { CheckStatusCell } from '@/components/ui/StatePill';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
-import { FamilyTag } from '@/components/ui/FamilyTag';
 import { LiveRunPanel } from '@/components/LiveRunPanel';
 import { RunTriggerDialog } from '@/components/RunTriggerDialog';
 import { BadgeEmbed } from '@/components/BadgeEmbed';
@@ -22,11 +21,17 @@ import { ColumnLineagePanel } from '@/components/lineage/ColumnLineagePanel';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { ObjectHero } from '@/components/object-detail/ObjectHero';
 import { useRoleStore, canProfileObject, canWriteContract } from '@/store/role';
 import { t } from '@/i18n/de';
 import type { CheckResult, ContractOut, RunListItem } from '@/types';
-
-type Tab = 'checks' | 'runs' | 'timeseries' | 'contract' | 'lineage' | 'schedule' | 'diff';
+import {
+  OBJECT_DETAIL_LEGACY_TABS,
+  OBJECT_DETAIL_TAB_TARGETS,
+  resolveObjectDetailTabTarget,
+  type ObjectDetailGroup,
+  type ObjectDetailTab as Tab,
+} from './objectDetailTabs';
 
 // ---------------------------------------------------------------------------
 // Structured contract view — replaces raw JSON.stringify
@@ -331,8 +336,10 @@ function HistorySpark({ objectId, checkName, enabled }: {
 export default function ObjectDetail() {
   const { id = '' } = useParams();
   const [sp, setSp] = useSearchParams();
-  const tab = (sp.get('tab') ?? 'checks') as Tab;
-  const setTab = (next: Tab) => setSp({ tab: next });
+  const tabTarget = resolveObjectDetailTabTarget(sp.get('tab'));
+  const activeGroup = tabTarget.group;
+  const tab = tabTarget.anchor;
+  const setTab = (next: Tab) => setSp({ tab: OBJECT_DETAIL_TAB_TARGETS[next].anchor });
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -382,10 +389,14 @@ export default function ObjectDetail() {
     seedContract.mutate(id, { onSuccess: () => navigate(target) });
   };
 
+  const isActiveSection = (group: ObjectDetailGroup, anchor: Tab) => (
+    activeGroup === group && tab === anchor
+  );
+
   const TAB_STYLE = (tabKey: Tab) => ({
     padding: 'var(--s2) var(--s4)', border: 'none', background: 'none',
-    color: tab === tabKey ? 'var(--fg)' : 'var(--fg-3)',
-    borderBottom: tab === tabKey ? '2px solid var(--cont)' : '2px solid transparent',
+    color: tab === OBJECT_DETAIL_TAB_TARGETS[tabKey].anchor ? 'var(--fg)' : 'var(--fg-3)',
+    borderBottom: tab === OBJECT_DETAIL_TAB_TARGETS[tabKey].anchor ? '2px solid var(--cont)' : '2px solid transparent',
     cursor: 'pointer', fontSize: 13,
   });
 
@@ -423,88 +434,25 @@ export default function ObjectDetail() {
         { label: t.breadcrumb.objects, to: '/objects' },
         { label: obj.name },
       ]} />
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
-        <button onClick={() => navigate('/objects')} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', cursor: 'pointer' }}>{t.objectDetail.back}</button>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700 }}>{obj.name}</span>
-            <FamilyTag family={obj.family} />
-            <StatusPill status={obj.status ?? 'unknown'} size="sm" />
-          </div>
-          <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{obj.space} · {obj.layer}</p>
-        </div>
-        <div style={{ flex: 1 }} />
-        {monCfg?.enabled && (() => {
-          if (!monEntry) {
-            return (
-              <button
-                onClick={() => requestMonitoring.mutate(id)}
-                disabled={requestMonitoring.isPending}
-                style={{
-                  background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)',
-                  borderRadius: 'var(--r-md)', padding: '7px 16px', fontSize: 13,
-                  cursor: requestMonitoring.isPending ? 'wait' : 'pointer',
-                  opacity: requestMonitoring.isPending ? 0.6 : 1,
-                }}
-              >
-                {requestMonitoring.isPending ? t.monitoring.requesting : t.monitoring.makeAvailable}
-              </button>
-            );
-          }
-          const tone = monEntry.status === 'provisioned' ? 'var(--status-ok)'
-            : monEntry.status === 'error' ? 'var(--status-fail)' : 'var(--status-warn)';
-          const label = monEntry.status === 'provisioned' ? t.monitoring.inMonitoring
-            : monEntry.status === 'error' ? t.monitoring.failed : t.monitoring.requested;
-          return (
-            <span
-              title={monEntry.error ?? (monEntry.view ? `View: ${monEntry.view}` : monCfg.monitoring_space)}
-              style={{
-                fontSize: 12, color: tone, border: `1px solid ${tone}`,
-                borderRadius: 'var(--r-md)', padding: '6px 12px',
-                background: `color-mix(in srgb, ${tone} 12%, transparent)`,
-              }}
-            >
-              {label}
-            </span>
-          );
-        })()}
-        <button
-          onClick={() => setProfileOpen(true)}
-          disabled={!canProfile}
-          title={canProfile ? undefined : 'Profiling requires steward role or higher.'}
-          style={{
-            background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)',
-            borderRadius: 'var(--r-md)', padding: '7px 16px', fontSize: 13,
-            cursor: canProfile ? 'pointer' : 'not-allowed',
-            opacity: canProfile ? 1 : 0.45,
-          }}
-        >
-          Profiling
-        </button>
-        <button
-          onClick={openChecksWorkbench}
-          disabled={!canCreateChecks || seedContract.isPending}
-          title={canCreateChecks ? undefined : t.objectDetail.createChecksNoWrite}
-          style={{
-            background: 'var(--bg-2)', color: 'var(--fg)', border: '1px solid var(--line)',
-            borderRadius: 'var(--r-md)', padding: '7px 16px', fontSize: 13,
-            cursor: canCreateChecks ? 'pointer' : 'not-allowed',
-            opacity: canCreateChecks ? 1 : 0.45,
-          }}
-        >
-          {seedContract.isPending ? t.objectDetail.creatingChecks : contract ? t.objectDetail.editChecks : t.objectDetail.createChecks}
-        </button>
-        <button
-          onClick={() => setDialogOpen(true)}
-          disabled={trigger.isPending || isRunning}
-          style={{
-            background: 'var(--cont)', color: '#fff', border: 'none',
-            borderRadius: 'var(--r-md)', padding: '7px 16px', fontSize: 13, cursor: 'pointer',
-          }}
-        >
-          {trigger.isPending || isRunning ? t.objectDetail.running : t.objectDetail.run}
-        </button>
-      </div>
+      <ObjectHero
+        object={obj}
+        contract={contract}
+        latestRun={latestRun}
+        results={results}
+        monitoringEnabled={!!monCfg?.enabled}
+        monitoringEntry={monEntry}
+        monitoringSpace={monCfg?.monitoring_space}
+        monitoringPending={requestMonitoring.isPending}
+        canProfile={canProfile}
+        canCreateChecks={canCreateChecks}
+        checksActionPending={seedContract.isPending}
+        runPending={trigger.isPending || isRunning}
+        onBack={() => navigate('/objects')}
+        onRequestMonitoring={() => requestMonitoring.mutate(id)}
+        onOpenProfile={() => setProfileOpen(true)}
+        onOpenChecksWorkbench={openChecksWorkbench}
+        onStartRun={() => setDialogOpen(true)}
+      />
 
       {dialogOpen && (
         <RunTriggerDialog
@@ -518,15 +466,19 @@ export default function ObjectDetail() {
         <ObjectProfilePanel objectId={obj.id} onClose={() => setProfileOpen(false)} />
       )}
 
-      <div style={{ borderBottom: '1px solid var(--line)', marginBottom: 20 }}>
-        {(['checks', 'runs', 'timeseries', 'contract', 'lineage', 'schedule', 'diff'] as Tab[]).map(tabKey => (
+      <div
+        data-active-group={activeGroup}
+        data-active-anchor={tab}
+        style={{ borderBottom: '1px solid var(--line)', marginBottom: 20 }}
+      >
+        {OBJECT_DETAIL_LEGACY_TABS.map(tabKey => (
           <button key={tabKey} onClick={() => setTab(tabKey)} style={TAB_STYLE(tabKey)}>
             {t.objectDetail.tabs[tabKey] ?? tabKey}
           </button>
         ))}
       </div>
 
-      {tab === 'checks' && (
+      {isActiveSection('quality', 'checks') && (
         <>
           {results.length === 0 && <MinedProposalsCallout productId={obj.id} />}
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
@@ -535,7 +487,7 @@ export default function ObjectDetail() {
         </>
       )}
 
-      {tab === 'runs' && (
+      {isActiveSection('history-ops', 'runs') && (
         <>
           {runs.length >= 2 && (
             <div style={{ marginBottom: 12, textAlign: 'right' }}>
@@ -553,11 +505,11 @@ export default function ObjectDetail() {
         </>
       )}
 
-      {tab === 'timeseries' && (
+      {isActiveSection('history-ops', 'timeseries') && (
         <ObservabilityTimeseries objectId={obj.id} enabled={tab === 'timeseries'} />
       )}
 
-      {tab === 'contract' && (
+      {isActiveSection('structure-interface', 'contract') && (
         <>
           {!contract && <MinedProposalsCallout productId={obj.id} />}
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s5)' }}>
@@ -576,7 +528,7 @@ export default function ObjectDetail() {
         </>
       )}
 
-      {tab === 'lineage' && (
+      {isActiveSection('structure-interface', 'lineage') && (
         <>
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s6)' }}>
             <MiniLineageDag focusId={obj.id} />
@@ -593,11 +545,11 @@ export default function ObjectDetail() {
         </>
       )}
 
-      {tab === 'schedule' && (
+      {isActiveSection('history-ops', 'schedule') && (
         <SchedulePanel objectId={obj.id} />
       )}
 
-      {tab === 'diff' && (
+      {isActiveSection('history-ops', 'diff') && (
         <ObjectDiffPanel objectId={obj.id} />
       )}
 

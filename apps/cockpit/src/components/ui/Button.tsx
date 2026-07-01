@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, CSSProperties } from 'react';
+import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from 'react';
 
 // UX-F6: shared Button primitive. Spacing/radius come from tokens, not memory.
 // Variants encode intent (primary action, neutral, ghost, destructive); sizes
@@ -24,28 +24,44 @@ const SIZE: Record<Size, CSSProperties> = {
 const DISABLED: CSSProperties = {
   background: 'var(--bg-2)',
   color: 'var(--fg-3)',
-  borderColor: 'var(--line)',
+  border: '1px solid var(--line)',
 };
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
+  pending?: boolean;
+  pendingLabel?: ReactNode;
 }
 
-export function Button({ variant = 'secondary', size = 'md', style, disabled, ...rest }: Props) {
+export function Button({
+  variant = 'secondary',
+  size = 'md',
+  style,
+  disabled,
+  pending = false,
+  pendingLabel,
+  children,
+  ...rest
+}: Props) {
+  const isDisabled = disabled || pending;
+
   return (
     <button
-      disabled={disabled}
+      disabled={isDisabled}
+      aria-busy={pending || undefined}
       style={{
         borderRadius: 'var(--r-md)',
-        cursor: disabled ? 'not-allowed' : 'pointer',
+        cursor: pending ? 'wait' : isDisabled ? 'not-allowed' : 'pointer',
         transition: 'filter var(--t), background var(--t), border-color var(--t), color var(--t)',
         ...VARIANT[variant],
         ...SIZE[size],
-        ...(disabled ? DISABLED : null),
+        ...(isDisabled ? DISABLED : null),
         ...style,
       }}
       {...rest}
-    />
+    >
+      {pending && pendingLabel ? pendingLabel : children}
+    </button>
   );
 }
