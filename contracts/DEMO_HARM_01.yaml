@@ -1,0 +1,19 @@
+product: DEMO_HARM_01
+dataset: DEMO_HARM_01
+owned_by: platform
+kind: internal_gate
+owners: []
+version: 0.1.0
+lifecycle: draft
+guarantees:
+  schema:
+    columns:
+    - HARM_COL_01
+    - HARM_COL_02
+    - HARM_COL_03
+    - HARM_COL_04
+    mode: closed
+  volume:
+    baseline: rolling
+    bounds: auto
+    severity: warn

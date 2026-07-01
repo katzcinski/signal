@@ -73,51 +73,79 @@ function nodeColor(node: LineageNode, theme: ThemeTokens): string {
 }
 
 function SparseLineageState({ node }: { node: LineageNode }) {
+  const navigate = useNavigate();
   const label = lineageNodeLabel(node);
   const meta = [node.layer, node.role].filter(Boolean).join(' · ');
   return (
     <div
       data-testid="lineage-mini-graph-sparse"
       style={{
-        alignItems: 'center',
+        alignItems: 'stretch',
         background:
-          'radial-gradient(circle at top, color-mix(in srgb, var(--cont) 14%, transparent), transparent 58%), var(--bg-1)',
+          'linear-gradient(180deg, color-mix(in srgb, var(--cont) 8%, var(--bg-1)), var(--bg-1))',
         border: '1px solid var(--line)',
         borderRadius: 'var(--r-lg)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 'var(--s3)',
-        justifyContent: 'center',
-        minHeight: 260,
-        padding: 'var(--s6)',
-        textAlign: 'center',
+        gap: 'var(--s4)',
+        minHeight: 220,
+        padding: 'var(--s5)',
+        textAlign: 'left',
       }}
     >
-      <div style={{ color: 'var(--fg-3)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-        Product lineage
-      </div>
-      <div
-        style={{
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--s3)', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ color: 'var(--fg-3)', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            Upstream context
+          </div>
+          <div style={{ color: 'var(--fg)', fontSize: 16, fontWeight: 700, marginTop: 4 }}>
+            No upstream objects in the current extract
+          </div>
+        </div>
+        <span style={{
+          border: '1px solid var(--line-2)',
+          borderRadius: 'var(--r-full)',
           background: 'var(--bg-2)',
-          border: '1px solid color-mix(in srgb, var(--cont) 55%, var(--line))',
+          color: 'var(--fg-2)',
+          fontSize: 11,
+          padding: '2px 8px',
+          whiteSpace: 'nowrap',
+        }}
+        >
+          Single-node view
+        </span>
+      </div>
+
+      <button
+        onClick={() => navigate(`/objects/${encodeURIComponent(node.id)}`)}
+        style={{
+          alignItems: 'flex-start',
+          background: 'var(--bg-2)',
+          border: '1px solid color-mix(in srgb, var(--cont) 40%, var(--line))',
           borderRadius: 'var(--r-lg)',
-          boxShadow: '0 14px 32px rgba(0,0,0,0.14)',
-          minWidth: 220,
-          padding: '14px 18px',
+          boxShadow: 'var(--shadow-1)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          padding: '14px 16px',
+          textAlign: 'left',
         }}
       >
-        <div style={{ color: 'var(--fg)', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700 }}>
+        <div style={{ color: 'var(--fg)', fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700 }}>
           {label}
         </div>
         {meta && (
-          <div style={{ color: 'var(--fg-3)', fontSize: 11, marginTop: 5 }}>
+          <div style={{ color: 'var(--fg-3)', fontSize: 11 }}>
             {meta}
           </div>
         )}
-      </div>
-      <div style={{ color: 'var(--fg-2)', fontSize: 12, lineHeight: 1.6, maxWidth: 420 }}>
-        This product currently resolves to a single mapped lineage node. No connected upstream or downstream neighbors are
-        present in the current extract.
+        <span style={{ color: 'var(--cont)', fontSize: 11, fontWeight: 600, marginTop: 2 }}>
+          Open object detail
+        </span>
+      </button>
+      <div style={{ color: 'var(--fg-2)', fontSize: 12, lineHeight: 1.6, maxWidth: 460 }}>
+        This preview currently resolves to one mapped object, so it stays focused on that object instead of drawing an empty
+        lineage board.
       </div>
     </div>
   );

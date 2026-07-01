@@ -288,10 +288,10 @@ export default function ProductDetail() {
             style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)' }}>
-              <span className="mono-label">Topology</span>
+              <span className="mono-label">Lineage</span>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s3)', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)' }}>
-                  {sparseLineage ? 'Mapped object' : 'Lineage preview'}
+                  {sparseLineage ? 'Mapped object' : 'Upstream lineage'}
                 </span>
                 <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>
                   {data.subgraph.nodes.length} nodes / {data.subgraph.edges.length} edges
@@ -299,8 +299,8 @@ export default function ProductDetail() {
               </div>
               <p style={{ color: 'var(--fg-3)', fontSize: 12, lineHeight: 1.5 }}>
                 {sparseLineage
-                  ? 'The current lineage extract resolves this product to one mapped object.'
-                  : 'Open any node to inspect the underlying object detail.'}
+                  ? 'No mapped upstream objects were found for this product in the current extract.'
+                  : 'Open any node to inspect the upstream object detail.'}
               </p>
             </div>
             <Suspense fallback={<div style={{ color: 'var(--fg-3)', fontSize: 12, minHeight: 280 }}>{t.common.loading}</div>}>

@@ -98,6 +98,8 @@ class DatasphereCli:
         self,
         *,
         host: str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
         authorization_url: str | None = None,
         token_url: str | None = None,
         secrets_file: str | None = None,
@@ -109,6 +111,8 @@ class DatasphereCli:
         # wins (resolved per-call in ``_run_cli_once``); this is the fallback so
         # the host can also be set from the connector UI.
         self._host = (host or "").strip() or None
+        self._client_id = (client_id or "").strip() or None
+        self._client_secret = (client_secret or "").strip() or None
         self._authorization_url = (authorization_url or "").strip() or None
         self._token_url = (token_url or "").strip() or None
         self._secrets_file = (secrets_file or "").strip() or None
@@ -214,22 +218,28 @@ class DatasphereCli:
                 logger.debug("CLI login check via %s failed; trying next.", argv)
         return False
 
-    def login_args(
+    def _login_args(
         self,
         *,
         host: str | None = None,
         code: str | None = None,
         force: bool = False,
+        include_secret: bool = False,
     ) -> list[str]:
         """Return the Meridian-style ``datasphere login`` argv.
 
         The Datasphere CLI reads OAuth client details interactively or from the
-        optional secrets file. We only pass non-secret connection details here.
+        optional secrets file. For the actual spawned login command we can also
+        pass the configured client secret, but display helpers must keep it out.
         """
         args = ["login"]
         effective_host = (host or os.environ.get("DSP_CLI_HOST") or self._host or "").strip()
         if effective_host:
             args += ["--host", effective_host]
+        if self._client_id:
+            args += ["--client-id", self._client_id]
+        if include_secret and self._client_secret:
+            args += ["--client-secret", self._client_secret]
         if self._authorization_url:
             args += ["--authorization-url", self._authorization_url]
         if self._token_url:
@@ -241,6 +251,16 @@ class DatasphereCli:
         if force:
             args.append("--force")
         return args
+
+    def login_args(
+        self,
+        *,
+        host: str | None = None,
+        code: str | None = None,
+        force: bool = False,
+    ) -> list[str]:
+        """Return a safe display/login argv without echoing the client secret."""
+        return self._login_args(host=host, code=code, force=force, include_secret=False)
 
     def login_command(self, *, host: str | None = None) -> str:
         """Human-readable CLI login command, with OAuth overrides included."""
@@ -256,7 +276,7 @@ class DatasphereCli:
             raise CliError("CMD-Login kann nur unter Windows gestartet werden.")
 
         cli_program = self._terminal_cli_program()
-        login_args = self.login_args()
+        login_args = self._login_args(include_secret=True)
         command_line = subprocess.list2cmdline([cli_program, *login_args])
         comspec = os.environ.get("COMSPEC", "cmd.exe")
         try:

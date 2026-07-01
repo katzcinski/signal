@@ -56,6 +56,7 @@ describe('LineageMiniGraph', () => {
     );
 
     expect(screen.getByTestId('lineage-mini-graph-sparse')).toBeTruthy();
-    expect(screen.getByText(/single mapped lineage node/i)).toBeTruthy();
+    expect(screen.getByText(/no upstream objects in the current extract/i)).toBeTruthy();
+    expect(screen.getByText(/open object detail/i)).toBeTruthy();
   });
 });

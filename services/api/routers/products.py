@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections import deque
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -91,6 +92,52 @@ def _graph_maps(lineage: dict[str, Any]) -> tuple[dict[str, dict], dict[str, lis
         upstream[target].append(source)
 
     return node_data, dict(upstream), dict(downstream)
+
+
+def _node_record(node_id: str, node_data: dict[str, dict]) -> dict[str, Any]:
+    return node_data.get(node_id) or {
+        "id": node_id,
+        "label": node_id,
+        "layer": "unknown",
+        "role": "unknown",
+    }
+
+
+def _upstream_preview_subgraph(
+    seeds: list[str],
+    node_data: dict[str, dict],
+    upstream: dict[str, list[str]],
+) -> LineageSubgraphOut:
+    nodes_by_id: dict[str, dict[str, Any]] = {}
+    edge_keys: set[tuple[str, str]] = set()
+    edges: list[dict[str, Any]] = []
+    visited: set[str] = set()
+    queue: deque[str] = deque(sorted(set(seeds)))
+
+    while queue:
+        node_id = queue.popleft()
+        if node_id in visited:
+            continue
+        visited.add(node_id)
+        nodes_by_id[node_id] = _node_record(node_id, node_data)
+
+        for source in sorted(upstream.get(node_id, [])):
+            nodes_by_id[source] = _node_record(source, node_data)
+            key = (source, node_id)
+            if key not in edge_keys:
+                edge_keys.add(key)
+                edges.append({
+                    "id": f"{source}->{node_id}",
+                    "source": source,
+                    "target": node_id,
+                })
+            if source not in visited:
+                queue.append(source)
+
+    return LineageSubgraphOut(
+        nodes=[nodes_by_id[node_id] for node_id in sorted(nodes_by_id)],
+        edges=sorted(edges, key=lambda edge: (str(edge["source"]), str(edge["target"]))),
+    )
 
 
 def _build_context(lineage: dict[str, Any]) -> tuple[
@@ -249,6 +296,7 @@ def get_product(
         _port_out(port.dataset, contracts, store)
         for port in aggregate.product.output_ports
     ]
+    node_data, upstream, _downstream = _graph_maps(lineage)
     return ProductDetailOut(
         product=aggregate.product.product,
         owners=aggregate.product.owners,
@@ -259,8 +307,9 @@ def get_product(
         inbound_sources=aggregate.inbound_sources,
         upstream_risk=risk_entries,
         findings=finding_entries,
-        subgraph=LineageSubgraphOut(
-            nodes=aggregate.subgraph_nodes,
-            edges=aggregate.subgraph_edges,
+        subgraph=_upstream_preview_subgraph(
+            [port.dataset for port in aggregate.product.output_ports],
+            node_data=node_data,
+            upstream=upstream,
         ),
     )

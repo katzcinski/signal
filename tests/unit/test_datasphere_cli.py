@@ -375,6 +375,7 @@ def test_login_command_matches_meridian_oauth_overrides(monkeypatch, tmp_path):
     cli = _cli(
         monkeypatch,
         host="https://tenant.example",
+        client_id="cli-client",
         authorization_url="https://auth.example/oauth/authorize",
         token_url="https://auth.example/oauth/token",
         secrets_file=secrets_file,
@@ -382,12 +383,14 @@ def test_login_command_matches_meridian_oauth_overrides(monkeypatch, tmp_path):
     assert cli.login_args() == [
         "login",
         "--host", "https://tenant.example",
+        "--client-id", "cli-client",
         "--authorization-url", "https://auth.example/oauth/authorize",
         "--token-url", "https://auth.example/oauth/token",
         "--secrets-file", secrets_file,
     ]
     command = cli.login_command()
     assert command.startswith("datasphere login --host https://tenant.example")
+    assert "--client-id cli-client" in command
     assert "--authorization-url https://auth.example/oauth/authorize" in command
     assert "--token-url https://auth.example/oauth/token" in command
     assert f"--secrets-file {secrets_file}" in command
@@ -398,6 +401,8 @@ def test_open_login_cmd_starts_visible_windows_terminal(monkeypatch, tmp_path):
     monkeypatch.setenv("COMSPEC", "cmd.exe")
     cli = DatasphereCli(
         host="https://tenant.example",
+        client_id="cli-client",
+        client_secret="cli-secret",
         token_url="https://auth.example/oauth/token",
         secrets_file=str(tmp_path / "secrets.json"),
     )
@@ -414,8 +419,12 @@ def test_open_login_cmd_starts_visible_windows_terminal(monkeypatch, tmp_path):
     monkeypatch.setattr(datasphere_cli.subprocess, "Popen", fake_popen)
     display = cli.open_login_cmd()
     assert display.startswith("datasphere login --host https://tenant.example")
+    assert "--client-id cli-client" in display
+    assert "cli-secret" not in display
     assert calls[0]["command"][0:2] == ["cmd.exe", "/k"]
     assert r"C:\tools\datasphere.cmd" in calls[0]["command"][2]
+    assert "--client-id cli-client" in calls[0]["command"][2]
+    assert "--client-secret cli-secret" in calls[0]["command"][2]
     assert "--token-url https://auth.example/oauth/token" in calls[0]["command"][2]
     assert calls[0]["kwargs"]["shell"] is False
 

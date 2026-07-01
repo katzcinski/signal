@@ -5,26 +5,32 @@ operators who cannot set env vars. It is git-ignored by convention (like
 secrets.local.yml).
 
 Persisted keys:
-  space_id   technischer Name des Datasphere-Space
-  use_cli    @sap/datasphere-cli als (CSN-)Quelle bevorzugen
-  cli_host   Tenant-Host für die CLI (entspricht DSP_CLI_HOST)
-  base_url   REST-Katalog Basis-URL (entspricht DATASPHERE_BASE_URL)
-  client_id  OAuth2 Client-ID (entspricht DATASPHERE_CLIENT_ID)
-  token_url  optionaler OAuth2 Token-Endpoint-Override
-  secret_ref Referenz auf das Client-Secret (NIE der Klartext) — z.B.
-             ``env:DATASPHERE_CLIENT_SECRET`` oder bare ``DATASPHERE_CLIENT_SECRET``
+  space_id              technischer Name des Datasphere-Space
+  use_cli               @sap/datasphere-cli als (CSN-)Quelle bevorzugen
+  cli_host              Tenant-Host für die CLI (entspricht DSP_CLI_HOST)
+  base_url              REST-Katalog Basis-URL (entspricht DATASPHERE_BASE_URL)
+  client_id             REST OAuth2 Client-ID (entspricht DATASPHERE_CLIENT_ID)
+  token_url             REST Token-Endpoint-Override
+  secret_ref            REST-Client-Secret-Referenz (nie Klartext)
+  cli_client_id         CLI OAuth2 Client-ID
+  cli_authorization_url CLI Authorization-URL
+  cli_token_url         CLI Token-URL
+  cli_oauth_secrets_file optionale CLI Secrets-Datei
+  cli_secret_ref        CLI-Client-Secret-Referenz (nie Klartext)
 
 Der Client-Secret-Klartext landet NIE in dieser Datei (S-13): die Config hält nur
-eine Referenz, die zur Laufzeit über den Secret-Resolver aufgelöst wird.
+Referenzen, die zur Laufzeit über den Secret-Resolver aufgelöst werden.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
-# Stabile Default-Referenz, unter der die UI das Client-Secret ablegt
+# Stabile Default-Referenzen, unter denen die UI Secrets ablegt
 # (secrets.local.yml / env). Bare Name → env-Var bzw. Secrets-Datei.
 DEFAULT_SECRET_REF = "DATASPHERE_CLIENT_SECRET"
+DEFAULT_CLI_SECRET_REF = "DATASPHERE_CLI_CLIENT_SECRET"
 
 _DEFAULTS: dict[str, Any] = {
     "space_id": "",
@@ -32,10 +38,13 @@ _DEFAULTS: dict[str, Any] = {
     "cli_host": "",
     "base_url": "",
     "client_id": "",
-    "authorization_url": "",
     "token_url": "",
-    "oauth_secrets_file": "",
     "secret_ref": "",
+    "cli_client_id": "",
+    "cli_authorization_url": "",
+    "cli_token_url": "",
+    "cli_oauth_secrets_file": "",
+    "cli_secret_ref": "",
 }
 
 
@@ -53,10 +62,13 @@ def read_connector_config(connector_file: str) -> dict[str, Any]:
         "cli_host": str(data.get("cli_host") or ""),
         "base_url": str(data.get("base_url") or ""),
         "client_id": str(data.get("client_id") or ""),
-        "authorization_url": str(data.get("authorization_url") or ""),
         "token_url": str(data.get("token_url") or ""),
-        "oauth_secrets_file": str(data.get("oauth_secrets_file") or ""),
         "secret_ref": str(data.get("secret_ref") or ""),
+        "cli_client_id": str(data.get("cli_client_id") or data.get("client_id") or ""),
+        "cli_authorization_url": str(data.get("cli_authorization_url") or data.get("authorization_url") or ""),
+        "cli_token_url": str(data.get("cli_token_url") or data.get("token_url") or ""),
+        "cli_oauth_secrets_file": str(data.get("cli_oauth_secrets_file") or data.get("oauth_secrets_file") or ""),
+        "cli_secret_ref": str(data.get("cli_secret_ref") or ""),
     }
 
 
@@ -70,11 +82,14 @@ def write_connector_config(connector_file: str, cfg: dict[str, Any]) -> None:
         "cli_host": str(cfg.get("cli_host") or ""),
         "base_url": str(cfg.get("base_url") or ""),
         "client_id": str(cfg.get("client_id") or ""),
-        "authorization_url": str(cfg.get("authorization_url") or ""),
         "token_url": str(cfg.get("token_url") or ""),
-        "oauth_secrets_file": str(cfg.get("oauth_secrets_file") or ""),
         # NIE der Klartext — nur die Referenz (S-13).
         "secret_ref": str(cfg.get("secret_ref") or ""),
+        "cli_client_id": str(cfg.get("cli_client_id") or ""),
+        "cli_authorization_url": str(cfg.get("cli_authorization_url") or ""),
+        "cli_token_url": str(cfg.get("cli_token_url") or ""),
+        "cli_oauth_secrets_file": str(cfg.get("cli_oauth_secrets_file") or ""),
+        "cli_secret_ref": str(cfg.get("cli_secret_ref") or ""),
     }
     path.write_text(
         yaml.safe_dump(safe, sort_keys=True, default_flow_style=False, allow_unicode=True),
@@ -107,10 +122,12 @@ def effective_cli_host(settings: Any) -> str:
     ``DatasphereCli`` honours ``DSP_CLI_HOST`` from the environment directly; this
     helper lets callers also pass a UI-configured host into the CLI explicitly.
     """
-    import os
     env_val = str(os.environ.get("DSP_CLI_HOST", "") or "")
     if env_val:
         return env_val
+    settings_val = str(getattr(settings, "datasphere_cli_host", "") or "")
+    if settings_val:
+        return settings_val
     file_cfg = _file_cfg(settings)
     file_host = str(file_cfg.get("cli_host") or "")
     if file_host:
@@ -135,11 +152,14 @@ def effective_client_id(settings: Any) -> str:
 
 
 def effective_authorization_url(settings: Any) -> str:
-    """Effective CLI OAuth2 authorization URL: env var wins, then datasphere.yml."""
-    env_val = str(getattr(settings, "datasphere_authorization_url", "") or "")
+    """Effective CLI OAuth2 authorization URL: CLI env wins, then legacy shared, then file."""
+    env_val = str(getattr(settings, "datasphere_cli_authorization_url", "") or "")
     if env_val:
         return env_val
-    return str(_file_cfg(settings).get("authorization_url") or "")
+    legacy_val = str(getattr(settings, "datasphere_authorization_url", "") or "")
+    if legacy_val:
+        return legacy_val
+    return str(_file_cfg(settings).get("cli_authorization_url") or "")
 
 
 def effective_token_url(settings: Any) -> str:
@@ -150,12 +170,45 @@ def effective_token_url(settings: Any) -> str:
     return str(_file_cfg(settings).get("token_url") or "")
 
 
+def effective_cli_client_id(settings: Any) -> str:
+    """Effective CLI OAuth client id: CLI-specific config wins, then REST fallback."""
+    env_val = str(getattr(settings, "datasphere_cli_client_id", "") or "")
+    if env_val:
+        return env_val
+    file_val = str(_file_cfg(settings).get("cli_client_id") or "")
+    if file_val:
+        return file_val
+    return effective_client_id(settings)
+
+
+def effective_cli_token_url(settings: Any) -> str:
+    """Effective CLI OAuth token URL: CLI-specific config wins, then shared fallback."""
+    env_val = str(getattr(settings, "datasphere_cli_token_url", "") or "")
+    if env_val:
+        return env_val
+    file_val = str(_file_cfg(settings).get("cli_token_url") or "")
+    if file_val:
+        return file_val
+    return effective_token_url(settings)
+
+
 def effective_oauth_secrets_file(settings: Any) -> str:
     """Effective Datasphere CLI OAuth secrets-file path: env var wins, then file."""
     env_val = str(getattr(settings, "datasphere_oauth_secrets_file", "") or "")
     if env_val:
         return env_val
     return str(_file_cfg(settings).get("oauth_secrets_file") or "")
+
+
+def effective_cli_oauth_secrets_file(settings: Any) -> str:
+    """Effective CLI secrets-file path: CLI-specific config wins, then shared fallback."""
+    env_val = str(getattr(settings, "datasphere_cli_oauth_secrets_file", "") or "")
+    if env_val:
+        return env_val
+    file_val = str(_file_cfg(settings).get("cli_oauth_secrets_file") or "")
+    if file_val:
+        return file_val
+    return effective_oauth_secrets_file(settings)
 
 
 def effective_secret_ref(settings: Any) -> str:
@@ -168,6 +221,16 @@ def effective_secret_ref(settings: Any) -> str:
     if str(getattr(settings, "datasphere_client_secret", "") or ""):
         return DEFAULT_SECRET_REF
     return str(_file_cfg(settings).get("secret_ref") or "")
+
+
+def effective_cli_secret_ref(settings: Any) -> str:
+    """Reference under which the CLI client secret is resolved."""
+    if str(getattr(settings, "datasphere_cli_client_secret", "") or ""):
+        return DEFAULT_CLI_SECRET_REF
+    cli_ref = str(_file_cfg(settings).get("cli_secret_ref") or "")
+    if cli_ref:
+        return cli_ref
+    return effective_secret_ref(settings)
 
 
 def effective_client_secret(settings: Any) -> str:
@@ -187,6 +250,18 @@ def effective_client_secret(settings: Any) -> str:
     return get_secret(ref) or ""
 
 
+def effective_cli_client_secret(settings: Any) -> str:
+    """Resolve the CLI client secret value, falling back to the REST secret."""
+    env_val = str(getattr(settings, "datasphere_cli_client_secret", "") or "")
+    if env_val:
+        return env_val
+    cli_ref = str(_file_cfg(settings).get("cli_secret_ref") or "")
+    if cli_ref:
+        from .secrets import get_secret
+        return get_secret(cli_ref) or ""
+    return effective_client_secret(settings)
+
+
 def secret_configured(settings: Any) -> bool:
     """True when a client secret resolves (env or via the configured ref)."""
     if str(getattr(settings, "datasphere_client_secret", "") or ""):
@@ -196,3 +271,14 @@ def secret_configured(settings: Any) -> bool:
         return False
     from .secrets import secret_status
     return secret_status(ref)
+
+
+def cli_secret_configured(settings: Any) -> bool:
+    """True when a CLI client secret resolves (or falls back to the REST secret)."""
+    if str(getattr(settings, "datasphere_cli_client_secret", "") or ""):
+        return True
+    ref = str(_file_cfg(settings).get("cli_secret_ref") or "")
+    if ref:
+        from .secrets import secret_status
+        return secret_status(ref)
+    return secret_configured(settings)

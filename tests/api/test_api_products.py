@@ -119,6 +119,45 @@ def test_product_detail_returns_full_shape(tmp_path, monkeypatch):
     assert data["subgraph"]["edges"]
 
 
+def test_product_detail_preview_keeps_multi_hop_upstream_context(tmp_path, monkeypatch):
+    client = _client(tmp_path, monkeypatch)
+
+    (tmp_path / "products" / "upstream_product.yaml").write_text(
+        """
+product: upstream_product
+owners:
+  - team-upstream
+output_ports:
+  - dataset: UP_PORT
+inbound: []
+""".strip(),
+        encoding="utf-8",
+    )
+    (tmp_path / "lineage.json").write_text(
+        json.dumps({
+            "nodes": [
+                {"id": "RAW", "layer": "source", "role": "source"},
+                {"id": "UP_PORT", "layer": "serving", "role": "consumption"},
+                {"id": "DS_PRODUCT", "layer": "serving", "role": "consumption"},
+            ],
+            "edges": [
+                {"source": "RAW", "target": "UP_PORT"},
+                {"source": "UP_PORT", "target": "DS_PRODUCT"},
+            ],
+        }),
+        encoding="utf-8",
+    )
+
+    detail = client.get("/api/products/sales_product").json()
+
+    assert detail["interior"] == []
+    assert {node["id"] for node in detail["subgraph"]["nodes"]} == {"RAW", "UP_PORT", "DS_PRODUCT"}
+    assert {(edge["source"], edge["target"]) for edge in detail["subgraph"]["edges"]} == {
+        ("RAW", "UP_PORT"),
+        ("UP_PORT", "DS_PRODUCT"),
+    }
+
+
 def test_products_prefer_certified_active_snapshot_over_working_draft(tmp_path, monkeypatch):
     client = _client(tmp_path, monkeypatch)
     contracts_dir = tmp_path / "contracts"

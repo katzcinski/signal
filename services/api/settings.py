@@ -81,16 +81,26 @@ class Settings(BaseSettings):
     # Datasphere connector config file (runtime alternative to env vars, git-ignored)
     connector_file: str = Field(default="datasphere.yml")
 
-    # Datasphere API — data load status (R7)
+    # Datasphere REST API — headless catalog / load status
     # base_url: e.g. https://mytenant.eu10.hcs.cloud.sap
     # token_url: defaults to {base_url}/oauth/token when empty
     datasphere_base_url: str = Field(default="")
     datasphere_client_id: str = Field(default="")
     datasphere_client_secret: str = Field(default="")
-    datasphere_authorization_url: str = Field(default="")
     datasphere_token_url: str = Field(default="")
-    datasphere_oauth_secrets_file: str = Field(default="")
     datasphere_space_id: str = Field(default="")
+    # Datasphere CLI OAuth / host config. The legacy shared env names
+    # DATASPHERE_AUTHORIZATION_URL and DATASPHERE_OAUTH_SECRETS_FILE are kept so
+    # older local setups continue to work; the split UI now prefers the
+    # DATASPHERE_CLI_* names.
+    datasphere_cli_host: str = Field(default="", validation_alias="DSP_CLI_HOST")
+    datasphere_cli_client_id: str = Field(default="")
+    datasphere_cli_client_secret: str = Field(default="")
+    datasphere_cli_authorization_url: str = Field(default="")
+    datasphere_cli_token_url: str = Field(default="")
+    datasphere_cli_oauth_secrets_file: str = Field(default="")
+    datasphere_authorization_url: str = Field(default="")
+    datasphere_oauth_secrets_file: str = Field(default="")
     # Tier-2 extraction: REST/OAuth catalog is the default source; set true to
     # also use the local @sap/datasphere-cli when available (richest CSN).
     datasphere_use_cli: bool = Field(default=False)
