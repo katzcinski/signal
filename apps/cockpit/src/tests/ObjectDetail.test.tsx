@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 const state = vi.hoisted(() => ({
+  objectLoading: false,
   object: {
     id: 'Sales_Orders_View',
     name: 'Sales_Orders_View',
@@ -39,8 +40,8 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@/api/objects', () => ({
   useObject: () => ({
-    data: state.object,
-    isLoading: false,
+    data: state.objectLoading ? undefined : state.object,
+    isLoading: state.objectLoading,
     isError: false,
     refetch: vi.fn(),
   }),
@@ -155,6 +156,7 @@ const finishedRun: RunListItem = {
 };
 
 beforeEach(() => {
+  state.objectLoading = false;
   state.object.status = 'pass';
   state.contract = undefined;
   state.versionDiff = undefined;
@@ -168,6 +170,23 @@ beforeEach(() => {
   mocks.triggerRun.mockClear();
   mocks.seedContract.mockClear();
   mocks.requestMonitoring.mockClear();
+});
+
+describe('ObjectDetail loading states', () => {
+  it('shows local hero cards and the active section skeleton while the object loads', () => {
+    state.objectLoading = true;
+
+    renderObjectDetail('/objects/Sales_Orders_View?tab=lineage');
+
+    expect(screen.getByTestId('object-hero-skeleton')).toBeTruthy();
+    expect(screen.getAllByTestId('object-summary-card-skeleton')).toHaveLength(4);
+    const nav = screen.getByLabelText('Objektbereiche');
+    expect(nav).toHaveAttribute('data-active-group', 'structure-interface');
+    expect(nav).toHaveAttribute('data-active-anchor', 'lineage');
+    expect(screen.getByTestId('mini-lineage-skeleton')).toBeTruthy();
+    expect(screen.getByTestId('column-lineage-skeleton')).toBeTruthy();
+    expect(screen.queryByText('Lädt…')).toBeNull();
+  });
 });
 
 describe('ObjectDetail legacy deep links', () => {

@@ -4,6 +4,7 @@ import { Table, type ColDef } from '@/components/ui/Table';
 import { Field, Select } from '@/components/ui/Field';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { ColumnLineageSkeleton } from '@/components/object-detail/ObjectDetailSkeletons';
 import { t } from '@/i18n/de';
 import type {
   ColumnEdgeType,
@@ -104,7 +105,7 @@ export function ColumnLineagePanel({ objectId }: { objectId: string }) {
   ];
 
   if (isLoading) {
-    return <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.columnLineage.loading}</p>;
+    return <ColumnLineageSkeleton />;
   }
   if (columnNames.length === 0) {
     return <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.columnLineage.noEdges}</p>;

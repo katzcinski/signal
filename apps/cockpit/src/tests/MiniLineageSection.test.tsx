@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MiniLineageSection } from '@/components/object-detail/MiniLineageSection';
 import type { LineageGraph } from '@/types';
 
@@ -25,6 +25,20 @@ function renderMiniLineage() {
 }
 
 describe('MiniLineageSection', () => {
+  beforeEach(() => {
+    state.graph = { nodes: [], edges: [] };
+    state.isLoading = false;
+  });
+
+  it('renders a local skeleton while lineage is loading', () => {
+    state.isLoading = true;
+
+    renderMiniLineage();
+
+    expect(screen.getByTestId('mini-lineage-skeleton')).toBeTruthy();
+    expect(screen.queryByText('Lädt…')).toBeNull();
+  });
+
   it('renders a real empty state when the one-hop graph has zero nodes', () => {
     state.graph = { nodes: [], edges: [] };
 

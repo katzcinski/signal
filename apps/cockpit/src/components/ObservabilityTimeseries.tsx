@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useObjectTimeseries } from '@/api/objects';
 import { MetricChart } from '@/components/ui/MetricChart';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { TimeseriesSkeleton } from '@/components/object-detail/ObjectDetailSkeletons';
 import type { MetricSeries } from '@/types';
 import { t } from '@/i18n/de';
 
@@ -29,7 +30,7 @@ export function ObservabilityTimeseries({ objectId, enabled }: { objectId: strin
   );
 
   if (isError) return <ErrorBanner onRetry={() => refetch()} />;
-  if (isLoading) return <p style={{ color: 'var(--fg-3)', fontSize: 12, padding: 'var(--s4)' }}>{t.common.loading}</p>;
+  if (isLoading) return <TimeseriesSkeleton />;
 
   if (!data || data.series.length === 0) {
     return (

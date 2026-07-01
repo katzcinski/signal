@@ -26,6 +26,7 @@ import { MiniLineageSection } from '@/components/object-detail/MiniLineageSectio
 import { ContractView } from '@/components/object-detail/ContractView';
 import { ContractVersionDiffView } from '@/components/object-detail/ContractVersionDiffView';
 import { ObjectDetailNavigation } from '@/components/object-detail/ObjectDetailNavigation';
+import { ObjectDetailSectionSkeleton, ObjectHeroSkeleton } from '@/components/object-detail/ObjectDetailSkeletons';
 import { useRoleStore, canProfileObject, canWriteContract } from '@/store/role';
 import { t } from '@/i18n/de';
 import type { CheckResult, RunListItem } from '@/types';
@@ -99,7 +100,19 @@ export default function ObjectDetail() {
     prevRunState.current = runState;
   }, [runState, id, qc]);
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</div>;
+  if (isLoading) {
+    return (
+      <div className="page-full">
+        <ObjectHeroSkeleton />
+        <ObjectDetailNavigation
+          activeGroup={activeGroup}
+          activeTab={tab}
+          onSelectTab={setTab}
+        />
+        <ObjectDetailSectionSkeleton tab={tab} />
+      </div>
+    );
+  }
   if (isError) return <div className="page-full"><ErrorBanner onRetry={() => refetch()} /></div>;
   if (!obj) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.objectDetail.notFound}</div>;
 
@@ -198,16 +211,16 @@ export default function ObjectDetail() {
       />
 
       {isActiveSection('quality', 'checks') && (
-        <>
+        <div className="object-detail-section">
           {results.length === 0 && <MinedProposalsCallout productId={obj.id} />}
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
             <Table columns={checkColumns} rows={results} rowKey={c => c.name} empty={t.objectDetail.noResults} />
           </div>
-        </>
+        </div>
       )}
 
       {isActiveSection('history-ops', 'runs') && (
-        <>
+        <div className="object-detail-section">
           {runs.length >= 2 && (
             <div style={{ marginBottom: 12, textAlign: 'right' }}>
               <Link
@@ -221,15 +234,17 @@ export default function ObjectDetail() {
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
             <Table columns={runColumns} rows={runs} rowKey={r => r.run_id} empty={t.objectDetail.noRuns} />
           </div>
-        </>
+        </div>
       )}
 
       {isActiveSection('history-ops', 'timeseries') && (
-        <ObservabilityTimeseries objectId={obj.id} enabled={tab === 'timeseries'} />
+        <div className="object-detail-section">
+          <ObservabilityTimeseries objectId={obj.id} enabled={tab === 'timeseries'} />
+        </div>
       )}
 
       {isActiveSection('structure-interface', 'contract') && (
-        <>
+        <div className="object-detail-section">
           {!contract && <MinedProposalsCallout productId={obj.id} />}
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s5)' }}>
             {contract ? (
@@ -244,26 +259,30 @@ export default function ObjectDetail() {
           </div>
           {contract && <ContractVersionDiffView product={obj.id} enabled={tab === 'contract'} />}
           <BadgeEmbed product={obj.id} />
-        </>
+        </div>
       )}
 
       {isActiveSection('structure-interface', 'lineage') && (
-        <>
+        <div className="object-detail-section">
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s6)' }}>
             <MiniLineageSection focusId={obj.id} />
           </div>
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s6)', marginTop: 'var(--s4)' }}>
             <ColumnLineagePanel objectId={obj.id} />
           </div>
-        </>
+        </div>
       )}
 
       {isActiveSection('history-ops', 'schedule') && (
-        <SchedulePanel objectId={obj.id} />
+        <div className="object-detail-section">
+          <SchedulePanel objectId={obj.id} />
+        </div>
       )}
 
       {isActiveSection('history-ops', 'diff') && (
-        <ObjectDiffPanel objectId={obj.id} />
+        <div className="object-detail-section">
+          <ObjectDiffPanel objectId={obj.id} />
+        </div>
       )}
 
       {latestRun && (

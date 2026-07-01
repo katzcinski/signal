@@ -107,29 +107,13 @@ export function ObjectHero({
   );
 
   return (
-    <section style={{
-      display: 'grid',
-      gridTemplateColumns: 'minmax(0, 1fr)',
-      gap: 'var(--s5)',
-      marginBottom: 24,
-      padding: 'var(--s5)',
-      border: '1px solid var(--line)',
-      borderRadius: 'var(--r-lg)',
-      background: 'var(--bg-1)',
-      boxShadow: 'var(--shadow-1)',
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        gap: 'var(--s4)',
-        alignItems: 'flex-start',
-        flexWrap: 'wrap',
-      }}>
+    <section className="object-detail-hero object-detail-section">
+      <div className="object-detail-hero-head">
         <div style={{ minWidth: 0 }}>
           <Button variant="ghost" size="sm" onClick={onBack} style={{ marginBottom: 12 }}>
             {t.objectDetail.back}
           </Button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div className="object-detail-title-row">
             <h1 style={{
               fontFamily: 'var(--font-mono)',
               fontSize: 'var(--fs-h1)',
@@ -143,16 +127,7 @@ export function ObjectHero({
             <FamilyTag family={object.family} />
             <StatusPill status={object.status ?? 'unknown'} size="sm" />
           </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--s3)',
-            flexWrap: 'wrap',
-            marginTop: 10,
-            color: 'var(--fg-3)',
-            fontSize: 'var(--fs-meta)',
-            lineHeight: 'var(--lh-meta)',
-          }}>
+          <div className="object-detail-meta" style={{ marginTop: 10 }}>
             <span>{t.objectDetail.hero.objectContext}</span>
             <span style={{ color: 'var(--line-2)' }}>|</span>
             <span>{object.space}</span>
@@ -161,14 +136,7 @@ export function ObjectHero({
             <span style={{ color: 'var(--line-2)' }}>|</span>
             <span>{object.schema_name}</span>
           </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, max-content))',
-            gap: 'var(--s4)',
-            marginTop: 16,
-            color: 'var(--fg-2)',
-            fontSize: 'var(--fs-meta)',
-          }}>
+          <div className="object-detail-facts" style={{ marginTop: 16 }}>
             <div>
               <div style={{ color: 'var(--fg-3)', marginBottom: 4 }}>{t.objectDetail.hero.ownerLabel}</div>
               <div>{object.owned_by}</div>
@@ -185,7 +153,7 @@ export function ObjectHero({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 'var(--s2)', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <div className="object-detail-actions">
           {monitoringEnabled && !monitoringEntry && (
             <Button
               onClick={onRequestMonitoring}
@@ -238,11 +206,7 @@ export function ObjectHero({
         </div>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: 'var(--s3)',
-      }}>
+      <div className="object-detail-summary-grid">
         <ObjectSummaryCard
           label={t.objectDetail.hero.latestRunTitle}
           value={latestRun ? (

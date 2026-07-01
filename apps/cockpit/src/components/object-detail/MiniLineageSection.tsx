@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useLineage } from '@/api/lineage';
 import { t } from '@/i18n/de';
+import { MiniLineageSkeleton } from './ObjectDetailSkeletons';
 
 const BOX_W = 144;
 const BOX_H = 34;
@@ -82,7 +83,7 @@ export function MiniLineageSection({ focusId }: { focusId: string }) {
   const navigate = useNavigate();
 
   if (isLoading) {
-    return <div style={{ color: 'var(--fg-3)', fontSize: 12, padding: 'var(--s3)' }}>{t.common.loading}</div>;
+    return <MiniLineageSkeleton />;
   }
 
   if (!graph || graph.nodes.length === 0) {

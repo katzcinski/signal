@@ -1,6 +1,10 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ColumnLineagePanel } from '@/components/lineage/ColumnLineagePanel';
+
+const state = vi.hoisted(() => ({
+  isLoading: false,
+}));
 
 vi.mock('@/api/lineage', () => ({
   useColumnLineage: () => ({
@@ -14,7 +18,7 @@ vi.mock('@/api/lineage', () => ({
         BUS_COL_01: { upstream: [], downstream: [] },
       },
     },
-    isLoading: false,
+    isLoading: state.isLoading,
   }),
   useColumnImpact: (_obj: string, column: string | undefined) => ({
     data: column === 'BUS_COL_03' ? {
@@ -32,6 +36,19 @@ vi.mock('@/api/lineage', () => ({
 }));
 
 describe('ColumnLineagePanel', () => {
+  beforeEach(() => {
+    state.isLoading = false;
+  });
+
+  it('shows a local skeleton while column lineage loads', () => {
+    state.isLoading = true;
+
+    render(<ColumnLineagePanel objectId="DEMO_BUS_01" />);
+
+    expect(screen.getByTestId('column-lineage-skeleton')).toBeTruthy();
+    expect(screen.queryByText('Lade Spalten-Lineage…')).toBeNull();
+  });
+
   it('renders upstream/downstream and the impact list for the first column', () => {
     render(<ColumnLineagePanel objectId="DEMO_BUS_01" />);
     // upstream + downstream sources rendered

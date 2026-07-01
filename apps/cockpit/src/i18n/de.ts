@@ -577,6 +577,14 @@ export const t = {
     lineageEmptyDetail: 'Fuer dieses Objekt liefert der aktuelle Extract noch keinen Lineage-Ausschnitt.',
     lineageFocusedTitle: 'Nur dieses Objekt im aktuellen Ausschnitt',
     lineageFocusedDetail: 'Es gibt derzeit keine direkten Upstream- oder Downstream-Kanten fuer dieses Objekt.',
+    loading: {
+      hero: 'Objektkopf wird geladen',
+      section: 'Objektbereich wird geladen',
+      lineage: 'Lineage wird geladen',
+      columnLineage: 'Spalten-Lineage wird geladen',
+      timeseries: 'Zeitreihe wird geladen',
+      schedule: 'Zeitplan wird geladen',
+    },
     hero: {
       objectContext: 'Objektkontext',
       ownerLabel: 'Owner',

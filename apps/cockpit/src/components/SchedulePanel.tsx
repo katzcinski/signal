@@ -3,6 +3,7 @@ import { useObjectSchedule, useUpsertObjectSchedule, useDeleteObjectSchedule } f
 import { useEnvironments } from '@/api/objects';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
+import { ScheduleSkeleton } from '@/components/object-detail/ObjectDetailSkeletons';
 import { relativeTime, absoluteTime } from '@/lib/time';
 import { cadenceLabel, nextRunInfo } from '@/lib/schedule';
 import { t } from '@/i18n/de';
@@ -84,7 +85,7 @@ export function SchedulePanel({ objectId }: { objectId: string }) {
     schedule?.environment, schedule?.execution_mode, schedule?.enabled,
   ]);
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</div>;
+  if (isLoading) return <ScheduleSkeleton />;
 
   const next = schedule ? nextRunInfo(schedule) : null;
   const intervalTooLow = choice === 'internal' && interval < 60;

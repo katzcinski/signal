@@ -9,14 +9,7 @@ interface ObjectSummaryCardProps {
 
 export function ObjectSummaryCard({ label, value, hint, tone = 'var(--cont)' }: ObjectSummaryCardProps) {
   return (
-    <div style={{
-      minWidth: 0,
-      border: '1px solid var(--line)',
-      borderRadius: 'var(--r-lg)',
-      background: 'var(--bg-1)',
-      padding: 'var(--s4)',
-      boxShadow: 'var(--shadow-1)',
-    }}>
+    <div className="object-summary-card">
       <div style={{
         color: 'var(--fg-3)',
         fontSize: 'var(--fs-eyebrow)',
