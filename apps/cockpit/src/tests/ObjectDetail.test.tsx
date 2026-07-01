@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ObjectDetail from '@/pages/ObjectDetail';
-import type { CheckResult, ContractOut, ObjectSummary, RunListItem, RunSummary } from '@/types';
+import type { CheckResult, ContractOut, ContractVersionDiff, ObjectSummary, RunListItem, RunSummary } from '@/types';
 
 const mocks = vi.hoisted(() => ({
   triggerRun: vi.fn(),
@@ -27,6 +27,7 @@ const state = vi.hoisted(() => ({
     space: 'CORE',
   } as ObjectSummary,
   contract: undefined as ContractOut | undefined,
+  versionDiff: undefined as ContractVersionDiff | undefined,
   runs: [] as RunListItem[],
   runDetail: undefined as RunSummary | undefined,
   monitoringEnabled: false,
@@ -50,7 +51,10 @@ vi.mock('@/api/objects', () => ({
 
 vi.mock('@/api/contracts', () => ({
   useContract: () => ({ data: state.contract }),
-  useContractVersionDiff: () => ({ data: undefined, isLoading: false }),
+  useContractVersionDiff: (_product: string, enabled = true) => ({
+    data: enabled ? state.versionDiff : undefined,
+    isLoading: false,
+  }),
   useSeedContract: () => ({ mutate: mocks.seedContract, isPending: state.seedContractPending }),
 }));
 
@@ -126,8 +130,34 @@ const passedResult: CheckResult = {
   actual_value: '1',
 };
 
+const activeContract: ContractOut = {
+  product: 'Sales_Orders_View',
+  kind: 'provider_contract',
+  dataset: 'Sales_Orders_View',
+  owned_by: 'product',
+  owners: ['team-data'],
+  lifecycle: 'active',
+  version: '1.2.0',
+};
+
+const finishedRun: RunListItem = {
+  run_id: 'run-1',
+  dataset: 'Sales_Orders_View',
+  started_at: '2026-07-01T10:00:00Z',
+  finished_at: '2026-07-01T10:01:00Z',
+  overall_status: 'fail',
+  total: 2,
+  passed: 1,
+  failed: 1,
+  warnings: 0,
+  run_state: 'finished',
+  triggered_by: 'test',
+};
+
 beforeEach(() => {
+  state.object.status = 'pass';
   state.contract = undefined;
+  state.versionDiff = undefined;
   state.runs = [];
   state.runDetail = undefined;
   state.monitoringEnabled = false;
@@ -144,6 +174,11 @@ describe('ObjectDetail legacy deep links', () => {
   it('opens ?tab=schedule in the history operations schedule subsection', () => {
     renderObjectDetail('/objects/Sales_Orders_View?tab=schedule');
 
+    const nav = screen.getByLabelText('Objektbereiche');
+    expect(nav).toHaveAttribute('data-active-group', 'history-ops');
+    expect(nav).toHaveAttribute('data-active-anchor', 'schedule');
+    expect(screen.getByRole('button', { name: 'Historie & Betrieb' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Zeitplan' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Schedule subsection for Sales_Orders_View')).toBeTruthy();
     expect(screen.queryByText('Run-ID')).toBeNull();
   });
@@ -151,8 +186,13 @@ describe('ObjectDetail legacy deep links', () => {
   it('opens ?tab=lineage in the structure lineage subsection', () => {
     renderObjectDetail('/objects/Sales_Orders_View?tab=lineage');
 
+    const nav = screen.getByLabelText('Objektbereiche');
+    expect(nav).toHaveAttribute('data-active-group', 'structure-interface');
+    expect(nav).toHaveAttribute('data-active-anchor', 'lineage');
+    expect(screen.getByRole('button', { name: 'Struktur & Interface' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Lineage' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Column lineage for Sales_Orders_View')).toBeTruthy();
-    expect(screen.getAllByText('Lineage Map').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Lineage Map/).length).toBeGreaterThan(0);
     expect(screen.queryByText('Contracts')).toBeNull();
   });
 });
@@ -171,28 +211,8 @@ describe('ObjectDetail hero', () => {
   });
 
   it('summarizes contract, latest run, failed checks, and active monitoring', () => {
-    state.contract = {
-      product: 'Sales_Orders_View',
-      kind: 'provider_contract',
-      dataset: 'Sales_Orders_View',
-      owned_by: 'product',
-      owners: ['team-data'],
-      lifecycle: 'active',
-      version: '1.2.0',
-    };
-    state.runs = [{
-      run_id: 'run-1',
-      dataset: 'Sales_Orders_View',
-      started_at: '2026-07-01T10:00:00Z',
-      finished_at: '2026-07-01T10:01:00Z',
-      overall_status: 'fail',
-      total: 2,
-      passed: 1,
-      failed: 1,
-      warnings: 0,
-      run_state: 'finished',
-      triggered_by: 'test',
-    }];
+    state.contract = activeContract;
+    state.runs = [finishedRun];
     state.runDetail = {
       ...state.runs[0],
       schema_name: 'SALES',
@@ -231,5 +251,112 @@ describe('ObjectDetail hero', () => {
       .getAllByRole('button')
       .filter(button => button.getAttribute('aria-busy') === 'true');
     expect(busyButtons).toHaveLength(3);
+  });
+});
+
+describe('ObjectDetail attention band', () => {
+  it('appears when the latest run has failed checks', () => {
+    state.contract = activeContract;
+    state.runs = [finishedRun];
+    state.runDetail = {
+      ...finishedRun,
+      schema_name: 'SALES',
+      contract_version: '1.2.0',
+      actor: 'test',
+      results: [failedResult, passedResult],
+    };
+
+    renderObjectDetail('/objects/Sales_Orders_View');
+
+    expect(screen.getByLabelText('Aufmerksamkeitsband')).toBeTruthy();
+    expect(screen.getByText('Checks fehlgeschlagen')).toBeTruthy();
+    expect(screen.getByText('1 Check(s) im letzten Run sind fehlgeschlagen.')).toBeTruthy();
+  });
+
+  it('appears when the object has no contract', () => {
+    renderObjectDetail('/objects/Sales_Orders_View');
+
+    expect(screen.getByLabelText('Aufmerksamkeitsband')).toBeTruthy();
+    expect(screen.getByText('Contract fehlt')).toBeTruthy();
+  });
+
+  it('appears when monitoring is enabled but the object is not provisioned', () => {
+    state.contract = activeContract;
+    state.monitoringEnabled = true;
+
+    renderObjectDetail('/objects/Sales_Orders_View');
+
+    expect(screen.getByLabelText('Aufmerksamkeitsband')).toBeTruthy();
+    expect(screen.getByText('Monitoring nicht vorgemerkt')).toBeTruthy();
+  });
+
+  it('appears when monitoring provisioning failed', () => {
+    state.contract = activeContract;
+    state.monitoringEnabled = true;
+    state.monitoringShares = [{
+      object_id: 'Sales_Orders_View',
+      status: 'error',
+      view: null,
+      error: 'MON_VIEW konnte nicht erstellt werden',
+    }];
+
+    renderObjectDetail('/objects/Sales_Orders_View');
+
+    expect(screen.getByLabelText('Aufmerksamkeitsband')).toBeTruthy();
+    expect(screen.getByText('Monitoring-Fehler')).toBeTruthy();
+    expect(screen.getAllByText('MON_VIEW konnte nicht erstellt werden').length).toBeGreaterThan(0);
+  });
+
+  it('appears when the contract version diff is breaking', () => {
+    state.contract = activeContract;
+    state.versionDiff = {
+      available: true,
+      from_version: '1.1.0',
+      to_version: '1.2.0',
+      breaking: true,
+      entries: [{ kind: 'removed_column', path: 'guarantees.schema.columns', breaking: true }],
+    };
+
+    renderObjectDetail('/objects/Sales_Orders_View');
+
+    expect(screen.getByLabelText('Aufmerksamkeitsband')).toBeTruthy();
+    expect(screen.getByText('Breaking Contract-Diff')).toBeTruthy();
+  });
+
+  it('does not appear from the hero health status alone', () => {
+    state.object.status = 'fail';
+    state.contract = activeContract;
+    state.versionDiff = {
+      available: true,
+      from_version: '1.1.0',
+      to_version: '1.2.0',
+      breaking: false,
+      entries: [],
+    };
+
+    renderObjectDetail('/objects/Sales_Orders_View');
+
+    expect(screen.getAllByText('fail').length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText('Aufmerksamkeitsband')).toBeNull();
+  });
+
+  it('collapses multiple triggers into one compact summary', () => {
+    state.monitoringEnabled = true;
+    state.runs = [finishedRun];
+    state.runDetail = {
+      ...finishedRun,
+      schema_name: 'SALES',
+      contract_version: '',
+      actor: 'test',
+      results: [failedResult],
+    };
+
+    renderObjectDetail('/objects/Sales_Orders_View');
+
+    expect(screen.getAllByLabelText('Aufmerksamkeitsband')).toHaveLength(1);
+    expect(screen.getByText('3 Punkte brauchen Aufmerksamkeit')).toBeTruthy();
+    expect(screen.getByText('Checks fehlgeschlagen')).toBeTruthy();
+    expect(screen.getByText('Contract fehlt')).toBeTruthy();
+    expect(screen.getByText('Monitoring nicht vorgemerkt')).toBeTruthy();
   });
 });

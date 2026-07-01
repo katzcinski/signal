@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  OBJECT_DETAIL_GROUPS,
   OBJECT_DETAIL_LEGACY_TABS,
   OBJECT_DETAIL_TAB_TARGETS,
   resolveObjectDetailTabTarget,
@@ -30,6 +31,14 @@ describe('ObjectDetail tab compatibility', () => {
 
   it('exports the same mapping as the resolver uses', () => {
     expect(OBJECT_DETAIL_TAB_TARGETS).toEqual(expectedTargets);
+  });
+
+  it('defines grouped navigation defaults without changing legacy anchors', () => {
+    expect(OBJECT_DETAIL_GROUPS).toEqual([
+      { id: 'quality', defaultTab: 'checks', tabs: ['checks'] },
+      { id: 'structure-interface', defaultTab: 'contract', tabs: ['contract', 'lineage'] },
+      { id: 'history-ops', defaultTab: 'runs', tabs: ['runs', 'timeseries', 'schedule', 'diff'] },
+    ]);
   });
 
   it('uses checks as the fallback for missing or unknown tab keys', () => {

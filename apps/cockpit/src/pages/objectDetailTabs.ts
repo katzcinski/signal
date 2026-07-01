@@ -15,6 +15,12 @@ export type ObjectDetailTabTarget = {
   anchor: ObjectDetailTab;
 };
 
+export type ObjectDetailGroupConfig = {
+  id: ObjectDetailGroup;
+  defaultTab: ObjectDetailTab;
+  tabs: ObjectDetailTab[];
+};
+
 export const OBJECT_DETAIL_LEGACY_TABS: ObjectDetailTab[] = [
   'checks',
   'runs',
@@ -34,6 +40,12 @@ export const OBJECT_DETAIL_TAB_TARGETS: Record<ObjectDetailTab, ObjectDetailTabT
   schedule: { legacyTab: 'schedule', group: 'history-ops', anchor: 'schedule' },
   diff: { legacyTab: 'diff', group: 'history-ops', anchor: 'diff' },
 };
+
+export const OBJECT_DETAIL_GROUPS: ObjectDetailGroupConfig[] = [
+  { id: 'quality', defaultTab: 'checks', tabs: ['checks'] },
+  { id: 'structure-interface', defaultTab: 'contract', tabs: ['contract', 'lineage'] },
+  { id: 'history-ops', defaultTab: 'runs', tabs: ['runs', 'timeseries', 'schedule', 'diff'] },
+];
 
 export function resolveObjectDetailTabTarget(tabKey: string | null | undefined): ObjectDetailTabTarget {
   if (tabKey && tabKey in OBJECT_DETAIL_TAB_TARGETS) {

@@ -5,7 +5,6 @@ import { useObject, useObjectRuns, useTriggerRun, useCheckHistory } from '@/api/
 import { useMonitoringConfig, useMonitoringShares, useRequestMonitoring } from '@/api/monitoring';
 import { useRun } from '@/api/runs';
 import { useContract, useContractVersionDiff, useSeedContract } from '@/api/contracts';
-import { useLineage } from '@/api/lineage';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { CheckStatusCell } from '@/components/ui/StatePill';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -21,298 +20,21 @@ import { ColumnLineagePanel } from '@/components/lineage/ColumnLineagePanel';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { ObjectAttentionBand } from '@/components/object-detail/ObjectAttentionBand';
 import { ObjectHero } from '@/components/object-detail/ObjectHero';
+import { MiniLineageSection } from '@/components/object-detail/MiniLineageSection';
+import { ContractView } from '@/components/object-detail/ContractView';
+import { ContractVersionDiffView } from '@/components/object-detail/ContractVersionDiffView';
+import { ObjectDetailNavigation } from '@/components/object-detail/ObjectDetailNavigation';
 import { useRoleStore, canProfileObject, canWriteContract } from '@/store/role';
 import { t } from '@/i18n/de';
-import type { CheckResult, ContractOut, RunListItem } from '@/types';
+import type { CheckResult, RunListItem } from '@/types';
 import {
-  OBJECT_DETAIL_LEGACY_TABS,
   OBJECT_DETAIL_TAB_TARGETS,
   resolveObjectDetailTabTarget,
   type ObjectDetailGroup,
   type ObjectDetailTab as Tab,
 } from './objectDetailTabs';
-
-// ---------------------------------------------------------------------------
-// Structured contract view — replaces raw JSON.stringify
-// ---------------------------------------------------------------------------
-function ContractView({ contract }: { contract: ContractOut }) {
-  const guaranteeEntries = Object.entries(contract.guarantees ?? {}).filter(([, v]) => {
-    if (!v) return false;
-    if (Array.isArray(v)) return v.length > 0;
-    if (typeof v === 'object') return Object.keys(v).length > 0;
-    return true;
-  });
-
-  const lifecycleColor = contract.lifecycle === 'active'
-    ? { bg: 'rgba(45,164,78,0.15)', fg: '#2da44e' }
-    : { bg: 'var(--bg-2)', fg: 'var(--fg-3)' };
-
-  return (
-    <div>
-      {/* Metadata row */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 16 }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
-          v{contract.version}
-        </span>
-        <span style={{
-          fontSize: 11, borderRadius: 'var(--r)', padding: '2px 8px',
-          background: lifecycleColor.bg, color: lifecycleColor.fg,
-          border: `1px solid ${lifecycleColor.fg}`,
-        }}>
-          {t.lifecycle[contract.lifecycle] ?? contract.lifecycle}
-        </span>
-        <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>{contract.owned_by}</span>
-        {contract.owners && contract.owners.length > 0 && (
-          <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>
-            {contract.owners.join(', ')}
-          </span>
-        )}
-        {contract.compliance && (
-          <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>
-            · {t.compliance[contract.compliance] ?? contract.compliance}
-          </span>
-        )}
-      </div>
-
-      {/* Description */}
-      {contract.description && (
-        <p style={{ fontSize: 13, color: 'var(--fg-2)', marginBottom: 16, lineHeight: 1.6 }}>
-          {contract.description}
-        </p>
-      )}
-
-      {/* Guarantee families */}
-      {guaranteeEntries.length === 0 ? (
-        <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>Keine Garantien definiert.</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {guaranteeEntries.map(([family, value]) => (
-            <div key={family}>
-              <div style={{
-                fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase',
-                letterSpacing: '0.05em', marginBottom: 4,
-              }}>
-                {t.workbench.families[family] ?? family}
-              </div>
-              <div style={{ background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: 'var(--s2) var(--s3)' }}>
-                <pre style={{
-                  margin: 0, fontFamily: 'var(--font-mono)', fontSize: 11,
-                  color: 'var(--fg-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                }}>
-                  {JSON.stringify(value, null, 2)}
-                </pre>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// UX-N13: semantic version diff — working contract vs. certified version.
-// Explains the *meaning* of each change (kind + old→new), not just a YAML dump.
-// ---------------------------------------------------------------------------
-function fmtVal(v: unknown): string {
-  if (v === null || v === undefined) return '—';
-  if (typeof v === 'object') return JSON.stringify(v);
-  return String(v);
-}
-
-function ContractVersionDiffView({ product, enabled }: { product: string; enabled: boolean }) {
-  const { data: diff, isLoading } = useContractVersionDiff(product, enabled);
-  if (isLoading || !diff) return null;
-
-  return (
-    <div style={{ marginTop: 16, background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s4)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {t.diff.versionTitle}
-        </span>
-        {diff.available && diff.from_version && (
-          <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>
-            {t.diff.fromTo.replace('{from}', `v${diff.from_version}`).replace('{to}', `v${diff.to_version}`)}
-          </span>
-        )}
-        {diff.available && diff.entries.length > 0 && (
-          <span style={{
-            fontSize: 10, borderRadius: 'var(--r)', padding: '2px 8px',
-            background: diff.breaking ? 'rgba(196,68,68,0.15)' : 'rgba(45,164,78,0.15)',
-            color: diff.breaking ? 'var(--status-fail)' : 'var(--status-ok)',
-            border: `1px solid ${diff.breaking ? 'var(--status-fail)' : 'var(--status-ok)'}`,
-          }}>
-            {diff.breaking ? t.diff.breaking : t.diff.nonBreaking}
-          </span>
-        )}
-      </div>
-
-      {!diff.available ? (
-        <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.diff.noBaseline}</p>
-      ) : diff.entries.length === 0 ? (
-        <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.diff.noChanges}</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-          {diff.entries.map((e, i) => (
-            <div key={`${e.path}-${i}`} style={{
-              display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-              borderLeft: `3px solid ${e.breaking ? 'var(--status-fail)' : 'var(--status-warn)'}`,
-              background: 'var(--bg-2)', borderRadius: 'var(--r-md)', padding: 'var(--s2) var(--s3)',
-            }}>
-              <span style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500 }}>
-                {t.diff.kinds[e.kind] ?? e.kind}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>{e.path}</span>
-              <div style={{ flex: 1 }} />
-              <code style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--fg-3)' }}>{fmtVal(e.old)}</code>
-              <span style={{ color: 'var(--fg-3)' }}>→</span>
-              <code style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: e.breaking ? 'var(--status-fail)' : 'var(--fg-2)' }}>{fmtVal(e.new)}</code>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Mini-DAG — SVG 1-hop neighbourhood (simple SVG, no Cytoscape)
-// ---------------------------------------------------------------------------
-const _BOX_W = 144;
-const _BOX_H = 34;
-const _H_GAP = 56;
-const _V_GAP = 10;
-
-function _colH(count: number): number {
-  return Math.max(1, count) * (_BOX_H + _V_GAP) - _V_GAP;
-}
-
-function _boxY(svgH: number, idx: number, total: number): number {
-  const totalH = _colH(total);
-  return (svgH - totalH) / 2 + idx * (_BOX_H + _V_GAP);
-}
-
-function _truncate(s: string, max = 17): string {
-  return s.length > max ? s.slice(0, max - 1) + '…' : s;
-}
-
-function MiniLineageDag({ focusId }: { focusId: string }) {
-  // Nur das direkte Umfeld des Objekts laden statt des gesamten Graphen.
-  const { data: graph, isLoading } = useLineage({ seeds: [focusId], depth: 1, enabled: !!focusId });
-  const navigate = useNavigate();
-
-  if (isLoading) {
-    return <div style={{ color: 'var(--fg-3)', fontSize: 12, padding: 'var(--s3)' }}>{t.common.loading}</div>;
-  }
-  if (!graph || graph.nodes.length === 0) return null;
-
-  const { nodes, edges } = graph;
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
-  const MAX = 5;
-
-  const predIds = [...new Set(edges.filter(e => e.target === focusId).map(e => e.source))].slice(0, MAX);
-  const succIds = [...new Set(edges.filter(e => e.source === focusId).map(e => e.target))].slice(0, MAX);
-  const focusNode = nodeMap.get(focusId);
-
-  const hasPreds = predIds.length > 0;
-  const hasSuccs = succIds.length > 0;
-
-  const SVG_H = Math.max(_colH(predIds.length), _BOX_H, _colH(succIds.length)) + 20;
-  const FOCUS_X = hasPreds ? _BOX_W + _H_GAP : 0;
-  const SUCC_X = FOCUS_X + _BOX_W + _H_GAP;
-  const SVG_W = hasSuccs ? SUCC_X + _BOX_W : FOCUS_X + _BOX_W;
-  const FOCUS_Y = (SVG_H - _BOX_H) / 2;
-
-  const curve = (x1: number, y1: number, x2: number, y2: number) => {
-    const mx = (x1 + x2) / 2;
-    return `M ${x1} ${y1} C ${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`;
-  };
-
-  return (
-    <div>
-      <svg
-        width={SVG_W} height={SVG_H}
-        style={{ display: 'block', maxWidth: '100%', overflow: 'visible' }}
-        aria-label={`Lineage: ${focusId}`}
-      >
-        <defs>
-          <marker id="dag-arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-            <polygon points="0 0, 7 3.5, 0 7" fill="var(--fg-3)" opacity={0.5} />
-          </marker>
-        </defs>
-
-        {/* Predecessor → focus edges */}
-        {predIds.map((pid, i) => (
-          <path key={pid}
-            d={curve(_BOX_W, _boxY(SVG_H, i, predIds.length) + _BOX_H / 2,
-                     FOCUS_X, FOCUS_Y + _BOX_H / 2)}
-            stroke="var(--line-2)" strokeWidth={1.5} fill="none" markerEnd="url(#dag-arr)"
-          />
-        ))}
-
-        {/* Focus → successor edges */}
-        {succIds.map((sid, i) => (
-          <path key={sid}
-            d={curve(FOCUS_X + _BOX_W, FOCUS_Y + _BOX_H / 2,
-                     SUCC_X, _boxY(SVG_H, i, succIds.length) + _BOX_H / 2)}
-            stroke="var(--line-2)" strokeWidth={1.5} fill="none" markerEnd="url(#dag-arr)"
-          />
-        ))}
-
-        {/* Predecessor boxes */}
-        {predIds.map((pid, i) => {
-          const y = _boxY(SVG_H, i, predIds.length);
-          const nd = nodeMap.get(pid);
-          return (
-            <g key={pid} transform={`translate(0,${y})`}
-               style={{ cursor: 'pointer' }} onClick={() => navigate(`/objects/${pid}`)}>
-              <rect width={_BOX_W} height={_BOX_H} rx={4}
-                    fill="var(--bg-2)" stroke="var(--line)" strokeWidth={1} />
-              <text x={_BOX_W / 2} y={_BOX_H / 2 + 4} textAnchor="middle"
-                    fontSize={10} fontFamily="var(--font-mono)" fill="var(--fg-2)">
-                {_truncate(nd?.label ?? pid)}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Focus box */}
-        <g transform={`translate(${FOCUS_X},${FOCUS_Y})`}>
-          <rect width={_BOX_W} height={_BOX_H} rx={4} fill="var(--cont)" />
-          <text x={_BOX_W / 2} y={_BOX_H / 2 + 4} textAnchor="middle"
-                fontSize={10} fontFamily="var(--font-mono)" fill="#fff" fontWeight="bold">
-            {_truncate(focusNode?.label ?? focusId)}
-          </text>
-        </g>
-
-        {/* Successor boxes */}
-        {succIds.map((sid, i) => {
-          const y = _boxY(SVG_H, i, succIds.length);
-          const nd = nodeMap.get(sid);
-          return (
-            <g key={sid} transform={`translate(${SUCC_X},${y})`}
-               style={{ cursor: 'pointer' }} onClick={() => navigate(`/objects/${sid}`)}>
-              <rect width={_BOX_W} height={_BOX_H} rx={4}
-                    fill="var(--bg-2)" stroke="var(--line)" strokeWidth={1} />
-              <text x={_BOX_W / 2} y={_BOX_H / 2 + 4} textAnchor="middle"
-                    fontSize={10} fontFamily="var(--font-mono)" fill="var(--fg-2)">
-                {_truncate(nd?.label ?? sid)}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-
-      <div style={{ marginTop: 10, textAlign: 'right' }}>
-        <Link to={`/lineage?focus=${encodeURIComponent(focusId)}`}
-              style={{ color: 'var(--cont)', fontSize: 11 }}>
-          {t.objectDetail.lineageLink} →
-        </Link>
-      </div>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Sparkline over the numeric actual_value history of one check (newest-first
@@ -350,6 +72,7 @@ export default function ObjectDetail() {
   const { data: obj, isLoading, isError, refetch } = useObject(id);
   const { data: runs = [] } = useObjectRuns(id);
   const { data: contract } = useContract(id);
+  const { data: contractVersionDiff } = useContractVersionDiff(id, !!contract);
   const trigger = useTriggerRun(id);
   const seedContract = useSeedContract();
   const { data: monCfg } = useMonitoringConfig();
@@ -360,6 +83,7 @@ export default function ObjectDetail() {
   const latestRun: RunListItem | undefined = runs[0];
   const { data: latestRunDetail } = useRun(latestRun?.run_id ?? '');
   const results: CheckResult[] = latestRunDetail?.results ?? [];
+  const failedChecks = results.filter(result => !result.passed).length;
 
   const isRunning = latestRun?.run_state === 'running' || latestRunDetail?.run_state === 'running';
   const canProfile = canProfileObject(role);
@@ -392,13 +116,6 @@ export default function ObjectDetail() {
   const isActiveSection = (group: ObjectDetailGroup, anchor: Tab) => (
     activeGroup === group && tab === anchor
   );
-
-  const TAB_STYLE = (tabKey: Tab) => ({
-    padding: 'var(--s2) var(--s4)', border: 'none', background: 'none',
-    color: tab === OBJECT_DETAIL_TAB_TARGETS[tabKey].anchor ? 'var(--fg)' : 'var(--fg-3)',
-    borderBottom: tab === OBJECT_DETAIL_TAB_TARGETS[tabKey].anchor ? '2px solid var(--cont)' : '2px solid transparent',
-    cursor: 'pointer', fontSize: 13,
-  });
 
   const runColumns: ColDef<RunListItem>[] = [
     { key: 'run_id', header: t.objectDetail.colRunId, mono: true, render: r => (
@@ -454,6 +171,14 @@ export default function ObjectDetail() {
         onStartRun={() => setDialogOpen(true)}
       />
 
+      <ObjectAttentionBand
+        failedChecks={failedChecks}
+        hasContract={!!contract}
+        monitoringEnabled={!!monCfg?.enabled}
+        monitoringEntry={monEntry}
+        hasBreakingContractDiff={contractVersionDiff?.breaking === true}
+      />
+
       {dialogOpen && (
         <RunTriggerDialog
           pending={trigger.isPending}
@@ -466,17 +191,11 @@ export default function ObjectDetail() {
         <ObjectProfilePanel objectId={obj.id} onClose={() => setProfileOpen(false)} />
       )}
 
-      <div
-        data-active-group={activeGroup}
-        data-active-anchor={tab}
-        style={{ borderBottom: '1px solid var(--line)', marginBottom: 20 }}
-      >
-        {OBJECT_DETAIL_LEGACY_TABS.map(tabKey => (
-          <button key={tabKey} onClick={() => setTab(tabKey)} style={TAB_STYLE(tabKey)}>
-            {t.objectDetail.tabs[tabKey] ?? tabKey}
-          </button>
-        ))}
-      </div>
+      <ObjectDetailNavigation
+        activeGroup={activeGroup}
+        activeTab={tab}
+        onSelectTab={setTab}
+      />
 
       {isActiveSection('quality', 'checks') && (
         <>
@@ -514,7 +233,7 @@ export default function ObjectDetail() {
           {!contract && <MinedProposalsCallout productId={obj.id} />}
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s5)' }}>
             {contract ? (
-              <ContractView contract={contract as ContractOut} />
+              <ContractView contract={contract} />
             ) : (
               <p style={{ color: 'var(--fg-3)' }}>
                 {t.objectDetail.noContractPrefix}{' '}
@@ -531,13 +250,7 @@ export default function ObjectDetail() {
       {isActiveSection('structure-interface', 'lineage') && (
         <>
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s6)' }}>
-            <MiniLineageDag focusId={obj.id} />
-            <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 16 }}>
-              {t.objectDetail.lineageHint}{' '}
-              <Link to={`/lineage?focus=${encodeURIComponent(obj.id)}`} style={{ color: 'var(--cont)' }}>
-                {t.objectDetail.lineageLink}
-              </Link>.
-            </p>
+            <MiniLineageSection focusId={obj.id} />
           </div>
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', padding: 'var(--s6)', marginTop: 'var(--s4)' }}>
             <ColumnLineagePanel objectId={obj.id} />
