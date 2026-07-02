@@ -65,6 +65,17 @@ def isolate_runtime_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     for key, value in {**_DATASPHERE_ENV, **file_env}.items():
         monkeypatch.setenv(key, value)
 
+    # T-10: die Win32-Simulationstests patchen prozessweit `os.name`/`os.path`
+    # (datasphere_cli.os IST das globale os-Modul). Unser Teardown ruft danach
+    # init_resolver → Path() auf; mit os.name=='nt' entstünde ein WindowsPath,
+    # der auf POSIX beim Instanziieren crasht. monkeypatch stellt diese Attribute
+    # erst NACH diesem Finalizer wieder her, deshalb sichern wir sie selbst und
+    # rollen sie vor _reset_runtime_state() zurück.
+    orig_os_name = os.name
+    orig_os_path = os.path
+
     _reset_runtime_state()
     yield
+    os.name = orig_os_name
+    os.path = orig_os_path
     _reset_runtime_state()

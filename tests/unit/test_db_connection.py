@@ -5,6 +5,10 @@ No live HANA — the driver's ``connect`` is monkeypatched.
 """
 import pytest
 
+# T-11: hdbcli ist der proprietäre SAP-Treiber. Fehlt er (frische Umgebung ohne
+# `make install`), skippt dieses Modul selbst statt mit ImportError zu erroren.
+pytest.importorskip("hdbcli")
+
 from dq_core.connect import db_connection
 from dq_core.connect.db_connection import (
     MockConnection,
