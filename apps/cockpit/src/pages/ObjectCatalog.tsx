@@ -9,6 +9,7 @@ import { CovFlag } from '@/components/ui/CovFlag';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { ObjectPeek } from '@/components/ObjectPeek';
+import { relativeTime, absoluteTime } from '@/lib/time';
 import { t } from '@/i18n/de';
 import type { ObjectSummary } from '@/types';
 
@@ -98,7 +99,11 @@ export default function ObjectCatalog() {
     { key: 'owned_by', header: t.objects.colOwner, sortable: true, sortValue: o => o.owned_by, render: o => <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{o.owned_by}</span> },
     {
       key: 'last_run', header: t.objects.colLastRun, mono: true, sortable: true, sortValue: o => o.last_run ?? '',
-      render: o => <span style={{ fontSize: 11 }}>{o.last_run ? new Date(o.last_run).toLocaleString() : '—'}</span>,
+      render: o => (
+        <span style={{ fontSize: 11 }} title={o.last_run ? absoluteTime(o.last_run) : undefined}>
+          {o.last_run ? relativeTime(o.last_run) : '—'}
+        </span>
+      ),
     },
   ], [navigate]);
 
@@ -125,7 +130,7 @@ export default function ObjectCatalog() {
           placeholder={t.objects.searchPlaceholder}
           style={{
             background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-            color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12, minWidth: 220,
+            color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12, minWidth: 260,
           }}
         />
       </div>
@@ -133,7 +138,7 @@ export default function ObjectCatalog() {
         <button style={chipBtn(familyFilter === '')} onClick={() => setFamilyFilter('')}>{t.objects.allFamilies}</button>
         {FAMILIES.map(f => (
           <button key={f} style={chipBtn(familyFilter === f)} onClick={() => setFamilyFilter(familyFilter === f ? '' : f)}>
-            {t.workbench.families[f] ?? f}
+            {t.objects.family[f] ?? f}
           </button>
         ))}
         <div style={{ width: 1, height: 16, background: 'var(--line-2)', margin: '0 4px' }} />
@@ -143,7 +148,12 @@ export default function ObjectCatalog() {
             {t.status[s] ?? s}
           </button>
         ))}
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+          <span aria-live="polite" style={{ fontSize: 11, color: 'var(--fg-3)', whiteSpace: 'nowrap' }}>
+            {rows.length === objects.length
+              ? t.objects.resultCountAll.replace('{total}', String(objects.length))
+              : t.objects.resultCount.replace('{shown}', String(rows.length)).replace('{total}', String(objects.length))}
+          </span>
           <select
             value={spaceFilter}
             onChange={e => setSpaceFilter(e.target.value)}
@@ -161,7 +171,7 @@ export default function ObjectCatalog() {
       {hasActiveFilter && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
           {textFilter && <FilterChip label={`"${textFilter}"`} onClear={() => setTextFilter('')} />}
-          {familyFilter && <FilterChip label={t.workbench.families[familyFilter] ?? familyFilter} onClear={() => setFamilyFilter('')} />}
+          {familyFilter && <FilterChip label={t.objects.family[familyFilter] ?? familyFilter} onClear={() => setFamilyFilter('')} />}
           {statusFilter && <FilterChip label={t.status[statusFilter] ?? statusFilter} onClear={() => setStatusFilter('')} />}
           {spaceFilter && <FilterChip label={spaceFilter} onClear={() => setSpaceFilter('')} />}
         </div>

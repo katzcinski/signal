@@ -29,6 +29,6 @@ describe('Products', () => {
     );
 
     expect(screen.getByText('sales_product')).toBeTruthy();
-    expect(screen.getByText('pass')).toBeTruthy();
+    expect(screen.getByText('Bestanden')).toBeTruthy();
   });
 });

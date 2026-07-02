@@ -522,6 +522,13 @@ export const t = {
     title: 'Objekte',
     allSpaces: 'Alle Spaces',
     empty: 'Keine Objekte gefunden',
+    family: {
+      observability: 'Observability',
+      quality: 'Quality',
+      contract: 'Contract',
+    } as Record<string, string>,
+    resultCount: '{shown} von {total} Objekten',
+    resultCountAll: '{total} Objekte',
     colName: 'Name',
     colFamily: 'Familie',
     colLayer: 'Layer',
