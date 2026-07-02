@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { t } from '@/i18n/de';
 import type { IncidentDetail } from '@/types';
 
 const data = vi.hoisted(() => ({
+  useIncidentsCalls: [] as Array<[string | undefined, string | undefined, string | undefined]>,
   incidents: [
     {
       id: 1,
@@ -75,16 +76,20 @@ const data = vi.hoisted(() => ({
 }));
 
 vi.mock('@/api/incidents', () => ({
-  useIncidents: (_status?: string, severity?: string, kind?: string) => ({
-    data: data.incidents.filter(incident => {
-      if (severity && incident.severity !== severity) return false;
-      if (kind && incident.kind !== kind) return false;
-      return true;
-    }),
-    isLoading: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
+  useIncidents: (status?: string, severity?: string, kind?: string) => {
+    data.useIncidentsCalls.push([status, severity, kind]);
+
+    return {
+      data: data.incidents.filter(incident => {
+        if (severity && incident.severity !== severity) return false;
+        if (kind && incident.kind !== kind) return false;
+        return true;
+      }),
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    };
+  },
   useIncident: (id: number | null) => ({
     data: data.incidents.find(incident => incident.id === id),
     isLoading: false,
@@ -110,13 +115,68 @@ function renderIncidents(route = '/incidents') {
   );
 }
 
+function lastUseIncidentsCall() {
+  return data.useIncidentsCalls[data.useIncidentsCalls.length - 1];
+}
+
 describe('Incidents page', () => {
+  beforeEach(() => {
+    data.useIncidentsCalls.length = 0;
+    data.transition.mockClear();
+  });
+
+  it('fetches incidents without a server status and filters the default open tab client-side', () => {
+    renderIncidents();
+
+    expect(lastUseIncidentsCall()).toEqual([undefined, undefined, undefined]);
+    expect(screen.getByText('Open contract breach')).toBeInTheDocument();
+    expect(screen.getByText('Open gate signal')).toBeInTheDocument();
+    expect(screen.queryByText('Internal latency signal')).not.toBeInTheDocument();
+    expect(screen.queryByText('Resolved breach')).not.toBeInTheDocument();
+  });
+
+  it('filters the acknowledged tab client-side without passing status to the API', () => {
+    renderIncidents('/incidents?status=acknowledged');
+
+    expect(lastUseIncidentsCall()).toEqual([undefined, undefined, undefined]);
+    expect(screen.getByText('Internal latency signal')).toBeInTheDocument();
+    expect(screen.queryByText('Open contract breach')).not.toBeInTheDocument();
+    expect(screen.queryByText('Open gate signal')).not.toBeInTheDocument();
+    expect(screen.queryByText('Resolved breach')).not.toBeInTheDocument();
+  });
+
+  it('passes only the internal gate kind to the incidents API', () => {
+    renderIncidents('/incidents?kind=internal_gate');
+
+    expect(lastUseIncidentsCall()).toEqual([undefined, undefined, 'internal_gate']);
+    expect(screen.getByText('Open gate signal')).toBeInTheDocument();
+    expect(screen.queryByText('Open contract breach')).not.toBeInTheDocument();
+  });
+
+  it('keeps the contract kind filter client-side', () => {
+    renderIncidents('/incidents?kind=contract');
+
+    expect(lastUseIncidentsCall()).toEqual([undefined, undefined, undefined]);
+    expect(screen.getByText('Open contract breach')).toBeInTheDocument();
+    expect(screen.queryByText('Open gate signal')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `${t.incidents.tabs.open} (1)` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `${t.incidents.tabs.resolved} (1)` })).toBeInTheDocument();
+  });
+
   it('opens the drawer from a shared ?id= deep link', () => {
     renderIncidents('/incidents?status=acknowledged&kind=internal_gate&id=2');
 
     expect(screen.getByRole('dialog', { name: 'Internal latency signal' })).toBeInTheDocument();
     expect(screen.getAllByText('DS_GATE').length).toBeGreaterThan(0);
     expect(screen.getAllByText(t.incidents.kindGate).length).toBeGreaterThan(0);
+  });
+
+  it('opens the drawer for an id hidden by the active filters', () => {
+    renderIncidents('/incidents?kind=internal_gate&id=1');
+
+    expect(lastUseIncidentsCall()).toEqual([undefined, undefined, 'internal_gate']);
+    expect(screen.queryByRole('button', { name: /Open contract breach/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Open contract breach' })).toBeInTheDocument();
   });
 
   it('writes and clears the selected incident id through the URL', () => {
