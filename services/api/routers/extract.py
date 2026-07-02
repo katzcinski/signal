@@ -225,7 +225,7 @@ def _status_payload(
 def trigger_extract(
     body: ExtractIn | None = Body(default=None),
     environment: str = Query(default="default"),
-    principal: Principal = require_admin,
+    principal: Principal = require_steward,
     store: StoreDep = ...,
     inventory: list[dict] = Depends(get_inventory),
     lineage: dict = Depends(get_lineage),
@@ -420,7 +420,7 @@ def extract_status(
     if _LATEST_STATUS is not None:
         return {
             **_LATEST_STATUS,
-            "can_trigger": principal.has_role("admin"),
+            "can_trigger": principal.has_role("steward", "owner", "admin"),
         }
 
     snapshot_ts = _snapshot_timestamp(settings)
@@ -438,7 +438,7 @@ def extract_status(
             settings=settings,
             finished_at=snapshot_ts,
         ),
-        "can_trigger": principal.has_role("admin"),
+        "can_trigger": principal.has_role("steward", "owner", "admin"),
     }
 
 

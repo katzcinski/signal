@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import uuid
 from pathlib import Path
@@ -19,6 +20,19 @@ router = APIRouter(prefix="/api/checks", tags=["checks"])
 logger = logging.getLogger("dq_cockpit.checks")
 
 _revert_lock = threading.Lock()
+
+# S-4: {dataset} wird zum Pfadsegment (checks/{dataset}/checks.yml) — gleiche
+# Policy wie _SAFE_PRODUCT in contracts.py, sperrt ../-Traversal.
+_SAFE_DATASET = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _validate_dataset(dataset: str) -> str:
+    if not _SAFE_DATASET.match(dataset or ""):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid dataset name {dataset!r} (allowed: ^[A-Za-z_][A-Za-z0-9_]*$)",
+        )
+    return dataset
 
 
 def _summary_payload(summary) -> dict:
@@ -73,6 +87,7 @@ def dry_run_checks(
     if not principal.has_role("steward", "owner", "admin"):
         raise HTTPException(status_code=403, detail="Dry-runs require steward role or higher.")
 
+    _validate_dataset(dataset)
     settings = get_settings()
     contracts_dir = Path(settings.contracts_dir)
 
@@ -176,6 +191,7 @@ def revert_checks(
     if not principal.has_role("steward", "owner", "admin"):
         raise HTTPException(status_code=403, detail="Revert requires steward role or higher.")
 
+    _validate_dataset(dataset)
     settings = get_settings()
     checks_path = Path(settings.checks_dir) / dataset / "checks.yml"
 

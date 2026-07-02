@@ -58,9 +58,11 @@ def test_extract_status_reports_latest_snapshot(api_client):
     assert data["runtime_artifact_paths"]["inventory"]
 
 
-def test_extract_trigger_requires_admin(api_client):
-    resp = api_client.post("/api/extract", headers={"X-DQ-Role": "viewer"})
-    assert resp.status_code == 403
+def test_extract_trigger_requires_steward(api_client):
+    """W-1: Der Lite-Einstieg L1 (Inventar/Lineage extrahieren) ist steward+,
+    nicht admin — Extract ist gegenüber Datasphere read-only."""
+    assert api_client.post("/api/extract", headers={"X-DQ-Role": "viewer"}).status_code == 403
+    assert api_client.post("/api/extract", headers={"X-DQ-Role": "steward"}).status_code == 202
 
 
 def test_extract_streams_live_object_progress(api_client, monkeypatch):

@@ -110,6 +110,11 @@ class Settings(BaseSettings):
     # this monitoring hub space and reports status back. Signal never writes to
     # Datasphere itself (stays read-only) — it only needs the hub space name.
     datasphere_monitoring_space: str = Field(default="")
+    # S-2: dediziertes Service-Token für die maschinellen Monitoring-Endpunkte
+    # (GET /manifest, PUT …/status), die das externe Reconcile-Skript aufruft.
+    # Gesetzt ⇒ Header X-Service-Token wird erzwungen; leer ⇒ Fallback auf einen
+    # steward+-Principal (nie anonym offen). EventSource/Skript nutzen das Token.
+    monitoring_service_token: str = Field(default="")
 
 
 _settings: Settings | None = None
