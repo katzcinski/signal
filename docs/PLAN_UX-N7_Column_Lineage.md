@@ -3,9 +3,10 @@
 **Stand:** 2026-06-26 · **Adressat:** Coding-Agent · **Modus:** wie HANDOVER —
 sequentiell, Acceptance je Schritt grün, kein Merge bei rotem Gate.
 
-> **Kernbefund (korrigiert O3):** O3 ist **kein Parser-Defekt**, sondern ein
-> **Datenproblem**. Der CQN-Walker ist implementiert und unit-getestet; was fehlt,
-> sind Eingangsdaten mit echtem CSN-`query`-AST/`sql` in den Extract-Snapshots.
+> **Kernbefund (aktualisiert):** O3 war **kein Parser-Defekt**, sondern ein
+> **Datenproblem**. Der CQN-Walker ist implementiert und unit-getestet; der
+> Demo-Snapshot trägt inzwischen CSN-`query`/`csnProjection`-Daten und echte
+> `columnEdges`. Offen bleibt die Verifikation gegen einen realen Tenant-Extract.
 
 ---
 
@@ -32,17 +33,20 @@ sequentiell, Acceptance je Schritt grün, kein Merge bei rotem Gate.
   `build_column_lineage(inv_objs).serialize()` und schreibt nach
   `data/lineage.json`.
 
-**Was fehlt / blockiert:**
+**Was umgesetzt ist:**
 
-- **Daten** — `data/inventory.json` (18 Objekte) trägt für **0** Objekte einen
-  CSN-`query`-AST, `csnProjection`, `projectionLineage` oder `sql`. Die 65
-  `columnEdges` in `data/lineage.json` sind statische **Seed-Platzhalter** (alle
-  `direct`, leere/`"sanitized expression"`), kein Analyzer-Output.
-- **Frontend-View** — Spalten-DAG + Impact-Liste existieren noch nicht; UI ist
-  objektebene-only (`components/lineage/schematic/SchematicLineage.tsx`).
-- **Walker-Härtung** — bisher nur gegen synthetische CSN getestet; reale
-  Datasphere-Shapes (Assoziationen, verschachtelte `xpr`, Unions, Calculated
-  Columns) sind ungetestet.
+- **Daten** — `data/inventory.json` trägt Demo-Objekte mit `csnProjection`;
+  `data/lineage.json` enthält echte `columnEdges` inklusive `computed`-Kanten
+  mit Expression statt Seed-Platzhaltern.
+- **Backend/API** — `services/api/extraction.py` schreibt
+  `build_column_lineage(inv_objs).serialize()`. `/api/lineage` liefert
+  `columnEdges`; `/api/lineage/columns` liefert Upstream/Downstream je Spalte;
+  `/api/lineage/columns/impact` liefert transitive Downstream-Consumer mit
+  Ownership und Coverage.
+- **Frontend-View** — `ColumnLineagePanel` ist im Objekt-Detail-Lineage-Tab
+  eingebunden und zeigt Spaltenauswahl, Upstream/Downstream und Impact-Liste.
+- **Restrisiko** — Live-Tenant-CSN/SQL-Shapes bleiben zu verifizieren; der Demo-
+  und Mock-Pfad ist testgedeckt.
 
 **Acceptance (UX-N7, unverändert):** Spalten-DAG + betroffene Downstream-Consumer
 mit Ownership aus einem Incident heraus.

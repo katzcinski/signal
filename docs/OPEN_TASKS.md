@@ -33,7 +33,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 |----|-------|--------|------|--------|
 | **A1** | Teilbarer Quality-Report / Data-Docs-Snapshot (UX-N6) | ◻ Offen | M | Abschnitt A |
 | **A2** | Schema-Drift-/Change-Screen (UX-N9) | ◻ Offen | M | Abschnitt A |
-| **B**  | Spaltenebene-Lineage + Impact (UX-N7 / O3) | 🔒 Blockiert | H | `PLAN_UX-N7_Column_Lineage.md` |
+| **B**  | Spaltenebene-Lineage + Impact (UX-N7 / O3) | ✅ Done | H | `PLAN_UX-N7_Column_Lineage.md` |
 | **C**  | `HanaResultStore` (O6) + HANA-Migrationen + Smoke | ◻ Offen | H | `Implementation_HANA_Connection_Progress.md` WS E/F |
 | **D**  | Managed Service (Instanz-pro-Tenant) | ◻ Offen | H | `PLAN_Managed_Service_v1.md` |
 | **E**  | Observability-Mehrwert (z-Score, Freshness, Impact) | ◑ Teilweise | M | `PLAN_Observability_Mehrwert_v1.md` |
@@ -81,7 +81,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | UX-N4 | SLA/SLO-Dashboard (Burn-down, Uptime %) | ✅ Done | Tooldoku §5 (`/sla`) |
 | UX-N5 | Run-Vergleich / Regressions-Diff | ✅ Done | Tooldoku §5/§8 (`/runs/compare`) |
 | UX-N6 | Teilbarer Quality-Report / Data-Docs (Link/PDF) | ◻ Offen | Badge existiert (`/badge/{p}`), Report-Snapshot fehlt → **A1** |
-| UX-N7 | Spaltenebene-Lineage + Impact-Analyse | 🔒 Blockiert | DAG + Impact-API + UI gegen Demo-Daten. Offen: Walker-Härtung + echter Extract → **B** |
+| UX-N7 | Spaltenebene-Lineage + Impact-Analyse | ✅ Done | DAG + Impact-API + UI gegen Demo-Daten; Live-Tenant-CSN bleibt Verifikation unter **I/L** |
 | UX-N8 | Check-/Expectation-Library-Browser | ✅ Done | Tooldoku §8 (`/library`) |
 | UX-N9 | Schema-Drift-/Change-Screen | ◻ Offen | — → **A2** |
 | UX-N10 | Status-Heatmap Objekt × Tag | ✅ Done | Tooldoku §8 (Cockpit) |
@@ -91,8 +91,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | UX-N14 | Profiling-/Sample-Row-View hinter `[PII-GATE]` | ✅ Done | Tooldoku §5/§6 (`/profile`, `ALLOW_PROFILE_SAMPLES`) |
 | UX-N15 | Activity-/Audit-Feed | ✅ Done | Tooldoku §5 (`/api/activity`) |
 
-**Offen (3):** UX-N6 (teilbarer Report, **A1**) · UX-N7 (Spalten-Lineage,
-blockiert, **B**) · UX-N9 (Schema-Drift-Screen, **A2**).
+**Offen (2):** UX-N6 (teilbarer Report, **A1**) · UX-N9 (Schema-Drift-Screen, **A2**).
 
 ### Offene Punkte (Detail)
 
@@ -107,7 +106,7 @@ blockiert, **B**) · UX-N9 (Schema-Drift-Screen, **A2**).
   Schema v2 (Batch 5 „Out of scope").
   *Acceptance:* Spaltenänderungen je Objekt über Zeit, Contract-Bruch markiert.
 
-UX-N7 (Spalten-Lineage) ist hier bewusst **nicht** dupliziert → siehe **B**.
+UX-N7 (Spalten-Lineage) ist erledigt; historische Details und Restrisiken stehen in **B**.
 
 ### Historischer Kontext
 
@@ -122,7 +121,7 @@ ausgeliefert; die Markt-Table-Stakes-Begründung steht in
 
 ---
 
-## B — Spaltenebene-Lineage + Impact-Analyse (UX-N7 / O3) 🔒 [H]
+## B — Spaltenebene-Lineage + Impact-Analyse (UX-N7 / O3) ✅ [H]
 
 **Quelle:** [`PLAN_UX-N7_Column_Lineage.md`](PLAN_UX-N7_Column_Lineage.md);
 querschnittlich auch unter **A** (UX-N7), `REVIEW_Tool_v2_Status.md`
@@ -135,15 +134,20 @@ querschnittlich auch unter **A** (UX-N7), `REVIEW_Tool_v2_Status.md`
 (`computed`-Kanten inkl. gerenderter Expression; SQL-Pfad via sqlglot). Die API
 steht (`GET /api/lineage/columns`). Das FE-Binding (`fetchColumnLineage`) steht.
 
-**Blocker / offen:**
-- **Daten:** `data/inventory.json` (18 Objekte) trägt für **0** Objekte einen
-  CSN-`query`-AST/`csnProjection`/`sql`; die `columnEdges` in `data/lineage.json`
-  sind statische Seed-Platzhalter (alle `direct`). → echter Extract mit CSN-AST
-  nötig (hängt am CLI-/REST-Pfad, vgl. **I**).
-- **Frontend-View:** Spalten-DAG + Impact-Liste existieren noch nicht (UI ist
-  objektebene-only, `SchematicLineage.tsx`).
-- **Walker-Härtung:** reale Datasphere-Shapes (Assoziationen, verschachtelte
-  `xpr`, Unions, Calculated Columns) ungetestet.
+**Umgesetzt / verifiziert:**
+- **Daten:** `data/inventory.json` trägt Demo-Objekte mit `csnProjection`;
+  `data/lineage.json` enthält echte `columnEdges` inklusive `computed`-Kanten
+  mit Expression.
+- **Backend:** Extract-Pipeline schreibt `build_column_lineage(...).serialize()`;
+  `GET /api/lineage` liefert `columnEdges`, `GET /api/lineage/columns` liefert
+  den Spaltenindex, `GET /api/lineage/columns/impact` liefert transitive
+  Downstream-Consumer mit Ownership/Coverage.
+- **Frontend:** `ColumnLineagePanel` ist im Objekt-Detail-Lineage-Tab eingebunden
+  und zeigt Spaltenauswahl, Upstream/Downstream-DAG und Impact-Liste.
+
+**Restrisiko / spätere Verifikation:**
+- Live-Tenant-CSN/SQL-Extrakt bleibt unter **I3/L1** zu verifizieren; der
+  Demo- und Mock-Pfad ist grün.
 
 **Acceptance:** Spalten-DAG + betroffene Downstream-Consumer mit Ownership aus
 einem Incident heraus. **Folgewirkung:** entsperrt Spalten-Coverage (REVIEW v2 #1)
