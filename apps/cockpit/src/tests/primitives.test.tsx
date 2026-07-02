@@ -1,11 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Combobox } from '@/components/ui/Combobox';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterChip, ActiveFilterChip } from '@/components/ui/FilterChip';
 
 describe('UI primitives (UX-F6)', () => {
   it('Button pulls radius from the token and reflects disabled state', () => {
@@ -51,6 +53,39 @@ describe('UI primitives (UX-F6)', () => {
     render(<Tooltip content="More context"><button>Info</button></Tooltip>);
     expect(screen.getByRole('button', { name: 'Info' })).toBeInTheDocument();
     expect(screen.getByRole('tooltip')).toHaveTextContent('More context');
+  });
+
+  it('PageHeader renders the title from the token and an optional subtitle + actions slot', () => {
+    render(
+      <PageHeader
+        title="Objekte"
+        subtitle="Steward · offen"
+        actions={<button>Neu</button>}
+      />,
+    );
+    const heading = screen.getByRole('heading', { name: 'Objekte' });
+    expect(heading.style.fontSize).toBe('var(--fs-h2)');
+    expect(screen.getByText('Steward · offen')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Neu' })).toBeInTheDocument();
+  });
+
+  it('FilterChip reflects the active tone and fires onClick', () => {
+    const onClick = vi.fn();
+    const { rerender } = render(<FilterChip active={false} onClick={onClick}>Quality</FilterChip>);
+    const chip = screen.getByRole('button', { name: 'Quality' });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    expect(chip.style.background).toBe('var(--bg-2)');
+    fireEvent.click(chip);
+    expect(onClick).toHaveBeenCalledOnce();
+    rerender(<FilterChip active onClick={onClick}>Quality</FilterChip>);
+    expect(screen.getByRole('button', { name: 'Quality' }).style.background).toBe('var(--cont)');
+  });
+
+  it('ActiveFilterChip clears its single filter', () => {
+    const onClear = vi.fn();
+    render(<ActiveFilterChip label="pass" onClear={onClear} />);
+    fireEvent.click(screen.getByRole('button'));
+    expect(onClear).toHaveBeenCalledOnce();
   });
 
   it('Combobox listbox escapes clipping containers', () => {

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Kpi } from '@/components/ui/Kpi';
 import { KpiSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Panel } from '@/components/ui/Panel';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { StatusPill } from '@/components/ui/StatusPill';
@@ -81,19 +82,14 @@ export default function MyWork() {
 
   return (
     <div className="page-full">
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>{t.myWork.title}</h1>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>
-          {ROLE_META[role].label} · {subtitle}
-        </p>
-      </div>
+      <PageHeader title={t.myWork.title} subtitle={`${ROLE_META[role].label} · ${subtitle}`} />
 
       {(incidentsQuery.isError || proposalsQuery.isError) && (
         <ErrorBanner onRetry={() => { incidentsQuery.refetch(); proposalsQuery.refetch(); }} />
       )}
 
       {isLoading ? <KpiSkeleton count={3} /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--s4)', marginBottom: 24 }}>
+        <div className="dash-kpis" style={{ marginBottom: 24 }}>
           <Kpi label={t.myWork.openIncidents} value={openIncidents.length} accent="var(--cont)" />
           <Kpi label={t.myWork.openProposals} value={openProposals.length} accent="var(--cont)" />
           <Kpi label={t.cockpit.kpiHealth} value={`${healthPct}%`} accent="var(--qual)" />
