@@ -58,3 +58,41 @@ class CompileOut(BaseModel):
     yaml_preview: str = ""
     conflicts: list[str] = []
     determinism_hash: str = ""
+
+
+# ── Observed reality (P6): beobachtete Realität je Garantie ────────────────────
+# Read-only-Rollup: die Garantien werden (via Compiler) auf ihre Checks
+# abgebildet und mit der persistierten Result-Historie verbunden — letzter
+# Messwert, Zeitreihe (Sparkline) und PASS/FAIL. Aggregat-Werte, keine Rohzeilen
+# (kein PII-Gate-Belang, G8).
+class ObservedPoint(BaseModel):
+    at: str = ""
+    value: Optional[float] = None      # numerischer actual_value für die Sparkline
+    raw: Optional[str] = None          # unveränderter actual_value
+    passed: Optional[bool] = None
+    state: str = "executed"
+    run_id: str = ""
+
+
+class ObservedCheck(BaseModel):
+    name: str
+    type: str = ""
+    family: Optional[str] = None       # Garantie-Familie oder None (Bibliotheks-Check)
+    severity: str = ""
+    expect: str = ""
+    last_value: Optional[str] = None
+    passed: Optional[bool] = None
+    state: str = ""
+    points: list[ObservedPoint] = []
+
+
+class ObservedGuarantee(BaseModel):
+    family: str
+    state: str = "unknown"             # pass | fail | unknown
+    checks: list[ObservedCheck] = []
+
+
+class ObservedOut(BaseModel):
+    product: str
+    dataset: str
+    guarantees: list[ObservedGuarantee] = []
