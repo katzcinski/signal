@@ -59,6 +59,11 @@ vi.mock('@/api/contracts', () => ({
     },
   }),
   useSchemaDrift: () => ({ data: undefined, isLoading: false, isError: false }),
+  useObservedReality: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+
+vi.mock('@/api/proposals', () => ({
+  useProposals: () => ({ data: [], isLoading: false, isError: false }),
 }));
 
 vi.mock('@/api/operations', () => ({

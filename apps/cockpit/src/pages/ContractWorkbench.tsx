@@ -5,7 +5,7 @@ import type { AxiosError } from 'axios';
 import { toast } from 'sonner';
 import {
   useContracts, useContract, usePutContract, useApproveContract, useDeprecateContract,
-  useDiffContract, useInventory, useCertifyContract, usePromoteContract,
+  useDiffContract, useInventory, useCertifyContract, usePromoteContract, useObservedReality,
 } from '@/api/contracts';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { SchemaDriftBanner } from '@/components/SchemaDriftBanner';
@@ -29,7 +29,9 @@ import { SlaBars } from '@/components/workbench/SlaBars';
 import { ContractList } from '@/components/workbench/ContractList';
 import { WorkbenchHero, type HeroChip, type HeroFact } from '@/components/workbench/WorkbenchHero';
 import { Vertragsblatt, type PathStep } from '@/components/workbench/Vertragsblatt';
-import type { ArtifactKind, ContractPutBody, DiffEntry } from '@/types';
+import { ObservedSlot } from '@/components/workbench/ObservedSlot';
+import { MinerSuggestions } from '@/components/workbench/MinerSuggestions';
+import type { ArtifactKind, ContractPutBody, DiffEntry, ObservedGuarantee } from '@/types';
 
 const cleanVersion = (v: string | undefined): string => `v${String(v ?? '').replace(/^v/i, '')}`;
 
@@ -52,7 +54,15 @@ function EditorPane({ product, onPromote, promotePending }: {
   const deprecate = useDeprecateContract(product);
   const diff = useDiffContract(product);
   const inventory = useInventory();
+  const observed = useObservedReality(product);
   const role = useRoleStore(s => s.role);
+
+  // Beobachtete Realität je Garantie-Familie (letzter Messwert, Sparkline, PASS/FAIL).
+  const observedByFamily = useMemo(() => {
+    const m: Record<string, ObservedGuarantee> = {};
+    for (const g of observed.data?.guarantees ?? []) m[g.family] = g;
+    return m;
+  }, [observed.data]);
 
   const [draft, setDraft] = useState<ContractPutBody | null>(null);
   const [confirmAction, setConfirmAction] = useState<'release' | 'deprecate' | null>(null);
@@ -331,13 +341,21 @@ function EditorPane({ product, onPromote, promotePending }: {
           description={contract?.description}
         />
       ) : (
-        <GuaranteeEditor
-          guarantees={draft.guarantees ?? {}}
-          onChange={g => setDraft({ ...draft, guarantees: g })}
-          columnOptions={columnOptions}
-          datasetOptions={datasetOptions}
-          columnsOfDataset={columnsOfDataset}
-        />
+        <>
+          <MinerSuggestions
+            product={product}
+            guarantees={draft.guarantees ?? {}}
+            onApply={g => setDraft({ ...draft, guarantees: g })}
+          />
+          <GuaranteeEditor
+            guarantees={draft.guarantees ?? {}}
+            onChange={g => setDraft({ ...draft, guarantees: g })}
+            columnOptions={columnOptions}
+            datasetOptions={datasetOptions}
+            columnsOfDataset={columnsOfDataset}
+            observed={family => <ObservedSlot observed={observedByFamily[family]} />}
+          />
+        </>
       )}
       {validationErrors.length > 0 && (
         <div style={{ background: 'var(--status-fail)22', border: '1px solid var(--status-fail)', borderRadius: 'var(--r-md)', padding: 'var(--s2) var(--s3)' }}>

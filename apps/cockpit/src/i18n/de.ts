@@ -358,6 +358,19 @@ export const t = {
       stepActivate: 'Aktivieren',
       activateLocked: 'Wird freigeschaltet, sobald der Freigabepfad frei ist.',
     },
+    observed: {
+      last: 'Zuletzt',
+      pass: 'PASS',
+      fail: 'FAIL',
+    },
+    miner: {
+      title: 'Miner-Vorschläge',
+      confidence: 'Konfidenz',
+      apply: 'Übernehmen',
+      applied: 'In den Entwurf übernommen — prüfen und speichern.',
+      notMappable: 'Nicht automatisch übernehmbar — bitte manuell anpassen.',
+      none: 'Keine offenen Vorschläge für diesen Contract.',
+    },
     fields: {
       mode: 'Modus',
       columns: 'Spalten',
