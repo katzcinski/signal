@@ -13,11 +13,13 @@ verwaiste View beim nächsten Reconcile.
 """
 from __future__ import annotations
 
+import hmac
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request
 
+from ..auth.provider import Principal, get_principal, require_roles
 from ..deps import get_inventory
 from ..monitoring_share import (
     VALID_STATUS,
@@ -34,6 +36,35 @@ from ..settings import get_settings
 logger = logging.getLogger("dq_cockpit.monitoring")
 
 router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
+
+# S-2: Vormerken/Entfernen sind Steward-Operationen wie der Run-Trigger.
+require_steward = require_roles("steward", "owner", "admin")
+
+
+async def require_service_token(
+    request: Request,
+    x_service_token: str | None = Header(default=None, alias="X-Service-Token"),
+) -> None:
+    """[AUTHZ] S-2: Gate für die maschinellen Endpunkte des Reconcile-Skripts.
+
+    Ist ``MONITORING_SERVICE_TOKEN`` gesetzt, wird der Header ``X-Service-Token``
+    erzwungen (konstante-Zeit-Vergleich). Ohne konfiguriertes Token — z. B. im
+    lokalen Einzelbetrieb — greift ein Fallback auf einen steward+-Principal, so
+    dass diese Endpunkte nie anonym offen stehen (spoofbarer Callback, S-2)."""
+    configured = get_settings().monitoring_service_token
+    if configured:
+        if x_service_token and hmac.compare_digest(x_service_token, configured):
+            return
+        raise HTTPException(status_code=401, detail="Ungültiges oder fehlendes Service-Token.")
+    principal = await get_principal(
+        x_dq_role=request.headers.get("X-DQ-Role"),
+        authorization=request.headers.get("authorization"),
+    )
+    if not principal.has_role("steward", "owner", "admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="Monitoring-Provisioning erfordert ein Service-Token oder die Steward-Rolle.",
+        )
 
 
 @router.get("/config")
@@ -55,7 +86,7 @@ def list_shares() -> dict[str, list[dict[str, Any]]]:
 
 
 @router.get("/manifest")
-def manifest() -> dict[str, Any]:
+def manifest(_: None = Depends(require_service_token)) -> dict[str, Any]:
     """Soll-Zustand für das Provisioning-Skript: Identität + View-Name + Spalten
     + vorgeschlagenes (überschreibbares) Projektions-SQL je Objekt."""
     space = get_settings().datasphere_monitoring_space
@@ -82,7 +113,11 @@ def _resolve_object(object_id: str, inventory: list[dict]) -> dict:
 
 
 @router.post("/shares/{object_id}")
-def request_monitoring(object_id: str, inventory: list[dict] = Depends(get_inventory)) -> dict[str, Any]:
+def request_monitoring(
+    object_id: str,
+    principal: Principal = require_steward,
+    inventory: list[dict] = Depends(get_inventory),
+) -> dict[str, Any]:
     """Objekt fürs Monitoring vormerken (Soll-Zustand). Kein Datasphere-Write —
     das Provisioning übernimmt das Skript anhand des Manifests."""
     settings = get_settings()
@@ -104,7 +139,11 @@ def request_monitoring(object_id: str, inventory: list[dict] = Depends(get_inven
 
 
 @router.put("/shares/{object_id}/status")
-def report_status(object_id: str, body: dict = Body(...)) -> dict[str, Any]:
+def report_status(
+    object_id: str,
+    body: dict = Body(...),
+    _: None = Depends(require_service_token),
+) -> dict[str, Any]:
     """Callback für das Provisioning-Skript: provisioned | error melden."""
     status = body.get("status")
     if status not in VALID_STATUS:
@@ -116,7 +155,10 @@ def report_status(object_id: str, body: dict = Body(...)) -> dict[str, Any]:
 
 
 @router.delete("/shares/{object_id}")
-def remove_monitoring(object_id: str) -> dict[str, Any]:
+def remove_monitoring(
+    object_id: str,
+    principal: Principal = require_steward,
+) -> dict[str, Any]:
     """Aus dem Soll-Zustand entfernen. Das Skript droppt die verwaiste View beim
     nächsten Reconcile (Manifest = Soll; was nicht drinsteht, wird abgeräumt)."""
     removed = remove_entry(object_id)

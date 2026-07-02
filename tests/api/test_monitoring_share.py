@@ -163,3 +163,32 @@ def test_request_unknown_object_404(client):
     c, mp, settings_mod = client
     _enable(mp, settings_mod)
     assert c.post("/api/monitoring/shares/NOPE").status_code == 404
+
+
+# --- S-2: AuthZ auf den Schreib-/Skript-Endpunkten ---
+
+def test_viewer_cannot_mutate_shares(client):
+    c, mp, settings_mod = client
+    _enable(mp, settings_mod)
+    v = {"X-DQ-Role": "viewer"}
+    assert c.post("/api/monitoring/shares/OBJ_A", headers=v).status_code == 403
+    assert c.request("DELETE", "/api/monitoring/shares/OBJ_A", headers=v).status_code == 403
+
+
+def test_service_endpoints_require_token_when_configured(client):
+    c, mp, settings_mod = client
+    _enable(mp, settings_mod)
+    mp.setenv("MONITORING_SERVICE_TOKEN", "s3cr3t")
+    settings_mod._settings = None
+    c.post("/api/monitoring/shares/OBJ_A")  # noauth admin darf vormerken
+
+    # Ohne/mit falschem Token → 401
+    assert c.get("/api/monitoring/manifest").status_code == 401
+    assert c.get("/api/monitoring/manifest", headers={"X-Service-Token": "nope"}).status_code == 401
+    assert c.put("/api/monitoring/shares/OBJ_A/status", json={"status": "provisioned"}).status_code == 401
+
+    # Mit korrektem Token → normaler Ablauf
+    tok = {"X-Service-Token": "s3cr3t"}
+    assert c.get("/api/monitoring/manifest", headers=tok).status_code == 200
+    r = c.put("/api/monitoring/shares/OBJ_A/status", json={"status": "provisioned"}, headers=tok)
+    assert r.status_code == 200 and r.json()["status"] == "provisioned"

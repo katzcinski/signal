@@ -2,8 +2,8 @@
 # [PII-GATE] only aggregate statistics are processed — no raw row reads
 from __future__ import annotations
 
+import hashlib
 import statistics
-import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, TYPE_CHECKING
@@ -13,6 +13,17 @@ if TYPE_CHECKING:
 
 WARMUP_MIN_SAMPLES = 10
 FULL_CONFIDENCE_SAMPLES = 30
+
+
+def proposal_id(product: str, check_name: str, proposed_expect: str) -> str:
+    """W-3: deterministische ID aus product × check × proposed_expect.
+
+    Ein Re-Mining derselben Basis liefert dieselbe ID — so überleben Steward-
+    Entscheidungen (accept/reject/snooze) Neustarts und Accept/Reject laufen
+    nicht mehr auf 404, wenn zwischen Listing und Klick neu gemint wird. Ändert
+    sich der Vorschlag inhaltlich, ist es bewusst ein anderer Proposal."""
+    raw = f"{product}\x1f{check_name}\x1f{proposed_expect}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
 
 
 @dataclass
@@ -86,7 +97,7 @@ class ProposalMiner:
             )
             proposals.append(
                 Proposal(
-                    id=str(uuid.uuid4()),
+                    id=proposal_id(dataset, check_name, proposed),
                     product=dataset,
                     check_name=check_name,
                     current_expect=current,

@@ -12,7 +12,7 @@ for _pkg in [str(_root / "packages"), str(_root)]:
     if _pkg not in sys.path:
         sys.path.insert(0, _pkg)
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -51,6 +51,48 @@ def assert_bind_policy(settings) -> None:
         )
 
 
+# S-1: fail-closed globales AuthN. Öffentliche Fläche ist eine explizite
+# Allowlist — alles andere braucht im oidc-Modus einen gültigen Principal, auch
+# Routen, die die per-Route-`PrincipalDep` vergessen. Im noauth-Modus (nur
+# Loopback, S5) ist dies ein No-Op; der per-Route-Admin-Principal gilt weiter.
+_PUBLIC_EXACT = {"/api/health"}
+_PUBLIC_PREFIXES = ("/api/docs", "/api/redoc", "/api/openapi.json")
+
+
+def _is_public_path(path: str) -> bool:
+    return path in _PUBLIC_EXACT or path.startswith(_PUBLIC_PREFIXES)
+
+
+def _is_monitoring_service_endpoint(request: Request) -> bool:
+    """Die maschinellen Monitoring-Endpunkte (GET /manifest, PUT …/status)
+    authentifizieren über ein Service-Token (`require_service_token`), nicht über
+    einen Nutzer-Principal — vom OIDC-Zaun ausnehmen, damit der Token-Pfad greift."""
+    path = request.url.path
+    if request.method == "GET" and path == "/api/monitoring/manifest":
+        return True
+    if (
+        request.method == "PUT"
+        and path.startswith("/api/monitoring/shares/")
+        and path.endswith("/status")
+    ):
+        return True
+    return False
+
+
+async def enforce_authentication(request: Request) -> None:
+    if request.method == "OPTIONS":
+        return  # CORS-Preflight trägt keine Credentials
+    path = request.url.path
+    if _is_public_path(path) or _is_monitoring_service_endpoint(request):
+        return
+    settings = get_settings()
+    if settings.auth_mode == "noauth":
+        return
+    from .auth.oidc import get_oidc_principal
+
+    get_oidc_principal(request.headers.get("authorization"))
+
+
 def _problem(status_code: int, title: str, detail) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
@@ -75,6 +117,8 @@ def create_app() -> FastAPI:
         docs_url="/api/docs",
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
+        # S-1: äußerer Zaun — greift vor jeder Route, opt-out statt opt-in.
+        dependencies=[Depends(enforce_authentication)],
     )
 
     app.add_middleware(
