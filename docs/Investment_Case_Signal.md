@@ -52,13 +52,19 @@ Redshift). Ein produktiver HANA-/Datasphere-Connector ist bei keinem der
 verglichenen Anbieter Kernangebot. Für sie ist SAP ein Nischenmarkt; für uns ist
 es der Heimatmarkt.
 
-**c) Selbst der Open-Source-Standardweg funktioniert nicht.**
-`datacontract test` — der De-facto-Standard, um ODCS-Contracts gegen eine Datenbank
-zu prüfen — **hat kein SAP-HANA-Backend** (Engines: Snowflake/BigQuery/Databricks/
-Postgres/S3/Kafka). Der strukturelle Effekt: Auch Plattformen wie Entropy Data, die
-Quality-Ergebnisse nur *anzeigen* und die Ausführung an diese CLI delegieren,
-**können für SAP-Quellen kein verifiziertes Grün erzeugen**. Die Lücke ist nicht
-nur bei den kommerziellen Tools, sie ist im gesamten Ökosystem.
+**c) Der Open-Source-Standardweg hatte die Lücke ebenfalls — bis wir sie selbst
+geschlossen haben.** `datacontract test` — der De-facto-Standard, um
+ODCS-Contracts gegen eine Datenbank zu prüfen — hatte historisch **kein
+SAP-HANA-Backend** (Engines: Snowflake/BigQuery/Databricks/Postgres/S3/Kafka).
+Der strukturelle Effekt: Plattformen wie Entropy Data, die Quality-Ergebnisse nur
+*anzeigen* und die Ausführung an diese CLI delegieren, konnten für SAP-Quellen
+kein verifiziertes Grün erzeugen. **Das inzwischen existierende HANA-Backend
+stammt aus unserem Haus** — von uns an das Entropy-Ökosystem beigesteuert (der
+im Strategie-Doc als „Embrace-Move" beschriebene Zug, bewusst vollzogen: der
+generische Transport wird kommoditisiert, Signals SAP-Checks und Governance
+bleiben proprietär). Das belegt zweierlei: Die Lücke war real genug, dass *wir*
+sie füllen mussten — und wir sind im relevanten Ökosystem bereits als Contributor
+sichtbar, nicht als Zaungast.
 
 **Investment-Logik:** Ein Markt, in dem weder der Plattformhersteller noch die
 Kategorie-Marktführer noch das OSS-Ökosystem liefern, während die Nachfrage
@@ -157,27 +163,47 @@ hat.
 **Entropy Data** (vormals Data Mesh Manager) ist der führende plattformneutrale
 Data-Product-Marktplatz (ODCS-3.1-nativ, erstes Tool mit ODPS-1.0-Support). Die
 strategische Analyse liegt vor und ist eindeutig: **komplementär, nicht
-konkurrierend.**
+konkurrierend.** Und die Beziehung ist keine Hypothese mehr — **wir haben das
+HANA-Backend für Entropys Ausführungspfad selbst beigesteuert, und es besteht
+ein loser, direkter Austausch zwischen unserem Haus und Entropy.**
 
-- Entropy **führt selbst keine Quality-Checks aus** — es zeigt publizierte
-  Ergebnisse an. Sein Ausführungspfad (`datacontract test --publish`) erreicht
-  HANA strukturell nicht (kein HANA-Backend, §1c).
+Der naheliegende Einwand — *„Entropy hat doch auch Contracts und Data Quality,
+sind wir dann nicht Konkurrent?"* — löst sich an der Unterscheidung
+*verwalten/anzeigen* vs. *ausführen/erzwingen* auf:
+
+- Entropy **führt selbst keine Quality-Checks aus** — es ist Registry und
+  Anzeigefläche. Sein Ausführungspfad ist `datacontract test --publish`, also
+  eine externe CLI, die an Soda/GX delegiert. Für SAP-Quellen war dieser Pfad
+  bis zu unserer Backend-Contribution strukturell leer (§1c).
 - Die Arbeitsteilung mappt exakt auf Signals Stärken-/Schwächenprofil: Entropy
   besitzt die *linke* Lifecycle-Hälfte (Marktplatz, Discovery, Access-Requests,
-  Consumer-Sign-off) — Signals dokumentiert schwache Hälfte. Signal besitzt die
-  *rechte* (Checks gegen HANA ausführen, erzwingen, zertifizieren) — die Hälfte,
-  die Entropy wegdelegiert und für SAP nicht kann.
+  Consumer-Sign-off) — Signals dokumentiert schwache Hälfte, die wir bewusst
+  abtreten statt bekämpfen. Signal besitzt die *rechte* (Checks gegen HANA
+  ausführen, erzwingen, kontinuierlich beobachten, zertifizieren) — die Hälfte,
+  die Entropy per Architektur wegdelegiert. Bild für den Pitch: **Entropy ist
+  das Schaufenster, Signal die Enforcement-Engine dahinter.**
+- Die verbleibende Überlappung (beide haben Authoring-UI und
+  Quality-Status-Fläche) ist im Strategie-Doc ehrlich benannt und über die
+  Source-of-Truth-Frage je Kunde auflösbar: *Signal authort → Entropy zeigt*
+  (Default) oder *Entropy authort → Signal erzwingt* — nie bidirektional.
 - **Der Integrations-Seam existiert großteils schon:** ODCS-Export (`to_odcs()`)
   → Entropy ingestiert nativ; Result-Publishing ist ein dünner Publisher nach dem
   bereits entworfenen OpenLineage-Emitter-Muster; das Product-Manifest mappt auf
   ODPS 1.0.
 
+Die Backend-Contribution verändert die Qualität dieser Beziehung: Aus „möglichem
+Partner-Ziel" wird ein **angewärmter Kanal** — wir sind dort als Contributor
+bekannt, die Grenzziehung ist von uns selbst gesetzt (generische CI-Checks laufen
+über die CLI, die *wir* HANA-fähig gemacht haben; SAP-Spezialitäten, Governance
+und Runtime gehören Signal), und die Integrationsreibung ist gesenkt statt erhöht
+— exakt das im Strategie-Doc als „Embrace-Move" beschriebene Zielbild.
+
 Die Positionierung ist damit formuliert: **„Signal ist das SAP/HANA-Quality-Backend
 für euren Entropy-Data-Marktplatz."** Für die Beratung heißt das: Wir müssen keinen
 Marktplatz bauen und nicht gegen ein finanziertes Produkt antreten — wir docken an
-dessen Ökosystem an und besetzen das Segment, das es nachweislich nicht bedienen
-kann. Eine Partnerschaft gibt uns zusätzlich Sichtbarkeit außerhalb der eigenen
-Kundenbasis.
+dessen Ökosystem an und besetzen das Segment, das wir dort selbst am besten kennen.
+Eine formalisierte Partnerschaft gibt uns zusätzlich Sichtbarkeit außerhalb der
+eigenen Kundenbasis; der lose Austausch ist der Startpunkt, kein Kaltkontakt.
 
 ---
 
@@ -185,10 +211,13 @@ Kundenbasis.
 
 > Quelle: [`Zusatz_EntropyData_Integration_und_Defensibility.md`](Zusatz_EntropyData_Integration_und_Defensibility.md) §6
 
-Die härteste Frage im Pitch ist: *„Was, wenn morgen jemand einen HANA-Connector
-baut?"* Die Antwort ist im Repo bereits durchgearbeitet: Der Connector ist
-kommoditisierbar — **Signals Wert hängt bewusst nicht daran**, sondern an vier
-Dingen, die ein Connector-Patch nicht repliziert:
+Die härteste Frage im Pitch ist: *„Was, wenn jemand einen generischen
+HANA-Connector baut?"* Unsere Antwort ist die stärkste, die es gibt: **Wir haben
+ihn selbst gebaut und beigesteuert.** Das war kein Kontrollverlust, sondern der
+im Strategie-Doc durchgerechnete Zug — der Connector/Transport ist
+kommoditisierbar, also kommoditisieren *wir* ihn zu unseren Bedingungen und
+verankern Signals Wert an den vier Dingen, die ein Connector-Patch nicht
+repliziert:
 
 1. **Das SQL-freie Garantie→Compiler-Modell (G1).** Wettbewerbstools verlangen
    handgeschriebenes SQL/SodaCL im Contract. Signal: semantische Garantie rein,
@@ -255,12 +284,13 @@ existiert.
 - **Ehrlich benannte Restrisiken:** (a) SAP könnte mittelfristig native DQ in
   Datasphere/BDC bauen — dann bleibt Signals Contract-/Governance- und
   SAP-Domänen-Schicht relevant, aber das Fenster für die Positionierung schrumpft:
-  ein Argument *für* Tempo, nicht dagegen. (b) `datacontract-cli` könnte ein
-  HANA-Backend bekommen — Szenario ist durchgespielt (§5), inklusive Embrace-Option
-  (Backend mit-beitragen, SAP-Checks bleiben proprietär). (c) Zwei technische
-  Annahmen am BDC-Seam sind noch zu verifizieren (SQL-on-Files-Adressierung V1,
-  konkrete ORD-Emission R2) — beides Gegenstand des vorgeschlagenen nächsten
-  Schritts, nicht des Gesamtinvestments.
+  ein Argument *für* Tempo, nicht dagegen. (b) Das frühere Risiko „die CLI könnte
+  ein HANA-Backend bekommen" ist entschärft, weil wir diesen Zug selbst gemacht
+  haben (§5) — Restrisiko ist nur, dass Dritte auf dem von uns gelegten Transport
+  generische Angebote bauen; die vier Wert-Anker (§5) adressieren genau das.
+  (c) Zwei technische Annahmen am BDC-Seam sind noch zu verifizieren
+  (SQL-on-Files-Adressierung V1, konkrete ORD-Emission R2) — beides Gegenstand
+  des vorgeschlagenen nächsten Schritts, nicht des Gesamtinvestments.
 
 ---
 
@@ -275,16 +305,19 @@ existiert.
    bestehender Datasphere-Kunde, Modell A1, Lite-Modus, 10–20 reale Contracts
    entlang der Lineage. Validiert Security-Pfad (Hybrid-Executor), Preismodell
    und den Tiering-Ansatz am lebenden Objekt.
-3. **Ökosystem-Andockpunkte klären (geringer Aufwand, hoher Optionswert).**
-   Kontakt zu Entropy Data (Result-Ingest-API, Source-of-Truth-Modus — offene
-   Punkte E1/E2) und Verifikation der zwei BDC-Annahmen (V1: SQL-on-Files-Naming,
-   R2: ORD-Emission durch Datasphere) am Test-Tenant.
+3. **Ökosystem-Andockpunkte formalisieren (geringer Aufwand, hoher Optionswert).**
+   Den bestehenden losen Austausch mit Entropy Data — angewärmt durch unsere
+   HANA-Backend-Contribution — in eine konkrete Integrationsvereinbarung
+   überführen (Result-Ingest-API, Source-of-Truth-Modus — offene Punkte E1/E2)
+   und die zwei BDC-Annahmen verifizieren (V1: SQL-on-Files-Naming, R2:
+   ORD-Emission durch Datasphere) am Test-Tenant.
 
 **Schluss-Satz für den Pitch:**
 
 > Wir besitzen heute das einzige Werkzeug, das Data Contracts in SAP-Landschaften
-> nicht nur beschreibt, sondern erzwingt — in einem Markt, den SAP offen lässt,
-> die Observability-Anbieter nicht erreichen und das OSS-Ökosystem nicht bedienen
-> kann. Das Fundament ist bezahlt, die Roadmap ist marktvalidiert, das
-> BDC-Zeitfenster ist offen. Die Frage ist nicht, ob diese Lücke gefüllt wird —
-> sondern ob von uns.
+> nicht nur beschreibt, sondern erzwingt — in einem Markt, den SAP offen lässt
+> und die Observability-Anbieter nicht erreichen. Wo das OSS-Ökosystem SAP
+> inzwischen erreicht, tut es das über einen Baustein aus unserem Haus. Das
+> Fundament ist bezahlt, die Roadmap ist marktvalidiert, das BDC-Zeitfenster ist
+> offen, der Draht zu Entropy liegt. Die Frage ist nicht, ob diese Lücke gefüllt
+> wird — sondern ob von uns.
