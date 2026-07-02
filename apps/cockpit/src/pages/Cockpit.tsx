@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Kpi } from '@/components/ui/Kpi';
 import { KpiSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Panel } from '@/components/ui/Panel';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -78,19 +79,24 @@ function SlaBar({ pct }: { pct: number | null }) {
   );
 }
 
+// UX-Konsistenz §2.9: SLA-Panel als echte Tabelle (Zeilen-Hover über `.tbl-row`,
+// Dichte-Tokens `--row-pad-*`, konsistente Header) statt handgerollter Flex-Zeile.
+// Der SLA-Wert wird pro Produkt geladen, daher bleibt eine Zeile = eine Komponente.
+const SLA_CELL: React.CSSProperties = { padding: 'var(--row-pad-y) var(--row-pad-x)', fontSize: 'var(--cell-fs)' };
+
 function SlaRow({ product }: { product: string }) {
   const { data: sla } = useContractSla(product);
   const w = sla?.windows;
   const cur = sla?.current ?? 'unknown';
   const curColor = cur === 'compliant' ? 'var(--qual)' : cur === 'breached' ? 'var(--status-crit)' : 'var(--fg-3)';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)', padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product}</span>
-      <span style={{ fontSize: 11, color: curColor, minWidth: 64 }}>{t.compliance[cur] ?? cur}</span>
-      <SlaBar pct={w?.['7d'] ?? null} />
-      <SlaBar pct={w?.['30d'] ?? null} />
-      <SlaBar pct={w?.['90d'] ?? null} />
-    </div>
+    <tr className="tbl-row" style={{ borderBottom: '1px solid var(--line)' }}>
+      <td style={{ ...SLA_CELL, fontFamily: 'var(--font-mono)', color: 'var(--fg-2)', maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product}</td>
+      <td style={{ ...SLA_CELL, color: curColor }}>{t.compliance[cur] ?? cur}</td>
+      <td style={SLA_CELL}><SlaBar pct={w?.['7d'] ?? null} /></td>
+      <td style={SLA_CELL}><SlaBar pct={w?.['30d'] ?? null} /></td>
+      <td style={SLA_CELL}><SlaBar pct={w?.['90d'] ?? null} /></td>
+    </tr>
   );
 }
 
@@ -154,20 +160,20 @@ export default function Cockpit() {
 
   return (
     <div className="page-full" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--s4)', flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>{t.cockpit.title}</h1>
-          <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{t.cockpit.subtitle}</p>
-        </div>
-        <span style={{
-          fontSize: 11, color: 'var(--fg-2)', padding: 'var(--s1) var(--s3)', borderRadius: 'var(--r-full)',
-          border: '1px solid var(--line-2)', background: 'var(--bg-1)',
-          display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)', whiteSpace: 'nowrap',
-        }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--qual)' }} />
-          {t.cockpit.dqFirst}
-        </span>
-      </div>
+      <PageHeader
+        title={t.cockpit.title}
+        subtitle={t.cockpit.subtitle}
+        actions={
+          <span style={{
+            fontSize: 11, color: 'var(--fg-2)', padding: 'var(--s1) var(--s3)', borderRadius: 'var(--r-full)',
+            border: '1px solid var(--line-2)', background: 'var(--bg-1)',
+            display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)', whiteSpace: 'nowrap',
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--qual)' }} />
+            {t.cockpit.dqFirst}
+          </span>
+        }
+      />
 
       {objectsQuery.isError && <ErrorBanner onRetry={() => objectsQuery.refetch()} />}
       {incidentsQuery.isError && <ErrorBanner onRetry={() => incidentsQuery.refetch()} />}
@@ -255,14 +261,25 @@ export default function Cockpit() {
 
         {activeContracts.length > 0 ? (
           <Panel title={t.cockpit.slaTitle}>
-            <div style={{ display: 'flex', gap: 'var(--s4)', padding: '0 0 6px 0', borderBottom: '1px solid var(--line)', marginBottom: 4 }}>
-              <span style={{ fontSize: 10, color: 'var(--fg-3)', flex: 1 }}>{t.cockpit.slaProduct}</span>
-              <span style={{ fontSize: 10, color: 'var(--fg-3)', minWidth: 64 }}>{t.cockpit.slaCurrent}</span>
-              <span style={{ fontSize: 10, color: 'var(--fg-3)', width: 84 }}>{t.cockpit.sla7d}</span>
-              <span style={{ fontSize: 10, color: 'var(--fg-3)', width: 84 }}>{t.cockpit.sla30d}</span>
-              <span style={{ fontSize: 10, color: 'var(--fg-3)', width: 84 }}>{t.cockpit.sla90d}</span>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-2)' }}>
+                    {[t.cockpit.slaProduct, t.cockpit.slaCurrent, t.cockpit.sla7d, t.cockpit.sla30d, t.cockpit.sla90d].map((h, i) => (
+                      <th key={h} style={{
+                        padding: 'var(--row-pad-y) var(--row-pad-x)', textAlign: 'left',
+                        fontSize: 10, fontWeight: 600, color: 'var(--fg-3)', textTransform: 'uppercase',
+                        letterSpacing: '0.06em', borderBottom: '1px solid var(--line)',
+                        width: i === 0 ? 'auto' : 92, whiteSpace: 'nowrap',
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeContracts.map(c => <SlaRow key={c.product} product={c.product} />)}
+                </tbody>
+              </table>
             </div>
-            {activeContracts.map(c => <SlaRow key={c.product} product={c.product} />)}
           </Panel>
         ) : (
           <Panel title={t.cockpit.slaTitle}>

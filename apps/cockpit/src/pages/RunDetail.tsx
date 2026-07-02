@@ -5,6 +5,11 @@ import { CheckStatusCell } from '@/components/ui/StatePill';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { Button } from '@/components/ui/Button';
+import { FilterChip } from '@/components/ui/FilterChip';
+import { ObjectSummaryCard } from '@/components/object-detail/ObjectSummaryCard';
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
 import type { CheckResult } from '@/types';
 
@@ -16,18 +21,49 @@ function csvField(value: unknown): string {
   return `"${s}"`;
 }
 
+// R6-3: layout-treues Skeleton statt „Lädt…"-Text — Hero-Zeile, Summary-Karten
+// und Tabelle als Platzhalter, damit Laden als „Inhalt kommt hierher" liest.
+function RunDetailSkeleton() {
+  return (
+    <div className="page-full">
+      <div style={{ marginBottom: 20 }}>
+        <Skeleton width={200} height={14} style={{ marginBottom: 16 }} />
+        <div style={{ display: 'flex', gap: 'var(--s4)', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Skeleton width={260} height={16} />
+          <Skeleton width={70} height={20} radius={999} />
+        </div>
+        <div className="object-detail-summary-grid" style={{ marginTop: 16 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="object-summary-card">
+              <Skeleton width={70} height={10} />
+              <div style={{ marginTop: 12 }}><Skeleton width={48} height={22} /></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <TableSkeleton columns={6} />
+    </div>
+  );
+}
+
 export default function RunDetail() {
   const { id = '' } = useParams();
   const { data: run, isLoading, isError, refetch } = useRun(id);
   const navigate = useNavigate();
+  const [failuresParam, setFailuresParam] = useSearchParamState('failures');
+  const onlyFailures = failuresParam === '1';
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</div>;
+  if (isLoading) return <RunDetailSkeleton />;
   if (isError) return <div className="page-full"><ErrorBanner onRetry={() => refetch()} /></div>;
   if (!run) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.runDetail.notFound}</div>;
 
   const durationMs = run.started_at && run.finished_at
     ? new Date(run.finished_at).getTime() - new Date(run.started_at).getTime()
     : null;
+
+  // „Nur Fehlschläge": alles außer bestanden — dafür kommt man auf die Seite.
+  const failedResults = run.results.filter(r => !r.passed);
+  const visibleResults = onlyFailures ? failedResults : run.results;
 
   const columns: ColDef<CheckResult>[] = [
     { key: 'name', header: t.runDetail.colCheck, mono: true, render: c => c.name },
@@ -61,7 +97,7 @@ export default function RunDetail() {
         { label: `${t.breadcrumb.runs} ${run.run_id.slice(0, 12)}…` },
       ]} />
       <div style={{ marginBottom: 20 }}>
-        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--fg-3)', cursor: 'pointer', marginBottom: 12 }}>{t.runDetail.back}</button>
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} style={{ marginBottom: 12 }}>{t.runDetail.back}</Button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg-2)' }}>{run.run_id}</span>
           <StatusPill status={run.overall_status} />
@@ -71,33 +107,29 @@ export default function RunDetail() {
           <div style={{ flex: 1 }} />
           <Link
             to={`/runs/compare?head=${encodeURIComponent(run.run_id)}`}
-            style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 'var(--r-md)', padding: '6px 14px', fontSize: 12, textDecoration: 'none' }}
+            style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 'var(--r-md)', padding: 'var(--s2) var(--s4)', fontSize: 12, textDecoration: 'none' }}
           >
             {t.compare.compareTo}
           </Link>
-          <button
-            onClick={downloadCSV}
-            style={{ background: 'var(--bg-2)', border: '1px solid var(--line-2)', color: 'var(--fg-2)', borderRadius: 'var(--r-md)', padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}
-          >
-            {t.runDetail.downloadCsv}
-          </button>
+          <Button variant="secondary" onClick={downloadCSV}>{t.runDetail.downloadCsv}</Button>
         </div>
-        <div style={{ marginTop: 12, display: 'flex', gap: 'var(--s5)' }}>
-          {[
-            { label: t.runDetail.total, value: run.total },
-            { label: t.runDetail.passed, value: run.passed, color: 'var(--status-ok)' },
-            { label: t.runDetail.failed, value: run.failed, color: 'var(--status-fail)' },
-            { label: t.runDetail.warnings, value: run.warnings, color: 'var(--status-warn)' },
-          ].map(({ label, value, color }) => (
-            <div key={label}>
-              <div style={{ fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: color ?? 'var(--fg)' }}>{value}</div>
-            </div>
-          ))}
+        <div className="object-detail-summary-grid" style={{ marginTop: 16 }}>
+          <ObjectSummaryCard label={t.runDetail.total} value={run.total} />
+          <ObjectSummaryCard label={t.runDetail.passed} value={run.passed} tone="var(--status-ok)" />
+          <ObjectSummaryCard label={t.runDetail.failed} value={run.failed} tone="var(--status-fail)" />
+          <ObjectSummaryCard label={t.runDetail.warnings} value={run.warnings} tone="var(--status-warn)" />
         </div>
       </div>
+      <div style={{ display: 'flex', gap: 'var(--s2)', marginBottom: 12, flexWrap: 'wrap' }}>
+        <FilterChip active={!onlyFailures} onClick={() => setFailuresParam('')}>
+          {t.runDetail.allChecks}
+        </FilterChip>
+        <FilterChip active={onlyFailures} onClick={() => setFailuresParam('1')}>
+          {`${t.runDetail.onlyFailures} (${failedResults.length})`}
+        </FilterChip>
+      </div>
       <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
-        <Table columns={columns} rows={run.results} rowKey={c => c.name} empty={t.runDetail.noResults} />
+        <Table columns={columns} rows={visibleResults} rowKey={c => c.name} empty={t.runDetail.noResults} />
       </div>
     </div>
   );

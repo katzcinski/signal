@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSchedules, useRunObjectNow, useUpdateScheduleRow } from '@/api/schedules';
 import { useObjects } from '@/api/objects';
@@ -6,6 +6,8 @@ import { Table, type ColDef } from '@/components/ui/Table';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { TableSkeleton } from '@/components/ui/Skeleton';
+import { ObjectSummaryCard } from '@/components/object-detail/ObjectSummaryCard';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { relativeTime, absoluteTime } from '@/lib/time';
 import { cadenceLabel, nextRunInfo } from '@/lib/schedule';
 import { t } from '@/i18n/de';
@@ -55,18 +57,6 @@ function EnvBadge({ env }: { env: string }) {
   );
 }
 
-function Tile({ label, accent, children }: { label: string; accent: string; children: React.ReactNode }) {
-  return (
-    <div style={{
-      background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)',
-      padding: '14px 18px', borderBottom: `2px solid ${accent}`, minWidth: 0,
-    }}>
-      <div style={{ fontSize: 11, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{label}</div>
-      {children}
-    </div>
-  );
-}
-
 function SplitBar({ segments }: { segments: { value: number; color: string }[] }) {
   const total = segments.reduce((a, s) => a + s.value, 0) || 1;
   return (
@@ -84,8 +74,9 @@ export default function Schedules() {
   const runNow = useRunObjectNow();
   const updateRow = useUpdateScheduleRow();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<Filter>('all');
-  const [search, setSearch] = useState('');
+  const [filterParam, setFilter] = useSearchParamState('filter', 'all');
+  const filter = filterParam as Filter;
+  const [search, setSearch] = useSearchParamState('q');
 
   const objMap = useMemo(() => {
     const m = new Map<string, ObjectSummary>();
@@ -218,49 +209,53 @@ export default function Schedules() {
         </button>
       </div>
 
-      {/* KPI tiles */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--s4)', marginBottom: 22 }}>
-        <Tile label={t.schedules.kpiScheduled} accent="var(--cont)">
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s2)' }}>
-            <span style={{ fontSize: 30, fontWeight: 700, color: 'var(--fg)', lineHeight: 1 }}>{schedules.length}</span>
-            <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>{t.schedules.kpiScheduledSub.replace('{total}', String(objects.length || '—'))}</span>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <SplitBar segments={[{ value: schedules.length, color: 'var(--cont)' }, { value: Math.max(0, objects.length - schedules.length), color: 'var(--bg-3)' }]} />
-          </div>
-        </Tile>
+      {/* KPI-Karten: Summary-Card-Muster (§2.7) statt lokaler Tile; responsives
+          .dash-kpis-Raster statt fixem repeat(4,1fr) (§2.8). */}
+      <div className="dash-kpis" style={{ marginBottom: 22 }}>
+        <ObjectSummaryCard
+          label={t.schedules.kpiScheduled}
+          value={schedules.length}
+          hint={
+            <>
+              <div style={{ marginBottom: 8 }}>{t.schedules.kpiScheduledSub.replace('{total}', String(objects.length || '—'))}</div>
+              <SplitBar segments={[{ value: schedules.length, color: 'var(--cont)' }, { value: Math.max(0, objects.length - schedules.length), color: 'var(--bg-3)' }]} />
+            </>
+          }
+        />
 
-        <Tile label={t.schedules.kpiSplit} accent="var(--qual)">
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-            <span><span style={{ fontSize: 30, fontWeight: 700, color: 'var(--fg)' }}>{stats.internal}</span> <span style={{ fontSize: 12, color: 'var(--qual)' }}>{t.schedules.modeInternal}</span></span>
-            <span><span style={{ fontSize: 30, fontWeight: 700, color: 'var(--fg)' }}>{stats.external}</span> <span style={{ fontSize: 12, color: 'var(--obs)' }}>{t.schedules.modeExternal}</span></span>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <SplitBar segments={[{ value: stats.internal, color: 'var(--qual)' }, { value: stats.external, color: 'var(--obs)' }]} />
-          </div>
-        </Tile>
-
-        <Tile label={t.schedules.kpiOverdue} accent="var(--status-fail)">
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s2)' }}>
-            <span style={{ fontSize: 30, fontWeight: 700, color: stats.overdue ? 'var(--status-fail)' : 'var(--fg)', lineHeight: 1 }}>{stats.overdue}</span>
-            <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>{t.schedules.kpiOverdueSub}</span>
-          </div>
-          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {overdueOldest ? `${t.schedules.kpiOverdueOldest}: ${overdueOldest.id}` : '—'}
-          </div>
-        </Tile>
-
-        <Tile label={t.schedules.kpiSuccess} accent="var(--status-ok)">
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s2)' }}>
-            <span style={{ fontSize: 30, fontWeight: 700, color: 'var(--fg)', lineHeight: 1 }}>
-              {stats.ok + stats.failed > 0 ? `${Math.round((stats.ok / (stats.ok + stats.failed)) * 100)}%` : '—'}
+        <ObjectSummaryCard
+          label={t.schedules.kpiSplit}
+          tone="var(--qual)"
+          value={
+            <span style={{ display: 'flex', gap: 'var(--s3)', alignItems: 'baseline' }}>
+              <span>{stats.internal} <span style={{ fontSize: 12, color: 'var(--qual)' }}>{t.schedules.modeInternal}</span></span>
+              <span style={{ color: 'var(--fg)' }}>{stats.external} <span style={{ fontSize: 12, color: 'var(--obs)' }}>{t.schedules.modeExternal}</span></span>
             </span>
-            <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>{stats.ok}✓ {stats.failed}✕</span>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <SplitBar segments={[{ value: stats.ok, color: 'var(--status-ok)' }, { value: stats.failed, color: 'var(--status-fail)' }, { value: stats.none, color: 'var(--bg-3)' }]} />
-          </div>
-        </Tile>
+          }
+          hint={<SplitBar segments={[{ value: stats.internal, color: 'var(--qual)' }, { value: stats.external, color: 'var(--obs)' }]} />}
+        />
+
+        <ObjectSummaryCard
+          label={t.schedules.kpiOverdue}
+          tone={stats.overdue ? 'var(--status-fail)' : 'var(--cont)'}
+          value={<>{stats.overdue} <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>{t.schedules.kpiOverdueSub}</span></>}
+          hint={
+            <span style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+              {overdueOldest ? `${t.schedules.kpiOverdueOldest}: ${overdueOldest.id}` : '—'}
+            </span>
+          }
+        />
+
+        <ObjectSummaryCard
+          label={t.schedules.kpiSuccess}
+          value={
+            <>
+              {stats.ok + stats.failed > 0 ? `${Math.round((stats.ok / (stats.ok + stats.failed)) * 100)}%` : '—'}
+              <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>{stats.ok}✓ {stats.failed}✕</span>
+            </>
+          }
+          hint={<SplitBar segments={[{ value: stats.ok, color: 'var(--status-ok)' }, { value: stats.failed, color: 'var(--status-fail)' }, { value: stats.none, color: 'var(--bg-3)' }]} />}
+        />
       </div>
 
       {/* toolbar: filter chips + search */}

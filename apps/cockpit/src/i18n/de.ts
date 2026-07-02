@@ -705,6 +705,8 @@ export const t = {
     failed: 'Fehlgeschlagen',
     warnings: 'Warnungen',
     noResults: 'Keine Check-Ergebnisse',
+    onlyFailures: 'Nur Fehlschläge',
+    allChecks: 'Alle Checks',
   },
   compare: {
     title: 'Run-Vergleich',
