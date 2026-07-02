@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState, type CSSProperties } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useObjects } from '@/api/objects';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
@@ -8,37 +8,14 @@ import { FamilyTag } from '@/components/ui/FamilyTag';
 import { CovFlag } from '@/components/ui/CovFlag';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { TableSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { FilterChip, ActiveFilterChip } from '@/components/ui/FilterChip';
 import { ObjectPeek } from '@/components/ObjectPeek';
 import { t } from '@/i18n/de';
 import type { ObjectSummary } from '@/types';
 
-const chipBtn = (active: boolean): CSSProperties => ({
-  padding: '4px 10px', borderRadius: 'var(--r-full)',
-  border: active ? '1px solid var(--cont)' : '1px solid var(--line-2)',
-  background: active ? 'var(--cont)' : 'var(--bg-2)',
-  color: active ? '#fff' : 'var(--fg-3)',
-  fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' as const,
-});
-
 const FAMILIES = ['observability', 'quality', 'contract'] as const;
 const STATUSES = ['pass', 'warn', 'fail', 'critical', 'unknown'] as const;
-
-function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)',
-      padding: '2px 6px 2px 8px', borderRadius: 'var(--r-full)',
-      background: 'var(--cont)', color: '#fff', fontSize: 11,
-    }}>
-      {label}
-      <button
-        onClick={onClear}
-        aria-label={t.objects.clearFilters}
-        style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}
-      >×</button>
-    </span>
-  );
-}
 
 export default function ObjectCatalog() {
   const { data: objects = [], isLoading, isError, refetch } = useObjects();
@@ -102,9 +79,25 @@ export default function ObjectCatalog() {
     },
   ], [navigate]);
 
+  const searchInput = (
+    <input
+      type="search"
+      name="object-search"
+      autoComplete="off"
+      spellCheck={false}
+      value={textFilter}
+      onChange={e => setTextFilter(e.target.value)}
+      placeholder={t.objects.searchPlaceholder}
+      style={{
+        background: 'var(--bg-2)', border: '1px solid var(--line-2)',
+        color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12, minWidth: 220,
+      }}
+    />
+  );
+
   if (isLoading) return (
     <div className="page-full">
-      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.objects.title}</h1>
+      <PageHeader title={t.objects.title} />
       <TableSkeleton columns={9} />
     </div>
   );
@@ -113,35 +106,20 @@ export default function ObjectCatalog() {
 
   return (
     <div className="page-full">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.objects.title}</h1>
-        <input
-          type="search"
-          name="object-search"
-          autoComplete="off"
-          spellCheck={false}
-          value={textFilter}
-          onChange={e => setTextFilter(e.target.value)}
-          placeholder={t.objects.searchPlaceholder}
-          style={{
-            background: 'var(--bg-2)', border: '1px solid var(--line-2)',
-            color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12, minWidth: 220,
-          }}
-        />
-      </div>
+      <PageHeader title={t.objects.title} actions={searchInput} />
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-        <button style={chipBtn(familyFilter === '')} onClick={() => setFamilyFilter('')}>{t.objects.allFamilies}</button>
+        <FilterChip active={familyFilter === ''} onClick={() => setFamilyFilter('')}>{t.objects.allFamilies}</FilterChip>
         {FAMILIES.map(f => (
-          <button key={f} style={chipBtn(familyFilter === f)} onClick={() => setFamilyFilter(familyFilter === f ? '' : f)}>
+          <FilterChip key={f} active={familyFilter === f} onClick={() => setFamilyFilter(familyFilter === f ? '' : f)}>
             {t.workbench.families[f] ?? f}
-          </button>
+          </FilterChip>
         ))}
         <div style={{ width: 1, height: 16, background: 'var(--line-2)', margin: '0 4px' }} />
-        <button style={chipBtn(statusFilter === '')} onClick={() => setStatusFilter('')}>{t.common.all}</button>
+        <FilterChip active={statusFilter === ''} onClick={() => setStatusFilter('')}>{t.common.all}</FilterChip>
         {STATUSES.map(s => (
-          <button key={s} style={chipBtn(statusFilter === s)} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}>
+          <FilterChip key={s} active={statusFilter === s} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}>
             {t.status[s] ?? s}
-          </button>
+          </FilterChip>
         ))}
         <div style={{ marginLeft: 'auto' }}>
           <select
@@ -160,10 +138,10 @@ export default function ObjectCatalog() {
       </div>
       {hasActiveFilter && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
-          {textFilter && <FilterChip label={`"${textFilter}"`} onClear={() => setTextFilter('')} />}
-          {familyFilter && <FilterChip label={t.workbench.families[familyFilter] ?? familyFilter} onClear={() => setFamilyFilter('')} />}
-          {statusFilter && <FilterChip label={t.status[statusFilter] ?? statusFilter} onClear={() => setStatusFilter('')} />}
-          {spaceFilter && <FilterChip label={spaceFilter} onClear={() => setSpaceFilter('')} />}
+          {textFilter && <ActiveFilterChip label={`"${textFilter}"`} onClear={() => setTextFilter('')} />}
+          {familyFilter && <ActiveFilterChip label={t.workbench.families[familyFilter] ?? familyFilter} onClear={() => setFamilyFilter('')} />}
+          {statusFilter && <ActiveFilterChip label={t.status[statusFilter] ?? statusFilter} onClear={() => setStatusFilter('')} />}
+          {spaceFilter && <ActiveFilterChip label={spaceFilter} onClear={() => setSpaceFilter('')} />}
         </div>
       )}
       {isError && <ErrorBanner onRetry={() => refetch()} />}

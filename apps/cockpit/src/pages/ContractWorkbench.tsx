@@ -1592,7 +1592,7 @@ export default function ContractWorkbench() {
       },
       onError: err => {
         const detail = (err as AxiosError<{ detail?: unknown }>)?.response?.data?.detail;
-        toast.error(typeof detail === 'string' ? detail : 'Promotion fehlgeschlagen.');
+        toast.error(typeof detail === 'string' ? detail : t.workbench.promotionFailed);
         setPromoteProduct('');
         handledPromoteRef.current = '';
       },

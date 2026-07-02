@@ -3,6 +3,7 @@ import { useContracts } from '@/api/contracts';
 import { useCoverageSummary } from '@/api/coverage';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { Panel } from '@/components/ui/Panel';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { t } from '@/i18n/de';
@@ -20,9 +21,9 @@ export default function Governance() {
 
   return (
     <div className="page-full">
-      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>{t.governance.title}</h1>
+      <PageHeader title={t.governance.title} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)', marginBottom: 24 }}>
+      <div className="dash-2col" style={{ marginBottom: 24 }}>
         <Panel title={t.governance.g1Title} family="contract">
           <ul style={{ paddingLeft: 16, margin: 0 }}>
             {t.governance.g1Policy.map((p, i) => (
@@ -54,8 +55,9 @@ export default function Governance() {
           borderRadius: 'var(--r-lg)', padding: 'var(--s3) var(--s4)', marginBottom: 16,
           fontSize: 12, color: 'var(--fg-2)',
         }}>
-          Noch keine aktiven Contracts - Compliance-Daten erscheinen nach der ersten
-          Contract-Aktivierung. Internal Gates laufen unabhaengig unter <strong>Health</strong>.
+          {t.governance.noActiveContractsPre}
+          <strong>{t.governance.noActiveContractsArea}</strong>
+          {t.governance.noActiveContractsPost}
         </div>
       )}
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useProposals, useProposalAction } from '@/api/proposals';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { t } from '@/i18n/de';
 import { diffExpect, OP_SYMBOL } from '@/lib/diff';
@@ -100,7 +101,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
               color: proposal.kind === 'internal_gate' ? 'var(--qual)' : 'var(--cont)',
               border: `1px solid ${proposal.kind === 'internal_gate' ? 'var(--qual)' : 'var(--cont)'}`,
             }}>
-              {proposal.kind === 'internal_gate' ? 'Gate' : 'Contract'}
+              {proposal.kind === 'internal_gate' ? t.proposals.kindLabel.internal_gate : t.proposals.kindLabel.contract}
             </span>
           </div>
         </div>
@@ -142,7 +143,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
           <span style={{ display: 'flex', gap: 'var(--s2)' }}>
             {proposal.kind !== 'internal_gate' ? (
               <button onClick={() => navigate(`/contracts?product=${encodeURIComponent(proposal.product)}`)} style={{ flex: 1, background: 'var(--cont)22', border: '1px solid var(--cont)', color: 'var(--cont)', borderRadius: 'var(--r-md)', padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
-                Im Contract pruefen {'->'}
+                {t.proposals.reviewInContract}
               </button>
             ) : (
               <button onClick={() => act('accept')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 'var(--r-md)', padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
@@ -267,10 +268,10 @@ export default function Proposals() {
 
   return (
     <div className="page-full">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s3)', flexWrap: 'wrap', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.proposals.title}</h1>
-        {proposals.length > 0 && <GroupByControl value={groupBy} onChange={setGroupBy} />}
-      </div>
+      <PageHeader
+        title={t.proposals.title}
+        actions={proposals.length > 0 ? <GroupByControl value={groupBy} onChange={setGroupBy} /> : undefined}
+      />
       {!canAcceptProposal(role) && <ReadOnlyBanner />}
       {isError && <ErrorBanner onRetry={() => refetch()} />}
       {!isError && proposals.length === 0 && (
