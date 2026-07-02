@@ -1,9 +1,10 @@
 product: DEMO_SRC_02_contract
+kind: consumer_contract
 dataset: DEMO_SRC_02
 owned_by: product
 owners: []
 version: 1.0.0
-lifecycle: draft
+description: ''
 guarantees:
   schema:
     columns:
@@ -18,4 +19,10 @@ guarantees:
     baseline: rolling
     bounds: auto
     severity: warn
-kind: consumer_contract
+  freshness:
+    column: SRC_COL_03
+    max_age: PT24H
+    severity: warn
+observability: {}
+checks: []
+lifecycle: active
