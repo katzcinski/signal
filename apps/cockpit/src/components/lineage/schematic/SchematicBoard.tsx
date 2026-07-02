@@ -18,6 +18,7 @@ const T = t.lineage.schematic;
 const ZOOM_MIN = 0.2;
 const ZOOM_MAX = 2.5;
 const DRAG_THRESHOLD = 4; // px in Screen-Koordinaten
+const CHIP_INTERACTION_SELECTOR = '.schem-chip';
 
 interface Viewport {
   x: number;
@@ -34,6 +35,10 @@ function clientToUser(svg: SVGSVGElement, clientX: number, clientY: number): { x
   pt.y = clientY;
   const p = pt.matrixTransform(ctm.inverse());
   return { x: p.x, y: p.y };
+}
+
+function isChipInteractionTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(CHIP_INTERACTION_SELECTOR) !== null;
 }
 
 export interface SchematicBoardProps {
@@ -117,9 +122,13 @@ export function SchematicBoard({
 
   const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
     if (e.button !== 0) return;
+    movedRef.current = false;
+    if (isChipInteractionTarget(e.target)) {
+      panRef.current = null;
+      return;
+    }
     const svg = svgRef.current;
     if (!svg) return;
-    movedRef.current = false;
     const p = clientToUser(svg, e.clientX, e.clientY);
     panRef.current = { lastX: p.x, lastY: p.y, startClientX: e.clientX, startClientY: e.clientY };
     svg.setPointerCapture(e.pointerId);
