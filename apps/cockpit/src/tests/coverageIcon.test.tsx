@@ -1,7 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import { coverageIconDataUri, coverageColor } from '@/components/ui/coverageIcon';
-import { CoverageIcon } from '@/components/ui/CoverageIcon';
+import { coverageIconDataUri, coverageColor, CoverageIcon } from '@/components/ui/coverageIcon';
 
 const FLAGS = ['●', '◐', '▲', '○'];
 
