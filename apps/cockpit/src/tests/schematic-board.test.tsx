@@ -140,6 +140,27 @@ describe('SchematicBoard', () => {
     expect(onSelectChip).not.toHaveBeenCalled();
   });
 
+  it('does not start SVG pan capture from the column chevron', () => {
+    const onToggleColumns = vi.fn();
+    const { container } = render(
+      <SchematicBoard
+        layout={fakeLayout(NONE)}
+        onToggleColumns={onToggleColumns}
+      />,
+    );
+    const svg = container.querySelector('svg') as SVGSVGElement;
+    const setPointerCapture = vi.fn();
+    Object.defineProperty(svg, 'setPointerCapture', { value: setPointerCapture });
+    Object.defineProperty(svg, 'getScreenCTM', { value: vi.fn(() => null) });
+
+    const toggleHit = container.querySelector('.schem-col-toggle-hit')!;
+    fireEvent.pointerDown(toggleHit, { button: 0, pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.click(toggleHit);
+
+    expect(setPointerCapture).not.toHaveBeenCalled();
+    expect(onToggleColumns).toHaveBeenCalledWith('INB');
+  });
+
   it('calls onBackground when the canvas backdrop is clicked', () => {
     const onBackground = vi.fn();
     const { container } = render(<SchematicBoard layout={fakeLayout()} onBackground={onBackground} />);
