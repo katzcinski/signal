@@ -1,10 +1,10 @@
 product: DEMO_HARM_01
+kind: internal_gate
 dataset: DEMO_HARM_01
 owned_by: platform
-kind: internal_gate
 owners: []
 version: 0.1.0
-lifecycle: draft
+description: ''
 guarantees:
   schema:
     columns:
@@ -17,3 +17,6 @@ guarantees:
     baseline: rolling
     bounds: auto
     severity: warn
+observability: {}
+checks: []
+lifecycle: active
