@@ -453,9 +453,30 @@
       "edgeType": "lineage"
     },
     {
+      "id": "DEMO_EDGE_014",
+      "source": "DEMO_SRC_02",
+      "target": "DEMO_BUS_03",
+      "type": "lineage",
+      "edgeType": "lineage"
+    },
+    {
+      "id": "DEMO_EDGE_015",
+      "source": "DEMO_SRC_03",
+      "target": "DEMO_BUS_04",
+      "type": "lineage",
+      "edgeType": "lineage"
+    },
+    {
       "id": "DEMO_EDGE_004",
       "source": "DEMO_SRC_04",
       "target": "DEMO_SRC_05",
+      "type": "lineage",
+      "edgeType": "lineage"
+    },
+    {
+      "id": "DEMO_EDGE_016",
+      "source": "DEMO_SRC_05",
+      "target": "DEMO_BUS_05",
       "type": "lineage",
       "edgeType": "lineage"
     },

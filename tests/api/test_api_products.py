@@ -158,6 +158,45 @@ inbound: []
     }
 
 
+def test_product_detail_preview_keeps_all_transitive_product_objects(tmp_path, monkeypatch):
+    client = _client(tmp_path, monkeypatch)
+
+    (tmp_path / "lineage.json").write_text(
+        json.dumps({
+            "nodes": [
+                {"id": "RAW_A", "layer": "source", "role": "source"},
+                {"id": "RAW_B", "layer": "source", "role": "source"},
+                {"id": "CORE_A", "layer": "business", "role": "transformation"},
+                {"id": "CORE_B", "layer": "business", "role": "transformation"},
+                {"id": "DS_PRODUCT", "layer": "serving", "role": "consumption"},
+            ],
+            "edges": [
+                {"source": "RAW_A", "target": "CORE_A"},
+                {"source": "RAW_B", "target": "CORE_B"},
+                {"source": "CORE_A", "target": "DS_PRODUCT"},
+                {"source": "CORE_B", "target": "DS_PRODUCT"},
+            ],
+        }),
+        encoding="utf-8",
+    )
+
+    detail = client.get("/api/products/sales_product").json()
+
+    assert {node["id"] for node in detail["subgraph"]["nodes"]} == {
+        "RAW_A",
+        "RAW_B",
+        "CORE_A",
+        "CORE_B",
+        "DS_PRODUCT",
+    }
+    assert {(edge["source"], edge["target"]) for edge in detail["subgraph"]["edges"]} == {
+        ("RAW_A", "CORE_A"),
+        ("RAW_B", "CORE_B"),
+        ("CORE_A", "DS_PRODUCT"),
+        ("CORE_B", "DS_PRODUCT"),
+    }
+
+
 def test_products_prefer_certified_active_snapshot_over_working_draft(tmp_path, monkeypatch):
     client = _client(tmp_path, monkeypatch)
     contracts_dir = tmp_path / "contracts"
