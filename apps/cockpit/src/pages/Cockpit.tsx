@@ -104,6 +104,11 @@ function FamilyStatusCell({ status }: { status: string }) {
   );
 }
 
+function incidentHref(incident: Incident) {
+  const kind = incident.kind === 'internal_gate' ? 'internal_gate' : 'contract';
+  return `/incidents?status=${incident.status}&kind=${kind}&id=${incident.id}`;
+}
+
 export default function Cockpit() {
   const objectsQuery = useObjects();
   const incidentsQuery = useIncidents();
@@ -232,7 +237,7 @@ export default function Cockpit() {
           ) : topIncidents.map((i: Incident) => (
             <button
               key={i.id}
-              onClick={() => navigate(`/incidents?status=${i.status}&kind=${i.kind === 'internal_gate' ? 'internal_gate' : 'contract'}`)}
+              onClick={() => navigate(incidentHref(i))}
               style={{
                 display: 'flex', alignItems: 'center', gap: 'var(--s3)', width: '100%', textAlign: 'left',
                 padding: '6px 0', background: 'none', border: 'none',
