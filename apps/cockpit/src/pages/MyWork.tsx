@@ -93,10 +93,25 @@ export default function MyWork() {
       )}
 
       {isLoading ? <KpiSkeleton count={3} /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--s4)', marginBottom: 24 }}>
-          <Kpi label={t.myWork.openIncidents} value={openIncidents.length} accent="var(--cont)" />
-          <Kpi label={t.myWork.openProposals} value={openProposals.length} accent="var(--cont)" />
-          <Kpi label={t.cockpit.kpiHealth} value={`${healthPct}%`} accent="var(--qual)" />
+        <div className="dash-kpis" style={{ marginBottom: 24 }}>
+          <Kpi
+            label={t.myWork.openIncidents}
+            value={openIncidents.length}
+            accent="var(--cont)"
+            onClick={() => navigate('/incidents?status=open')}
+          />
+          <Kpi
+            label={t.myWork.openProposals}
+            value={openProposals.length}
+            accent="var(--cont)"
+            onClick={() => navigate('/proposals')}
+          />
+          <Kpi
+            label={t.cockpit.kpiHealth}
+            value={`${healthPct} %`}
+            accent="var(--qual)"
+            onClick={() => navigate('/objects')}
+          />
         </div>
       )}
 

@@ -394,6 +394,18 @@
   --cell-fs: 12px;
 }
 
+/* Klickbare KPI-Kachel: Hover hebt sie an, Fokus kommt vom globalen Ring. */
+.kpi-link {
+  cursor: pointer;
+  transition: background var(--t), transform var(--t), border-color var(--t);
+}
+.kpi-link:hover {
+  background: var(--bg-2) !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .kpi-link:hover { transform: translateY(-1px); }
+}
+
 /* R6-3 skeleton shimmer. */
 @keyframes skeleton-shimmer {
   0% { background-position: -200px 0; }

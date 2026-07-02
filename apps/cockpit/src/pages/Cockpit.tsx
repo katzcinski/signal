@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Kpi } from '@/components/ui/Kpi';
-import { KpiSkeleton } from '@/components/ui/Skeleton';
+import { KpiSkeleton, TableSkeleton } from '@/components/ui/Skeleton';
 import { Panel } from '@/components/ui/Panel';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -179,12 +179,18 @@ export default function Cockpit() {
       {/* KPI strip — the at-a-glance numbers. */}
       {objectsQuery.isLoading ? <KpiSkeleton count={5} /> : (
       <div className="dash-kpis">
-        <Kpi label={t.cockpit.kpiObjects} value={totalObjects} accent="var(--cont)" />
+        <Kpi
+          label={t.cockpit.kpiObjects}
+          value={totalObjects}
+          accent="var(--cont)"
+          onClick={() => navigate('/objects')}
+        />
         <Kpi
           label={t.cockpit.kpiCoverage}
-          value={`${coverage?.contract_coverage_pct ?? 0}%`}
+          value={`${String(coverage?.contract_coverage_pct ?? 0).replace('.', ',')} %`}
           delta={coverage ? `${coverage.with_active_contract}/${coverage.objects_total} ${t.cockpit.coverageOf}` : undefined}
           accent="var(--qual)"
+          onClick={() => navigate('/compliance')}
         />
         <Kpi
           label={t.cockpit.kpiOpenIncidents}
@@ -192,16 +198,19 @@ export default function Cockpit() {
           delta={criticalIncidents > 0 ? `${criticalIncidents} ${t.cockpit.critical}` : undefined}
           deltaPositive={false}
           accent={openIncidents.length > 0 ? 'var(--status-fail)' : 'var(--qual)'}
+          onClick={() => navigate('/incidents?status=open')}
         />
         <Kpi
           label={t.cockpit.kpiGateSignals}
           value={coverage?.gates_failing ?? 0}
           accent={(coverage?.gates_failing ?? 0) > 0 ? 'var(--status-warn)' : 'var(--qual)'}
+          onClick={() => navigate('/incidents?status=open&kind=internal_gate')}
         />
         <Kpi
           label={t.cockpit.kpiUnvalidated}
           value={unvalidated.length}
           accent={unvalidated.length > 0 ? 'var(--status-warn)' : 'var(--qual)'}
+          onClick={() => navigate('/objects')}
         />
       </div>
       )}
@@ -211,13 +220,17 @@ export default function Cockpit() {
         <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--line)', fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {t.cockpit.statusGrid}
         </div>
-        <Table
-          columns={gridColumns}
-          rows={objects}
-          rowKey={o => o.id}
-          onRowClick={o => navigate(`/objects/${o.id}`)}
-          empty={t.cockpit.noObjects}
-        />
+        {objectsQuery.isLoading ? (
+          <TableSkeleton columns={5} />
+        ) : (
+          <Table
+            columns={gridColumns}
+            rows={objects}
+            rowKey={o => o.id}
+            onRowClick={o => navigate(`/objects/${o.id}`)}
+            empty={t.cockpit.noObjects}
+          />
+        )}
       </div>
 
       <StatusHeatmap />
