@@ -1,28 +1,49 @@
+import { useNavigate } from 'react-router-dom';
 import { useObjects } from '@/api/objects';
 import { useContracts } from '@/api/contracts';
 import { useCoverageSummary } from '@/api/coverage';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { Panel } from '@/components/ui/Panel';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { Table, type ColDef } from '@/components/ui/Table';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { t } from '@/i18n/de';
-import type { Lifecycle } from '@/types';
+import type { Lifecycle, ObjectSummary } from '@/types';
 
 export default function Governance() {
   const { data: objects = [], isLoading, isError, refetch } = useObjects();
   const contractsQuery = useContracts();
   const coverageQuery = useCoverageSummary();
+  const navigate = useNavigate();
   const boundaryContracts = (contractsQuery.data ?? []).filter(c => c.kind !== 'internal_gate');
   const contractByProduct = new Map(boundaryContracts.map(c => [c.product, c]));
   const activeContracts = boundaryContracts.filter(c => c.lifecycle === 'active');
   const loading = isLoading || contractsQuery.isLoading;
   const error = isError || contractsQuery.isError;
 
+  const statusColumns: ColDef<ObjectSummary>[] = [
+    { key: 'object', header: t.governance.colObject, mono: true, sortable: true, sortValue: o => o.name, render: o => o.name },
+    { key: 'space', header: t.governance.colSpace, sortable: true, sortValue: o => o.space, render: o => <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</span> },
+    {
+      key: 'lifecycle', header: t.governance.colLifecycle,
+      render: o => <LifecycleStepper current={(contractByProduct.get(o.id)?.lifecycle || 'draft') as Lifecycle} />,
+    },
+    {
+      key: 'hasContract', header: t.governance.colHasContract, sortable: true,
+      sortValue: o => (contractByProduct.has(o.id) ? 1 : 0),
+      render: o => (
+        <span style={{ fontSize: 12, color: contractByProduct.has(o.id) ? 'var(--status-ok)' : 'var(--status-fail)' }}>
+          {contractByProduct.has(o.id) ? t.governance.yes : t.governance.no}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="page-full">
       <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>{t.governance.title}</h1>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)', marginBottom: 24 }}>
+      <div className="dash-2col" style={{ marginBottom: 24 }}>
         <Panel title={t.governance.g1Title} family="contract">
           <ul style={{ paddingLeft: 16, margin: 0 }}>
             {t.governance.g1Policy.map((p, i) => (
@@ -54,8 +75,7 @@ export default function Governance() {
           borderRadius: 'var(--r-lg)', padding: 'var(--s3) var(--s4)', marginBottom: 16,
           fontSize: 12, color: 'var(--fg-2)',
         }}>
-          Noch keine aktiven Contracts - Compliance-Daten erscheinen nach der ersten
-          Contract-Aktivierung. Internal Gates laufen unabhaengig unter <strong>Health</strong>.
+          {t.governance.noActiveContracts}
         </div>
       )}
 
@@ -64,37 +84,14 @@ export default function Governance() {
           <ErrorBanner onRetry={() => { refetch(); contractsQuery.refetch(); }} />
         ) : loading ? (
           <TableSkeleton columns={4} />
-        ) : objects.length === 0 ? (
-          <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.governance.noObjects}</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {[t.governance.colObject, t.governance.colSpace, t.governance.colLifecycle, t.governance.colHasContract].map(h => (
-                    <th key={h} style={{ padding: '6px 12px', textAlign: 'left', fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--line)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {objects.map(o => {
-                  const contract = contractByProduct.get(o.id);
-                  return (
-                    <tr key={o.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                      <td style={{ padding: 'var(--s2) var(--s3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</td>
-                      <td style={{ padding: 'var(--s2) var(--s3)', color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</td>
-                      <td style={{ padding: 'var(--s2) var(--s3)' }}>
-                        <LifecycleStepper current={(contract?.lifecycle || 'draft') as Lifecycle} />
-                      </td>
-                      <td style={{ padding: 'var(--s2) var(--s3)', fontSize: 12, color: contract ? 'var(--status-ok)' : 'var(--status-fail)' }}>
-                        {contract ? t.governance.yes : t.governance.no}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            columns={statusColumns}
+            rows={objects}
+            rowKey={o => o.id}
+            onRowClick={o => navigate(`/objects/${o.id}`)}
+            empty={t.governance.noObjects}
+          />
         )}
       </Panel>
     </div>

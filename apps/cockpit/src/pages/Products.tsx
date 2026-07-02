@@ -1,5 +1,7 @@
+import { useDeferredValue, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProducts } from '@/api/products';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { OwnershipTag } from '@/components/ui/OwnershipTag';
 import { StatusPill } from '@/components/ui/StatusPill';
@@ -44,6 +46,15 @@ function LifecycleTag({ lifecycle }: { lifecycle: string }) {
 export default function Products() {
   const { data: products = [], isLoading, isError, refetch } = useProducts();
   const navigate = useNavigate();
+  const [textFilter, setTextFilter] = useSearchParamState('q');
+  const deferredTextFilter = useDeferredValue(textFilter);
+
+  const q = deferredTextFilter.trim().toLowerCase();
+  const rows = useMemo(() => products.filter(p => {
+    if (!q) return true;
+    return p.product.toLowerCase().includes(q)
+      || p.owners.some(owner => owner.toLowerCase().includes(q));
+  }), [products, q]);
 
   const columns: ColDef<ProductListItem>[] = [
     {
@@ -117,8 +128,21 @@ export default function Products() {
 
   return (
     <div className="page-full">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s3)', flexWrap: 'wrap', marginBottom: 14 }}>
         <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.products.title}</h1>
+        <input
+          type="search"
+          name="product-search"
+          autoComplete="off"
+          spellCheck={false}
+          value={textFilter}
+          onChange={e => setTextFilter(e.target.value)}
+          placeholder={t.products.searchPlaceholder}
+          style={{
+            background: 'var(--bg-2)', border: '1px solid var(--line-2)',
+            color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12, minWidth: 260,
+          }}
+        />
       </div>
       {isError ? (
         <ErrorBanner onRetry={() => refetch()} />
@@ -126,7 +150,7 @@ export default function Products() {
         <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
           <Table
             columns={columns}
-            rows={products}
+            rows={rows}
             rowKey={row => row.product}
             onRowClick={row => navigate(`/products/${encodeURIComponent(row.product)}`)}
             empty={t.products.empty}

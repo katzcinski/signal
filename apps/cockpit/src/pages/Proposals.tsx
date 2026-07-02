@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useProposals, useProposalAction } from '@/api/proposals';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { t } from '@/i18n/de';
 import { diffExpect, OP_SYMBOL } from '@/lib/diff';
@@ -100,7 +101,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
               color: proposal.kind === 'internal_gate' ? 'var(--qual)' : 'var(--cont)',
               border: `1px solid ${proposal.kind === 'internal_gate' ? 'var(--qual)' : 'var(--cont)'}`,
             }}>
-              {proposal.kind === 'internal_gate' ? 'Gate' : 'Contract'}
+              {t.proposals.kindLabel[proposal.kind === 'internal_gate' ? 'internal_gate' : 'contract']}
             </span>
           </div>
         </div>
@@ -142,7 +143,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
           <span style={{ display: 'flex', gap: 'var(--s2)' }}>
             {proposal.kind !== 'internal_gate' ? (
               <button onClick={() => navigate(`/contracts?product=${encodeURIComponent(proposal.product)}`)} style={{ flex: 1, background: 'var(--cont)22', border: '1px solid var(--cont)', color: 'var(--cont)', borderRadius: 'var(--r-md)', padding: '6px 0', fontSize: 12, cursor: 'pointer' }}>
-                Im Contract pruefen {'->'}
+                {t.proposals.reviewInContract}
               </button>
             ) : (
               <button onClick={() => act('accept')} disabled={!canWrite} style={{ flex: 1, background: 'var(--status-ok)22', border: '1px solid var(--status-ok)', color: 'var(--status-ok)', borderRadius: 'var(--r-md)', padding: '6px 0', fontSize: 12, cursor: canWrite ? 'pointer' : 'not-allowed', opacity: canWrite ? 1 : 0.45 }}>
@@ -259,7 +260,17 @@ export default function Proposals() {
   const role = useRoleStore(s => s.role);
   const [groupBy, setGroupBy] = useState<ClusterDimension>('product');
 
-  if (isLoading) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.loading}</div>;
+  // Layout-treuer Skeleton statt "Laden…"-Text (Muster der Objekte-Seiten).
+  if (isLoading) return (
+    <div className="page-full">
+      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.proposals.title}</h1>
+      <div style={CARD_GRID}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} height={220} radius={8} />
+        ))}
+      </div>
+    </div>
+  );
 
   const pending = proposals.filter(p => p.status === 'open');
   const others  = proposals.filter(p => p.status !== 'open');

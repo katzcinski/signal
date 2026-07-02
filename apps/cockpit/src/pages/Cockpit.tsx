@@ -245,7 +245,7 @@ export default function Cockpit() {
           ) : topIncidents.map((i: Incident) => (
             <button
               key={i.id}
-              onClick={() => navigate(`/incidents?status=${i.status}&kind=${i.kind === 'internal_gate' ? 'internal_gate' : 'contract'}`)}
+              onClick={() => navigate(`/incidents?status=${i.status}&kind=${i.kind === 'internal_gate' ? 'internal_gate' : 'contract'}&id=${i.id}`)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 'var(--s3)', width: '100%', textAlign: 'left',
                 padding: '6px 0', background: 'none', border: 'none',

@@ -169,6 +169,7 @@ export const t = {
   products: {
     title: 'Data Products',
     empty: 'Keine Produkte gefunden',
+    searchPlaceholder: 'Suchen nach Produkt oder Owner…',
     colProduct: 'Produkt',
     colOwners: 'Owners',
     colHealth: 'Health',
@@ -446,6 +447,7 @@ export const t = {
     promoteHint: 'Kopiert die Gate-Garantien in einen neuen Contract-Entwurf.',
     noGateForPromotion: 'Kein Internal Gate vorhanden.',
     promotionSuccess: 'Contract-Entwurf erstellt.',
+    promotionFailed: 'Promotion fehlgeschlagen.',
     searchPlaceholder: 'Nach Name suchen…',
     legend: 'Legende',
     covered: 'Abgedeckt',
@@ -871,6 +873,7 @@ export const t = {
     accept: 'Übernehmen',
     snooze: 'Zurückstellen',
     reject: 'Ablehnen',
+    reviewInContract: 'Im Contract prüfen →',
     groupByLabel: 'Gruppieren nach',
     groupBy: {
       product: 'Objekt',
@@ -915,6 +918,7 @@ export const t = {
     lifecycleDesc2: ' Contracts.',
     objectStatusTitle: 'Objekt-Lifecycle-Status',
     contractsBreached: 'Verletzte Contracts',
+    noActiveContracts: 'Noch keine aktiven Contracts — Compliance-Daten erscheinen nach der ersten Contract-Aktivierung. Internal Gates laufen unabhängig unter Health.',
     loading: 'Objektstatus wird geladen…',
     loadError: 'Objektstatus konnte nicht geladen werden.',
     noObjects: 'Keine Objekte',

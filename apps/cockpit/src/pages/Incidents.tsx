@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useIncidents, useIncident, useIncidentTransition, useFailedChecks } from '@/api/incidents';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { Table, type ColDef } from '@/components/ui/Table';
@@ -370,9 +370,23 @@ function FailedChecksTab() {
 }
 
 export default function Incidents() {
-  const [status, setStatus] = useSearchParamState('status', 'open');
+  const [status] = useSearchParamState('status', 'open');
   const [kindFilter, setKindFilter] = useSearchParamState('kind', 'all');
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Drawer-Selektion lebt in der URL (?id=) — Cockpit/Meine Arbeit können so
+  // direkt den konkreten Incident öffnen und der Drawer übersteht Reloads.
+  const [selectedParam, setSelectedParam] = useSearchParamState('id');
+  const [, setSearchParams] = useSearchParams();
+  const selectedId = selectedParam ? Number(selectedParam) : null;
+  // Tab-Wechsel setzt Status und schließt den Drawer in einer Navigation —
+  // zwei setSearchParams im selben Tick würden sich gegenseitig überschreiben.
+  const selectTab = (tabKey: string) => {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (tabKey === 'open') params.delete('status'); else params.set('status', tabKey);
+      params.delete('id');
+      return params;
+    }, { replace: true });
+  };
   const isChecksTab = status === 'checks';
   const serverKind = kindFilter === 'internal_gate' ? 'internal_gate' : undefined;
 
@@ -421,7 +435,7 @@ export default function Incidents() {
         {TABS.map(tabKey => (
           <button
             key={tabKey}
-            onClick={() => { setStatus(tabKey); setSelectedId(null); }}
+            onClick={() => selectTab(tabKey)}
             style={{
               padding: 'var(--s2) var(--s4)', border: 'none', background: 'none',
               color: status === tabKey ? 'var(--fg)' : 'var(--fg-3)',
@@ -470,7 +484,7 @@ export default function Incidents() {
                 columns={columns}
                 rows={filteredIncidents}
                 rowKey={i => String(i.id)}
-                onRowClick={i => setSelectedId(i.id)}
+                onRowClick={i => setSelectedParam(String(i.id))}
                 empty={t.incidents.empty}
               />
             </div>
@@ -478,8 +492,8 @@ export default function Incidents() {
         </>
       )}
 
-      {selectedId != null && (
-        <IncidentDrawer id={selectedId} onClose={() => setSelectedId(null)} />
+      {selectedId != null && Number.isFinite(selectedId) && (
+        <IncidentDrawer id={selectedId} onClose={() => setSelectedParam('')} />
       )}
     </div>
   );

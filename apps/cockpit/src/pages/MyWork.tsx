@@ -119,7 +119,7 @@ export default function MyWork() {
         {assigned.length === 0 ? (
           <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.myWork.noAssigned}</p>
         ) : assigned.map((i: Incident) => (
-          <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}&kind=${i.kind === 'internal_gate' ? 'internal_gate' : 'contract'}`)}>
+          <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}&kind=${i.kind === 'internal_gate' ? 'internal_gate' : 'contract'}&id=${i.id}`)}>
             <StatusDot status={i.severity} />
             <IncidentKindBadge incident={i} />
             <span style={{ fontSize: 12, flex: 1 }}>{i.title}</span>
@@ -134,7 +134,7 @@ export default function MyWork() {
           {contractBreaches.length === 0 ? (
             <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.myWork.noOpenIncidents}</p>
           ) : contractBreaches.slice(0, 8).map((i: Incident) => (
-            <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}&kind=contract`)}>
+            <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}&kind=contract&id=${i.id}`)}>
               <StatusPill status={i.severity} size="sm" />
               <span style={{ fontSize: 12, flex: 1 }}>{i.title}</span>
               <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', fontSize: 11 }}>{i.product}</span>
@@ -149,7 +149,7 @@ export default function MyWork() {
           {engineeringSignals.length === 0 ? (
             <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.myWork.noOpenIncidents}</p>
           ) : engineeringSignals.slice(0, 8).map((i: Incident) => (
-            <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}&kind=internal_gate`)}>
+            <RowButton key={i.id} onClick={() => navigate(`/incidents?status=${i.status}&kind=internal_gate&id=${i.id}`)}>
               <StatusPill status={i.severity} size="sm" />
               <span style={{ fontSize: 12, flex: 1 }}>{i.title}</span>
               <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', fontSize: 11 }}>{i.product}</span>
