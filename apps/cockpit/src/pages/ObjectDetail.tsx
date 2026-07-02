@@ -177,7 +177,6 @@ export default function ObjectDetail() {
         canCreateChecks={canCreateChecks}
         checksActionPending={seedContract.isPending}
         runPending={trigger.isPending || isRunning}
-        onBack={() => navigate('/objects')}
         onRequestMonitoring={() => requestMonitoring.mutate(id)}
         onOpenProfile={() => setProfileOpen(true)}
         onOpenChecksWorkbench={openChecksWorkbench}

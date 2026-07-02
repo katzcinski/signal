@@ -586,12 +586,10 @@ export const t = {
       schedule: 'Zeitplan wird geladen',
     },
     hero: {
-      objectContext: 'Objektkontext',
+      schemaLabel: 'Schema',
       ownerLabel: 'Owner',
       ownerHint: 'Keine Team-Owner gepflegt',
       ownerTeams: 'Teams: {teams}',
-      healthLabel: 'Aktuelle Health',
-      familyLabel: 'Familie',
       latestRunTitle: 'Letzter Run',
       noRun: 'Kein Run',
       noRunHint: 'Noch kein Run fuer dieses Objekt.',

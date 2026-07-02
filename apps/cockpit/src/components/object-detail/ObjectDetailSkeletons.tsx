@@ -25,7 +25,6 @@ export function ObjectHeroSkeleton() {
     >
       <div className="object-detail-hero-head">
         <div style={{ minWidth: 0 }}>
-          <Skeleton width={88} height={28} radius={6} style={{ marginBottom: 12 }} />
           <div className="object-detail-title-row">
             <Skeleton width="min(420px, 82vw)" height={30} />
             <Skeleton width={76} height={22} radius={999} />
@@ -33,19 +32,13 @@ export function ObjectHeroSkeleton() {
           </div>
           <div className="object-detail-meta" style={{ marginTop: 10 }}>
             <Skeleton width={96} height={11} />
-            <Skeleton width={56} height={11} />
             <Skeleton width={72} height={11} />
             <Skeleton width={90} height={11} />
           </div>
-          <div className="object-detail-facts" style={{ marginTop: 16 }}>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index}>
-                <Skeleton width={62} height={10} />
-                <div style={{ marginTop: 8 }}>
-                  <Skeleton width={index === 0 ? 130 : 76} height={14} />
-                </div>
-              </div>
-            ))}
+          <div className="object-detail-facts" style={{ marginTop: 12 }}>
+            <Skeleton width={44} height={11} />
+            <Skeleton width={88} height={11} />
+            <Skeleton width={130} height={11} />
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { FamilyTag } from '@/components/ui/FamilyTag';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { relativeTime, absoluteTime } from '@/lib/time';
 import { t } from '@/i18n/de';
 import type { CheckResult, ContractOut, ObjectSummary, RunListItem } from '@/types';
 import { ObjectSummaryCard } from './ObjectSummaryCard';
@@ -24,7 +25,6 @@ interface ObjectHeroProps {
   canCreateChecks: boolean;
   checksActionPending: boolean;
   runPending: boolean;
-  onBack: () => void;
   onRequestMonitoring: () => void;
   onOpenProfile: () => void;
   onOpenChecksWorkbench: () => void;
@@ -87,7 +87,6 @@ export function ObjectHero({
   canCreateChecks,
   checksActionPending,
   runPending,
-  onBack,
   onRequestMonitoring,
   onOpenProfile,
   onOpenChecksWorkbench,
@@ -110,9 +109,6 @@ export function ObjectHero({
     <section className="object-detail-hero object-detail-section">
       <div className="object-detail-hero-head">
         <div style={{ minWidth: 0 }}>
-          <Button variant="ghost" size="sm" onClick={onBack} style={{ marginBottom: 12 }}>
-            {t.objectDetail.back}
-          </Button>
           <div className="object-detail-title-row">
             <h1 style={{
               fontFamily: 'var(--font-mono)',
@@ -128,28 +124,16 @@ export function ObjectHero({
             <StatusPill status={object.status ?? 'unknown'} size="sm" />
           </div>
           <div className="object-detail-meta" style={{ marginTop: 10 }}>
-            <span>{t.objectDetail.hero.objectContext}</span>
+            <span>{t.objects.colSpace} <b>{object.space}</b></span>
             <span style={{ color: 'var(--line-2)' }}>|</span>
-            <span>{object.space}</span>
+            <span>{t.objects.colLayer} <b>{object.layer}</b></span>
             <span style={{ color: 'var(--line-2)' }}>|</span>
-            <span>{object.layer}</span>
-            <span style={{ color: 'var(--line-2)' }}>|</span>
-            <span>{object.schema_name}</span>
+            <span>{t.objectDetail.hero.schemaLabel} <b style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{object.schema_name}</b></span>
           </div>
-          <div className="object-detail-facts" style={{ marginTop: 16 }}>
-            <div>
-              <div style={{ color: 'var(--fg-3)', marginBottom: 4 }}>{t.objectDetail.hero.ownerLabel}</div>
-              <div>{object.owned_by}</div>
-              <div style={{ color: 'var(--fg-3)', marginTop: 2 }}>{ownerHint}</div>
-            </div>
-            <div>
-              <div style={{ color: 'var(--fg-3)', marginBottom: 4 }}>{t.objectDetail.hero.healthLabel}</div>
-              <StatusPill status={object.status ?? 'unknown'} size="sm" />
-            </div>
-            <div>
-              <div style={{ color: 'var(--fg-3)', marginBottom: 4 }}>{t.objectDetail.hero.familyLabel}</div>
-              <FamilyTag family={object.family} />
-            </div>
+          <div className="object-detail-facts" style={{ marginTop: 12 }}>
+            <span style={{ color: 'var(--fg-3)' }}>{t.objectDetail.hero.ownerLabel}</span>
+            <span style={{ color: 'var(--fg)', fontWeight: 600 }}>{object.owned_by}</span>
+            <span style={{ color: 'var(--fg-3)' }}>{ownerHint}</span>
           </div>
         </div>
 
@@ -212,8 +196,11 @@ export function ObjectHero({
           value={latestRun ? (
             <>
               <StatusPill status={latestRun.overall_status} size="sm" />
-              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg)' }}>
-                {latestRun.run_state}
+              <span
+                title={absoluteTime(latestRun.started_at)}
+                style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg)' }}
+              >
+                {relativeTime(latestRun.started_at)}
               </span>
             </>
           ) : t.objectDetail.hero.noRun}

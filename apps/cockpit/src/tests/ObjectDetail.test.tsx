@@ -221,10 +221,10 @@ describe('ObjectDetail hero', () => {
     renderObjectDetail('/objects/Sales_Orders_View');
 
     expect(screen.getAllByText('Sales_Orders_View').length).toBeGreaterThan(0);
-    expect(screen.getByText('Objektkontext')).toBeTruthy();
+    expect(screen.getByText('CORE')).toBeTruthy();
+    expect(screen.getByText('SALES')).toBeTruthy();
     expect(screen.getByText('Owner')).toBeTruthy();
     expect(screen.getByText('platform')).toBeTruthy();
-    expect(screen.getByText('Aktuelle Health')).toBeTruthy();
     expect(screen.getByText('Kein Contract')).toBeTruthy();
     expect(screen.getByText('Deaktiviert')).toBeTruthy();
   });
