@@ -16,6 +16,7 @@ import { ObservabilityTimeseries } from '@/components/ObservabilityTimeseries';
 import { ObjectProfilePanel } from '@/components/ObjectProfilePanel';
 import { ObjectDiffPanel } from '@/components/ObjectDiffPanel';
 import { SchedulePanel } from '@/components/SchedulePanel';
+import { DataLoadsPanel } from '@/components/object-detail/DataLoadsPanel';
 import { ColumnLineagePanel } from '@/components/lineage/ColumnLineagePanel';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
@@ -282,6 +283,12 @@ export default function ObjectDetail() {
       {isActiveSection('history-ops', 'diff') && (
         <div className="object-detail-section">
           <ObjectDiffPanel objectId={obj.id} />
+        </div>
+      )}
+
+      {isActiveSection('history-ops', 'dataLoads') && (
+        <div className="object-detail-section">
+          <DataLoadsPanel objectId={obj.id} enabled={tab === 'dataLoads'} />
         </div>
       )}
 

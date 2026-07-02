@@ -535,6 +535,23 @@ export const t = {
     allFamilies: 'Alle Familien',
     clearFilters: 'Filter löschen',
   },
+  dataLoads: {
+    // W-5/R7: Ladelauf-Historie je Objekt (Task-Chains + Replication-Flows) aus
+    // der Datasphere-API. Nur lesend; ohne konfigurierten Connector 503 → Hinweis.
+    title: 'Ladeläufe',
+    intro: 'Task-Chain- und Replication-Flow-Läufe dieses Objekts aus der Datasphere-API.',
+    colType: 'Typ',
+    colStatus: 'Status',
+    colStarted: 'Gestartet',
+    colDuration: 'Dauer',
+    colTrigger: 'Auslöser',
+    typeTaskChain: 'Task Chain',
+    typeReplicationFlow: 'Replication Flow',
+    empty: 'Keine Ladeläufe für dieses Objekt.',
+    notConfigured: 'Datasphere-API nicht konfiguriert — Ladeläufe sind nur mit angebundenem Connector verfügbar.',
+    error: 'Ladeläufe konnten nicht geladen werden.',
+    loading: 'Ladeläufe werden geladen…',
+  },
   objectDetail: {
     back: '← Objekte',
     notFound: 'Objekt nicht gefunden',
@@ -544,7 +561,7 @@ export const t = {
       'structure-interface': 'Struktur & Interface',
       'history-ops': 'Historie & Betrieb',
     } as Record<string, string>,
-    tabs: { checks: 'Checks', runs: 'Läufe', timeseries: 'Verlauf', contract: 'Contract', lineage: 'Lineage', schedule: 'Zeitplan', diff: 'Data-Diff' } as Record<string, string>,
+    tabs: { checks: 'Checks', runs: 'Läufe', timeseries: 'Verlauf', contract: 'Contract', lineage: 'Lineage', schedule: 'Zeitplan', diff: 'Data-Diff', dataLoads: 'Ladeläufe' } as Record<string, string>,
     run: 'Run starten',
     running: 'Läuft…',
     createChecks: 'Checks anlegen',

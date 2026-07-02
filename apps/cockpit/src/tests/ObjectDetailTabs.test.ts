@@ -14,6 +14,7 @@ const expectedTargets: Record<ObjectDetailTab, ObjectDetailTabTarget> = {
   timeseries: { legacyTab: 'timeseries', group: 'history-ops', anchor: 'timeseries' },
   schedule: { legacyTab: 'schedule', group: 'history-ops', anchor: 'schedule' },
   diff: { legacyTab: 'diff', group: 'history-ops', anchor: 'diff' },
+  dataLoads: { legacyTab: 'dataLoads', group: 'history-ops', anchor: 'dataLoads' },
   contract: { legacyTab: 'contract', group: 'structure-interface', anchor: 'contract' },
   lineage: { legacyTab: 'lineage', group: 'structure-interface', anchor: 'lineage' },
 };
@@ -37,7 +38,7 @@ describe('ObjectDetail tab compatibility', () => {
     expect(OBJECT_DETAIL_GROUPS).toEqual([
       { id: 'quality', defaultTab: 'checks', tabs: ['checks'] },
       { id: 'structure-interface', defaultTab: 'contract', tabs: ['contract', 'lineage'] },
-      { id: 'history-ops', defaultTab: 'runs', tabs: ['runs', 'timeseries', 'schedule', 'diff'] },
+      { id: 'history-ops', defaultTab: 'runs', tabs: ['runs', 'timeseries', 'schedule', 'diff', 'dataLoads'] },
     ]);
   });
 

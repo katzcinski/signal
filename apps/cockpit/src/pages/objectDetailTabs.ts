@@ -5,7 +5,8 @@ export type ObjectDetailTab =
   | 'contract'
   | 'lineage'
   | 'schedule'
-  | 'diff';
+  | 'diff'
+  | 'dataLoads';
 
 export type ObjectDetailGroup = 'quality' | 'history-ops' | 'structure-interface';
 
@@ -29,6 +30,7 @@ export const OBJECT_DETAIL_LEGACY_TABS: ObjectDetailTab[] = [
   'lineage',
   'schedule',
   'diff',
+  'dataLoads',
 ];
 
 export const OBJECT_DETAIL_TAB_TARGETS: Record<ObjectDetailTab, ObjectDetailTabTarget> = {
@@ -39,12 +41,13 @@ export const OBJECT_DETAIL_TAB_TARGETS: Record<ObjectDetailTab, ObjectDetailTabT
   lineage: { legacyTab: 'lineage', group: 'structure-interface', anchor: 'lineage' },
   schedule: { legacyTab: 'schedule', group: 'history-ops', anchor: 'schedule' },
   diff: { legacyTab: 'diff', group: 'history-ops', anchor: 'diff' },
+  dataLoads: { legacyTab: 'dataLoads', group: 'history-ops', anchor: 'dataLoads' },
 };
 
 export const OBJECT_DETAIL_GROUPS: ObjectDetailGroupConfig[] = [
   { id: 'quality', defaultTab: 'checks', tabs: ['checks'] },
   { id: 'structure-interface', defaultTab: 'contract', tabs: ['contract', 'lineage'] },
-  { id: 'history-ops', defaultTab: 'runs', tabs: ['runs', 'timeseries', 'schedule', 'diff'] },
+  { id: 'history-ops', defaultTab: 'runs', tabs: ['runs', 'timeseries', 'schedule', 'diff', 'dataLoads'] },
 ];
 
 export function resolveObjectDetailTabTarget(tabKey: string | null | undefined): ObjectDetailTabTarget {
