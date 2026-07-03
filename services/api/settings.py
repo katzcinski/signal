@@ -78,6 +78,17 @@ class Settings(BaseSettings):
     notifications_file: str = Field(default="notifications.yml")
     incident_cluster_window_minutes: int = Field(default=15, ge=1, le=1440)
 
+    # Contract assistant (Fable) — off by default, opt-in. Drafts SQL-free
+    # semantic contract YAML from aggregate profiling; output is always run
+    # through validate_contract before it reaches a steward. Fable requires
+    # 30-day data retention (ZDR orgs 400) and premium pricing, so keep the
+    # narrower assistive uses on the Opus-tier fallback.
+    contract_assistant_enabled: bool = Field(default=False)
+    anthropic_api_key: str = Field(default="")
+    contract_assistant_model: str = Field(default="claude-fable-5")
+    contract_assistant_fallback_model: str = Field(default="claude-opus-4-8")
+    contract_assistant_effort: Literal["low", "medium", "high", "xhigh", "max"] = Field(default="high")
+
     # Datasphere connector config file (runtime alternative to env vars, git-ignored)
     connector_file: str = Field(default="datasphere.yml")
 

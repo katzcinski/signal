@@ -1,7 +1,7 @@
 .PHONY: dev-backend dev-frontend test seed install lint
 
 install:
-	pip install fastapi pydantic pydantic-settings uvicorn pyyaml httpx pytest pytest-cov respx jsonschema "python-jose[cryptography]" gitpython hdbcli
+	pip install fastapi pydantic pydantic-settings uvicorn pyyaml httpx pytest pytest-cov respx jsonschema "python-jose[cryptography]" gitpython hdbcli anthropic
 	cd apps/cockpit && npm install
 
 # S5: Bind-Host kommt aus den Settings — uvicorn wird explizit darauf gebunden,
