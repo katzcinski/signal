@@ -3,6 +3,7 @@ import { Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { OperationProgress } from '@/components/OperationProgress';
 import { ConnectorPanel } from '@/components/ConnectorPanel';
@@ -239,10 +240,7 @@ export default function Settings() {
 
   return (
     <div className="page-full">
-      <div style={{ marginBottom: 'var(--s5)' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>{t.settings.title}</h1>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 'var(--s1)' }}>{t.settings.subtitle}</p>
-      </div>
+      <PageHeader title={t.settings.title} subtitle={t.settings.subtitle} />
 
       {isError && <ErrorBanner onRetry={() => refetch()} />}
       {isLoading && <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.common.loading}</p>}

@@ -4,6 +4,7 @@ import { useRuns, useRunCompare } from '@/api/runs';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { t } from '@/i18n/de';
 import type { CheckChange, CheckCompareStatus, CheckTransition, RunListItem } from '@/types';
 
@@ -139,10 +140,7 @@ export default function RunCompare() {
         { label: t.breadcrumb.objects, to: '/objects' },
         { label: t.compare.title },
       ]} />
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.compare.title}</h1>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{t.compare.subtitle}</p>
-      </div>
+      <PageHeader title={t.compare.title} subtitle={t.compare.subtitle} />
 
       <div style={{ display: 'flex', gap: 'var(--s4)', flexWrap: 'wrap', marginBottom: 20 }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)' }}>

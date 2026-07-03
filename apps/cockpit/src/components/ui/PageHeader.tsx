@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 // UX-Konsistenz §2.1: gemeinsamer Seitenkopf. Titelgröße, Zeilenhöhe und
 // Abstände kamen zuvor pro Seite als Magic Numbers (18/20px, Margin 10/14/16/20);
@@ -9,9 +9,11 @@ interface Props {
   subtitle?: ReactNode;
   /** Rechtsbündiger Slot für Suche, Filter-Steuerung oder Aktionen. */
   actions?: ReactNode;
+  titleId?: string;
+  style?: CSSProperties;
 }
 
-export function PageHeader({ title, subtitle, actions }: Props) {
+export function PageHeader({ title, subtitle, actions, titleId, style }: Props) {
   return (
     <div
       style={{
@@ -21,10 +23,11 @@ export function PageHeader({ title, subtitle, actions }: Props) {
         gap: 'var(--s3)',
         flexWrap: 'wrap',
         marginBottom: 'var(--s4)',
+        ...style,
       }}
     >
       <div>
-        <h1 style={{ fontSize: 'var(--fs-h2)', fontWeight: 700, lineHeight: 'var(--lh-tight)', color: 'var(--fg)', margin: 0 }}>
+        <h1 id={titleId} style={{ fontSize: 'var(--fs-page-title)', fontWeight: 700, lineHeight: 'var(--lh-tight)', color: 'var(--fg)', margin: 0 }}>
           {title}
         </h1>
         {subtitle != null && (

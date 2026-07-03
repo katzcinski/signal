@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Kpi } from '@/components/ui/Kpi';
 import { KpiSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Panel } from '@/components/ui/Panel';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -154,20 +155,21 @@ export default function Cockpit() {
 
   return (
     <div className="page-full" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--s4)', flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>{t.cockpit.title}</h1>
-          <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 4 }}>{t.cockpit.subtitle}</p>
-        </div>
-        <span style={{
-          fontSize: 11, color: 'var(--fg-2)', padding: 'var(--s1) var(--s3)', borderRadius: 'var(--r-full)',
-          border: '1px solid var(--line-2)', background: 'var(--bg-1)',
-          display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)', whiteSpace: 'nowrap',
-        }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--qual)' }} />
-          {t.cockpit.dqFirst}
-        </span>
-      </div>
+      <PageHeader
+        title={t.cockpit.title}
+        subtitle={t.cockpit.subtitle}
+        style={{ marginBottom: 0 }}
+        actions={(
+          <span style={{
+            fontSize: 11, color: 'var(--fg-2)', padding: 'var(--s1) var(--s3)', borderRadius: 'var(--r-full)',
+            border: '1px solid var(--line-2)', background: 'var(--bg-1)',
+            display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)', whiteSpace: 'nowrap',
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--qual)' }} />
+            {t.cockpit.dqFirst}
+          </span>
+        )}
+      />
 
       {objectsQuery.isError && <ErrorBanner onRetry={() => objectsQuery.refetch()} />}
       {incidentsQuery.isError && <ErrorBanner onRetry={() => incidentsQuery.refetch()} />}

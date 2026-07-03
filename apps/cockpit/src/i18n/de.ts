@@ -484,6 +484,13 @@ export const t = {
     kpiCoverage: 'Coverage',
     kpiUnvalidated: '>30d unvalidiert',
     unvalidatedTitle: 'Seit >30 Tagen nicht validiert',
+    rendererLabel: 'Lineage Renderer',
+    rendererSchematic: 'Schaltplan',
+    rendererLegacy: 'Legacy',
+    openObject: 'Objekt öffnen',
+    contextMenuLabel: 'Objektaktionen',
+    contextInspect: 'Inspizieren',
+    contextLoadScope: 'Umfeld laden',
     schematic: {
       expandColumns: 'Spalten anzeigen',
       collapseColumns: 'Spalten ausblenden',

@@ -20,6 +20,7 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { OwnershipTag } from '@/components/ui/OwnershipTag';
 import { Combobox } from '@/components/ui/Combobox';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
@@ -1611,7 +1612,7 @@ export default function ContractWorkbench() {
 
   return (
     <div className="page-full">
-      <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.workbench.title}</h1>
+      <PageHeader title={t.workbench.title} />
       {contractsQuery.isError && <ErrorBanner onRetry={() => contractsQuery.refetch()} />}
       <div style={{
         background: 'var(--bg-1)', border: '1px solid var(--line)',

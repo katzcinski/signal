@@ -11,7 +11,7 @@ const ObjectDetail      = lazy(() => import('./pages/ObjectDetail'));
 const Products          = lazy(() => import('./pages/Products'));
 const ProductDetail     = lazy(() => import('./pages/ProductDetail'));
 const ContractWorkbench = lazy(() => import('./pages/ContractWorkbench'));
-const Lineage           = lazy(() => import('@/components/lineage/schematic/SchematicLineage'));
+const Lineage           = lazy(() => import('./pages/LineagePage'));
 const Incidents         = lazy(() => import('./pages/Incidents'));
 const Proposals         = lazy(() => import('./pages/Proposals'));
 const RunDetail         = lazy(() => import('./pages/RunDetail'));

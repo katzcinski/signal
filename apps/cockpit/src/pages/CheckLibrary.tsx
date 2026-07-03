@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useLibrary } from '@/api/library';
 import { t } from '@/i18n/de';
 import { FamilyTag } from '@/components/ui/FamilyTag';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import type { CheckDef, CheckFamily } from '@/types';
 
@@ -103,12 +104,7 @@ export default function CheckLibrary() {
 
   return (
     <section className="page-full" aria-labelledby="check-library-title">
-      <h1
-        id="check-library-title"
-        style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, textWrap: 'balance' }}
-      >
-        {t.library.title}
-      </h1>
+      <PageHeader titleId="check-library-title" title={t.library.title} />
 
       <div style={{
         display: 'grid',

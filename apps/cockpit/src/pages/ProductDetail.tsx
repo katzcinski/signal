@@ -250,7 +250,7 @@ export default function ProductDetail() {
           <Card accent="var(--cont)" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
               <span className="mono-label">Product profile</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 700, lineHeight: 1.05 }}>
+              <span style={{ fontSize: 'var(--fs-h1)', fontWeight: 700, lineHeight: 'var(--lh-tight)', color: 'var(--fg)', overflowWrap: 'anywhere' }}>
                 {data.product}
               </span>
               <p style={{ color: 'var(--fg-2)', fontSize: 13, lineHeight: 1.6, maxWidth: 680 }}>

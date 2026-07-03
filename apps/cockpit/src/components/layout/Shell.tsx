@@ -69,17 +69,21 @@ export function Shell({ children }: Props) {
   return (
     <div className="shell-root" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-0)' }}>
       <a className="skip-link" href="#main-content">Zum Inhalt springen</a>
-      <div ref={shellContentRef} aria-hidden={paletteOpen}>
+      <div
+        ref={shellContentRef}
+        aria-hidden={paletteOpen}
+        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+      >
         <SystemHealthStrip />
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
           <Sidebar collapsed={collapsed} />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <Topbar
               onToggleSidebar={() => setCollapsed(c => !c)}
               onOpenPalette={() => setPaletteOpen(true)}
               paletteOpen={paletteOpen}
             />
-            <main id="main-content" tabIndex={-1} style={{ flex: 1, overflow: 'auto', padding: 'var(--page-pad)' }}>
+            <main id="main-content" tabIndex={-1} style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: 'var(--page-pad)' }}>
               {children}
             </main>
           </div>
