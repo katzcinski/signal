@@ -156,6 +156,19 @@ describe('Proposals', () => {
     expect(screen.getByText('snoozed_check')).toBeInTheDocument();
   });
 
+  it('scopes the list to a ?product= deep link and clears it via the chip', () => {
+    renderProposals('/proposals?product=DS_GATE');
+
+    expect(screen.getByText('gate_open_check')).toBeInTheDocument();
+    expect(screen.queryByText('contract_open_check')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: `${t.objects.clearFilters}: DS_GATE` }));
+
+    expect(screen.getByText('gate_open_check')).toBeInTheDocument();
+    expect(screen.getByText('contract_open_check')).toBeInTheDocument();
+    expect(screen.getByTestId('location')).not.toHaveTextContent('product=');
+  });
+
   it('uses skeleton cards while loading', () => {
     data.isLoading = true;
     renderProposals();

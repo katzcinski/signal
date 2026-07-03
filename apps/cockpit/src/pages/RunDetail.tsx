@@ -57,7 +57,7 @@ export default function RunDetail() {
       <Breadcrumbs items={[
         { label: t.breadcrumb.home, to: '/' },
         { label: t.breadcrumb.objects, to: '/objects' },
-        { label: run.dataset, to: `/objects/${run.dataset}` },
+        { label: run.dataset, to: `/objects/${encodeURIComponent(run.dataset)}` },
         { label: `${t.breadcrumb.runs} ${run.run_id.slice(0, 12)}…` },
       ]} />
       <div style={{ marginBottom: 20 }}>

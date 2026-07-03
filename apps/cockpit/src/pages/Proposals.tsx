@@ -5,7 +5,7 @@ import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { Button } from '@/components/ui/Button';
-import { FilterChip } from '@/components/ui/FilterChip';
+import { ActiveFilterChip, FilterChip } from '@/components/ui/FilterChip';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
@@ -369,9 +369,12 @@ export default function Proposals() {
   const role = useRoleStore(s => s.role);
   const [groupByParam, setGroupBy] = useSearchParamState('groupBy', 'product');
   const [statusParam, setStatusFilter] = useSearchParamState('status', 'open');
+  // Deep links from "My work" / object detail scope the list to one object.
+  const [productFilter, setProductFilter] = useSearchParamState('product');
   const groupBy = normalizeGroupBy(groupByParam);
   const statusFilter = normalizeStatusFilter(statusParam);
-  const visibleProposals = proposals.filter(p => proposalMatchesStatus(p, statusFilter));
+  const visibleProposals = proposals.filter(p =>
+    proposalMatchesStatus(p, statusFilter) && (!productFilter || p.product === productFilter));
   const clusters = groupBy === 'none' ? [] : clusterProposals(visibleProposals, groupBy);
 
   return (
@@ -387,6 +390,11 @@ export default function Proposals() {
           />
         )}
       />
+      {productFilter && (
+        <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap', marginBottom: 'var(--s3)' }}>
+          <ActiveFilterChip label={productFilter} onClear={() => setProductFilter('')} />
+        </div>
+      )}
       {!canAcceptProposal(role) && <ReadOnlyBanner />}
       {isError && <ErrorBanner onRetry={() => refetch()} />}
 

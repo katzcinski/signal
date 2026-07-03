@@ -52,7 +52,7 @@ export function StatusHeatmap() {
             {datasets.map(ds => (
               <div key={ds} style={{ display: 'flex', alignItems: 'center', gap: GAP, marginBottom: GAP }}>
                 <button
-                  onClick={() => navigate(`/objects/${ds}`)}
+                  onClick={() => navigate(`/objects/${encodeURIComponent(ds)}`)}
                   title={ds}
                   style={{
                     width: 150, textAlign: 'right', paddingRight: 8, border: 'none', background: 'none',

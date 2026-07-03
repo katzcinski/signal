@@ -25,9 +25,18 @@ const ACTIVITY_KIND_COLOR: Record<string, string> = {
   contract: 'var(--status-ok)',
 };
 
+// Deep link per activity kind: incident → drawer, proposal decision → the
+// object's reviewed proposals, contract approval → workbench.
+function activityHref(it: ActivityItem): string {
+  if (it.kind === 'incident') return `/incidents?id=${encodeURIComponent(it.ref)}`;
+  if (it.kind === 'proposal') return `/proposals?status=reviewed&product=${encodeURIComponent(it.product)}`;
+  return `/contracts?product=${encodeURIComponent(it.product)}`;
+}
+
 // UX-N15: recent audit feed — who approved / resolved / decided what.
 function ActivityFeed() {
   const { data: items = [], isSuccess } = useActivity(12);
+  const navigate = useNavigate();
   if (items.length === 0) {
     return <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{isSuccess ? t.activity.empty : '—'}</p>;
   }
@@ -36,9 +45,11 @@ function ActivityFeed() {
       {items.map((it: ActivityItem, i) => {
         const color = ACTIVITY_KIND_COLOR[it.kind] ?? 'var(--fg-3)';
         return (
-          <div key={`${it.kind}-${it.ref}-${i}`} style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '7px 0', borderBottom: '1px solid var(--line)',
+          <button key={`${it.kind}-${it.ref}-${i}`} onClick={() => navigate(activityHref(it))} style={{
+            display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
+            padding: '7px 0', background: 'none', border: 'none',
+            borderBottom: '1px solid var(--line)', borderRadius: 0,
+            cursor: 'pointer', color: 'var(--fg)',
           }}>
             <span style={{
               fontSize: 10, borderRadius: 'var(--r)', padding: '2px 6px', minWidth: 64, textAlign: 'center',
@@ -56,7 +67,7 @@ function ActivityFeed() {
             <span title={absoluteTime(it.at)} style={{ fontSize: 11, color: 'var(--fg-3)', whiteSpace: 'nowrap' }}>
               {relativeTime(it.at)}
             </span>
-          </div>
+          </button>
         );
       })}
     </div>
@@ -80,17 +91,25 @@ function SlaBar({ pct }: { pct: number | null }) {
 
 function SlaRow({ product }: { product: string }) {
   const { data: sla } = useContractSla(product);
+  const navigate = useNavigate();
   const w = sla?.windows;
   const cur = sla?.current ?? 'unknown';
   const curColor = cur === 'compliant' ? 'var(--qual)' : cur === 'breached' ? 'var(--status-crit)' : 'var(--fg-3)';
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)', padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+    <button
+      onClick={() => navigate(`/objects/${encodeURIComponent(product)}?tab=contract`)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 'var(--s4)', width: '100%', textAlign: 'left',
+        padding: '6px 0', background: 'none', border: 'none',
+        borderBottom: '1px solid var(--line)', borderRadius: 0,
+        color: 'var(--fg)', cursor: 'pointer',
+      }}>
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product}</span>
       <span style={{ fontSize: 11, color: curColor, minWidth: 64 }}>{t.compliance[cur] ?? cur}</span>
       <SlaBar pct={w?.['7d'] ?? null} />
       <SlaBar pct={w?.['30d'] ?? null} />
       <SlaBar pct={w?.['90d'] ?? null} />
-    </div>
+    </button>
   );
 }
 
@@ -220,7 +239,7 @@ export default function Cockpit() {
           columns={gridColumns}
           rows={objects}
           rowKey={o => o.id}
-          onRowClick={o => navigate(`/objects/${o.id}`)}
+          onRowClick={o => navigate(`/objects/${encodeURIComponent(o.id)}`)}
           empty={t.cockpit.noObjects}
         />
       </div>
@@ -288,7 +307,7 @@ export default function Cockpit() {
               {unvalidated.map(objId => (
                 <button
                   key={objId}
-                  onClick={() => navigate(`/objects/${objId}`)}
+                  onClick={() => navigate(`/objects/${encodeURIComponent(objId)}`)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 'var(--s3)', width: '100%', textAlign: 'left',
                     padding: '6px 0', background: 'none', border: 'none',

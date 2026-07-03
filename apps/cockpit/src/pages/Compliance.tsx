@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useObjects } from '@/api/objects';
 import { useContracts } from '@/api/contracts';
 import { useCoverageSummary } from '@/api/coverage';
@@ -83,13 +84,23 @@ export default function Governance() {
                   const contract = contractByProduct.get(o.id);
                   return (
                     <tr key={o.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                      <td style={{ padding: 'var(--s2) var(--s3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</td>
+                      <td style={{ padding: 'var(--s2) var(--s3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                        <Link to={`/objects/${encodeURIComponent(o.id)}`} style={{ color: 'var(--fg)' }}>{o.name}</Link>
+                      </td>
                       <td style={{ padding: 'var(--s2) var(--s3)', color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</td>
                       <td style={{ padding: 'var(--s2) var(--s3)' }}>
                         <LifecycleStepper current={(contract?.lifecycle || 'draft') as Lifecycle} />
                       </td>
-                      <td style={{ padding: 'var(--s2) var(--s3)', fontSize: 12, color: contract ? 'var(--status-ok)' : 'var(--status-fail)' }}>
-                        {contract ? t.governance.yes : t.governance.no}
+                      <td style={{ padding: 'var(--s2) var(--s3)', fontSize: 12 }}>
+                        {contract ? (
+                          <Link to={`/contracts?product=${encodeURIComponent(o.id)}`} style={{ color: 'var(--status-ok)' }}>
+                            {t.governance.yes} →
+                          </Link>
+                        ) : (
+                          <Link to={`/objects/${encodeURIComponent(o.id)}?tab=contract`} style={{ color: 'var(--status-fail)' }}>
+                            {t.governance.no}
+                          </Link>
+                        )}
                       </td>
                     </tr>
                   );

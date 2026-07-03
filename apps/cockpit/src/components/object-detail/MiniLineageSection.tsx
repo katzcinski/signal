@@ -170,7 +170,7 @@ export function MiniLineageSection({ focusId }: { focusId: string }) {
               key={pid}
               transform={`translate(0,${y})`}
               style={{ cursor: 'pointer' }}
-              onClick={() => navigate(`/objects/${pid}`)}
+              onClick={() => navigate(`/objects/${encodeURIComponent(pid)}`)}
             >
               <rect width={BOX_W} height={BOX_H} rx={4} fill="var(--bg-2)" stroke="var(--line)" strokeWidth={1} />
               <text x={BOX_W / 2} y={BOX_H / 2 + 4} textAnchor="middle" fontSize={10} fontFamily="var(--font-mono)" fill="var(--fg-2)">
@@ -195,7 +195,7 @@ export function MiniLineageSection({ focusId }: { focusId: string }) {
               key={sid}
               transform={`translate(${succX},${y})`}
               style={{ cursor: 'pointer' }}
-              onClick={() => navigate(`/objects/${sid}`)}
+              onClick={() => navigate(`/objects/${encodeURIComponent(sid)}`)}
             >
               <rect width={BOX_W} height={BOX_H} rx={4} fill="var(--bg-2)" stroke="var(--line)" strokeWidth={1} />
               <text x={BOX_W / 2} y={BOX_H / 2 + 4} textAnchor="middle" fontSize={10} fontFamily="var(--font-mono)" fill="var(--fg-2)">

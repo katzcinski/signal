@@ -68,7 +68,7 @@ export function AttentionPanel({ objects }: { objects: ObjectSummary[] }) {
         ) : ranked.map(o => (
           <button
             key={o.id}
-            onClick={() => navigate(`/objects/${o.id}`)}
+            onClick={() => navigate(`/objects/${encodeURIComponent(o.id)}`)}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
               padding: '7px 0', background: 'none', border: 'none',

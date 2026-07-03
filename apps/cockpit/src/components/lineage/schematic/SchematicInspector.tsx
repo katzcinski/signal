@@ -4,6 +4,7 @@
  * Reichweite, DQ-Status und Contract-Binding. Präsentational, leitet alles aus
  * dem Modell ab.
  */
+import { Link } from 'react-router-dom';
 import { t } from '@/i18n/de';
 import type { CSSProperties, ReactNode } from 'react';
 import type { SchematicChip, SchematicModel } from './model';
@@ -56,6 +57,12 @@ function ObjectDetail({ model, chip }: { model: SchematicModel; chip: SchematicC
         <Row k={S.upstreamObjects} v={String(upstream.size)} />
         <Row k={S.downstreamObjects} v={String(downstream.size)} />
       </Section>
+
+      <div style={{ marginTop: 16 }}>
+        <Link to={`/objects/${encodeURIComponent(chip.id)}`} style={{ color: 'var(--cont)', fontSize: 12 }}>
+          {S.openObject}
+        </Link>
+      </div>
     </div>
   );
 }

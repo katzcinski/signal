@@ -254,7 +254,7 @@ export default function MyWork() {
           {openProposals.length === 0 ? (
             <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.myWork.noProposals}</p>
           ) : openProposals.slice(0, 8).map((p: Proposal) => (
-            <RowButton key={p.id} onClick={() => navigate('/proposals?status=open')}>
+            <RowButton key={p.id} onClick={() => navigate(`/proposals?status=open&product=${encodeURIComponent(p.product)}`)}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1 }}>{p.check_name}</span>
               <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', fontSize: 11 }}>{p.product}</span>
               <span style={{ color: 'var(--cont)', fontSize: 11 }}>{t.myWork.review}</span>

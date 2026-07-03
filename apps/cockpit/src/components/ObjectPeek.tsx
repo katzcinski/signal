@@ -56,7 +56,7 @@ export function ObjectPeek({ objectId, onClose }: { objectId: string; onClose: (
           >
             {trigger.isPending || isRunning ? t.peek.running : t.peek.runChecks}
           </button>
-          <Link to={`/objects/${objectId}`} onClick={onClose} style={{ color: 'var(--cont)', fontSize: 13 }}>{t.peek.openFull}</Link>
+          <Link to={`/objects/${encodeURIComponent(objectId)}`} onClick={onClose} style={{ color: 'var(--cont)', fontSize: 13 }}>{t.peek.openFull}</Link>
         </div>
       }
     >

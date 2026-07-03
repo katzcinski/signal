@@ -10,6 +10,7 @@ import { t } from '@/i18n/de';
 
 const ROUTES = [
   { label: t.nav.cockpit, path: '/' },
+  { label: t.nav.myWork, path: '/my' },
   { label: t.nav.objects, path: '/objects' },
   { label: t.nav.products, path: '/products' },
   { label: t.nav.contracts, path: '/contracts' },
@@ -19,6 +20,7 @@ const ROUTES = [
   { label: t.nav.compliance, path: '/compliance' },
   { label: t.nav.library, path: '/library' },
   { label: t.nav.schedules, path: '/schedules' },
+  { label: t.nav.environments, path: '/environments' },
   { label: t.nav.notifications, path: '/notifications' },
 ];
 

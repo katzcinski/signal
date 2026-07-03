@@ -354,7 +354,9 @@ export default function ProductDetail() {
                             padding: '7px 10px',
                           }}
                         >
-                          <code>{finding.object_id}</code>
+                          <Link to={`/objects/${encodeURIComponent(finding.object_id)}`} style={{ color: 'var(--fg-2)' }}>
+                            <code>{finding.object_id}</code>
+                          </Link>
                           <span style={{ color: 'var(--fg-3)' }}> - {finding.detail}</span>
                         </div>
                       ))}

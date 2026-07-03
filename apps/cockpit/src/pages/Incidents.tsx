@@ -442,7 +442,7 @@ function FailedChecksTab({
             columns={columns}
             rows={checks}
             rowKey={c => c.id}
-            onRowClick={c => navigate(`/objects/${c.dataset}`)}
+            onRowClick={c => navigate(`/objects/${encodeURIComponent(c.dataset)}`)}
             empty={t.incidents.emptyChecks}
           />
         </div>

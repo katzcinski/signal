@@ -3,7 +3,8 @@
  * Modell, lässt ELK layouten und verdrahtet Interaktion (Click-to-trace),
  * Filter (Suche / Layer / System), den View-Toggle und den Inspector.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useLineage } from '@/api/lineage';
 import { useObjects } from '@/api/objects';
 import { t } from '@/i18n/de';
@@ -25,7 +26,22 @@ const DEPTH_OPTIONS: Array<{ value: number; label: string }> = [
 ];
 
 export default function SchematicLineage() {
-  const [seeds, setSeeds] = useState<string[]>([]);
+  // Seeds leben in der URL (?focus=A,B): Deep-Links aus Incidents/Objekt-Detail
+  // landen direkt im geladenen Graphen statt im leeren Seed-Picker, und die
+  // Ansicht bleibt teilbar.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const seeds = useMemo(() => {
+    const raw = searchParams.getAll('focus');
+    return [...new Set(raw.flatMap(v => v.split(',')).map(s => s.trim()).filter(Boolean))];
+  }, [searchParams]);
+  const setSeeds = useCallback((next: string[]) => {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      params.delete('focus');
+      if (next.length > 0) params.set('focus', next.join(','));
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
   const [depth, setDepth] = useState(2);
   const { data, isLoading } = useLineage({ seeds, depth, enabled: seeds.length > 0 });
   const { data: objects } = useObjects();
@@ -136,9 +152,11 @@ export default function SchematicLineage() {
 
   const seedOptions = objects ?? [];
   const seedName = (id: string) => seedOptions.find(o => o.id === id)?.name ?? id;
-  const addSeed = (id: string) => setSeeds(prev => (prev.includes(id) ? prev : [...prev, id]));
+  const addSeed = (id: string) => {
+    if (!seeds.includes(id)) setSeeds([...seeds, id]);
+  };
   const removeSeed = (id: string) => {
-    setSeeds(prev => prev.filter(s => s !== id));
+    setSeeds(seeds.filter(s => s !== id));
     clearSelection();
   };
   const hasSeeds = seeds.length > 0;

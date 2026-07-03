@@ -49,7 +49,7 @@ export default function ObjectCatalog() {
           }} />
           {/* R6-1: the name navigates to the full page; the rest of the row peeks. */}
           <button
-            onClick={e => { e.stopPropagation(); navigate(`/objects/${o.id}`); }}
+            onClick={e => { e.stopPropagation(); navigate(`/objects/${encodeURIComponent(o.id)}`); }}
             style={{ background: 'none', border: 'none', padding: 0, color: 'var(--fg)', cursor: 'pointer', font: 'inherit' }}
           >
             {o.name}

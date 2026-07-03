@@ -494,6 +494,7 @@ export const t = {
       loading: 'Layout wird berechnet…',
       empty: 'Keine Lineage-Daten vorhanden.',
       inspectorEmpty: 'Objekt wählen oder eine Spalte tracen, um Lineage, Contract und Qualitätschecks zu inspizieren.',
+      openObject: 'Objekt-Detail öffnen →',
       object: 'Objekt',
       column: 'Spalte',
       layer: 'Layer',

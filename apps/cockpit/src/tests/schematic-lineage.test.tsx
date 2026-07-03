@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import SchematicLineage from '@/components/lineage/schematic/SchematicLineage';
 import type { LineageGraph } from '@/types';
 
@@ -36,6 +37,15 @@ vi.mock('@/api/objects', () => ({
   }),
 }));
 
+/** Seeds leben in der URL (?focus=…) — Rendering braucht einen Router. */
+function renderLineage(route = '/lineage') {
+  return render(
+    <MemoryRouter initialEntries={[route]}>
+      <SchematicLineage />
+    </MemoryRouter>,
+  );
+}
+
 /** Seed über das Suchfeld wählen, damit der Graph geladen/gerendert wird. */
 async function pickSeed(label = 'INB') {
   const input = screen.getByPlaceholderText('Seed-Objekt hinzufügen…');
@@ -54,8 +64,18 @@ async function expandColumns(label: string) {
 }
 
 describe('SchematicLineage container', () => {
+  it('loads seeds from a ?focus= deep link without manual seed picking', async () => {
+    renderLineage('/lineage?focus=INB');
+
+    // Kein Empty-State: der Deep-Link (z. B. aus Incident-Root-Cause) lädt direkt.
+    expect(screen.queryByText('Lineage gezielt laden')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText('2 cols').length).toBeGreaterThan(0);
+    });
+  });
+
   it('gates on a seed and renders the board once one is chosen', async () => {
-    render(<SchematicLineage />);
+    renderLineage();
     // Vor der Seed-Auswahl: Empty-State, kein Board.
     expect(screen.getByText('Lineage gezielt laden')).toBeInTheDocument();
     expect(screen.queryByText('S/4HANA')).not.toBeInTheDocument();
@@ -73,7 +93,7 @@ describe('SchematicLineage container', () => {
   });
 
   it('traces a column and surfaces its transformation in the inspector', async () => {
-    render(<SchematicLineage />);
+    renderLineage();
     await pickSeed('INB');
     // Spalten müssen erst ausgeklappt werden, bevor ein Pin tracebar ist.
     await expandColumns('HRM');
@@ -86,7 +106,7 @@ describe('SchematicLineage container', () => {
   });
 
   it('expands a single node\'s columns on the chevron click', async () => {
-    render(<SchematicLineage />);
+    renderLineage();
     await pickSeed('INB');
     // Eingeklappt: keine Spalten-Pins sichtbar.
     await waitFor(() => {
