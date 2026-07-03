@@ -3,9 +3,11 @@ import type { ObjectSummary } from '@/types';
 import { t } from '@/i18n/de';
 
 // DQ-first framing: the two guarantee families — Observability and Quality —
-// promoted to first-class tiles. Each tile rolls up every object's per-family
-// status into a single "X von Y bestanden" headline plus a proportional
+// promoted to first-class tiles. Each tile rolls up the status of the objects
+// of that family into a single "X von Y bestanden" headline plus a proportional
 // distribution bar, and drills into the catalog pre-filtered to that family.
+// Population = exactly the rows behind /objects?family=X, so headline,
+// denominator and the list after the click always show the same numbers.
 
 type Status = 'pass' | 'warn' | 'fail' | 'critical' | 'error' | 'unknown';
 const ORDER: Status[] = ['pass', 'warn', 'fail', 'critical', 'error', 'unknown'];
@@ -23,13 +25,14 @@ const FAMILIES = [
   { key: 'quality' as const, label: t.cockpit.colQuality, accent: 'var(--qual)' },
 ];
 
-function tally(objects: ObjectSummary[], family: 'observability' | 'quality'): Record<Status, number> {
+function tally(objects: ObjectSummary[], family: 'observability' | 'quality'): { counts: Record<Status, number>; total: number } {
   const counts = { pass: 0, warn: 0, fail: 0, critical: 0, error: 0, unknown: 0 } as Record<Status, number>;
-  for (const o of objects) {
-    const s = (o.family_status?.[family] ?? 'unknown') as Status;
+  const rows = objects.filter(o => o.family === family);
+  for (const o of rows) {
+    const s = (o.status ?? 'unknown') as Status;
     counts[s in counts ? s : 'unknown'] += 1;
   }
-  return counts;
+  return { counts, total: rows.length };
 }
 
 function FamilyCard({ objects, family }: {
@@ -37,8 +40,7 @@ function FamilyCard({ objects, family }: {
   family: typeof FAMILIES[number];
 }) {
   const navigate = useNavigate();
-  const counts = tally(objects, family.key);
-  const total = objects.length;
+  const { counts, total } = tally(objects, family.key);
   const passing = counts.pass;
   const attention = counts.fail + counts.critical;
   const pct = total > 0 ? Math.round((passing / total) * 100) : 0;

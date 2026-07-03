@@ -131,7 +131,7 @@ function AttentionSummary({
           value={criticalAssigned}
           hint={t.myWork.attentionCriticalAssignedHint}
           accent="var(--status-crit)"
-          onClick={() => onNavigate('/incidents?severity=critical')}
+          onClick={() => onNavigate('/incidents?severity=critical&assigned=yes')}
         />
         <AttentionTile
           label={t.myWork.attentionContractBreaches}

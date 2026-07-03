@@ -215,4 +215,17 @@ describe('Incidents page', () => {
     fireEvent.click(screen.getByLabelText(new RegExp(t.status.critical)));
     expect(screen.getByTestId('location')).not.toHaveTextContent('severity=critical');
   });
+
+  it('filters to assigned incidents via ?assigned=yes and the chip', () => {
+    renderIncidents('/incidents?assigned=yes');
+
+    // Offener Tab: nur der Incident mit Owner bleibt sichtbar.
+    expect(screen.getByText('Open contract breach')).toBeInTheDocument();
+    expect(screen.queryByText('Open gate signal')).not.toBeInTheDocument();
+
+    // Chip abwählen → Filter aus der URL entfernt, beide offenen Incidents sichtbar.
+    fireEvent.click(screen.getByRole('button', { name: t.incidents.filterAssigned, pressed: true }));
+    expect(screen.getByTestId('location')).not.toHaveTextContent('assigned=yes');
+    expect(screen.getByText('Open gate signal')).toBeInTheDocument();
+  });
 });
