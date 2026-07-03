@@ -713,6 +713,15 @@
   gap: var(--s4);
   align-items: start;
 }
+/* Contract-Workbench: Inhalt + „Vertragsblatt". Auf schmalen Screens stapeln
+   (§2.8), sonst starb die Inhalts-Spalte auf 0px, weil das Vertragsblatt seine
+   Mindestbreite behielt. */
+.workbench-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: var(--s4);
+  align-items: start;
+}
 .env-layout {
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
@@ -726,7 +735,8 @@
 }
 @media (max-width: 1120px) {
   .product-hero,
-  .product-body-grid {
+  .product-body-grid,
+  .workbench-body {
     grid-template-columns: minmax(0, 1fr);
   }
 

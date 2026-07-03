@@ -459,7 +459,7 @@ function EditorPane({ product, onPromote, promotePending }: {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 360px)', gap: 14, alignItems: 'start' }}>
+      <div className="workbench-body">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
           {tab === 'definition' && defContent}
           {tab === 'checkDiff' && checkDiffContent}
