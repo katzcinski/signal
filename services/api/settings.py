@@ -78,16 +78,26 @@ class Settings(BaseSettings):
     notifications_file: str = Field(default="notifications.yml")
     incident_cluster_window_minutes: int = Field(default=15, ge=1, le=1440)
 
-    # Contract assistant (Fable) — off by default, opt-in. Drafts SQL-free
-    # semantic contract YAML from aggregate profiling; output is always run
-    # through validate_contract before it reaches a steward. Fable requires
-    # 30-day data retention (ZDR orgs 400) and premium pricing, so keep the
-    # narrower assistive uses on the Opus-tier fallback.
+    # Contract assistant — off by default, opt-in. Drafts SQL-free semantic
+    # contract YAML from aggregate profiling; output is always run through
+    # validate_contract before it reaches a steward. Model-agnostic: the
+    # operator plugs in whichever Claude model they prefer (or a compatible
+    # endpoint via base_url). A per-request model override is also allowed.
     contract_assistant_enabled: bool = Field(default=False)
     anthropic_api_key: str = Field(default="")
-    contract_assistant_model: str = Field(default="claude-fable-5")
-    contract_assistant_fallback_model: str = Field(default="claude-opus-4-8")
-    contract_assistant_effort: Literal["low", "medium", "high", "xhigh", "max"] = Field(default="high")
+    # Model string sent to the API — e.g. claude-opus-4-8, claude-sonnet-5,
+    # claude-haiku-4-5, claude-fable-5. No default is assumed beyond a sensible
+    # general-purpose one; change it freely.
+    contract_assistant_model: str = Field(default="claude-opus-4-8")
+    # Optional server-side refusal fallback (empty = off). When set, requests go
+    # through the beta endpoint and a policy decline is re-served by this model.
+    contract_assistant_fallback_model: str = Field(default="")
+    # Optional reasoning effort (empty = don't send — needed for models that
+    # don't support the parameter, e.g. Haiku 4.5 / Sonnet 4.5).
+    contract_assistant_effort: Literal["", "low", "medium", "high", "xhigh", "max"] = Field(default="")
+    # Optional custom base URL (gateway / proxy / compatible endpoint).
+    contract_assistant_base_url: str = Field(default="")
+    contract_assistant_max_tokens: int = Field(default=16000, ge=256, le=128000)
 
     # Datasphere connector config file (runtime alternative to env vars, git-ignored)
     connector_file: str = Field(default="datasphere.yml")

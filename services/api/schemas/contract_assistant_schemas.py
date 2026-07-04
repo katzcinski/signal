@@ -11,6 +11,8 @@ class DraftRequest(BaseModel):
     # Only aggregate fields are forwarded to the model; sample rows are dropped.
     profile: dict[str, Any] = Field(default_factory=dict)
     kind: str = "internal_gate"
+    # Optional per-request model override; falls back to the configured model.
+    model: Optional[str] = None
 
 
 class DraftResponse(BaseModel):

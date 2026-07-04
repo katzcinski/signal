@@ -1,10 +1,11 @@
-"""Fable-backed Data-Contract draft assistant endpoint.
+"""Data-Contract draft assistant endpoint (pluggable model).
 
 POST /api/contract-assistant/draft turns an aggregate profiling result into a
-draft semantic Data Contract (YAML) for review. The model output is run through
-the deterministic ``validate_contract`` gate before it is returned — the draft
-is never written to ``contracts/`` here (that stays the Workbench's job), so G1
-and the approval flow are untouched.
+draft semantic Data Contract (YAML) for review, using whichever Claude model the
+operator has configured (optionally overridden per request). The model output is
+run through the deterministic ``validate_contract`` gate before it is returned —
+the draft is never written to ``contracts/`` here (that stays the Workbench's
+job), so G1 and the approval flow are untouched.
 
 [AUTHZ] Authoring a contract is a steward+ action. [PII-GATE] Only aggregate
 statistics are forwarded to the model (see ``contract_assistant``).
@@ -48,7 +49,7 @@ def draft(request: DraftRequest, principal: PrincipalDep):
     )
 
     try:
-        draft_yaml, model = contract_assistant.draft_contract(settings, context)
+        draft_yaml, model = contract_assistant.draft_contract(settings, context, model=request.model)
     except contract_assistant.ContractAssistantError as exc:
         # Detail is caller-safe; internals (if any) were already logged at the seam.
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc

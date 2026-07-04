@@ -1,9 +1,10 @@
-"""Fable-backed Data-Contract draft assistant.
+"""Model-agnostic Data-Contract draft assistant.
 
-This is the one place in Signal where a frontier LLM (Claude Fable 5) earns its
-keep: turning the aggregate facts Signal already extracts — a table's profile,
-its lineage neighbours, inventory metadata — into a *draft* semantic Data
-Contract for a human steward to review. It is deliberately confined to the
+Turns the aggregate facts Signal already extracts — a table's profile, its
+lineage neighbours, inventory metadata — into a *draft* semantic Data Contract
+for a human steward to review. The model is pluggable: the operator picks
+whichever Claude model they prefer via settings (or a per-request override), so
+this is not tied to any single tier. It is deliberately confined to the
 authoring boundary and obeys the project invariants:
 
 - [ENGINE-FROZEN / G7] Lives in ``services/api/`` and imports the SDK lazily.
@@ -17,12 +18,12 @@ authoring boundary and obeys the project invariants:
   values are stripped by an allowlist before the prompt is built. Nothing here
   reads or forwards HANA row content.
 
-Fable specifics (see docs / claude-api skill): thinking is always on — the
-``thinking`` parameter is omitted entirely (an explicit value 400s); depth is
-controlled with ``output_config.effort``. A safety-classifier ``refusal`` is a
-successful HTTP 200, so ``stop_reason`` is checked before reading content, and
-server-side fallback to Opus 4.8 is opted into by default. Fable also requires
-30-day data retention — ZDR orgs get a 400 on every request.
+Model-shape notes: the ``thinking`` parameter is never sent — omitting it is
+valid on every current Claude model (and required on always-on models like
+Fable, where an explicit value 400s). Reasoning ``effort`` is sent only when
+configured, since some models reject it. When a fallback model is configured, a
+safety-classifier ``refusal`` (a successful HTTP 200) is transparently
+re-served; ``stop_reason`` is checked before reading content regardless.
 """
 from __future__ import annotations
 
@@ -36,8 +37,6 @@ _AGG_COLUMN_FIELDS = (
     "uniqueness_pct", "pk_candidate", "text_like", "numeric_like",
     "decimal_like", "empty_count", "empty_pct", "min", "max", "avg", "median",
 )
-
-_FABLE_FAMILY = ("claude-fable", "claude-mythos")
 
 _SYSTEM_PROMPT = textwrap.dedent(
     """\
@@ -148,7 +147,12 @@ def _build_prompt(context: dict) -> str:
     )
 
 
-def _call_model(settings: Any, prompt: str) -> tuple[str, str]:
+def resolve_model(settings: Any, override: str | None = None) -> str:
+    """The model to use: a per-request override wins over the configured one."""
+    return (override or "").strip() or getattr(settings, "contract_assistant_model", "claude-opus-4-8")
+
+
+def _call_model(settings: Any, prompt: str, model: str) -> tuple[str, str]:
     """Single seam that actually talks to the API — tests monkeypatch this.
 
     Returns (yaml_text, model_that_served). Raises ContractAssistantError on a
@@ -161,24 +165,29 @@ def _call_model(settings: Any, prompt: str) -> tuple[str, str]:
             503, "Contract assistant is enabled but the 'anthropic' SDK is not installed."
         ) from exc
 
-    api_key = getattr(settings, "anthropic_api_key", "") or None
-    client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+    client_kwargs: dict[str, Any] = {}
+    if getattr(settings, "anthropic_api_key", ""):
+        client_kwargs["api_key"] = settings.anthropic_api_key
+    if getattr(settings, "contract_assistant_base_url", ""):
+        client_kwargs["base_url"] = settings.contract_assistant_base_url
+    client = anthropic.Anthropic(**client_kwargs)
 
-    model = getattr(settings, "contract_assistant_model", "claude-fable-5")
-    effort = getattr(settings, "contract_assistant_effort", "high")
-    common = dict(
+    common: dict[str, Any] = dict(
         model=model,
-        max_tokens=16000,
+        max_tokens=getattr(settings, "contract_assistant_max_tokens", 16000),
         system=_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],
-        output_config={"effort": effort},  # thinking is always-on on Fable — do not set `thinking`
+        # `thinking` is intentionally never set — omission is valid on every model.
     )
+    effort = getattr(settings, "contract_assistant_effort", "")
+    if effort:  # only send when configured — some models reject the parameter
+        common["output_config"] = {"effort": effort}
 
+    fallback = getattr(settings, "contract_assistant_fallback_model", "")
     try:
-        if model.startswith(_FABLE_FAMILY):
+        if fallback:
             # Opt into server-side refusal fallback so a false-positive classifier
-            # hit on benign data work is transparently re-served by Opus 4.8.
-            fallback = getattr(settings, "contract_assistant_fallback_model", "claude-opus-4-8")
+            # hit on benign data work is transparently re-served by the fallback.
             resp = client.beta.messages.create(
                 betas=["server-side-fallback-2026-06-01"],
                 fallbacks=[{"model": fallback}],
@@ -198,6 +207,9 @@ def _call_model(settings: Any, prompt: str) -> tuple[str, str]:
     return text.strip(), getattr(resp, "model", model)
 
 
-def draft_contract(settings: Any, context: dict) -> tuple[str, str]:
-    """Public entry: build the prompt for *context* and return (yaml, model)."""
-    return _call_model(settings, _build_prompt(context))
+def draft_contract(settings: Any, context: dict, model: str | None = None) -> tuple[str, str]:
+    """Public entry: build the prompt for *context* and return (yaml, model).
+
+    *model* optionally overrides the configured model for this single call.
+    """
+    return _call_model(settings, _build_prompt(context), resolve_model(settings, model))

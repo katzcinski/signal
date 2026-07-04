@@ -46,7 +46,7 @@ def test_draft_disabled_returns_503(api_client):
 
 def test_draft_happy_path_validates(api_client, monkeypatch):
     _enable(monkeypatch)
-    monkeypatch.setattr(ca, "_call_model", lambda settings, prompt: (_VALID_DRAFT, "claude-fable-5"))
+    monkeypatch.setattr(ca, "_call_model", lambda settings, prompt, model: (_VALID_DRAFT, model))
 
     resp = api_client.post(
         "/api/contract-assistant/draft",
@@ -62,16 +62,30 @@ def test_draft_happy_path_validates(api_client, monkeypatch):
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body["model"] == "claude-fable-5"
+    # Default configured model is used when no override is given.
+    assert body["model"] == "claude-opus-4-8"
     assert body["valid"] is True
     assert body["validation_errors"] == []
     assert body["parsed"]["product"] == "DS_SALES_ORDERS"
 
 
+def test_per_request_model_override(api_client, monkeypatch):
+    _enable(monkeypatch)
+    # The model the caller picks is what actually reaches the seam.
+    monkeypatch.setattr(ca, "_call_model", lambda settings, prompt, model: (_VALID_DRAFT, model))
+
+    resp = api_client.post(
+        "/api/contract-assistant/draft",
+        json={"product": "DS_SALES_ORDERS", "profile": {}, "model": "claude-sonnet-5"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["model"] == "claude-sonnet-5"
+
+
 def test_draft_invalid_yaml_reported_not_raised(api_client, monkeypatch):
     _enable(monkeypatch)
     # A syntactically-fine YAML mapping that violates the contract schema.
-    monkeypatch.setattr(ca, "_call_model", lambda s, p: ("product: X\ndataset: X\n", "m"))
+    monkeypatch.setattr(ca, "_call_model", lambda s, p, model: ("product: X\ndataset: X\n", model))
 
     resp = api_client.post(
         "/api/contract-assistant/draft",
@@ -86,7 +100,7 @@ def test_draft_invalid_yaml_reported_not_raised(api_client, monkeypatch):
 def test_refusal_maps_to_422(api_client, monkeypatch):
     _enable(monkeypatch)
 
-    def _refuse(settings, prompt):
+    def _refuse(settings, prompt, model):
         raise ca.ContractAssistantError(422, "The model declined to draft this contract.")
 
     monkeypatch.setattr(ca, "_call_model", _refuse)
@@ -95,6 +109,17 @@ def test_refusal_maps_to_422(api_client, monkeypatch):
         json={"product": "DS_SALES_ORDERS", "profile": {}},
     )
     assert resp.status_code == 422
+
+
+def test_resolve_model_override_wins():
+    class _S:
+        contract_assistant_model = "claude-opus-4-8"
+
+    s = _S()
+    assert ca.resolve_model(s) == "claude-opus-4-8"
+    assert ca.resolve_model(s, None) == "claude-opus-4-8"
+    assert ca.resolve_model(s, "  ") == "claude-opus-4-8"  # blank override ignored
+    assert ca.resolve_model(s, "claude-haiku-4-5") == "claude-haiku-4-5"
 
 
 def test_build_context_strips_non_aggregate_fields():
