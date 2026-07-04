@@ -7,6 +7,10 @@ notifications, environments, and the cockpit shell.
 
 This document records findings for later revision. It does not apply fixes.
 
+> **Backlog consolidation 2026-07-04:** Treat this as historical audit evidence.
+> Active follow-up tracking is consolidated in [`OPEN_TASKS.md`](OPEN_TASKS.md)
+> §M. Do not maintain a separate open-task list in this file.
+
 ## Persona workflow map tested
 
 | Persona | Main workflow surfaces |
@@ -263,10 +267,17 @@ visualization code after correctness issues are handled.
 - Internal vs boundary contract behavior has good backend test coverage around
   compliance, ODCS export, breaking gates, and incidents.
 
-## Suggested next revision order
+## Backlog mapping
 
-1. Stabilize proposal ids and action semantics.
-2. Make contract activation/Git failure behavior atomic or explicitly recoverable.
-3. Make tests hermetic with respect to `.env` and connector client caches.
-4. Resolve the `/api/environments` legacy response decision.
-5. Regenerate OpenAPI/types and fix the lint error.
+The normalized active follow-ups are tracked in `OPEN_TASKS.md` §M:
+
+- Proposal identity/action semantics → **M1**.
+- Contract activation/Git failure behavior → **M2**.
+- Hermetic tests and connector cache isolation → **M3**.
+- Accepted-proposal banner / honest accept semantics → **M4**.
+- Contract index integrity → **M5**.
+- OpenAPI/types drift and G4 gate → **M6**.
+- `/api/environments` response and `/settings` direct-link UX → **M7**.
+- Lineage chunk measurement/optimization → **M8**.
+- The old `LineageMiniGraph` lint finding is closed; future regressions belong
+  to the normal lint gate.

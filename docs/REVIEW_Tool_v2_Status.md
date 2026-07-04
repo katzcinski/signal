@@ -52,27 +52,17 @@ closed during the v2 pass:
 
 ---
 
-## Open / remaining (prioritized)
+## Current backlog handoff (2026-07-04)
 
-> **Update 2026-06-22:** items 2–4 below have since shipped (see strike-through).
-> Only column-level coverage remains open. Notification-on-transition is wired
-> (`notify_incident_transition`, `incidents.py:156`); `/api/incidents` and
-> `/api/runs` paginate (`limit/offset`, max 500); self-observability lives in
-> `services/api/middleware.py` (request-ID injection, access log, in-memory
-> metrics) + `GET /api/metrics/health`.
+This review status is historical. The active backlog now lives in
+[`OPEN_TASKS.md`](OPEN_TASKS.md); do not maintain a second prioritized list here.
 
-1. **Column-level coverage** — coverage is object-level only; GX-style "% of
-   columns with guarantees" is still missing (v1 §7.2.4). *Medium.* Tracked as
-   **UX-N7** in [`OPEN_TASKS.md`](OPEN_TASKS.md) (§B), blocked by O3
-   (`columnEdges` parser).
-2. ~~**Richer notification triggers**~~ — **Done.** Manual incident transitions
-   (assign/resolve) now notify via `notify_incident_transition`; routing is
-   kind-aware (`match_kind`, Batch 4).
-3. ~~**Scale hardening**~~ — **Done.** Pagination on `/api/incidents` and
-   `/api/runs`.
-4. ~~**Tool self-observability**~~ — **Done.** Request IDs + access logging +
-   in-memory metrics middleware + `/api/metrics/health`. (A Prometheus *exporter*
-   is still a nice-to-have; the in-memory counters are not scraped externally.)
+- **Column-level coverage / UX-N7:** closed in `OPEN_TASKS.md` §B for the
+  demo/mock path. O3 was a data-availability issue, not an open parser defect.
+  Remaining real-tenant proof belongs under `OPEN_TASKS.md` §I3/§L1.
+- **Richer notification triggers, scale hardening, and self-observability:** done
+  as previously recorded in this document. Prometheus export remains a
+  nice-to-have under `OPEN_TASKS.md` §L3.
 
 ### Verification-only (not code gaps, unproven in the sandbox)
 

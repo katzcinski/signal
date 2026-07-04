@@ -34,6 +34,7 @@ genau dieses Signal fehlt heute in der Lineage komplett und ist der rote Faden d
 > auf → Live-Recolor). Verifiziert: `typecheck`, `lint`, 70 Tests, `build` grün.
 > **Offen (Phase 3):** UX-L13 (gedocktes Panel), UX-L4 (geteilte Instanz/Tabs), UX-L5 (Pin-Modus),
 > UX-L14 (Graph-Controls/Minimap), UX-L15 (Tastatur/A11y).
+> Aktive Nachverfolgung für Phase 3 steht seit 2026-07-04 in [`OPEN_TASKS.md`](OPEN_TASKS.md) §O.
 
 ---
 

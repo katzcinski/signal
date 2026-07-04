@@ -8,6 +8,7 @@ geschärft; die Entscheidungen sind in §D protokolliert.
 > Verwandte Dokumente: [`ADR-0003_BDC-Datasphere-DataProductStudio.md`](ADR-0003_BDC-Datasphere-DataProductStudio.md) ·
 > [`ADR-0004_DataProduct-als-Komposition.md`](ADR-0004_DataProduct-als-Komposition.md) ·
 > [`ADR-0001_Quality-Gates_vs_Contracts.md`](ADR-0001_Quality-Gates_vs_Contracts.md) (`kind`/`boundary`).
+> Aktive Phase-2-/Verifikationspunkte sind seit 2026-07-04 in [`OPEN_TASKS.md`](OPEN_TASKS.md) §P konsolidiert.
 
 ---
 
