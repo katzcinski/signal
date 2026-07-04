@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import SchematicLineage from '@/components/lineage/schematic/SchematicLineage';
 import type { LineageGraph } from '@/types';
 
@@ -36,6 +37,16 @@ vi.mock('@/api/objects', () => ({
   }),
 }));
 
+function renderLineage(initialEntry = '/lineage') {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Routes>
+        <Route path="/lineage" element={<SchematicLineage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 /** Seed über das Suchfeld wählen, damit der Graph geladen/gerendert wird. */
 async function pickSeed(label = 'INB') {
   const input = screen.getByPlaceholderText('Seed-Objekt hinzufügen…');
@@ -55,7 +66,7 @@ async function expandColumns(label: string) {
 
 describe('SchematicLineage container', () => {
   it('gates on a seed and renders the board once one is chosen', async () => {
-    render(<SchematicLineage />);
+    renderLineage();
     // Vor der Seed-Auswahl: Empty-State, kein Board.
     expect(screen.getByText('Lineage gezielt laden')).toBeInTheDocument();
     expect(screen.queryByText('S/4HANA')).not.toBeInTheDocument();
@@ -68,12 +79,12 @@ describe('SchematicLineage container', () => {
     });
     expect(screen.queryByText('VBELN')).not.toBeInTheDocument();
     // Layer-Sidebar + System-Chips aus den Daten.
-    expect(screen.getByText('S/4HANA')).toBeInTheDocument();
-    expect(screen.getByText('Datasphere')).toBeInTheDocument();
+    expect(screen.getAllByText('S/4HANA').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Datasphere').length).toBeGreaterThan(0);
   });
 
   it('traces a column and surfaces its transformation in the inspector', async () => {
-    render(<SchematicLineage />);
+    renderLineage();
     await pickSeed('INB');
     // Spalten müssen erst ausgeklappt werden, bevor ein Pin tracebar ist.
     await expandColumns('HRM');
@@ -86,7 +97,7 @@ describe('SchematicLineage container', () => {
   });
 
   it('expands a single node\'s columns on the chevron click', async () => {
-    render(<SchematicLineage />);
+    renderLineage();
     await pickSeed('INB');
     // Eingeklappt: keine Spalten-Pins sichtbar.
     await waitFor(() => {
@@ -100,5 +111,29 @@ describe('SchematicLineage container', () => {
     expect(await screen.findByText('SALES_DOC')).toBeInTheDocument();
     expect(screen.queryByText('VBELN')).not.toBeInTheDocument();
     expect(screen.getByText('Alle Spalten einklappen')).toBeInTheDocument();
+  });
+
+  it('hydrates the focus query as the initial seed', async () => {
+    renderLineage('/lineage?focus=INB');
+    expect(screen.queryByText('Lineage gezielt laden')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('2 cols').length).toBeGreaterThan(0);
+    });
+    expect(screen.getAllByText('INB').length).toBeGreaterThan(0);
+  });
+
+  it('does not promote selected chips to seeds', async () => {
+    renderLineage('/lineage?focus=INB');
+    await waitFor(() => {
+      expect(screen.getAllByText('2 cols').length).toBeGreaterThan(0);
+    });
+    expect(screen.getAllByLabelText('Seed entfernen')).toHaveLength(1);
+
+    const hrmTitle = screen.getAllByText('HRM').find(el => el.classList.contains('schem-title'));
+    expect(hrmTitle).toBeTruthy();
+    fireEvent.click(hrmTitle!);
+
+    expect(screen.getAllByLabelText('Seed entfernen')).toHaveLength(1);
   });
 });

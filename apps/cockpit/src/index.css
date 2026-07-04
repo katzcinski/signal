@@ -937,22 +937,62 @@ html[data-theme="daylight"] {
 }
 .schem-zoom button:hover { background: var(--bg-3); color: var(--fg); }
 
+.schem-lane-band {
+  opacity: 0.055;
+}
+.schem-lane-bands {
+  pointer-events: none;
+}
+.schem-lane-label {
+  fill: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .schem-chip-body {
-  fill: var(--bg-2);
+  fill: color-mix(in srgb, var(--bg-2) 92%, var(--bg-3));
   stroke: var(--line-2);
   stroke-width: 1;
-  transition: stroke 0.12s ease;
+  transition: stroke 0.12s ease, fill 0.12s ease, filter 0.12s ease;
+}
+.schem-chip:hover .schem-chip-body {
+  fill: var(--bg-3);
+  stroke: color-mix(in srgb, var(--cont) 45%, var(--line-2));
 }
 /* Abgesetztes Kopfband + Trennlinie geben dem Chip Struktur statt einer flachen Fläche. */
-.schem-chip-header { fill: var(--bg-3); }
+.schem-chip-header { fill: color-mix(in srgb, var(--bg-3) 85%, var(--bg-2)); }
 .schem-divider { stroke: var(--line); stroke-width: 1; }
 .schem-lane { opacity: 0.9; }
-.schem-chip.is-selected .schem-chip-body { stroke: var(--cont); stroke-width: 1.8; }
+.schem-chip.is-selected .schem-chip-body { stroke: var(--signal); stroke-width: 2; }
 .schem-chip.is-dimmed { opacity: 0.2; }
 
 .schem-tag { fill: var(--fg-3); font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
 .schem-title { fill: var(--fg); font-size: 12.5px; font-weight: 650; }
 .schem-sub { fill: var(--fg-2); font-size: 10.5px; }
+.schem-status-badge { opacity: 0.96; }
+.schem-status-badge rect { fill-opacity: 0.2; }
+.schem-status-badge circle { fill-opacity: 1; }
+.schem-status-text {
+  fill: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.schem-contract-badge rect {
+  fill: color-mix(in srgb, var(--cont) 16%, var(--bg-3));
+  stroke: var(--cont);
+  stroke-width: 1;
+}
+.schem-contract-badge text {
+  fill: var(--cont);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+}
 
 /* Spalten-Expander im Kopf — eigenständige Affordance, getrennt vom
    Nachbar-Expand-Handle. Chevron rotiert beim Aufklappen. */
@@ -984,7 +1024,13 @@ html[data-theme="daylight"] {
 .schem-pin-dot { stroke: var(--bg-2); stroke-width: 1.2; }
 .schem-pin-dot.is-active { stroke: var(--bg-1); }
 
-.schem-trace { fill: none; stroke-width: 2; opacity: 0.62; }
+.schem-trace {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.62;
+}
 .schem-trace.is-derived { stroke-dasharray: 4 3; }
 .schem-trace.is-dimmed { opacity: 0.07; }
 .schem-trace.is-active {
@@ -994,7 +1040,14 @@ html[data-theme="daylight"] {
   filter: drop-shadow(0 0 4px color-mix(in srgb, var(--cont) 55%, transparent));
   animation: schem-flow 0.9s linear infinite;
 }
-.schem-obj-trace { fill: none; stroke: var(--line-2); stroke-width: 2.5; opacity: 0.65; }
+.schem-obj-trace {
+  fill: none;
+  stroke: var(--line-2);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.5;
+}
 .schem-obj-trace.is-dimmed { opacity: 0.08; }
 
 @keyframes schem-flow { to { stroke-dashoffset: -24; } }

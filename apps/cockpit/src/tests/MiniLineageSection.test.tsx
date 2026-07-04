@@ -7,13 +7,17 @@ import type { LineageGraph } from '@/types';
 const state = vi.hoisted(() => ({
   graph: { nodes: [], edges: [] } as LineageGraph,
   isLoading: false,
+  scopes: [] as unknown[],
 }));
 
 vi.mock('@/api/lineage', () => ({
-  useLineage: () => ({
-    data: state.graph,
-    isLoading: state.isLoading,
-  }),
+  useLineage: (scope: unknown) => {
+    state.scopes.push(scope);
+    return {
+      data: state.graph,
+      isLoading: state.isLoading,
+    };
+  },
 }));
 
 function renderMiniLineage() {
@@ -28,6 +32,7 @@ describe('MiniLineageSection', () => {
   beforeEach(() => {
     state.graph = { nodes: [], edges: [] };
     state.isLoading = false;
+    state.scopes = [];
   });
 
   it('renders a local skeleton while lineage is loading', () => {
@@ -84,11 +89,53 @@ describe('MiniLineageSection', () => {
     renderMiniLineage();
 
     expect(screen.getByTestId('mini-lineage-dag')).toBeTruthy();
+    expect(state.scopes.at(-1)).toMatchObject({
+      seeds: ['Sales_Orders_View'],
+      depth: 20,
+      enabled: true,
+    });
     expect(screen.getByLabelText('Lineage: Sales_Orders_View')).toBeTruthy();
     expect(screen.queryByTestId('mini-lineage-sparse')).toBeNull();
     expect(screen.getByRole('link', { name: /Lineage Map/i })).toHaveAttribute(
       'href',
       '/lineage?focus=Sales_Orders_View',
     );
+  });
+
+  it('renders all reachable upstream and downstream object nodes', () => {
+    state.graph = {
+      nodes: [
+        { id: 'RAW_STAGE', label: 'Raw Stage', layer: 'source' },
+        { id: 'CURATED', label: 'Curated', layer: 'harmonization' },
+        { id: 'COLUMN_ONLY', label: 'Column Only', layer: 'source' },
+        { id: 'Sales_Orders_View', label: 'Sales Orders', layer: 'consumption' },
+        { id: 'MART', label: 'Mart', layer: 'consumption' },
+        { id: 'REPORT', label: 'Report', layer: 'consumption' },
+      ],
+      edges: [
+        { id: 'RAW_STAGE->CURATED', source: 'RAW_STAGE', target: 'CURATED' },
+        { id: 'CURATED->Sales_Orders_View', source: 'CURATED', target: 'Sales_Orders_View' },
+        { id: 'Sales_Orders_View->MART', source: 'Sales_Orders_View', target: 'MART' },
+        { id: 'MART->REPORT', source: 'MART', target: 'REPORT' },
+      ],
+      columnEdges: [
+        {
+          source: 'COLUMN_ONLY',
+          sourceColumn: 'C1',
+          target: 'Sales_Orders_View',
+          targetColumn: 'C1',
+          edgeType: 'direct',
+        },
+      ],
+    };
+
+    renderMiniLineage();
+
+    expect(screen.getByTestId('mini-lineage-dag')).toBeTruthy();
+    expect(screen.getByText('Raw Stage')).toBeTruthy();
+    expect(screen.getByText('Curated')).toBeTruthy();
+    expect(screen.getByText('Column Only')).toBeTruthy();
+    expect(screen.getByText('Mart')).toBeTruthy();
+    expect(screen.getByText('Report')).toBeTruthy();
   });
 });

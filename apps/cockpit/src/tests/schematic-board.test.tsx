@@ -76,6 +76,22 @@ describe('SchematicBoard', () => {
     expect(screen.getByText('NET_VALUE_USD')).toBeInTheDocument();
   });
 
+  it('renders lane bands and compact state badges', () => {
+    const { container } = render(<SchematicBoard layout={fakeLayout()} />);
+    expect(container.querySelectorAll('.schem-lane-band').length).toBe(2);
+    expect(screen.getByText('OK')).toBeInTheDocument();
+    expect(screen.getByText('WARN')).toBeInTheDocument();
+    expect(container.querySelector('.schem-contract-badge')).toBeTruthy();
+  });
+
+  it('starts from a zoomed-out centered viewport', () => {
+    const { container } = render(<SchematicBoard layout={fakeLayout()} />);
+    expect(container.querySelector('.schem-viewport')).toHaveAttribute(
+      'transform',
+      'translate(182 62.4) scale(0.48)',
+    );
+  });
+
   it('fires onSelectPin when a pin label is clicked', () => {
     const onSelectPin = vi.fn();
     const onSelectChip = vi.fn();
@@ -105,6 +121,7 @@ describe('SchematicBoard', () => {
     const active = container.querySelector('.schem-trace.is-active');
     const dimmed = container.querySelector('.schem-trace.is-dimmed');
     expect(active).toBeTruthy();
+    expect(active).toHaveAttribute('marker-end');
     expect(dimmed).toBeTruthy();
   });
 

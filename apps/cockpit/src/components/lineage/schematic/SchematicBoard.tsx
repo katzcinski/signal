@@ -6,7 +6,7 @@
  * So bleibt das Rendering testbar; der stateful Container (ELK-Aufruf,
  * Trace-Berechnung, Inspector) kommt in Phase 4 obendrauf.
  */
-import { useCallback, useEffect, useId, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { columnId, edgeTypeColor } from '@/lib/lineage';
 import { t } from '@/i18n/de';
 import type { PositionedChip, RoutedEdge, RoutedObjectEdge, SchematicLayout } from './layout';
@@ -19,6 +19,9 @@ const ZOOM_MIN = 0.2;
 const ZOOM_MAX = 2.5;
 const DRAG_THRESHOLD = 4; // px in Screen-Koordinaten
 const CHIP_INTERACTION_SELECTOR = '.schem-chip';
+const VIEW_PAD_X = 72;
+const VIEW_PAD_Y = 84;
+const INITIAL_ZOOM = 0.48;
 
 interface Viewport {
   x: number;
@@ -41,6 +44,15 @@ function isChipInteractionTarget(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(CHIP_INTERACTION_SELECTOR) !== null;
 }
 
+function defaultViewport(width: number, height: number): Viewport {
+  const k = INITIAL_ZOOM;
+  return { x: roundView((width / 2) * (1 - k)), y: roundView((height / 2) * (1 - k)), k };
+}
+
+function roundView(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
 export interface SchematicBoardProps {
   layout: SchematicLayout;
   /** Pin-Keys (columnId) des aktiven Trace-Pfads. */
@@ -56,6 +68,7 @@ export interface SchematicBoardProps {
   /** Spalten dieses Chips ein-/ausklappen (Chevron im Kopf). */
   onToggleColumns?: (nodeId: string) => void;
   onBackground?: () => void;
+  fitKey?: string;
 }
 
 export function SchematicBoard({
@@ -69,17 +82,22 @@ export function SchematicBoard({
   onSelectPin,
   onToggleColumns,
   onBackground,
+  fitKey,
 }: SchematicBoardProps) {
   const gridId = useId();
   const shadowId = useId();
+  const arrowId = useId();
   const tracing = !!tracePins && tracePins.size > 0;
   const isDimmedChip = (id: string) => !!dimmedChips && dimmedChips.has(id);
 
   const W = Math.max(layout.width, 1);
   const H = Math.max(layout.height, 1);
+  const viewBox = `${-VIEW_PAD_X} ${-VIEW_PAD_Y} ${W + VIEW_PAD_X * 2} ${H + VIEW_PAD_Y * 2}`;
+  const laneBands = useMemo(() => buildLaneBands(layout.chips), [layout.chips]);
 
   const svgRef = useRef<SVGSVGElement>(null);
-  const [view, setView] = useState<Viewport>({ x: 0, y: 0, k: 1 });
+  const [view, setView] = useState<Viewport>(() => defaultViewport(W, H));
+  const lastFitKey = useRef(fitKey);
   // Pan-State: letzter Punkt (User-Koordinaten) + ob die Geste schon ein Zug ist.
   const panRef = useRef<{ lastX: number; lastY: number; startClientX: number; startClientY: number } | null>(null);
   const movedRef = useRef(false);
@@ -161,14 +179,20 @@ export function SchematicBoard({
 
   const zoomIn = () => zoomAt(1.25, W / 2, H / 2);
   const zoomOut = () => zoomAt(1 / 1.25, W / 2, H / 2);
-  const fit = () => setView({ x: 0, y: 0, k: 1 });
+  const fit = () => setView(defaultViewport(W, H));
+
+  useEffect(() => {
+    if (lastFitKey.current === fitKey) return;
+    lastFitKey.current = fitKey;
+    setView(defaultViewport(W, H));
+  }, [fitKey, W, H]);
 
   return (
     <div className="schem-stage">
       <svg
         ref={svgRef}
         className="schem-board"
-        viewBox={`0 0 ${W} ${H}`}
+        viewBox={viewBox}
         preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label="Schematic lineage"
@@ -186,6 +210,17 @@ export function SchematicBoard({
           <filter id={shadowId} x="-20%" y="-20%" width="140%" height="160%">
             <feDropShadow dx={0} dy={3} stdDeviation={4} floodColor="#000" floodOpacity={0.42} />
           </filter>
+          <marker
+            id={arrowId}
+            viewBox="0 0 8 8"
+            refX={7}
+            refY={4}
+            markerWidth={8}
+            markerHeight={8}
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 8 4 L 0 8 z" fill="context-stroke" />
+          </marker>
         </defs>
 
         <g className="schem-viewport" transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
@@ -199,6 +234,25 @@ export function SchematicBoard({
             onClick={guard(onBackground)}
           />
 
+          <g className="schem-lane-bands" aria-hidden="true">
+            {laneBands.map(band => (
+              <g key={band.key}>
+                <rect
+                  className="schem-lane-band"
+                  x={band.x}
+                  y={-VIEW_PAD_Y + 14}
+                  width={band.width}
+                  height={H + VIEW_PAD_Y * 2 - 28}
+                  rx={12}
+                  fill={laneColor(band.order)}
+                />
+                <text className="schem-lane-label" x={band.x + 14} y={-VIEW_PAD_Y + 38}>
+                  {band.label}
+                </text>
+              </g>
+            ))}
+          </g>
+
           {/* Traces unter den Chips, damit Pin-Dots die Endpunkte überdecken.
               Hybrid: aggregierte Objekt-Kanten und Pin-zu-Pin-Traces koexistieren
               je nach Expansions-Zustand der Endknoten. */}
@@ -208,6 +262,7 @@ export function SchematicBoard({
                 key={edge.id}
                 edge={edge}
                 dimmed={isDimmedChip(edge.fromNode) || isDimmedChip(edge.toNode)}
+                markerId={arrowId}
               />
             ))}
             {layout.edges.map(edge => (
@@ -220,6 +275,7 @@ export function SchematicBoard({
                   isDimmedChip(edge.toNode) ||
                   (tracing && !(traceEdges && traceEdges.has(edge.id)))
                 }
+                markerId={arrowId}
               />
             ))}
           </g>
@@ -252,14 +308,85 @@ export function SchematicBoard({
   );
 }
 
-function ColumnTrace({ edge, active, dimmed }: { edge: RoutedEdge; active: boolean; dimmed: boolean }) {
+function statusLabel(status: string | undefined): string {
+  switch ((status || '').toLowerCase()) {
+    case 'pass':
+    case 'ok':
+      return 'OK';
+    case 'warn':
+    case 'warning':
+      return 'WARN';
+    case 'critical':
+    case 'crit':
+      return 'CRIT';
+    case 'fail':
+    case 'failing':
+    case 'error':
+      return 'FAIL';
+    default:
+      return (status || 'N/A').toUpperCase().slice(0, 4);
+  }
+}
+
+interface LaneBand {
+  key: string;
+  label: string;
+  order: number;
+  x: number;
+  width: number;
+}
+
+function buildLaneBands(chips: PositionedChip[]): LaneBand[] {
+  const byLane = new Map<string, { key: string; label: string; order: number; minX: number; maxX: number }>();
+  for (const chip of chips) {
+    const existing = byLane.get(chip.laneKey);
+    if (existing) {
+      existing.minX = Math.min(existing.minX, chip.x);
+      existing.maxX = Math.max(existing.maxX, chip.x + chip.width);
+    } else {
+      byLane.set(chip.laneKey, {
+        key: chip.laneKey,
+        label: chip.layer,
+        order: chip.laneOrder,
+        minX: chip.x,
+        maxX: chip.x + chip.width,
+      });
+    }
+  }
+  return [...byLane.values()]
+    .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label))
+    .map(lane => ({
+      key: lane.key,
+      label: lane.label,
+      order: lane.order,
+      x: lane.minX - 34,
+      width: lane.maxX - lane.minX + 68,
+    }));
+}
+
+function ColumnTrace({
+  edge,
+  active,
+  dimmed,
+  markerId,
+}: {
+  edge: RoutedEdge;
+  active: boolean;
+  dimmed: boolean;
+  markerId: string;
+}) {
   const cls =
     'schem-trace' +
-    (edge.kind === 'derived' ? ' is-derived' : '') +
+    (edge.kind === 'derived' || edge.edgeType === 'computed' ? ' is-derived' : '') +
     (active ? ' is-active' : '') +
     (dimmed ? ' is-dimmed' : '');
   return (
-    <path className={cls} d={orthogonalPath(edge.points)} stroke={edge.color || edgeTypeColor(edge.edgeType)}>
+    <path
+      className={cls}
+      d={orthogonalPath(edge.points)}
+      stroke={edge.color || edgeTypeColor(edge.edgeType)}
+      markerEnd={`url(#${markerId})`}
+    >
       <title>
         {`${edge.fromNode}.${edge.fromPin} → ${edge.toNode}.${edge.toPin}`}
         {edge.expression ? ` · ${edge.expression}` : ''}
@@ -268,9 +395,13 @@ function ColumnTrace({ edge, active, dimmed }: { edge: RoutedEdge; active: boole
   );
 }
 
-function ObjectTrace({ edge, dimmed }: { edge: RoutedObjectEdge; dimmed: boolean }) {
+function ObjectTrace({ edge, dimmed, markerId }: { edge: RoutedObjectEdge; dimmed: boolean; markerId: string }) {
   return (
-    <path className={'schem-obj-trace' + (dimmed ? ' is-dimmed' : '')} d={orthogonalPath(edge.points)}>
+    <path
+      className={'schem-obj-trace' + (dimmed ? ' is-dimmed' : '')}
+      d={orthogonalPath(edge.points)}
+      markerEnd={`url(#${markerId})`}
+    >
       <title>{`${edge.fromNode} → ${edge.toNode}`}</title>
     </path>
   );
@@ -304,7 +435,8 @@ function Chip({
   const cls = 'schem-chip' + (selected ? ' is-selected' : '') + (dimmed ? ' is-dimmed' : '');
   const tagText = `${chip.layer.toUpperCase()}${chip.system ? ` · ${chip.system}` : ''}`;
   const dqColor = chip.dqStatus ? dqStatusColor(chip.dqStatus) : null;
-  const dotY = 18;
+  const contractX = chip.width - (dqColor ? 98 : 36);
+  const statusX = chip.width - 70;
   const lane = laneColor(chip.laneOrder);
   // Expandierte Chips bekommen ein abgesetztes Kopfband + Pin-Reihen; eingeklappte
   // sind reine Objekt-Karten (Kopf == ganzer Chip).
@@ -361,16 +493,23 @@ function Chip({
         </text>
       )}
 
-      {/* Status-/Contract-Dots oben rechts. */}
+      {/* Compact state badges keep DQ and contract state readable on collapsed cards. */}
       {dqColor && (
-        <circle cx={chip.width - 14} cy={dotY} r={4} fill={dqColor}>
+        <g className="schem-status-badge" transform={`translate(${statusX}, 10)`}>
           <title>{`DQ: ${chip.dqStatus}`}</title>
-        </circle>
+          <rect width={56} height={19} rx={9.5} fill={dqColor} />
+          <circle cx={9} cy={9.5} r={3} fill={dqColor} />
+          <text className="schem-status-text" x={17} y={13}>
+            {statusLabel(chip.dqStatus)}
+          </text>
+        </g>
       )}
       {chip.hasContract && (
-        <circle cx={chip.width - (dqColor ? 28 : 14)} cy={dotY} r={4} fill="var(--cont)">
+        <g className="schem-contract-badge" transform={`translate(${contractX}, 10)`}>
           <title>Contract bound</title>
-        </circle>
+          <rect width={22} height={19} rx={6} />
+          <text x={11} y={13} textAnchor="middle">C</text>
+        </g>
       )}
 
       {/* Spalten-Expander: eigene Affordance im Kopf, klar getrennt vom

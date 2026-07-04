@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useLineage } from '@/api/lineage';
 import { useObjects } from '@/api/objects';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
 import { buildSchematicModel } from './model';
 import { layoutSchematic, type SchematicLayout } from './layout';
@@ -25,7 +26,8 @@ const DEPTH_OPTIONS: Array<{ value: number; label: string }> = [
 ];
 
 export default function SchematicLineage() {
-  const [seeds, setSeeds] = useState<string[]>([]);
+  const [focus, setFocus] = useSearchParamState('focus');
+  const [seeds, setSeeds] = useState<string[]>(() => focus ? [focus] : []);
   const [depth, setDepth] = useState(2);
   const { data, isLoading } = useLineage({ seeds, depth, enabled: seeds.length > 0 });
   const { data: objects } = useObjects();
@@ -40,6 +42,7 @@ export default function SchematicLineage() {
   const [trace, setTrace] = useState<CircuitTrace | null>(null);
   const [layout, setLayout] = useState<SchematicLayout | null>(null);
   const [layoutBusy, setLayoutBusy] = useState(false);
+  const autoSelectedFocus = useRef('');
 
   const model = useMemo(
     () => buildSchematicModel(data?.nodes ?? [], data?.columnEdges ?? [], data?.edges ?? []),
@@ -64,6 +67,23 @@ export default function SchematicLineage() {
         if (token === layoutToken.current) setLayoutBusy(false);
       });
   }, [model, columnsExpanded]);
+
+  useEffect(() => {
+    if (!focus) {
+      autoSelectedFocus.current = '';
+      return;
+    }
+    if (autoSelectedFocus.current === focus) return;
+    setSeeds(prev => (prev.includes(focus) ? prev : [...prev, focus]));
+  }, [focus]);
+
+  useEffect(() => {
+    if (!focus || autoSelectedFocus.current === focus) return;
+    if (!model.chips.some(chip => chip.id === focus)) return;
+    autoSelectedFocus.current = focus;
+    setSelection({ node: focus });
+    setTrace(null);
+  }, [focus, model.chips]);
 
   const layers = useMemo(() => {
     const seen = new Map<string, { key: string; label: string; order: number; count: number }>();
@@ -97,10 +117,14 @@ export default function SchematicLineage() {
   }, [model.chips, search, hiddenLayers, hiddenSystems]);
 
   const selectPin = (node: string, pin: string) => {
+    autoSelectedFocus.current = node;
+    setFocus(node);
     setSelection({ node, pin });
     setTrace(traceCircuit(model, node, pin));
   };
   const selectChip = (node: string) => {
+    autoSelectedFocus.current = node;
+    setFocus(node);
     setSelection({ node });
     setTrace(null);
   };
@@ -136,9 +160,13 @@ export default function SchematicLineage() {
 
   const seedOptions = objects ?? [];
   const seedName = (id: string) => seedOptions.find(o => o.id === id)?.name ?? id;
-  const addSeed = (id: string) => setSeeds(prev => (prev.includes(id) ? prev : [...prev, id]));
+  const addSeed = (id: string) => {
+    setSeeds(prev => (prev.includes(id) ? prev : [...prev, id]));
+    setFocus(id);
+  };
   const removeSeed = (id: string) => {
     setSeeds(prev => prev.filter(s => s !== id));
+    if (focus === id) setFocus('');
     clearSelection();
   };
   const hasSeeds = seeds.length > 0;
@@ -266,6 +294,7 @@ export default function SchematicLineage() {
               onSelectPin={selectPin}
               onToggleColumns={toggleColumns}
               onBackground={clearSelection}
+              fitKey={seeds.join('|')}
             />
           )}
         </main>
