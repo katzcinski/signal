@@ -163,7 +163,8 @@ export default function Cockpit() {
       <PageHeader
         title={t.cockpit.title}
         subtitle={t.cockpit.subtitle}
-        actions={
+        style={{ marginBottom: 0 }}
+        actions={(
           <span style={{
             fontSize: 11, color: 'var(--fg-2)', padding: 'var(--s1) var(--s3)', borderRadius: 'var(--r-full)',
             border: '1px solid var(--line-2)', background: 'var(--bg-1)',
@@ -172,7 +173,7 @@ export default function Cockpit() {
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--qual)' }} />
             {t.cockpit.dqFirst}
           </span>
-        }
+        )}
       />
 
       {objectsQuery.isError && <ErrorBanner onRetry={() => objectsQuery.refetch()} />}

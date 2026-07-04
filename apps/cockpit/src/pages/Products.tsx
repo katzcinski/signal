@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProducts } from '@/api/products';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { OwnershipTag } from '@/components/ui/OwnershipTag';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { TableSkeleton } from '@/components/ui/Skeleton';
@@ -109,7 +110,7 @@ export default function Products() {
   if (isLoading) {
     return (
       <div className="page-full">
-        <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{t.products.title}</h1>
+        <PageHeader title={t.products.title} />
         <TableSkeleton columns={7} />
       </div>
     );
@@ -117,9 +118,7 @@ export default function Products() {
 
   return (
     <div className="page-full">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700 }}>{t.products.title}</h1>
-      </div>
+      <PageHeader title={t.products.title} />
       {isError ? (
         <ErrorBanner onRetry={() => refetch()} />
       ) : (

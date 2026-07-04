@@ -40,6 +40,7 @@
   /* Typography */
   --font-ui: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --fs-page-title: 20px;
   --fs-eyebrow: 11px;
   --fs-h1: 24px;
   --fs-h2: 18px;

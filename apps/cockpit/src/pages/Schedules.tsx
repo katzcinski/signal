@@ -5,6 +5,7 @@ import { useObjects } from '@/api/objects';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { ObjectSummaryCard } from '@/components/object-detail/ObjectSummaryCard';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
@@ -192,22 +193,27 @@ export default function Schedules() {
 
   return (
     <div className="page-full">
-      {/* header */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 18, gap: 'var(--s4)', flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{t.schedules.title}</h1>
-          <p style={{ color: 'var(--fg-2)', fontSize: 13, marginTop: 4 }}>
+      <PageHeader
+        title={t.schedules.title}
+        subtitle={(
+          <>
             {t.schedules.subtitle}
-            {stats.overdue > 0 && <span style={{ color: 'var(--status-fail)', fontWeight: 600 }}>{`  ·  ${stats.overdue} ${t.schedules.filterOverdue.toLowerCase()}`}</span>}
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/objects')}
-          style={{ background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 'var(--r-lg)', padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-        >
-          + {t.schedules.panelTitle}
-        </button>
-      </div>
+            {stats.overdue > 0 && (
+              <span style={{ color: 'var(--status-fail)', fontWeight: 600 }}>
+                {` - ${stats.overdue} ${t.schedules.filterOverdue.toLowerCase()}`}
+              </span>
+            )}
+          </>
+        )}
+        actions={(
+          <button
+            onClick={() => navigate('/objects')}
+            style={{ background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 'var(--r-lg)', padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            + {t.schedules.panelTitle}
+          </button>
+        )}
+      />
 
       {/* KPI-Karten: Summary-Card-Muster (§2.7) statt lokaler Tile; responsives
           .dash-kpis-Raster statt fixem repeat(4,1fr) (§2.8). */}

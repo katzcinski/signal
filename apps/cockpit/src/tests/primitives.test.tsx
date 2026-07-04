@@ -64,7 +64,7 @@ describe('UI primitives (UX-F6)', () => {
       />,
     );
     const heading = screen.getByRole('heading', { name: 'Objekte' });
-    expect(heading.style.fontSize).toBe('var(--fs-h2)');
+    expect(heading.style.fontSize).toBe('var(--fs-page-title)');
     expect(screen.getByText('Steward · offen')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Neu' })).toBeInTheDocument();
   });

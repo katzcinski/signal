@@ -5,6 +5,7 @@ import { OperationProgress } from '@/components/OperationProgress';
 import { Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { t } from '@/i18n/de';
 import { useRoleStore } from '@/store/role';
@@ -109,14 +110,7 @@ export default function Environments() {
 
   return (
     <div className="page-full">
-      <div style={{ marginBottom: 'var(--s5)' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>
-          {t.environments.title}
-        </h1>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 'var(--s1)' }}>
-          {t.environments.subtitle}
-        </p>
-      </div>
+      <PageHeader title={t.environments.title} subtitle={t.environments.subtitle} />
 
       {!canTest && <ReadOnlyBanner hint={t.environments.readOnlyHint} />}
       {isError && <ErrorBanner onRetry={() => refetch()} />}

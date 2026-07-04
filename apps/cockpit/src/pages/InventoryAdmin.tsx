@@ -13,6 +13,7 @@ import { InventoryExtractProgress } from '@/components/InventoryExtractProgress'
 import { Button } from '@/components/ui/Button';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Field, Input } from '@/components/ui/Field';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Panel } from '@/components/ui/Panel';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { t } from '@/i18n/de';
@@ -121,10 +122,7 @@ export default function InventoryAdmin() {
 
   return (
     <div className="page-full">
-      <div style={{ marginBottom: 'var(--s5)' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--fg)' }}>{t.inventoryAdmin.title}</h1>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12, marginTop: 'var(--s1)' }}>{t.inventoryAdmin.subtitle}</p>
-      </div>
+      <PageHeader title={t.inventoryAdmin.title} subtitle={t.inventoryAdmin.subtitle} />
 
       {!canTrigger && <ReadOnlyBanner hint={t.inventoryAdmin.readOnlyHint} />}
       {isError && <ErrorBanner onRetry={() => refetch()} />}
