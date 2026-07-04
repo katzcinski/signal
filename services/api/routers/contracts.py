@@ -5,7 +5,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import yaml
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
@@ -13,7 +13,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from ..auth.provider import PrincipalDep, can_write_contract_data
 from ..deps import StoreDep, get_inventory
 from ..git_repo import GitPushRejected, GitRepo
-from ..schemas.contract_schemas import CompileOut, ContractIn, ContractOut
+from ..schemas.contract_schemas import (
+    CompileOut, ContractIn, ContractOut,
+    ObservedOut, ObservedGuarantee, ObservedCheck, ObservedPoint,
+)
 from ..settings import get_settings
 
 router = APIRouter(prefix="/api/contracts", tags=["contracts"])
@@ -971,3 +974,88 @@ def export_bdc(product: str, principal: PrincipalDep):
     }
 
     return {"csn_fragment": csn_fragment, "ord_fragment": ord_fragment}
+
+
+# Compiler-Check-`type` → Garantie-Familie. Deterministisch (compiler.py); die
+# Namensbildung bleibt einzige Wahrheit im Engine-Compiler, hier nur die Umkehr.
+_TYPE_TO_FAMILY: dict[str, str] = {
+    "schema": "schema",
+    "duplicate": "keys", "duplicate_composite": "keys",
+    "reference_integrity": "referential",
+    "freshness": "freshness",
+    "row_count": "volume",
+    "completeness_pct": "completeness", "completeness_pct_segment": "completeness",
+    "missing": "not_null",
+}
+
+
+def _to_float(raw: Any) -> Optional[float]:
+    if raw is None or raw == "":
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+@router.get("/{product}/observed", response_model=ObservedOut)
+def observed_reality(
+    product: str,
+    limit: int = Query(default=15, ge=1, le=200),
+    store: StoreDep = ...,
+    inventory: list[dict] = Depends(get_inventory),
+):
+    """Beobachtete Realität je Garantie (P6): letzter Messwert, Sparkline-Reihe
+    und PASS/FAIL. Read-only-Rollup — der Compiler bildet Garantien auf Checks ab
+    (einzige Wahrheit für die Namensbildung), die persistierte Result-Historie
+    liefert die Werte. Aggregat-Werte, keine Rohzeilen (G8 unberührt).
+    """
+    _validate_product(product)
+    data = _load_contract(product)
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"Contract {product!r} not found")
+
+    dataset = str(data.get("dataset") or product)
+
+    # Ein noch nicht valider Entwurf soll die Ansicht nicht mit 500 abbrechen —
+    # dann gibt es eben (noch) keine beobachtete Realität.
+    try:
+        _yaml, _conflicts, _hash, config = _compile_contract_data(product, data, inventory)
+    except Exception:  # noqa: BLE001 — defensiv: leer statt 500 bei ungültigem Entwurf
+        return ObservedOut(product=product, dataset=dataset, guarantees=[])
+
+    families: dict[str, list[ObservedCheck]] = {}
+    for check in config.checks:
+        family = _TYPE_TO_FAMILY.get(check.type)
+        history = store.get_check_history(dataset, check.name, limit=limit)
+        points = [
+            ObservedPoint(
+                at=str(h.get("started_at") or ""),
+                value=_to_float(h.get("actual_value")),
+                raw=(None if h.get("actual_value") is None else str(h.get("actual_value"))),
+                passed=(None if h.get("passed") is None else bool(h.get("passed"))),
+                state=str(h.get("state") or "executed"),
+                run_id=str(h.get("run_id") or ""),
+            )
+            for h in reversed(history)  # get_check_history liefert DESC → aufsteigend für die Sparkline
+        ]
+        latest = history[0] if history else None
+        families.setdefault(family or "checks", []).append(ObservedCheck(
+            name=check.name,
+            type=check.type,
+            family=family,
+            severity=check.severity,
+            expect=check.expect,
+            last_value=(None if not latest or latest.get("actual_value") is None else str(latest.get("actual_value"))),
+            passed=(None if not latest or latest.get("passed") is None else bool(latest.get("passed"))),
+            state=(str(latest.get("state")) if latest else ""),
+            points=points,
+        ))
+
+    guarantees: list[ObservedGuarantee] = []
+    for family, checks in families.items():
+        states = [c.passed for c in checks if c.passed is not None]
+        state = "unknown" if not states else "pass" if all(states) else "fail"
+        guarantees.append(ObservedGuarantee(family=family, state=state, checks=checks))
+
+    return ObservedOut(product=product, dataset=dataset, guarantees=guarantees)

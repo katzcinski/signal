@@ -4,7 +4,7 @@ import { api } from './client';
 import { t } from '@/i18n/de';
 import type {
   ContractOut, ContractPutBody, ContractVersionDiff, DiffReport,
-  InventoryResponse, SchemaDriftReport, SlaResponse,
+  InventoryResponse, ObservedReality, SchemaDriftReport, SlaResponse,
 } from '@/types';
 
 // List items may carry EMPTY guarantees (served from the index) — always
@@ -114,6 +114,15 @@ export const useInventory = () =>
     queryKey: ['inventory'],
     queryFn: () => api.get('/inventory').then(r => r.data),
     staleTime: 5 * 60_000,
+  });
+
+// P6: beobachtete Realität je Garantie (letzter Messwert, Sparkline, PASS/FAIL).
+export const useObservedReality = (product: string, enabled = true) =>
+  useQuery<ObservedReality>({
+    queryKey: ['contracts', product, 'observed'],
+    queryFn: () => api.get(`/contracts/${encodeURIComponent(product)}/observed`).then(r => r.data),
+    enabled: !!product && enabled,
+    retry: false,
   });
 
 export const useApproveContract = (id: string) => {
