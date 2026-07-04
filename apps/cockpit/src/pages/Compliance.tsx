@@ -6,8 +6,11 @@ import { Panel } from '@/components/ui/Panel';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { TableSkeleton } from '@/components/ui/Skeleton';
+import { Table, type ColDef } from '@/components/ui/Table';
 import { t } from '@/i18n/de';
-import type { Lifecycle } from '@/types';
+import type { Lifecycle, ObjectSummary } from '@/types';
+
+const LIFECYCLE_ORDER: Record<Lifecycle, number> = { draft: 0, active: 1, deprecated: 2 };
 
 export default function Governance() {
   const { data: objects = [], isLoading, isError, refetch } = useObjects();
@@ -18,6 +21,48 @@ export default function Governance() {
   const activeContracts = boundaryContracts.filter(c => c.lifecycle === 'active');
   const loading = isLoading || contractsQuery.isLoading;
   const error = isError || contractsQuery.isError;
+
+  const lifecycleOf = (o: ObjectSummary): Lifecycle =>
+    (contractByProduct.get(o.id)?.lifecycle || 'draft') as Lifecycle;
+
+  const columns: ColDef<ObjectSummary>[] = [
+    {
+      key: 'object',
+      header: t.governance.colObject,
+      mono: true,
+      sortable: true,
+      sortValue: o => o.name,
+      render: o => o.name,
+    },
+    {
+      key: 'space',
+      header: t.governance.colSpace,
+      sortable: true,
+      sortValue: o => o.space,
+      render: o => <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</span>,
+    },
+    {
+      key: 'lifecycle',
+      header: t.governance.colLifecycle,
+      sortable: true,
+      sortValue: o => LIFECYCLE_ORDER[lifecycleOf(o)],
+      render: o => <LifecycleStepper current={lifecycleOf(o)} />,
+    },
+    {
+      key: 'hasContract',
+      header: t.governance.colHasContract,
+      sortable: true,
+      sortValue: o => (contractByProduct.has(o.id) ? 1 : 0),
+      render: o => {
+        const has = contractByProduct.has(o.id);
+        return (
+          <span style={{ fontSize: 12, color: has ? 'var(--status-ok)' : 'var(--status-fail)' }}>
+            {has ? t.governance.yes : t.governance.no}
+          </span>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="page-full">
@@ -66,37 +111,13 @@ export default function Governance() {
           <ErrorBanner onRetry={() => { refetch(); contractsQuery.refetch(); }} />
         ) : loading ? (
           <TableSkeleton columns={4} />
-        ) : objects.length === 0 ? (
-          <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.governance.noObjects}</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {[t.governance.colObject, t.governance.colSpace, t.governance.colLifecycle, t.governance.colHasContract].map(h => (
-                    <th key={h} style={{ padding: '6px 12px', textAlign: 'left', fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--line)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {objects.map(o => {
-                  const contract = contractByProduct.get(o.id);
-                  return (
-                    <tr key={o.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                      <td style={{ padding: 'var(--s2) var(--s3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</td>
-                      <td style={{ padding: 'var(--s2) var(--s3)', color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</td>
-                      <td style={{ padding: 'var(--s2) var(--s3)' }}>
-                        <LifecycleStepper current={(contract?.lifecycle || 'draft') as Lifecycle} />
-                      </td>
-                      <td style={{ padding: 'var(--s2) var(--s3)', fontSize: 12, color: contract ? 'var(--status-ok)' : 'var(--status-fail)' }}>
-                        {contract ? t.governance.yes : t.governance.no}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            columns={columns}
+            rows={objects}
+            rowKey={o => o.id}
+            empty={t.governance.noObjects}
+          />
         )}
       </Panel>
     </div>
