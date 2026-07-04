@@ -933,7 +933,6 @@ export const t = {
     subtitle: 'Contract-Bindung, Lifecycle und Verstöße über den Objektbestand.',
     kpiCoverage: 'Contract-Coverage',
     coverageOf: 'mit aktivem Contract',
-    kpiActive: 'Aktive Contracts',
     kpiUncovered: 'Ohne Contract',
     g1Title: 'Gate G1 — SQL-freie Contracts',
     g1Policy: [

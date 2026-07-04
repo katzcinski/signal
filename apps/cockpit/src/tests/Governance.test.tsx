@@ -64,13 +64,11 @@ describe('Governance', () => {
     state.coverage = { ...COVERAGE };
   });
 
-  it('shows coverage, active, uncovered and breached KPIs', () => {
+  it('shows coverage, uncovered and breached KPIs', () => {
     renderPage();
 
     expect(screen.getByText('50%')).toBeInTheDocument();
     expect(screen.getByText('1/2 mit aktivem Contract')).toBeInTheDocument();
-    const activeKpi = screen.getByText('Aktive Contracts').parentElement!;
-    expect(within(activeKpi).getByText('1')).toBeInTheDocument();
     const uncoveredKpi = screen.getByText('Ohne Contract', { selector: 'div' }).parentElement!;
     expect(within(uncoveredKpi).getByText('1')).toBeInTheDocument();
     const breachedKpi = screen.getByText('Verletzte Contracts').parentElement!;

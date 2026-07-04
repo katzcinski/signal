@@ -134,7 +134,7 @@ export default function Governance() {
       <PageHeader title={t.governance.title} subtitle={t.governance.subtitle} />
 
       {/* Antwort zuerst: Wie weit ist der Bestand unter Contract-Governance? */}
-      {loading ? <KpiSkeleton count={4} /> : (
+      {loading ? <KpiSkeleton count={3} /> : (
         <div className="dash-kpis" style={{ marginBottom: 'var(--s4)' }}>
           <Kpi
             label={t.governance.kpiCoverage}
@@ -143,7 +143,6 @@ export default function Governance() {
             deltaPositive
             accent="var(--cont)"
           />
-          <Kpi label={t.governance.kpiActive} value={activeContracts.length} accent="var(--cont)" />
           <Kpi
             label={t.governance.kpiUncovered}
             value={uncovered}
