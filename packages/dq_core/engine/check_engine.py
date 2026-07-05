@@ -270,6 +270,11 @@ def _run_checks_batch(
     cursor = None
     try:
         cursor = conn.cursor()
+        # Härtung: der Batch läuft — wie _run_one_check — mit Statement-Timeout.
+        # Da alle Checks in einem Statement stecken, gilt das Maximum der
+        # Einzel-Timeouts; ohne SET liefe der Batch unbegrenzt.
+        timeout_ms = max(int(check.timeout_s) for check in checks) * 1000
+        cursor.execute(f"SET 'statementTimeout' = '{timeout_ms}'")
         cursor.execute(_build_batch_sql(checks))
         rows = _fetch_all(cursor)
     finally:
@@ -361,20 +366,35 @@ def _fetch_diagnostic_rows(conn: Any, sql: str) -> list[dict]:
                 pass
 
 
+# Klauseln, bei denen die SELECT-*-Umschreibung die Semantik ändern oder
+# ungültiges SQL erzeugen würde (SELECT * mit GROUP BY; doppeltes LIMIT;
+# Set-Operationen zählen etwas anderes als Zeilen).
+_DIAG_UNSAFE = re.compile(r"(?i)\b(?:GROUP\s+BY|HAVING|UNION|INTERSECT|EXCEPT|LIMIT|OFFSET)\b")
+
+
 def _diagnostic_sql(sql: str) -> str | None:
-    """Rewrite 'SELECT COUNT(*) FROM t WHERE ...' → 'SELECT * FROM t WHERE ... LIMIT 100'."""
+    """Rewrite 'SELECT COUNT(*) FROM t WHERE ...' → 'SELECT * FROM t WHERE ... LIMIT 100'.
+
+    [PII-GATE] Fail-closed: alles, was sich nicht sicher umschreiben lässt,
+    liefert None (= keine Diagnosezeilen) statt einer semantisch falschen oder
+    kaputten Query. Akzeptiert COUNT(*)/COUNT(1) mit beliebigem Whitespace und
+    einen optionalen Semikolon-Terminator.
+    """
+    cleaned = _strip_sql_terminator(sql)
     m = re.match(
-        r"(?i)^\s*SELECT\s+COUNT\(\*\)\s+(FROM\s+.+?)(?:\s*(WHERE\s+.+))?$",
-        sql.strip(),
+        r"(?i)^SELECT\s+COUNT\s*\(\s*(?:\*|1)\s*\)\s+(FROM\s+.+?)(?:\s+(WHERE\s+.+))?$",
+        cleaned,
         re.DOTALL,
     )
     if not m:
         return None
     from_clause = m.group(1).strip()
-    where_clause = m.group(2) or ""
+    where_clause = (m.group(2) or "").strip()
+    if _DIAG_UNSAFE.search(from_clause) or _DIAG_UNSAFE.search(where_clause):
+        return None
     parts = ["SELECT *", from_clause]
     if where_clause:
-        parts.append(where_clause.strip())
+        parts.append(where_clause)
     parts.append("LIMIT 100")
     return " ".join(parts)
 

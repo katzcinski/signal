@@ -1,6 +1,6 @@
 # OPEN TASKS — Konsolidierter Backlog (alle Bereiche) · Signal
 
-> **Stand:** 2026-06-28 · **Zweck:** Ein einziger Einstiegspunkt über **alle**
+> **Stand:** 2026-07-04 · **Zweck:** Ein einziger Einstiegspunkt über **alle**
 > offenen Punkte, die heute über die `docs/`-Konzepte, Pläne, Reviews und
 > Handovers verstreut sind. Diese Datei **ersetzt** die Quelldokumente nicht —
 > sie verlinkt sie und hält den aggregierten Status. Detailtiefe (Acceptance,
@@ -44,6 +44,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **J**  | Freshness als zweite Achse (Run-/Load-Info) | ◑ Teilweise | M | `Konzept_Runs_Freshness.md` |
 | **K**  | HANDOVER-Spikes / offene Entscheidungen (O1–O7) | ◻ Offen | div. | `HANDOVER.md` §5 |
 | **L**  | Verifikation & Nice-to-have (HANA-Smoke, en-Locale, Prometheus, E2E) | 🧪 | L | div. |
+| **M**  | Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) | ◻ Offen | L | Abschnitt M |
 
 > **Bereits geschlossen, obwohl ein Quelldoc es noch offen führt:** Interne
 > DQ-Checks-Library im Builder (`handover-iteration-1-internal-checks.md`) ist
@@ -104,6 +105,13 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
   Schema-Evolution je Objekt über Zeit (hinzugefügte/entfernte/typgeänderte
   Spalten, Contract-Bruch markieren). `diff.py` trägt Type-Narrowing erst mit
   Schema v2 (Batch 5 „Out of scope").
+  *Querverweis (Stand 2026-07-04):* Der Datenpfad existiert bereits vollständig —
+  Drift-Persistenz beim Extract (`services/api/schema_drift_service.py`, Hook in
+  `routers/extract.py`), Report-API (`GET /api/contracts/{p}/schema-drift` in
+  `routers/contracts.py`) und FE-Binding (`useSchemaDrift` in
+  `apps/cockpit/src/api/contracts.ts`, derzeit von keiner Seite genutzt), inkl.
+  Tests (`tests/unit/test_schema_drift_*`). Offen ist **nur noch der Screen**
+  (lazy Page + Route in `App.tsx` + Strings in `i18n/de.ts` + vitest).
   *Acceptance:* Spaltenänderungen je Objekt über Zeit, Contract-Bruch markiert.
 
 UX-N7 (Spalten-Lineage) ist erledigt; historische Details und Restrisiken stehen in **B**.
@@ -350,6 +358,30 @@ Richtung; offene Designentscheidungen vor dem Verdrahten ins Gating:
   Korrektheitsrisiko mehr, `PLAN_Remediation_v2.md`).
 - **L5 · Visuelle QA am Datenvolumen** — Tabellendichte >500 Objekte, breite DAGs
   (dagre-Tuning) gegenprüfen (`Konzept_DQ_Cockpit_UIUX.md` §9).
+
+---
+
+## M — Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) ◻ [L]
+
+**Quelle:** Code-Survey 2026-07-04 (`services/api/notify.py`); Verhalten ist
+durch `tests/unit/test_notify.py` abgedeckt.
+
+Drei Stellen duplizieren dieselbe Logik und können bei Änderungen auseinander
+driften:
+
+- **(type, url)-De-Duplizierung** existiert zweimal: in `resolve_targets()`
+  (lokale `_add`-Closure) und in `resolve_db_targets()` (inline `seen`-Set).
+- **Dispatch-Schleife** ist in `notify_breach()` und
+  `notify_incident_transition()` identisch: `_resolve_with_store` → `ctx`
+  bauen → pro Target Payload formen → `fire_webhook` auf Daemon-Thread.
+- **Payload-Former** `_format_payload()` / `_format_transition_payload()`
+  teilen die Slack-/Teams-Hüllen (MessageCard-Skelett, `_SEVERITY_COLOR`,
+  Link-Zeile).
+
+*Refactor:* gemeinsamer Dedup-Helper + ein `_dispatch(targets, ctx, formatter,
+settings)`. Reine Strukturänderung — **kein** Verhaltens-/Payload-Unterschied,
+der SSRF-Pfad über `fire_webhook` bleibt unangetastet, und `test_notify.py`
+bleibt unverändert grün.
 
 ---
 
