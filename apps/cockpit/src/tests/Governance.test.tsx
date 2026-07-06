@@ -32,7 +32,7 @@ const CONTRACTS = [
   // internal_gate zählt nicht als Boundary-Contract → P2 bleibt ungebunden.
   { product: 'P2', kind: 'internal_gate', lifecycle: 'active', version: '1.0.0' },
 ];
-const COVERAGE = { contract_coverage_pct: 50, with_active_contract: 1, objects_total: 2, contracts_breached: 3 };
+const COVERAGE = { contract_coverage_pct: 50, with_active_contract: 1, objects_total: 2, contracts_breached: 3, unvalidated_30d: [] as string[] };
 
 function LocationEcho() {
   const location = useLocation();
@@ -124,5 +124,36 @@ describe('Governance', () => {
     state.contracts = [{ product: 'P2', kind: 'internal_gate', lifecycle: 'active', version: '1.0.0' }];
     renderPage();
     expect(screen.getByText(/Noch keine aktiven Contracts/)).toBeInTheDocument();
+  });
+
+  it('surfaces stale objects via KPI, chip and filter', () => {
+    state.coverage = { ...COVERAGE, unvalidated_30d: ['P2'] };
+    renderPage();
+
+    // KPI zeigt die Zahl der überfälligen Objekte.
+    const staleKpi = screen.getByText('Unvalidiert >30d', { selector: 'div' }).parentElement!;
+    expect(within(staleKpi).getByText('1')).toBeInTheDocument();
+
+    // Der Marker sitzt auf der betroffenen Zeile.
+    const bare = within(screen.getByText('OBJ_BARE').closest('tr')!);
+    expect(bare.getByText('Unvalidiert')).toBeInTheDocument();
+
+    // KPI-Klick ist ein Deep-Link auf den Filter.
+    fireEvent.click(within(staleKpi).getByText('1'));
+    expect(objectColumnTexts()).toEqual(['OBJ_BARE']);
+  });
+
+  it('drills into breached objects from the KPI', () => {
+    state.contracts = [
+      { product: 'P1', kind: 'consumer_contract', lifecycle: 'active', version: '1.2.0', compliance: 'breached' },
+      { product: 'P2', kind: 'consumer_contract', lifecycle: 'active', version: '1.0.0', compliance: 'ok' },
+    ];
+    renderPage();
+
+    const covered = within(screen.getByText('OBJ_COVERED').closest('tr')!);
+    expect(covered.getByText('Verletzt')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nur verletzt' }));
+    expect(objectColumnTexts()).toEqual(['OBJ_COVERED']);
   });
 });
