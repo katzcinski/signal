@@ -37,7 +37,7 @@ describe('CheckStatusCell (G6 gating)', () => {
     const { container } = render(
       <CheckStatusCell state="executed" passed={true} severity="fail" />
     );
-    expect(container.textContent).toContain('pass');
+    expect(container.textContent).toContain('Bestanden');
     expect(container.innerHTML).not.toContain('dashed');
   });
 });

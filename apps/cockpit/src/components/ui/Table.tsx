@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useState, type CSSProperties, type ReactNode, type KeyboardEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 export interface ColDef<T> {
@@ -21,6 +21,8 @@ interface Props<T> {
   // Above this many rows the body is virtualized (windowed) for performance.
   virtualizeThreshold?: number;
   maxHeight?: number;
+  // Optional per-row style (e.g. severity tint); merged into the <tr> style.
+  rowStyle?: (row: T) => CSSProperties | undefined;
 }
 
 type SortState = { key: string; dir: 'asc' | 'desc' } | null;
@@ -29,7 +31,7 @@ const ROW_HEIGHT = 34;
 
 export function Table<T>({
   columns, rows, rowKey, onRowClick, empty = 'Keine Daten',
-  virtualizeThreshold = 80, maxHeight = 560,
+  virtualizeThreshold = 80, maxHeight = 560, rowStyle,
 }: Props<T>) {
   const [sort, setSort] = useState<SortState>(null);
 
@@ -102,6 +104,7 @@ export function Table<T>({
       style={{
         borderBottom: '1px solid var(--line)',
         cursor: onRowClick ? 'pointer' : undefined,
+        ...rowStyle?.(row),
       }}
     >
       {columns.map(c => (

@@ -355,7 +355,7 @@ describe('ObjectDetail attention band', () => {
 
     renderObjectDetail('/objects/Sales_Orders_View');
 
-    expect(screen.getAllByText('fail').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Fehlgeschlagen').length).toBeGreaterThan(0);
     expect(screen.queryByLabelText('Aufmerksamkeitsband')).toBeNull();
   });
 

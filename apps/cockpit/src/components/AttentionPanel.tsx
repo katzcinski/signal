@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { StatusDot } from '@/components/ui/StatusDot';
-import { relativeTime } from '@/lib/time';
+import { relativeTime, absoluteTime } from '@/lib/time';
 import { t } from '@/i18n/de';
 import type { ObjectSummary } from '@/types';
 
@@ -11,28 +10,30 @@ import type { ObjectSummary } from '@/types';
 
 const SEVERITY_RANK: Record<string, number> = { critical: 0, fail: 1, warn: 2 };
 
-// Tiny per-family marker (O / Q) so the dominant problem dimension reads at a
-// glance without a second status column.
-function FamilyMark({ letter, status }: { letter: string; status: string }) {
-  const color =
-    status === 'pass' ? 'var(--status-ok)'
-    : status === 'warn' ? 'var(--status-warn)'
-    : status === 'fail' ? 'var(--status-fail)'
-    : status === 'critical' ? 'var(--status-crit)'
-    : 'var(--status-unknown)';
-  return (
-    <span
-      title={`${letter}: ${t.status[status] ?? status}`}
-      style={{
-        width: 16, height: 16, borderRadius: 'var(--r)', fontSize: 9, fontWeight: 700,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        color, border: `1px solid ${color}`,
-        background: `color-mix(in srgb, ${color} 14%, transparent)`,
-      }}
-    >
-      {letter}
-    </span>
-  );
+// Ursache in Worten: die auffälligen Familien mit ihrem Status-Label.
+function findingText(o: ObjectSummary): string {
+  const parts: string[] = [];
+  const fams = [
+    [t.cockpit.colObservability, o.family_status?.observability],
+    [t.cockpit.colQuality, o.family_status?.quality],
+  ] as const;
+  for (const [label, status] of fams) {
+    if (status && status in SEVERITY_RANK) {
+      parts.push(`${label}: ${t.status[status as keyof typeof t.status] ?? status}`);
+    }
+  }
+  if (parts.length === 0) return t.status[o.status as keyof typeof t.status] ?? o.status;
+  return parts.join(' · ');
+}
+
+function severityDot(status: string): React.CSSProperties {
+  const critical = status === 'critical';
+  const color = critical ? 'var(--status-crit)'
+    : status === 'fail' ? 'var(--status-fail)' : 'var(--status-warn)';
+  return {
+    width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: color,
+    boxShadow: critical ? `0 0 5px ${color}` : undefined,
+  };
 }
 
 export function AttentionPanel({ objects }: { objects: ObjectSummary[] }) {
@@ -65,28 +66,30 @@ export function AttentionPanel({ objects }: { objects: ObjectSummary[] }) {
           <p style={{ color: 'var(--fg-3)', fontSize: 12, padding: 'var(--s5) 0', textAlign: 'center' }}>
             {t.cockpit.attentionEmpty}
           </p>
-        ) : ranked.map(o => (
+        ) : ranked.map((o, i) => (
           <button
             key={o.id}
             onClick={() => navigate(`/objects/${o.id}`)}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
-              padding: '7px 0', background: 'none', border: 'none',
-              borderBottom: '1px solid var(--line)', borderRadius: 0,
+              padding: '8px 0', background: 'none', border: 'none',
+              borderTop: i === 0 ? 'none' : '1px solid var(--line)', borderRadius: 0,
               color: 'var(--fg)', cursor: 'pointer',
             }}
           >
-            <StatusDot status={o.status} />
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span aria-hidden style={severityDot(o.status)} />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, whiteSpace: 'nowrap' }}>
               {o.name}
             </span>
-            <FamilyMark letter="O" status={o.family_status?.observability ?? 'unknown'} />
-            <FamilyMark letter="Q" status={o.family_status?.quality ?? 'unknown'} />
+            <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {findingText(o)}
+            </span>
             {o.last_run && (
-              <span style={{ fontSize: 10, color: 'var(--fg-3)', minWidth: 48, textAlign: 'right' }}>
+              <span title={absoluteTime(o.last_run)} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--fg-3)', whiteSpace: 'nowrap' }}>
                 {relativeTime(o.last_run)}
               </span>
             )}
+            <span aria-hidden style={{ color: 'var(--fg-3)', fontSize: 11 }}>→</span>
           </button>
         ))}
       </div>
