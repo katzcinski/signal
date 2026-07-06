@@ -113,6 +113,20 @@ describe('Governance', () => {
     expect(screen.getByText('Keine Treffer für den Filter')).toBeInTheDocument();
   });
 
+  it('filters by space via the select', () => {
+    renderPage();
+
+    const spaceSelect = screen.getByRole('combobox', { name: 'Nach Space filtern' });
+    fireEvent.change(spaceSelect, { target: { value: 'FINANCE' } });
+    expect(objectColumnTexts()).toEqual(['OBJ_BARE']);
+  });
+
+  it('links to the contract workbench when no contract is active', () => {
+    state.contracts = [{ product: 'P2', kind: 'internal_gate', lifecycle: 'active', version: '1.0.0' }];
+    renderPage();
+    expect(screen.getByRole('link', { name: /Ersten Contract anlegen/ })).toHaveAttribute('href', '/contracts');
+  });
+
   it('navigates to the object detail on row click', () => {
     renderPage();
 

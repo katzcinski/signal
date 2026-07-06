@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useObjects } from '@/api/objects';
 import { useContracts } from '@/api/contracts';
 import { useCoverageSummary } from '@/api/coverage';
@@ -12,6 +12,7 @@ import { FilterChip } from '@/components/ui/FilterChip';
 import { Kpi } from '@/components/ui/Kpi';
 import { KpiSkeleton, TableSkeleton } from '@/components/ui/Skeleton';
 import { LifecycleTag } from '@/components/ui/LifecycleTag';
+import { ControlSelect } from '@/components/ui/ControlPrimitives';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { DistributionBar, type DistributionSegment } from '@/components/ui/DistributionBar';
 import { Table, type ColDef } from '@/components/ui/Table';
@@ -76,6 +77,7 @@ export default function Governance() {
   // Quick-Checks-Popover, der Zeilenklick bleibt der Sprung ins Objektdetail.
   const { openChecks, overlays } = useObjectInspection();
   const [search, setSearch] = useState('');
+  const [space, setSpace] = useState('');
   const [mode, setMode] = useState<FilterMode>('all');
   // Klick auf eine aktive KPI/Chip löst den Filter wieder — Toggle statt Sackgasse.
   const toggle = (m: FilterMode) => setMode(cur => (cur === m ? 'all' : m));
@@ -112,20 +114,22 @@ export default function Governance() {
       { key: 'none', label: t.governance.noContract, count: dist.none, color: 'var(--line-2)' },
     ];
   }, [objects, contractByProduct]);
+  const spaces = useMemo(() => Array.from(new Set(objects.map(o => o.space))).sort(), [objects]);
   const loading = isLoading || contractsQuery.isLoading;
   const error = isError || contractsQuery.isError;
-  const filtered = !!search || mode !== 'all';
+  const filtered = !!search || mode !== 'all' || !!space;
 
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return objects.filter(o => {
+      if (space && o.space !== space) return false;
       if (mode === 'uncovered' && contractByProduct.has(o.id)) return false;
       if (mode === 'breached' && !breachedIds.has(o.id)) return false;
       if (mode === 'stale' && !staleIds.has(o.id)) return false;
       if (!needle) return true;
       return o.name.toLowerCase().includes(needle) || o.space.toLowerCase().includes(needle);
     });
-  }, [objects, contractByProduct, breachedIds, staleIds, search, mode]);
+  }, [objects, contractByProduct, breachedIds, staleIds, search, space, mode]);
 
   const columns: ColDef<ObjectSummary>[] = [
     {
@@ -207,6 +211,17 @@ export default function Governance() {
       <FilterChip active={mode === 'stale'} onClick={() => toggle('stale')}>
         {t.governance.onlyStale}
       </FilterChip>
+      {spaces.length > 1 && (
+        <ControlSelect
+          label={t.governance.spaceFilterLabel}
+          tone={space ? 'accent' : 'neutral'}
+          value={space}
+          onChange={e => setSpace(e.target.value)}
+        >
+          <option value="">{t.governance.spaceAll}</option>
+          {spaces.map(s => <option key={s} value={s}>{s}</option>)}
+        </ControlSelect>
+      )}
       <input
         type="search"
         name="governance-search"
@@ -291,6 +306,10 @@ export default function Governance() {
           {t.governance.noActiveContractsPre}
           <strong>{t.governance.noActiveContractsArea}</strong>
           {t.governance.noActiveContractsPost}
+          {' '}
+          <Link to="/contracts" style={{ color: 'var(--cont)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {t.governance.noActiveContractsCta} →
+          </Link>
         </div>
       )}
 
