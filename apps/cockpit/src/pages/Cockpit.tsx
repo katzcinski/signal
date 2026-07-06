@@ -1,3 +1,4 @@
+import { useCallback, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Kpi } from '@/components/ui/Kpi';
 import { KpiSkeleton, TableSkeleton } from '@/components/ui/Skeleton';
@@ -10,6 +11,8 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { OnboardingPanel } from '@/components/OnboardingPanel';
+import { ObjectPeek } from '@/components/ObjectPeek';
+import { ObjectChecksPopover } from '@/components/ObjectChecksPopover';
 import { StatusHeatmap } from '@/components/StatusHeatmap';
 import { DqHealthTrend } from '@/components/DqHealthTrend';
 import { AttentionPanel } from '@/components/AttentionPanel';
@@ -161,6 +164,21 @@ export default function Cockpit() {
   const coverage = coverageQuery.data;
   const navigate = useNavigate();
   const [gridMode, setGridMode] = useSearchParamState('grid');
+  // Two-level inspection (wie auf der Objekte-Seite): Checks-Zelle öffnet das
+  // kompakte Popover, der Zeilenklick das rechte Betriebs-Panel (ObjectPeek).
+  const [peekId, setPeekId] = useState<string | null>(null);
+  const [checksPopover, setChecksPopover] = useState<{
+    objectId: string;
+    anchor: { x: number; y: number };
+  } | null>(null);
+
+  const openChecksPopover = useCallback((object: ObjectSummary, event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setChecksPopover({
+      objectId: object.id,
+      anchor: { x: event.clientX, y: event.clientY },
+    });
+  }, []);
 
   const totalObjects = objects.length;
   const unvalidated = coverage?.unvalidated_30d ?? [];
@@ -199,7 +217,19 @@ export default function Cockpit() {
   // Objekt × Familie matrix — both family statuses per row (WS1-3 StatusGrid),
   // ergänzt um Contract-Bindung und letzten Lauf.
   const gridColumns: ColDef<ObjectSummary>[] = [
-    { key: 'name', header: t.cockpit.colObject, mono: true, render: o => o.name },
+    {
+      key: 'name', header: t.cockpit.colObject, mono: true,
+      // Der Name führt zur Vollansicht; der Rest der Zeile öffnet das Betriebs-Panel.
+      render: o => (
+        <button
+          onClick={e => { e.stopPropagation(); navigate(`/objects/${o.id}`); }}
+          onKeyDown={e => e.stopPropagation()}
+          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--fg-2)', cursor: 'pointer', font: 'inherit' }}
+        >
+          {o.name}
+        </button>
+      ),
+    },
     { key: 'space', header: t.cockpit.colSpace, render: o => <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</span> },
     { key: 'layer', header: t.cockpit.colLayer, render: o => <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{o.layer}</span> },
     {
@@ -209,6 +239,30 @@ export default function Cockpit() {
     {
       key: 'qual', header: t.cockpit.colQuality,
       render: o => <FamilyStatusCell status={o.family_status?.quality ?? 'unknown'} />,
+    },
+    {
+      key: 'checks', header: t.objects.colChecks,
+      // Checks-Zelle: öffnet das kompakte Quick-Checks-Popover am Zeiger.
+      render: o => (
+        <button
+          type="button"
+          aria-label={t.peek.openChecksFor.replace('{name}', o.name)}
+          onClick={event => openChecksPopover(o, event)}
+          onKeyDown={event => event.stopPropagation()}
+          style={{
+            background: 'var(--bg-2)',
+            border: '1px solid var(--line-2)',
+            borderRadius: 'var(--r-md)',
+            color: 'var(--fg-2)',
+            cursor: 'pointer',
+            fontSize: 12,
+            minWidth: 32,
+            padding: '2px 8px',
+          }}
+        >
+          {o.check_count ?? '-'}
+        </button>
+      ),
     },
     {
       key: 'contract', header: t.cockpit.colContract,
@@ -347,14 +401,14 @@ export default function Cockpit() {
           </button>
         </div>
         {objectsQuery.isLoading ? (
-          <TableSkeleton columns={7} />
+          <TableSkeleton columns={8} />
         ) : (
           <>
             <Table
               columns={gridColumns}
               rows={gridRows}
               rowKey={o => o.id}
-              onRowClick={o => navigate(`/objects/${o.id}`)}
+              onRowClick={o => { setChecksPopover(null); setPeekId(o.id); }}
               rowStyle={o => worstRank(o) === 0
                 ? { background: 'color-mix(in srgb, var(--status-crit) 4%, transparent)' }
                 : undefined}
@@ -468,6 +522,19 @@ export default function Cockpit() {
           )}
         </Panel>
       </div>
+
+      {checksPopover && (
+        <ObjectChecksPopover
+          objectId={checksPopover.objectId}
+          anchor={checksPopover.anchor}
+          onClose={() => setChecksPopover(null)}
+          onOpenOperations={() => {
+            setPeekId(checksPopover.objectId);
+            setChecksPopover(null);
+          }}
+        />
+      )}
+      {peekId && <ObjectPeek objectId={peekId} onClose={() => setPeekId(null)} />}
     </div>
   );
 }
