@@ -75,7 +75,7 @@ Supporting controls become progressive disclosure:
 4. **Move `promote`** into a `⋯` overflow menu (or a clearly secondary button), relabel via new i18n key (see §6). Only render for `internal_gate` and `lifecycle !== 'deprecated'`.
 5. **Progressive disclosure** for YAML preview + `BreakingDiffPanel`. Default collapsed for the one-click paths; default expanded (or auto-expand) for the "Neue Version freigeben" path so the diff is visible before a consequential release.
 6. **Demote save-draft** to a quiet secondary ("Als Entwurf sichern").
-7. **Pending-proposal banner (optional but recommended).** When a contract was downgraded to `draft` by an accepted proposal, show an inline banner in the editor: "Übernommener Vorschlag wartet auf Freigabe → Prüfen & freigeben", wired to the same release action. If detecting "downgraded-by-proposal" requires backend signal not present, scope this to a follow-up and leave a `// TODO` — do not invent an endpoint.
+7. **Pending-proposal banner (tracked in `OPEN_TASKS.md` §M4; optional inside this frontend-only cleanup).** When a contract was downgraded to `draft` by an accepted proposal, show an inline banner in the editor: "Übernommener Vorschlag wartet auf Freigabe → Prüfen & freigeben", wired to the same release action. If detecting "downgraded-by-proposal" requires backend signal not present, defer to M4 — do not invent an endpoint.
 8. **i18n** — see §6.
 9. **Verify** — see §7.
 

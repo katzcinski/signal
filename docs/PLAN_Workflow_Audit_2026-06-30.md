@@ -2,7 +2,14 @@
 
 Basis: `docs/WORKFLOW_AUDIT_2026-06-30.md`
 
-Status: planned
+Status: detailed remediation plan; active backlog tracking is consolidated in
+`docs/OPEN_TASKS.md` §M.
+
+> **Backlog consolidation 2026-07-04:** Use `OPEN_TASKS.md` §M for live task IDs
+> and priority. This file keeps implementation detail and suggested PR slicing.
+> The `LineageMiniGraph` lint item from W1 is no longer a live backlog item; the
+> `sparse` dependency is present and future regressions belong to the normal lint
+> gate.
 
 Goal: close the workflow audit findings with small, verifiable changes that
 restore reliable persona workflows before adding performance-only improvements.
@@ -86,7 +93,8 @@ Implementation notes:
 Findings covered:
 
 - P3 - Legacy `/api/environments` response shape is undecided.
-- P3 - Lint blocks CI on `LineageMiniGraph`.
+- P3 - Lint blocks CI on `LineageMiniGraph` (**closed after the audit; retained
+  here only as historical context**).
 
 Implementation tasks:
 
@@ -95,11 +103,8 @@ Implementation tasks:
   `{"name", "schema", "host", "secret_status"}` and no `password_ref`.
 - Check whether `apps/cockpit/src/api/schema.d.ts` currently exposes the legacy
   field. If it does, let W5 regeneration remove it after backend changes.
-- Fix `apps/cockpit/src/components/LineageMiniGraph.tsx` by either:
-  - adding `sparse` to the `useEffect` dependency list, or
-  - moving the sparse calculation inside the effect.
-- Prefer adding `sparse` to the dependency list because it is already a simple
-  derived boolean from `subgraph`.
+- Historical/closed: `apps/cockpit/src/components/LineageMiniGraph.tsx` now has
+  `sparse` in the `useEffect` dependency list. No separate active task remains.
 
 Acceptance tests:
 

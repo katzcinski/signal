@@ -221,6 +221,8 @@ Infrastruktur teilweise vorhanden: `build_lineage_graph` erzeugt bereits **exter
 
 ## 13 — Offene Punkte / nächste Schritte
 
+> Aktive Phase-2-Backlog-Punkte sind seit 2026-07-04 in [`OPEN_TASKS.md`](OPEN_TASKS.md) §P konsolidiert.
+
 1. **Owner-Vererbung ins Interieur:** Interieur-Gates erben den Owner vom Manifest (Routing, Batch 4); bei Contested-Interieur erzwingt das Tool explizite Auflösung (§6). Mechanik der Vererbung im Detail festlegen.
 2. **Reality-Signal-Quellen:** Welche Metadaten zählen verlässlich als „Konsum verlässt das Estate" (Delta-Share-Registry? exponierte Views? Katalog/ORD)? Priorisieren.
 3. **Cockpit-Rendering:** Produkt als Hülle um den Lineage-Subgraphen, IN/OUT-Badges (vorhanden) an den Randknoten, GATE-Badges im Inneren, transitive Kette als separate Spur.

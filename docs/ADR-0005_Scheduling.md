@@ -5,6 +5,7 @@
 **Zweck:** Festhalten, wie regelmäßige DQ-Läufe geplant werden — und warum Scheduling ein **pro-Objekt umschaltbares** Attribut wird (manuell / intern / extern), statt eine globale Betriebsentscheidung.
 
 > Verwandte Dokumente: `Tooldokumentation.md` §7 (CLI), §10 (Deployment) · `ADR-0001` (Gates vs. Contracts, G7-Framework-Isolation).
+> Aktive Phase-2-Backlog-Punkte sind seit 2026-07-04 in [`OPEN_TASKS.md`](OPEN_TASKS.md) §N konsolidiert.
 
 ---
 

@@ -8,6 +8,9 @@
 >
 > Die frühere `OPEN_TASKS_UIUX.md` ist in diese Datei **eingegangen** (Status-
 > Matrix + Detail + historischer Kontext → Abschnitt **A**).
+>
+> Historische Review-/Plan-Dokumente führen keine eigene aktive Backlog-Liste
+> mehr. Wenn ein Quelldoc noch anders klingt, gilt diese Datei.
 
 **Methode:** Status wurde gegen den Code verifiziert, nicht nur aus den Docs
 übernommen — wo Doku und Code abwichen (z. B. O3, HANA WS D), gilt der Code-Stand
@@ -42,9 +45,13 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **H**  | Multi-Plattform-Executor (BDC/Databricks) | ◻ Offen | L | `Konzept_MultiPlattform_Executor_BDC.md` |
 | **I**  | Meridian-Port Restpunkte | ◑ Teilweise | M | `HANDOVER-meridian-port.md` |
 | **J**  | Freshness als zweite Achse (Run-/Load-Info) | ◑ Teilweise | M | `Konzept_Runs_Freshness.md` |
-| **K**  | HANDOVER-Spikes / offene Entscheidungen (O1–O7) | ◻ Offen | div. | `HANDOVER.md` §5 |
+| **K**  | HANDOVER-Spikes / offene Entscheidungen (O1–O7) | ◑ Teilweise | div. | `HANDOVER.md` §5 |
 | **L**  | Verifikation & Nice-to-have (HANA-Smoke, en-Locale, Prometheus, E2E) | 🧪 | L | div. |
-| **M**  | Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) | ◻ Offen | L | Abschnitt M |
+| **M**  | Workflow-Audit-Follow-ups (P1/P2/P3, 2026-06-30) | ◻ Offen | H/M | `WORKFLOW_AUDIT_2026-06-30.md` |
+| **N**  | Scheduling Phase 2 | ◻ Offen | M | `ADR-0005_Scheduling.md` |
+| **O**  | Lineage UX Phase 3 | ◻ Offen | M/L | `Spec_Lineage_UX_Redesign.md` |
+| **P**  | Data-Product/BDC Phase 2 + Verifikationspunkte | ◻ Offen | M/L | `ADR-0003`, `ADR-0004`, `PLAN_ADR-0003-0004_Implementation.md` |
+| **Q**  | Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) | ◻ Offen | L | Abschnitt Q |
 
 > **Bereits geschlossen, obwohl ein Quelldoc es noch offen führt:** Interne
 > DQ-Checks-Library im Builder (`handover-iteration-1-internal-checks.md`) ist
@@ -235,7 +242,7 @@ Scope: **Instanz-pro-Tenant**, `tenant_id`/Row-Level-Pooling bewusst de-scoped.
 - **E2 · Freshness via Task-Log.** `[M]` ◻ — schließt „blinde" Objekte; setzt auf
   vorhandenem Scheduling/Task-Chain-Trigger auf. **Überschneidet sich mit J.**
 - **E3 · Lineage-Impact am Alert.** `[M]` ◻ — höchste Sichtbarkeit, größter
-  Eingriff; betroffene Downstream-Consumer am Breach zeigen. **Hängt an B**
+  Eingriff; betroffene Downstream-Consumer am Breach zeigen. Nutzt **B**
   (Spalten-/Objekt-Lineage) für die feinkörnige Variante.
 
 ---
@@ -261,8 +268,8 @@ P3 (Spalten-Lineage, Typen aus CSN). Offene Punkte:
 
 - **OL1 [H]** Graph-Snapshot-Form gegen Marquez **und** DataHub verifizieren.
 - **OL2 [H]** Spalten-Typen im Schema-Facet (kommen erst aus CSN, vgl. B/I).
-- **OL3 [M]** Spalten-Lineage-Granularität — **hängt an B** (erst Objekt-, dann
-  Spalten-Lineage emittieren).
+- **OL3 [M]** Spalten-Lineage-Granularität — setzt auf **B** auf; Live-Tenant-
+  Datenherkunft bleibt unter **I3/L1** zu verifizieren.
 - **OL4 [M]** CLI-Pfad (`cli/dq_check_runner.py`): publizieren Cron-Läufe?
 - **OL5 [L]** Dataset-`namespace`-Konvention final festlegen.
 - **[P1]** Offizieller OL-Client vs. handgerolltes JSON (Dependency-Entscheidung).
@@ -301,7 +308,8 @@ Extraction, Profiling, Column-Lineage-Chain sind portiert. Offen:
   Auch die Fan-out-/Cardinality-Guardrail als `check_library`-Template.
 - **I3 · Live-Tenant-Validierung** (🧪): REST-Endpoints nur gegen `respx`-Mocks
   geprüft. `read_object_definition` (`$expand=definition`) liefert evtl. **kein**
-  volles CSN → CLI-Pfad für Spalten-Lineage nötig (entsperrt **B**-Daten);
+  volles CSN → CLI-Pfad für Spalten-Lineage nötig (verifiziert **B** für echte
+  Tenants);
   **Pagination** (`@odata.nextLink`) **nicht** behandelt → große Spaces brechen
   nach Seite 1 ab; ggf. zusätzliche OAuth-Scopes.
 - **I4 · Extraktion läuft synchron im Threadpool** — keine dauerhafte Job-Queue;
@@ -328,7 +336,7 @@ Richtung; offene Designentscheidungen vor dem Verdrahten ins Gating:
 
 ---
 
-## K — HANDOVER-Spikes / offene Entscheidungen (O1–O7) ◻
+## K — HANDOVER-Spikes / offene Entscheidungen (O1–O7) ◑
 
 **Quelle:** [`HANDOVER.md`](HANDOVER.md) §5 — vor dem jeweiligen WS klären:
 
@@ -336,7 +344,7 @@ Richtung; offene Designentscheidungen vor dem Verdrahten ins Gating:
 |----|-------|-----------|----------|
 | O1 | Breaking-Diff Stufe 2 (ODCS/`datacontract-cli`) | WS2-4 optional | Stufe 1 homegrown reicht für M2 |
 | O2 | Zugriffspfad Katalog-/Lastmetadaten (`DWC_GLOBAL` nicht dok., HDLF-Gap) | WS5-1 | Spike 1–2 PT; Fallback `LOAD_TS` + Row-Count |
-| O3 | `columnEdges` ohne echte Derivation | → **B** | Daten-, kein Parser-Problem (s. B) |
+| O3 | `columnEdges` ohne echte Derivation | ✅ Done | Als **B** geschlossen; nur Live-Tenant-Verifikation unter **I3/L1** |
 | O4 | OIDC beim Kunden (IdP, Claims→Rollen) | WS5/Deploy | Mapping pro Engagement |
 | O5 | Parallel Execution | später | deferred; Tenant-Connection-Limit klären |
 | O6 | Ergebnisheimat: `HanaResultStore` vs. SQLite-Sync | → **C/D** | Store folgt Deployment, kein Sync |
@@ -361,7 +369,106 @@ Richtung; offene Designentscheidungen vor dem Verdrahten ins Gating:
 
 ---
 
-## M — Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) ◻ [L]
+## M — Workflow-Audit-Follow-ups (2026-06-30) ◻ [H/M]
+
+**Quelle:** [`WORKFLOW_AUDIT_2026-06-30.md`](WORKFLOW_AUDIT_2026-06-30.md) und
+[`PLAN_Workflow_Audit_2026-06-30.md`](PLAN_Workflow_Audit_2026-06-30.md);
+überlappt beim Proposal-Banner mit
+[`workbench-ux-implementation-handover.md`](workbench-ux-implementation-handover.md).
+
+- **M1 · Stabile Proposal-IDs + Aktionen auf zurückgegebenen IDs.** `[H]` ◻ —
+  mined proposals dürfen nach Listen nicht durch neue UUIDs unbedienbar werden;
+  Entscheidung `accept/reject/snooze` muss den gelisteten Vorschlag stabil
+  filtern.
+- **M2 · Contract-Aktivierung/Git-Fehler-Semantik.** `[H]` ◻ — lokale Artefakte,
+  Active-Snapshot, Checks, Index und Git-Commit/Push dürfen nicht widersprüchlich
+  Erfolg/Fehler melden; Push-Reject braucht einen sichtbaren Recovery-Zustand.
+- **M3 · Hermetische Tests und lokale Workflows.** `[M/H]` ◻ — Testläufe dürfen
+  nicht von lokaler `.env`/Datasphere-Connector-Konfiguration abhängen; Caches und
+  Connector-ENV gezielt isolieren.
+- **M4 · Ehrliche Proposal-Accept-Semantik + Pending-Banner.** `[M]` ◻ — solange
+  Proposals keinen strukturierten Patch tragen, heißt Accept faktisch „in Draft
+  übernehmen"; der Workbench muss die wartende Änderung sichtbar machen.
+- **M5 · Contract-Index-Integrität.** `[M]` ◻ — `_update_index` darf Fehler nicht
+  schlucken; Schreib-Endpunkte dürfen keinen sauberen Erfolg melden, wenn der
+  Read-Model-Index stale bleibt.
+- **M6 · OpenAPI/TypeScript-Schema drift + G4 wieder blockierend.** `[M]` ◻ —
+  `apps/cockpit/openapi.json` und `schema.d.ts` regenerieren, audit-gelistete
+  neue Pfade abdecken, danach CI-G4 wieder als hartes Gate führen.
+- **M7 · Legacy `/api/environments` + `/settings` Direktlink.** `[L/M]` ◻ —
+  sichere Legacy-Response-Shape finalisieren und Settings unter Nicht-Admin-Rolle
+  ohne Admin-403-Network-Request rendern.
+- **M8 · Lineage-Bundle messen/optimieren.** `[L]` ◻ — große Lineage-Route erst
+  nach M1–M7 messen; entweder reduzieren oder als route-lazy Risiko dokumentieren.
+
+**Explizit nicht mehr offen:** Der frühere MiniGraph-Lint-Fund ist kein eigener
+Backlog-Punkt mehr; `sparse` ist in der Hook-Dependency-Liste enthalten und
+künftige Regressionen gehören in das normale Lint-Gate.
+
+---
+
+## N — Scheduling Phase 2 ◻ [M]
+
+**Quelle:** [`ADR-0005_Scheduling.md`](ADR-0005_Scheduling.md). Der store-backed
+Poller bleibt additiv; externer Scheduler/Task-Chain via CLI bleibt Default.
+
+- **N1 · Cron-Ausdrücke statt fixer Intervalle.** `[M]` ◻ — zusätzlich zum
+  Intervallmodell eine verständliche Cron-Repräsentation + Validierung.
+- **N2 · Cockpit-Schalter pro Objekt.** `[M]` ◻ — `manual/internal/external`,
+  `enabled`, Environment und nächste Fälligkeit im Objekt-Detail/Ops-Screen
+  sichtbar und bedienbar machen.
+- **N3 · HANA-Store-Parität für `dq_schedules`.** `[H]` ◻ — hängt praktisch an
+  **C2**; Schedule-Claim, Last-Run-Felder und Doppellauf-Schutz müssen auf HANA
+  dieselbe Semantik haben wie SQLite.
+- **N4 · Missed-Run-/Catch-up-Telemetrie.** `[L/M]` ◻ — ausgelassene Slots,
+  Catch-up-Entscheidung und Scheduler-Trigger im Ops-/Run-Kontext sichtbar machen.
+
+---
+
+## O — Lineage UX Phase 3 ◻ [M/L]
+
+**Quelle:** [`Spec_Lineage_UX_Redesign.md`](Spec_Lineage_UX_Redesign.md). Phase 1
+und 2 (ruhige Kamera, Kartenknoten, visuelle Tokens) sind historisch umgesetzt;
+Phase 3 gilt sinngemäß für die aktuelle Schematic/SVG-Lineage weiter.
+
+- **O1 · Gedocktes Inspektionspanel.** `[M]` ◻ — Panel darf keine Downstream-Knoten
+  überdecken; Graph-Fläche schrumpft kontrolliert, ohne ungefragten Fit.
+- **O2 · Persistente Objekt-/Spalten-Sicht.** `[M]` ◻ — Tabwechsel soll Zoom, Pan
+  und Selektion behalten; kein Remount-/Layout-Flash.
+- **O3 · Pin-Modus statt globalem Positionscache.** `[L/M]` ◻ — manuelle
+  Positionen nur explizit gepinnt speichern, Auto-Layout bleibt deterministisch.
+- **O4 · Graph-Controls/Orientierung.** `[L]` ◻ — Zoom, Fit, Re-Layout, Reset Pins
+  und ggf. Minimap als dezente Instrument-Controls.
+- **O5 · Tastatur- und A11y-Pass.** `[L]` ◻ — Suche, Selektion, Panel schließen,
+  Fit/Zoom und Fokuszustände per Tastatur erreichbar machen.
+
+---
+
+## P — Data-Product/BDC Phase 2 + Verifikationspunkte ◻ [M/L]
+
+**Quelle:** [`ADR-0003_BDC-Datasphere-DataProductStudio.md`](ADR-0003_BDC-Datasphere-DataProductStudio.md),
+[`ADR-0004_DataProduct-als-Komposition.md`](ADR-0004_DataProduct-als-Komposition.md) und
+[`PLAN_ADR-0003-0004_Implementation.md`](PLAN_ADR-0003-0004_Implementation.md).
+Phase 1 des Data-Product-Aggregats ist geliefert; diese Punkte sind bewusst
+nachgelagert.
+
+- **P1 · Product-Discovery + Boundary-Generierung.** `[M]` ◻ — consumer-seitiges
+  „verlässt das Estate"-Signal, Discovery-Kandidaten und `boundary` aus Intent ×
+  Reality ableiten.
+- **P2 · Verbleibende Product-Findings.** `[M]` ◻ — estate-leaving Boundary-Leak,
+  Over-Declaration und Orphan-Interieur als Phase-2-Findings modellieren.
+- **P3 · Produkt als Export-/Visualisierungseinheit.** `[L/M]` ◻ — ORD/Export auf
+  Produkt-Ebene, reicheres Cockpit-Overlay um Lineage-Subgraphen, transitive Spur
+  und globaler Findings-Rollup.
+- **P4 · Owner-Vererbung ins Interieur.** `[M]` ◻ — Routing/Ownership für
+  Interieur-Gates bei Contested-Interieur explizit klären.
+- **P5 · BDC/HDLF-Verifikation.** `[M]` ◻ — V3a Load-Lag-Quelle prüfen,
+  V2/V4/V5/V6 als Wissens-/Spec-Verifikation schließen; G-8 view-aware
+  Katalog-Checks und späterer `load_lag`-Check hängen daran.
+
+---
+
+## Q — Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) ◻ [L]
 
 **Quelle:** Code-Survey 2026-07-04 (`services/api/notify.py`); Verhalten ist
 durch `tests/unit/test_notify.py` abgedeckt.
@@ -388,12 +495,17 @@ bleibt unverändert grün.
 ## Querschnitt-Abhängigkeiten (worauf zuerst)
 
 ```
-echter CSN-Extract (I3) ──► B (Spalten-Lineage) ──► A1-naher Impact / OL3 / E3
+echter CSN-Extract (I3) ──► Live-Verifikation von B ──► OL3 / E3
 HanaStore (C2) ═ D1 ──────► C (Full-Deploy) + D (Managed) + F-quarantine/C5
+HanaStore (C2) ───────────► N3 (Schedule-Store-Parität)
 E1 (z-Score)  ── eigenständig, kleinster Hebel, sofort machbar
+M1-M6 (Workflow-Audit) ───► Branch-/CI-Wahrheit vor weiterer Produktpolitur
 J1 (skip/downgrade) ── Entscheidung vor Freshness-Gating (E2/J)
+P5 (BDC/HDLF) ────────────► H / Product-Discovery / technische Load-Lag-Achse
 ```
 
-**Empfohlene Reihenfolge nach Hebel/Aufwand:** E1 (klein, sofort) → C2/D1
-(`HanaStore`, entsperrt Full+Managed) → I3→B (Spalten-Lineage-Datenpfad) →
-J1-Entscheidung → A1/A2. F, G, H bleiben Konzept, bis ein Kundenfall sie zieht.
+**Empfohlene Reihenfolge nach Hebel/Aufwand:** E1 (klein, sofort) → M1/M2/M3/M6
+(Workflow-Korrektheit + CI-Wahrheit) → C2/D1 (`HanaStore`, entsperrt
+Full+Managed und N3) → I3 (Live-Verifikation Spalten-Lineage) →
+J1-Entscheidung → A1/A2. O/N/P/F/G/H bleiben nachgelagert, bis Demo- oder
+Kundenbedarf sie zieht.
