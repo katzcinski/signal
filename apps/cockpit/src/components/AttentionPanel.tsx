@@ -1,3 +1,4 @@
+import { type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { relativeTime, absoluteTime } from '@/lib/time';
 import { t } from '@/i18n/de';
@@ -36,7 +37,13 @@ function severityDot(status: string): React.CSSProperties {
   };
 }
 
-export function AttentionPanel({ objects }: { objects: ObjectSummary[] }) {
+// onInspect (optional): öffnet die Zwei-Ebenen-Inspektion (Quick-Checks-Popover)
+// statt direkt in die Vollansicht zu springen. Ohne den Prop bleibt das alte
+// Verhalten — die Komponente ist eigenständig nutzbar.
+export function AttentionPanel({ objects, onInspect }: {
+  objects: ObjectSummary[];
+  onInspect?: (objectId: string, event: MouseEvent<HTMLElement>) => void;
+}) {
   const navigate = useNavigate();
   const ranked = objects
     .filter(o => o.status in SEVERITY_RANK)
@@ -69,7 +76,8 @@ export function AttentionPanel({ objects }: { objects: ObjectSummary[] }) {
         ) : ranked.map((o, i) => (
           <button
             key={o.id}
-            onClick={() => navigate(`/objects/${o.id}`)}
+            aria-label={onInspect ? t.peek.openChecksFor.replace('{name}', o.name) : undefined}
+            onClick={e => onInspect ? onInspect(o.id, e) : navigate(`/objects/${o.id}`)}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
               padding: '8px 0', background: 'none', border: 'none',

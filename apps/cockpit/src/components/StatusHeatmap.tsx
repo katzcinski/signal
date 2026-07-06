@@ -1,3 +1,4 @@
+import { type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStatusHeatmap } from '@/api/coverage';
 import { Panel } from '@/components/ui/Panel';
@@ -24,7 +25,12 @@ function fmtDay(iso: string) {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function StatusHeatmap() {
+// onInspect (optional): der Objekt-Name öffnet dann das Quick-Checks-Popover
+// ("dieses Objekt ist flaky — was schlägt gerade fehl?") statt zu navigieren.
+// Die Heatmap zeigt *wann*, das Popover *was* — komplementär, ohne neues Chrome.
+export function StatusHeatmap({ onInspect }: {
+  onInspect?: (objectId: string, event: MouseEvent<HTMLElement>) => void;
+}) {
   const { data, isLoading, isError, refetch } = useStatusHeatmap(30);
   const navigate = useNavigate();
 
@@ -52,7 +58,8 @@ export function StatusHeatmap() {
             {datasets.map(ds => (
               <div key={ds} style={{ display: 'flex', alignItems: 'center', gap: GAP, marginBottom: GAP }}>
                 <button
-                  onClick={() => navigate(`/objects/${ds}`)}
+                  onClick={e => onInspect ? onInspect(ds, e) : navigate(`/objects/${ds}`)}
+                  aria-label={onInspect ? t.peek.openChecksFor.replace('{name}', ds) : undefined}
                   title={ds}
                   style={{
                     width: 150, textAlign: 'right', paddingRight: 8, border: 'none', background: 'none',
