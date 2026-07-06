@@ -1,7 +1,8 @@
-import { useCallback, useDeferredValue, useMemo, useState, type MouseEvent } from 'react';
+import { useDeferredValue, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useObjects } from '@/api/objects';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
+import { useObjectInspection } from '@/hooks/useObjectInspection';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { CovFlag } from '@/components/ui/CovFlag';
@@ -9,8 +10,6 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterChip, ActiveFilterChip } from '@/components/ui/FilterChip';
-import { ObjectPeek } from '@/components/ObjectPeek';
-import { ObjectChecksPopover } from '@/components/ObjectChecksPopover';
 import { t } from '@/i18n/de';
 import type { ObjectSummary } from '@/types';
 
@@ -23,21 +22,9 @@ export default function ObjectCatalog() {
   const [textFilter, setTextFilter] = useSearchParamState('q');
   const [familyFilter, setFamilyFilter] = useSearchParamState('family');
   const [statusFilter, setStatusFilter] = useSearchParamState('dqstatus');
-  const [peekId, setPeekId] = useState<string | null>(null);
-  const [checksPopover, setChecksPopover] = useState<{
-    objectId: string;
-    anchor: { x: number; y: number };
-  } | null>(null);
+  const { openChecks, openPeek, overlays } = useObjectInspection();
   const navigate = useNavigate();
   const deferredTextFilter = useDeferredValue(textFilter);
-
-  const openChecksPopover = useCallback((object: ObjectSummary, event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    setChecksPopover({
-      objectId: object.id,
-      anchor: { x: event.clientX, y: event.clientY },
-    });
-  }, []);
 
   const spaces = useMemo(() => [...new Set(objects.map(o => o.space))].sort(), [objects]);
   const q = deferredTextFilter.trim().toLowerCase();
@@ -86,7 +73,7 @@ export default function ObjectCatalog() {
         <button
           type="button"
           aria-label={t.peek.openChecksFor.replace('{name}', o.name)}
-          onClick={event => openChecksPopover(o, event)}
+          onClick={event => openChecks(o.id, event)}
           onKeyDown={event => event.stopPropagation()}
           style={{
             background: 'var(--bg-2)',
@@ -108,7 +95,7 @@ export default function ObjectCatalog() {
       key: 'last_run', header: t.objects.colLastRun, mono: true, sortable: true, sortValue: o => o.last_run ?? '',
       render: o => <span style={{ fontSize: 11 }}>{o.last_run ? new Date(o.last_run).toLocaleString() : '—'}</span>,
     },
-  ], [navigate, openChecksPopover]);
+  ], [navigate, openChecks]);
 
   const searchInput = (
     <input
@@ -182,26 +169,12 @@ export default function ObjectCatalog() {
             columns={columns}
             rows={rows}
             rowKey={o => o.id}
-            onRowClick={o => {
-              setChecksPopover(null);
-              setPeekId(o.id);
-            }}
+            onRowClick={o => openPeek(o.id)}
             empty={t.objects.empty}
           />
         </div>
       )}
-      {checksPopover && (
-        <ObjectChecksPopover
-          objectId={checksPopover.objectId}
-          anchor={checksPopover.anchor}
-          onClose={() => setChecksPopover(null)}
-          onOpenOperations={() => {
-            setPeekId(checksPopover.objectId);
-            setChecksPopover(null);
-          }}
-        />
-      )}
-      {peekId && <ObjectPeek objectId={peekId} onClose={() => setPeekId(null)} />}
+      {overlays}
     </div>
   );
 }

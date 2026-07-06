@@ -1,4 +1,3 @@
-import { useCallback, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Kpi } from '@/components/ui/Kpi';
 import { KpiSkeleton, TableSkeleton } from '@/components/ui/Skeleton';
@@ -10,9 +9,8 @@ import { IncidentSla } from '@/components/ui/IncidentSla';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
+import { useObjectInspection } from '@/hooks/useObjectInspection';
 import { OnboardingPanel } from '@/components/OnboardingPanel';
-import { ObjectPeek } from '@/components/ObjectPeek';
-import { ObjectChecksPopover } from '@/components/ObjectChecksPopover';
 import { StatusHeatmap } from '@/components/StatusHeatmap';
 import { DqHealthTrend } from '@/components/DqHealthTrend';
 import { AttentionPanel } from '@/components/AttentionPanel';
@@ -164,21 +162,11 @@ export default function Cockpit() {
   const coverage = coverageQuery.data;
   const navigate = useNavigate();
   const [gridMode, setGridMode] = useSearchParamState('grid');
-  // Two-level inspection (wie auf der Objekte-Seite): Checks-Zelle öffnet das
-  // kompakte Popover, der Zeilenklick das rechte Betriebs-Panel (ObjectPeek).
-  const [peekId, setPeekId] = useState<string | null>(null);
-  const [checksPopover, setChecksPopover] = useState<{
-    objectId: string;
-    anchor: { x: number; y: number };
-  } | null>(null);
-
-  const openChecksPopover = useCallback((object: ObjectSummary, event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    setChecksPopover({
-      objectId: object.id,
-      anchor: { x: event.clientX, y: event.clientY },
-    });
-  }, []);
+  // Two-level inspection (wie auf der Objekte-Seite): Checks-Zelle/Hotspots öffnen
+  // das kompakte Popover, der Zeilenklick das rechte Betriebs-Panel. Eine Instanz
+  // für die ganze Seite — Grid, Hotspots und Heatmap teilen sie sich, damit nie
+  // zwei Panels übereinander liegen.
+  const { openChecks, openPeek, overlays } = useObjectInspection();
 
   const totalObjects = objects.length;
   const unvalidated = coverage?.unvalidated_30d ?? [];
@@ -247,7 +235,7 @@ export default function Cockpit() {
         <button
           type="button"
           aria-label={t.peek.openChecksFor.replace('{name}', o.name)}
-          onClick={event => openChecksPopover(o, event)}
+          onClick={event => openChecks(o.id, event)}
           onKeyDown={event => event.stopPropagation()}
           style={{
             background: 'var(--bg-2)',
@@ -323,7 +311,7 @@ export default function Cockpit() {
       {/* Hero: DQ-health trend (left) + hotspots (right). */}
       <div className="dash-hero">
         <DqHealthTrend />
-        <AttentionPanel objects={objects} />
+        <AttentionPanel objects={objects} onInspect={openChecks} />
       </div>
 
       {/* KPI strip — the at-a-glance numbers. */}
@@ -408,7 +396,7 @@ export default function Cockpit() {
               columns={gridColumns}
               rows={gridRows}
               rowKey={o => o.id}
-              onRowClick={o => { setChecksPopover(null); setPeekId(o.id); }}
+              onRowClick={o => openPeek(o.id)}
               rowStyle={o => worstRank(o) === 0
                 ? { background: 'color-mix(in srgb, var(--status-crit) 4%, transparent)' }
                 : undefined}
@@ -431,7 +419,7 @@ export default function Cockpit() {
         )}
       </div>
 
-      <StatusHeatmap />
+      <StatusHeatmap onInspect={openChecks} />
 
       {/* Operational pair: open incidents + SLA compliance. */}
       <div className="dash-2col">
@@ -523,18 +511,7 @@ export default function Cockpit() {
         </Panel>
       </div>
 
-      {checksPopover && (
-        <ObjectChecksPopover
-          objectId={checksPopover.objectId}
-          anchor={checksPopover.anchor}
-          onClose={() => setChecksPopover(null)}
-          onOpenOperations={() => {
-            setPeekId(checksPopover.objectId);
-            setChecksPopover(null);
-          }}
-        />
-      )}
-      {peekId && <ObjectPeek objectId={peekId} onClose={() => setPeekId(null)} />}
+      {overlays}
     </div>
   );
 }
