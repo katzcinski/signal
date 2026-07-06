@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/Button';
-import { FamilyTag } from '@/components/ui/FamilyTag';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { t } from '@/i18n/de';
 import type { CheckResult, ContractOut, ObjectSummary, RunListItem } from '@/types';
@@ -124,7 +123,6 @@ export function ObjectHero({
             }}>
               {object.name}
             </h1>
-            <FamilyTag family={object.family} />
             <StatusPill status={object.status ?? 'unknown'} size="sm" />
           </div>
           <div className="object-detail-meta" style={{ marginTop: 10 }}>
@@ -145,10 +143,6 @@ export function ObjectHero({
             <div>
               <div style={{ color: 'var(--fg-3)', marginBottom: 4 }}>{t.objectDetail.hero.healthLabel}</div>
               <StatusPill status={object.status ?? 'unknown'} size="sm" />
-            </div>
-            <div>
-              <div style={{ color: 'var(--fg-3)', marginBottom: 4 }}>{t.objectDetail.hero.familyLabel}</div>
-              <FamilyTag family={object.family} />
             </div>
           </div>
         </div>

@@ -9,7 +9,6 @@ import { Table, type ColDef } from '@/components/ui/Table';
 import { OnboardingPanel } from '@/components/OnboardingPanel';
 import { StatusHeatmap } from '@/components/StatusHeatmap';
 import { DqHealthTrend } from '@/components/DqHealthTrend';
-import { FamilyHealthCards } from '@/components/FamilyHealthCards';
 import { AttentionPanel } from '@/components/AttentionPanel';
 import { useObjects } from '@/api/objects';
 import { useIncidents } from '@/api/incidents';
@@ -179,13 +178,10 @@ export default function Cockpit() {
       {objectsQuery.isError && <ErrorBanner onRetry={() => objectsQuery.refetch()} />}
       {incidentsQuery.isError && <ErrorBanner onRetry={() => incidentsQuery.refetch()} />}
 
-      {/* Hero: DQ-health trend (left) + per-family rollup & hotspots (right). */}
+      {/* Hero: DQ-health trend (left) + hotspots (right). */}
       <div className="dash-hero">
         <DqHealthTrend />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
-          <FamilyHealthCards objects={objects} />
-          <AttentionPanel objects={objects} />
-        </div>
+        <AttentionPanel objects={objects} />
       </div>
 
       {/* KPI strip — the at-a-glance numbers. */}

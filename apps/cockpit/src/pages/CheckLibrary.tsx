@@ -1,7 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { useLibrary } from '@/api/library';
 import { t } from '@/i18n/de';
-import { FamilyTag } from '@/components/ui/FamilyTag';
 import { FilterChip } from '@/components/ui/FilterChip';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -59,7 +58,6 @@ function CheckCard({ check }: { check: CheckDef }) {
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--s1)', flexShrink: 0 }}>
-          <FamilyTag family={check.family} />
           <span style={{
             fontSize: 10, padding: '2px 6px', borderRadius: 'var(--r)',
             background: 'var(--bg-2)', color: 'var(--fg-3)', border: '1px solid var(--line-2)',

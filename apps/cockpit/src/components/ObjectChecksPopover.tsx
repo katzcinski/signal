@@ -5,7 +5,6 @@ import { useRun } from '@/api/runs';
 import { Button } from '@/components/ui/Button';
 import { CheckStatusCell } from '@/components/ui/StatePill';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { FamilyTag } from '@/components/ui/FamilyTag';
 import { SparkCell } from '@/components/ui/SparkCell';
 import { t } from '@/i18n/de';
 import type { CheckResult } from '@/types';
@@ -110,7 +109,7 @@ export function ObjectChecksPopover({ objectId, anchor, onClose, onOpenOperation
   const latest = runs[0];
   const { data: runDetail } = useRun(latest?.run_id ?? '');
   const trigger = useTriggerRun(objectId);
-  const results = runDetail?.results ?? [];
+  const results = useMemo(() => runDetail?.results ?? [], [runDetail]);
   const isRunning = latest?.run_state === 'running' || runDetail?.run_state === 'running';
 
   const visibleChecks = useMemo(() => orderedChecks(results).slice(0, VISIBLE_CHECKS), [results]);
@@ -196,7 +195,6 @@ export function ObjectChecksPopover({ objectId, anchor, onClose, onOpenOperation
             }}>
               {obj?.name ?? objectId}
             </span>
-            {obj ? <FamilyTag family={obj.family} /> : null}
             {obj ? <StatusPill status={obj.status ?? 'unknown'} size="sm" /> : null}
           </div>
           {obj ? (
