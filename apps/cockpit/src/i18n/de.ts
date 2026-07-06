@@ -1050,6 +1050,8 @@ export const t = {
     cellBreached: 'Verletzt',
     cellStale: 'Unvalidiert',
     exportCsv: 'Export CSV',
+    distributionTitle: 'Lifecycle-Verteilung des Bestands',
+    rulesDisclosure: 'Governance-Regeln & Lifecycle-Politik',
     noMatches: 'Keine Treffer für den Filter',
     noActiveContractsPre: 'Noch keine aktiven Contracts — Compliance-Daten erscheinen nach der ersten Contract-Aktivierung. Internal Gates laufen unabhängig unter ',
     noActiveContractsArea: 'Health',

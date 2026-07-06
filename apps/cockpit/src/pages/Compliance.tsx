@@ -12,6 +12,8 @@ import { FilterChip } from '@/components/ui/FilterChip';
 import { Kpi } from '@/components/ui/Kpi';
 import { KpiSkeleton, TableSkeleton } from '@/components/ui/Skeleton';
 import { LifecycleTag } from '@/components/ui/LifecycleTag';
+import { StatusPill } from '@/components/ui/StatusPill';
+import { DistributionBar, type DistributionSegment } from '@/components/ui/DistributionBar';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { t } from '@/i18n/de';
 import type { Contract, Lifecycle, ObjectSummary } from '@/types';
@@ -28,21 +30,8 @@ type FilterMode = 'all' | 'uncovered' | 'breached' | 'stale';
 // leiser „leerer Platz"-Chip (gestrichelt, neutral) für ungebundene Objekte —
 // Abwesenheit ist kein Breach; den Alarm tragen KPI und Filter, nicht 15 rote
 // Chips in der Tabelle. Ein echter Breach bzw. eine überfällige Validierung ist
-// hingegen ein Alarm und trägt einen sichtbaren Marker.
-function StateChip({ tone, children }: { tone: 'fail' | 'warn'; children: string }) {
-  const color = tone === 'fail' ? 'var(--status-fail)' : 'var(--status-warn)';
-  return (
-    <span style={{
-      border: `1px solid ${color}`,
-      background: `color-mix(in srgb, ${color} 12%, transparent)`,
-      borderRadius: 'var(--r)', color, display: 'inline-flex',
-      fontSize: 10, padding: '1px 6px', whiteSpace: 'nowrap',
-    }}>
-      {children}
-    </span>
-  );
-}
-
+// hingegen ein Alarm und trägt den kanonischen Status-Pill (Farbtoken statt
+// handkopierter Inline-Chips).
 function ContractCell({ contract, breached, stale }: { contract?: Contract; breached: boolean; stale: boolean }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)' }}>
@@ -64,8 +53,8 @@ function ContractCell({ contract, breached, stale }: { contract?: Contract; brea
           {t.governance.noContract}
         </span>
       )}
-      {breached && <StateChip tone="fail">{t.governance.cellBreached}</StateChip>}
-      {stale && <StateChip tone="warn">{t.governance.cellStale}</StateChip>}
+      {breached && <StatusPill status="breached" size="sm" label={t.governance.cellBreached} />}
+      {stale && <StatusPill status="stale" size="sm" label={t.governance.cellStale} />}
     </span>
   );
 }
@@ -107,6 +96,22 @@ export default function Governance() {
   const coverage = coverageQuery.data;
   const breached = coverage?.contracts_breached ?? 0;
   const staleIds = useMemo(() => new Set(coverage?.unvalidated_30d ?? []), [coverage]);
+  // Lifecycle-Verteilung je Objekt (aktiv/Entwurf/veraltet/ungebunden) — zeigt
+  // Momentum, das die reine Coverage-Prozentzahl verschluckt.
+  const lifecycleSegments: DistributionSegment[] = useMemo(() => {
+    const dist = { active: 0, draft: 0, deprecated: 0, none: 0 };
+    for (const o of objects) {
+      const c = contractByProduct.get(o.id);
+      if (!c) dist.none += 1;
+      else dist[c.lifecycle] += 1;
+    }
+    return [
+      { key: 'active', label: t.lifecycle.active, count: dist.active, color: 'var(--status-ok)' },
+      { key: 'draft', label: t.lifecycle.draft, count: dist.draft, color: 'var(--fg-3)' },
+      { key: 'deprecated', label: t.lifecycle.deprecated, count: dist.deprecated, color: 'var(--status-stale)' },
+      { key: 'none', label: t.governance.noContract, count: dist.none, color: 'var(--line-2)' },
+    ];
+  }, [objects, contractByProduct]);
   const loading = isLoading || contractsQuery.isLoading;
   const error = isError || contractsQuery.isError;
   const filtered = !!search || mode !== 'all';
@@ -268,6 +273,14 @@ export default function Governance() {
         </div>
       )}
 
+      {!loading && objects.length > 0 && (
+        <div style={{ marginBottom: 'var(--s4)' }}>
+          <Panel title={t.governance.distributionTitle} family="contract">
+            <DistributionBar segments={lifecycleSegments} />
+          </Panel>
+        </div>
+      )}
+
       {!loading && activeContracts.length === 0 && (
         <div style={{
           background: 'color-mix(in srgb, var(--cont) 8%, transparent)',
@@ -297,22 +310,31 @@ export default function Governance() {
         )}
       </Panel>
 
-      {/* Referenz statt Hero: die Policy erklärt die Chips oben, führt aber nicht mehr die Seite an. */}
-      <div className="dash-2col" style={{ marginTop: 'var(--s4)' }}>
-        <Panel title={t.governance.g1Title} family="contract">
-          <ul style={{ paddingLeft: 16, margin: 0 }}>
-            {t.governance.g1Policy.map((p, i) => (
-              <li key={i} style={{ fontSize: 12, color: 'var(--fg-2)', marginBottom: 6, lineHeight: 1.6 }}>{p}</li>
-            ))}
-          </ul>
-        </Panel>
-        <Panel title={t.governance.lifecycleTitle} family="contract">
-          <p style={{ fontSize: 12, color: 'var(--fg-2)', marginBottom: 12 }}>
-            {t.governance.lifecycleDesc1}<strong>{t.governance.lifecycleDescActive}</strong>{t.governance.lifecycleDesc2}
-          </p>
-          <LifecycleStepper current="active" />
-        </Panel>
-      </div>
+      {/* Referenz als Disclosure: die Policy bleibt eine Klick entfernt, führt
+          aber nicht mehr die Seite an — die handlungsrelevante Tabelle gewinnt Raum. */}
+      <details style={{ marginTop: 'var(--s4)' }}>
+        <summary style={{
+          cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--fg-2)',
+          padding: 'var(--s2) 0', listStyle: 'revert',
+        }}>
+          {t.governance.rulesDisclosure}
+        </summary>
+        <div className="dash-2col" style={{ marginTop: 'var(--s3)' }}>
+          <Panel title={t.governance.g1Title} family="contract">
+            <ul style={{ paddingLeft: 16, margin: 0 }}>
+              {t.governance.g1Policy.map((p, i) => (
+                <li key={i} style={{ fontSize: 12, color: 'var(--fg-2)', marginBottom: 6, lineHeight: 1.6 }}>{p}</li>
+              ))}
+            </ul>
+          </Panel>
+          <Panel title={t.governance.lifecycleTitle} family="contract">
+            <p style={{ fontSize: 12, color: 'var(--fg-2)', marginBottom: 12 }}>
+              {t.governance.lifecycleDesc1}<strong>{t.governance.lifecycleDescActive}</strong>{t.governance.lifecycleDesc2}
+            </p>
+            <LifecycleStepper current="active" />
+          </Panel>
+        </div>
+      </details>
 
       {overlays}
     </div>

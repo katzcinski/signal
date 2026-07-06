@@ -143,6 +143,14 @@ describe('Governance', () => {
     expect(objectColumnTexts()).toEqual(['OBJ_BARE']);
   });
 
+  it('renders the estate lifecycle distribution', () => {
+    renderPage();
+    // P1 aktiv gebunden, P2 ungebunden → 1 aktiv, 1 ohne Contract.
+    expect(
+      screen.getByRole('img', { name: /Aktiv: 1.*Entwurf: 0.*Veraltet: 0.*Ohne Contract: 1/ }),
+    ).toBeInTheDocument();
+  });
+
   it('drills into breached objects from the KPI', () => {
     state.contracts = [
       { product: 'P1', kind: 'consumer_contract', lifecycle: 'active', version: '1.2.0', compliance: 'breached' },

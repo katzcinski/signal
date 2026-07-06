@@ -16,9 +16,12 @@ const STATUS_COLOR: Record<string, string> = {
 interface Props {
   status: OverallStatus | string;
   size?: 'sm' | 'md';
+  /** Overrides the default `t.status[status]` label — for statuses whose copy
+   *  lives outside the status dictionary (e.g. compliance breach, freshness). */
+  label?: string;
 }
 
-export function StatusPill({ status, size = 'md' }: Props) {
+export function StatusPill({ status, size = 'md', label }: Props) {
   const color = STATUS_COLOR[status] ?? STATUS_COLOR.unknown;
   const pad = size === 'sm' ? '1px 6px' : '2px 8px';
   const fs  = size === 'sm' ? '10px' : '11px';
@@ -30,7 +33,7 @@ export function StatusPill({ status, size = 'md' }: Props) {
       fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap',
     }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-      {(t.status as Record<string, string>)[status] ?? status}
+      {label ?? (t.status as Record<string, string>)[status] ?? status}
     </span>
   );
 }
