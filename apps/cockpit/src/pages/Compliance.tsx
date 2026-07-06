@@ -4,6 +4,7 @@ import { useObjects } from '@/api/objects';
 import { useContracts } from '@/api/contracts';
 import { useCoverageSummary } from '@/api/coverage';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
+import { useObjectInspection } from '@/hooks/useObjectInspection';
 import { Panel } from '@/components/ui/Panel';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -51,6 +52,9 @@ export default function Governance() {
   const { data: objects = [], isLoading, isError, refetch } = useObjects();
   const contractsQuery = useContracts();
   const coverageQuery = useCoverageSummary();
+  // Zwei-Ebenen-Inspektion (wie Cockpit/Objekte): der Objekt-Name öffnet das
+  // Quick-Checks-Popover, der Zeilenklick bleibt der Sprung ins Objektdetail.
+  const { openChecks, overlays } = useObjectInspection();
   const [search, setSearch] = useState('');
   const [onlyUncovered, setOnlyUncovered] = useState(false);
 
@@ -86,7 +90,19 @@ export default function Governance() {
       mono: true,
       sortable: true,
       sortValue: o => o.name,
-      render: o => o.name,
+      // Der Name öffnet das Quick-Checks-Popover ("ist dieses Objekt unter
+      // Contract — und gerade gesund?"); der Rest der Zeile führt ins Detail.
+      render: o => (
+        <button
+          type="button"
+          aria-label={t.peek.openChecksFor.replace('{name}', o.name)}
+          onClick={event => openChecks(o.id, event)}
+          onKeyDown={event => event.stopPropagation()}
+          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--fg)', cursor: 'pointer', font: 'inherit' }}
+        >
+          {o.name}
+        </button>
+      ),
     },
     {
       key: 'space',
@@ -201,6 +217,8 @@ export default function Governance() {
           <LifecycleStepper current="active" />
         </Panel>
       </div>
+
+      {overlays}
     </div>
   );
 }
