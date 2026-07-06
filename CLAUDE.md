@@ -118,11 +118,17 @@ make dev-backend      # FastAPI on 127.0.0.1:8000 (docs at /api/docs)
 make dev-frontend     # Vite on localhost:5173
 SQLITE_DB=signal.db make seed   # seed demo data into the result store
 
-# Tests
+# Tests (full suites)
 make test             # python -m pytest tests/ -v --tb=short
 cd apps/cockpit && npm run test -- --run   # vitest
 cd apps/cockpit && npm run typecheck       # tsc --noEmit
 cd apps/cockpit && npm run lint            # eslint, 0 warnings
+
+# Single test (fast iteration)
+python -m pytest tests/unit/test_compiler.py::test_bind_schema_resolves_placeholder -v  # one pytest case
+python -m pytest tests/unit -k freshness                                # by keyword
+cd apps/cockpit && npx vitest run src/tests/Governance.test.tsx         # one vitest file
+cd apps/cockpit && npx vitest run -t "drills into breached"            # by test name
 ```
 
 Run the engine standalone (no API), e.g. against the mock:
