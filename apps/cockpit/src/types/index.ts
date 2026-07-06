@@ -971,6 +971,37 @@ export interface Proposal {
   stats?: ProposalStats;
 }
 
+// ---- Observed reality per guarantee (P6: GET /contracts/{id}/observed) ----
+export interface ObservedPoint {
+  at: string;
+  value: number | null;
+  raw: string | null;
+  passed: boolean | null;
+  state: string;
+  run_id: string;
+}
+export interface ObservedCheck {
+  name: string;
+  type: string;
+  family: string | null;
+  severity: string;
+  expect: string;
+  last_value: string | null;
+  passed: boolean | null;
+  state: string;
+  points: ObservedPoint[];
+}
+export interface ObservedGuarantee {
+  family: string;
+  state: 'pass' | 'fail' | 'unknown';
+  checks: ObservedCheck[];
+}
+export interface ObservedReality {
+  product: string;
+  dataset: string;
+  guarantees: ObservedGuarantee[];
+}
+
 // ---- Run progress events (streamed via SSE, polled as fallback) ----
 export interface RunEvent {
   ts: string;

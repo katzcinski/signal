@@ -1,22 +1,42 @@
-import type { CSSProperties } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLibrary } from '@/api/library';
 import { t } from '@/i18n/de';
 import { FamilyTag } from '@/components/ui/FamilyTag';
+import { FilterChip } from '@/components/ui/FilterChip';
+import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import type { CheckDef, CheckFamily } from '@/types';
 
-const chipBtn = (active: boolean): CSSProperties => ({
-  padding: '4px 10px', borderRadius: 'var(--r-full)',
-  border: active ? '1px solid var(--cont)' : '1px solid var(--line-2)',
-  background: active ? 'var(--cont)' : 'var(--bg-2)',
-  color: active ? '#fff' : 'var(--fg-3)',
-  fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
-});
-
 function isCheckFamily(value: string): value is CheckFamily {
   return value === 'observability' || value === 'quality';
+}
+
+// R6-3: layout-treue Karten-Skeletons statt „Lädt…"-Text — dieselbe Rasterzelle
+// wie die echten Check-Karten, damit Laden als „Inhalt kommt hierher" liest.
+function LibrarySkeleton() {
+  return (
+    <div
+      aria-hidden
+      style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 'var(--s3)' }}
+    >
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} style={{
+          background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)',
+          padding: 14, display: 'flex', flexDirection: 'column', gap: 'var(--s2)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s2)' }}>
+            <Skeleton width={150} height={13} />
+            <Skeleton width={64} height={16} radius={6} />
+          </div>
+          <Skeleton width="80%" height={11} />
+          <Skeleton width={110} height={10} />
+          <Skeleton width="100%" height={48} radius={6} style={{ marginTop: 4 }} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function CheckCard({ check }: { check: CheckDef }) {
@@ -141,24 +161,17 @@ export default function CheckLibrary() {
             {t.library.categoryLabel}
           </legend>
           <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button
-              type="button"
-              style={chipBtn(category === '')}
-              aria-pressed={category === ''}
-              onClick={() => setCategory('')}
-            >
+            <FilterChip active={category === ''} onClick={() => setCategory('')}>
               {t.library.allCategories}
-            </button>
+            </FilterChip>
             {(library?.categories ?? []).map(cat => (
-              <button
+              <FilterChip
                 key={cat}
-                type="button"
-                style={chipBtn(category === cat)}
-                aria-pressed={category === cat}
+                active={category === cat}
                 onClick={() => setCategory(category === cat ? '' : cat)}
               >
                 {cat}
-              </button>
+              </FilterChip>
             ))}
           </div>
         </fieldset>
@@ -168,24 +181,17 @@ export default function CheckLibrary() {
             {t.library.familyLabel}
           </legend>
           <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button
-              type="button"
-              style={chipBtn(activeFamily === '')}
-              aria-pressed={activeFamily === ''}
-              onClick={() => setFamily('')}
-            >
+            <FilterChip active={activeFamily === ''} onClick={() => setFamily('')}>
               {t.library.allFamilies}
-            </button>
+            </FilterChip>
             {(library?.families ?? []).map(fam => (
-              <button
+              <FilterChip
                 key={fam}
-                type="button"
-                style={chipBtn(activeFamily === fam)}
-                aria-pressed={activeFamily === fam}
+                active={activeFamily === fam}
                 onClick={() => setFamily(activeFamily === fam ? '' : fam)}
               >
                 {t.library.family[fam]}
-              </button>
+              </FilterChip>
             ))}
           </div>
         </fieldset>
@@ -195,8 +201,9 @@ export default function CheckLibrary() {
             {resultLabel}
           </div>
           {hasFilters && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setSearchParams(prev => {
                   const params = new URLSearchParams(prev);
@@ -206,29 +213,27 @@ export default function CheckLibrary() {
                   return params;
                 }, { replace: true });
               }}
-              style={{
-                ...chipBtn(false),
-                color: 'var(--fg-2)',
-              }}
             >
               {t.library.clearFilters}
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
-      {isLoading && <div style={{ color: 'var(--fg-3)' }}>{t.common.loading}</div>}
+      {isLoading && <LibrarySkeleton />}
 
       {!isLoading && checks.length === 0 && (
         <div style={{ color: 'var(--fg-3)', fontSize: 14 }}>{t.library.noResults}</div>
       )}
 
-      <div
-        aria-live="polite"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 'var(--s3)' }}
-      >
-        {checks.map(c => <CheckCard key={c.id} check={c} />)}
-      </div>
+      {!isLoading && (
+        <div
+          aria-live="polite"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 'var(--s3)' }}
+        >
+          {checks.map(c => <CheckCard key={c.id} check={c} />)}
+        </div>
+      )}
     </section>
   );
 }

@@ -59,6 +59,11 @@ vi.mock('@/api/contracts', () => ({
     },
   }),
   useSchemaDrift: () => ({ data: undefined, isLoading: false, isError: false }),
+  useObservedReality: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+
+vi.mock('@/api/proposals', () => ({
+  useProposals: () => ({ data: [], isLoading: false, isError: false }),
 }));
 
 vi.mock('@/api/operations', () => ({
@@ -288,12 +293,15 @@ describe('ContractWorkbench check builder', () => {
 
   it('renders the library check builder in the internal frame', () => {
     renderWorkbench();
+    // Redesign (P6): der Check-Builder liegt unter dem Definition-Untertab.
+    fireEvent.click(screen.getByRole('button', { name: t.workbench.subtabs.builder }));
     expect(screen.getByText(t.workbench.checks.title)).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.workbench.checks.add })).toBeInTheDocument();
   });
 
   it('excludes guarantee-covered, custom_sql and expr-param checks from the picker', () => {
     renderWorkbench();
+    fireEvent.click(screen.getByRole('button', { name: t.workbench.subtabs.builder }));
     const add = screen.getByRole('combobox', { name: t.workbench.checks.add }) as HTMLSelectElement;
     const values = Array.from(add.options).map(o => o.value);
     expect(values).toContain('value_range');
@@ -305,6 +313,7 @@ describe('ContractWorkbench check builder', () => {
 
   it('adds a selected check into the draft as an editable, prefilled row', () => {
     renderWorkbench();
+    fireEvent.click(screen.getByRole('button', { name: t.workbench.subtabs.builder }));
     expect(screen.queryByLabelText(t.workbench.checks.expect)).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByRole('combobox', { name: t.workbench.checks.add }), {

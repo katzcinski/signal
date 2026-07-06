@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useProducts } from '@/api/products';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { LifecycleTag } from '@/components/ui/LifecycleTag';
 import { OwnershipTag } from '@/components/ui/OwnershipTag';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusPill } from '@/components/ui/StatusPill';
@@ -17,28 +18,6 @@ function OwnerList({ owners }: { owners: string[] }) {
         <span key={owner} style={{ color: 'var(--fg-2)', fontSize: 12 }}>{owner}</span>
       ))}
     </div>
-  );
-}
-
-function LifecycleTag({ lifecycle }: { lifecycle: string }) {
-  const color = lifecycle === 'active'
-    ? 'var(--status-ok)'
-    : lifecycle === 'deprecated'
-      ? 'var(--status-stale)'
-      : 'var(--fg-3)';
-  return (
-    <span style={{
-      background: `${color}1A`,
-      border: `1px solid ${color}55`,
-      borderRadius: 'var(--r)',
-      color,
-      display: 'inline-flex',
-      fontSize: 10,
-      padding: '1px 6px',
-      whiteSpace: 'nowrap',
-    }}>
-      {t.lifecycle[lifecycle] ?? lifecycle}
-    </span>
   );
 }
 
