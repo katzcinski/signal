@@ -66,11 +66,18 @@ export function DqHealthTrend() {
             {t.cockpit.trendTitle}
           </span>
           {current != null && (
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--s2)' }}>
-              <span style={{ fontSize: 26, fontWeight: 700, color: 'var(--fg)', lineHeight: 1 }}>{current}%</span>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--s3)' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 700, color: 'var(--fg)', lineHeight: 1 }}>{current} %</span>
               {delta != null && (
-                <span style={{ fontSize: 12, color: trendColor, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                  <span aria-hidden>{trendGlyph}</span>{delta > 0 ? '+' : ''}{delta}
+                // Delta als Chip statt loser Text — liest sich als Zustand, nicht als Rauschen.
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, color: trendColor,
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '2px 8px', borderRadius: 'var(--r-md)',
+                  background: `color-mix(in srgb, ${trendColor} 12%, transparent)`,
+                  border: `1px solid color-mix(in srgb, ${trendColor} 45%, transparent)`,
+                }}>
+                  <span aria-hidden>{trendGlyph}</span>{delta > 0 ? '+' : ''}{String(delta).replace('.', ',')}
                 </span>
               )}
             </span>
@@ -150,9 +157,20 @@ export function DqHealthTrend() {
           </div>
         )}
       </div>
-      <p style={{ color: 'var(--fg-3)', fontSize: 11, padding: '0 var(--s4) var(--s3)' }}>
-        {t.cockpit.trendPassRate} · {t.cockpit.trendHint}
-      </p>
+      {/* Legende statt Fließtext: Linien-Swatches erklären Kurve und Zielband. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 'var(--s5)', flexWrap: 'wrap',
+        color: 'var(--fg-3)', fontSize: 11, padding: '0 var(--s4) var(--s3)',
+      }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span aria-hidden style={{ width: 12, height: 2, background: accent, display: 'inline-block' }} />
+          {t.cockpit.trendHint}
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span aria-hidden style={{ width: 12, borderTop: '2px dashed color-mix(in srgb, var(--status-ok) 60%, transparent)', display: 'inline-block' }} />
+          {t.cockpit.trendTarget} ≥ {TARGET} %
+        </span>
+      </div>
     </div>
   );
 }

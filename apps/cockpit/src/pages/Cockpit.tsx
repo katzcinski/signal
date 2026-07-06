@@ -1,11 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { Kpi } from '@/components/ui/Kpi';
-import { KpiSkeleton } from '@/components/ui/Skeleton';
+import { KpiSkeleton, TableSkeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Panel } from '@/components/ui/Panel';
 import { StatusDot } from '@/components/ui/StatusDot';
+import { StatusPill } from '@/components/ui/StatusPill';
+import { IncidentSla } from '@/components/ui/IncidentSla';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Table, type ColDef } from '@/components/ui/Table';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { OnboardingPanel } from '@/components/OnboardingPanel';
 import { StatusHeatmap } from '@/components/StatusHeatmap';
 import { DqHealthTrend } from '@/components/DqHealthTrend';
@@ -99,10 +102,32 @@ function SlaRow({ product }: { product: string }) {
   );
 }
 
-// Status cell: dot + text label — never color-only (U1).
+// Befund-Schweregrad je Objekt: schlechtester Familien- bzw. Gesamtstatus.
+// 9 = kein Befund ("Unbekannt") — steuert Sortierung und den Befunde-Filter.
+const STATUS_RANK: Record<string, number> = { critical: 0, fail: 1, error: 2, warn: 3, pass: 4 };
+const rankOf = (s?: string) => (s && s in STATUS_RANK ? STATUS_RANK[s] : 9);
+const worstRank = (o: ObjectSummary) => Math.min(
+  rankOf(o.family_status?.observability),
+  rankOf(o.family_status?.quality),
+  rankOf(o.status),
+);
+
+const FAMILY_TEXT_COLOR: Record<string, string> = {
+  critical: 'var(--status-crit)',
+  fail: 'var(--status-fail)',
+  error: 'var(--status-stale)',
+  warn: 'var(--status-warn)',
+  pass: 'var(--status-ok)',
+};
+
+// Status cell: dot + text label — never color-only (U1). Befunde färben auch
+// den Text, "Unbekannt" bleibt gedimmt, damit das Grid nicht rauscht.
 function FamilyStatusCell({ status }: { status: string }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12,
+      color: FAMILY_TEXT_COLOR[status] ?? 'var(--fg-3)',
+    }}>
       <StatusDot status={status} />
       <span>{t.status[status] ?? status}</span>
     </span>
@@ -113,6 +138,14 @@ function incidentHref(incident: Incident) {
   const kind = incident.kind === 'internal_gate' ? 'internal_gate' : 'contract';
   return `/incidents?status=${incident.status}&kind=${kind}&id=${incident.id}`;
 }
+
+const segBtn = (active: boolean): React.CSSProperties => ({
+  background: active ? 'var(--bg-1)' : 'transparent',
+  border: active ? '1px solid var(--line-2)' : '1px solid transparent',
+  color: active ? 'var(--fg)' : 'var(--fg-3)',
+  borderRadius: 'var(--r)', padding: '3px 10px', fontSize: 11,
+  cursor: 'pointer', fontWeight: active ? 600 : 400, whiteSpace: 'nowrap',
+});
 
 export default function Cockpit() {
   const objectsQuery = useObjects();
@@ -127,22 +160,44 @@ export default function Cockpit() {
   );
   const coverage = coverageQuery.data;
   const navigate = useNavigate();
+  const [gridMode, setGridMode] = useSearchParamState('grid');
 
   const totalObjects = objects.length;
   const unvalidated = coverage?.unvalidated_30d ?? [];
+  const spaceCount = new Set(objects.map(o => o.space)).size;
+  const layerCount = new Set(objects.map(o => o.layer)).size;
 
   const openIncidents = incidents.filter(i => i.status !== 'resolved');
   const criticalIncidents = openIncidents.filter(i => i.severity === 'critical').length;
   const topIncidents = [...openIncidents]
     .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9))
     .slice(0, 5);
+  const oldestOpen = openIncidents.reduce<string | null>(
+    (min, i) => (!min || i.opened_at < min ? i.opened_at : min), null,
+  );
+  const incidentsDelta = openIncidents.length === 0 ? undefined : [
+    criticalIncidents > 0 ? `${criticalIncidents} ${t.cockpit.critical}` : null,
+    oldestOpen ? t.cockpit.kpiOldestSince.replace('{time}', relativeTime(oldestOpen)) : null,
+  ].filter(Boolean).join(' · ');
+
+  // Status-Grid: Befunde zuerst (nach Schweregrad), das befundlose Rauschen
+  // kollabiert in eine Summenzeile. Der Filter lebt in der URL (?grid=all).
+  const sortedObjects = [...objects].sort(
+    (a, b) => worstRank(a) - worstRank(b) || a.name.localeCompare(b.name),
+  );
+  const findingRows = sortedObjects.filter(o => worstRank(o) < 9);
+  const showAll = gridMode === 'all' || findingRows.length === 0;
+  const gridRows = showAll ? sortedObjects : findingRows;
+  const hiddenCount = sortedObjects.length - findingRows.length;
+  const activeByProduct = new Map(activeContracts.map(c => [c.product, c]));
 
   // U4: empty tenant → guided onboarding instead of the grid.
   if (objectsQuery.isSuccess && !objectsQuery.isError && objects.length === 0) {
     return <OnboardingPanel />;
   }
 
-  // Objekt × Familie matrix — both family statuses per row (WS1-3 StatusGrid).
+  // Objekt × Familie matrix — both family statuses per row (WS1-3 StatusGrid),
+  // ergänzt um Contract-Bindung und letzten Lauf.
   const gridColumns: ColDef<ObjectSummary>[] = [
     { key: 'name', header: t.cockpit.colObject, mono: true, render: o => o.name },
     { key: 'space', header: t.cockpit.colSpace, render: o => <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{o.space}</span> },
@@ -155,6 +210,26 @@ export default function Cockpit() {
       key: 'qual', header: t.cockpit.colQuality,
       render: o => <FamilyStatusCell status={o.family_status?.quality ?? 'unknown'} />,
     },
+    {
+      key: 'contract', header: t.cockpit.colContract,
+      render: o => {
+        const c = activeByProduct.get(o.id);
+        return c ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--status-ok)' }}>
+            <StatusDot status="pass" />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>v{c.version}</span>
+          </span>
+        ) : <span style={{ color: 'var(--fg-3)' }}>—</span>;
+      },
+    },
+    {
+      key: 'last_run', header: t.objects.colLastRun,
+      render: o => (
+        <span title={o.last_run ? absoluteTime(o.last_run) : undefined} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+          {o.last_run ? relativeTime(o.last_run) : '—'}
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -164,14 +239,27 @@ export default function Cockpit() {
         subtitle={t.cockpit.subtitle}
         style={{ marginBottom: 0 }}
         actions={(
-          <span style={{
-            fontSize: 11, color: 'var(--fg-2)', padding: 'var(--s1) var(--s3)', borderRadius: 'var(--r-full)',
-            border: '1px solid var(--line-2)', background: 'var(--bg-1)',
-            display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)', whiteSpace: 'nowrap',
-          }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--qual)' }} />
-            {t.cockpit.dqFirst}
-          </span>
+          <div style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'center', flexWrap: 'wrap' }}>
+            {objectsQuery.dataUpdatedAt > 0 && (
+              <span style={{
+                fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em',
+                color: 'var(--fg-2)', padding: 'var(--s1) var(--s3)', borderRadius: 'var(--r-full)',
+                border: '1px solid var(--line-2)', background: 'var(--bg-1)',
+                display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)', whiteSpace: 'nowrap',
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--signal)', boxShadow: '0 0 0 3px var(--signal-dim)' }} />
+                {t.cockpit.liveUpdated.replace('{time}', new Date(objectsQuery.dataUpdatedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }))}
+              </span>
+            )}
+            <span style={{
+              fontSize: 11, color: 'var(--fg-2)', padding: 'var(--s1) var(--s3)', borderRadius: 'var(--r-full)',
+              border: '1px solid var(--line-2)', background: 'var(--bg-1)',
+              display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)', whiteSpace: 'nowrap',
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--qual)' }} />
+              {t.cockpit.dqFirst}
+            </span>
+          </div>
         )}
       />
 
@@ -187,45 +275,106 @@ export default function Cockpit() {
       {/* KPI strip — the at-a-glance numbers. */}
       {objectsQuery.isLoading ? <KpiSkeleton count={5} /> : (
       <div className="dash-kpis">
-        <Kpi label={t.cockpit.kpiObjects} value={totalObjects} accent="var(--cont)" />
+        <Kpi
+          label={t.cockpit.kpiObjects}
+          value={totalObjects}
+          delta={totalObjects > 0
+            ? t.cockpit.kpiContext.replace('{spaces}', String(spaceCount)).replace('{layers}', String(layerCount))
+            : undefined}
+          accent="var(--cont)"
+          onClick={() => navigate('/objects')}
+        />
         <Kpi
           label={t.cockpit.kpiCoverage}
-          value={`${coverage?.contract_coverage_pct ?? 0}%`}
+          value={`${String(coverage?.contract_coverage_pct ?? 0).replace('.', ',')} %`}
           delta={coverage ? `${coverage.with_active_contract}/${coverage.objects_total} ${t.cockpit.coverageOf}` : undefined}
           accent="var(--qual)"
+          onClick={() => navigate('/compliance')}
         />
         <Kpi
           label={t.cockpit.kpiOpenIncidents}
           value={openIncidents.length}
-          delta={criticalIncidents > 0 ? `${criticalIncidents} ${t.cockpit.critical}` : undefined}
-          deltaPositive={false}
+          delta={incidentsDelta}
+          deltaPositive={criticalIncidents > 0 ? false : undefined}
           accent={openIncidents.length > 0 ? 'var(--status-fail)' : 'var(--qual)'}
+          onClick={() => navigate('/incidents?status=open')}
         />
         <Kpi
           label={t.cockpit.kpiGateSignals}
           value={coverage?.gates_failing ?? 0}
           accent={(coverage?.gates_failing ?? 0) > 0 ? 'var(--status-warn)' : 'var(--qual)'}
+          onClick={() => navigate('/incidents?status=open&kind=internal_gate')}
         />
         <Kpi
           label={t.cockpit.kpiUnvalidated}
           value={unvalidated.length}
           accent={unvalidated.length > 0 ? 'var(--status-warn)' : 'var(--qual)'}
+          onClick={() => navigate('/objects')}
         />
       </div>
       )}
 
-      {/* Primary drill-down: object × family status grid → object detail. */}
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
-        <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--line)', fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {t.cockpit.statusGrid}
+      {/* Primary drill-down: Objekt × Familie — Befunde zuerst, Rauschen kollabiert. */}
+      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-1)' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap',
+          padding: '8px 16px', borderBottom: '1px solid var(--line)',
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {t.cockpit.statusGrid}
+          </span>
+          {findingRows.length > 0 && (
+            <div role="group" aria-label={t.cockpit.statusGrid} style={{
+              display: 'inline-flex', background: 'var(--bg-2)', border: '1px solid var(--line)',
+              borderRadius: 'var(--r-md)', padding: 2,
+            }}>
+              <button aria-pressed={!showAll} style={segBtn(!showAll)} onClick={() => setGridMode('')}>
+                {t.cockpit.gridFindings} · {findingRows.length}
+              </button>
+              <button aria-pressed={showAll} style={segBtn(showAll)} onClick={() => setGridMode('all')}>
+                {t.cockpit.gridAll} · {sortedObjects.length}
+              </button>
+            </div>
+          )}
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {t.cockpit.gridSortHint}
+          </span>
+          <button
+            onClick={() => navigate('/objects')}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--cont)', fontSize: 11, cursor: 'pointer', padding: 0 }}
+          >
+            {t.cockpit.gridToCatalog}
+          </button>
         </div>
-        <Table
-          columns={gridColumns}
-          rows={objects}
-          rowKey={o => o.id}
-          onRowClick={o => navigate(`/objects/${o.id}`)}
-          empty={t.cockpit.noObjects}
-        />
+        {objectsQuery.isLoading ? (
+          <TableSkeleton columns={7} />
+        ) : (
+          <>
+            <Table
+              columns={gridColumns}
+              rows={gridRows}
+              rowKey={o => o.id}
+              onRowClick={o => navigate(`/objects/${o.id}`)}
+              rowStyle={o => worstRank(o) === 0
+                ? { background: 'color-mix(in srgb, var(--status-crit) 4%, transparent)' }
+                : undefined}
+              empty={t.cockpit.noObjects}
+            />
+            {!showAll && hiddenCount > 0 && (
+              <button
+                onClick={() => setGridMode('all')}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '9px 16px', background: 'none', border: 'none',
+                  borderTop: '1px solid var(--line)', color: 'var(--fg-3)', fontSize: 11.5, cursor: 'pointer',
+                }}
+              >
+                {t.cockpit.gridHidden.replace('{n}', String(hiddenCount))}{' '}
+                — <span style={{ color: 'var(--cont)' }}>{t.cockpit.gridShow} ▾</span>
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       <StatusHeatmap />
@@ -248,10 +397,10 @@ export default function Cockpit() {
                 color: 'var(--fg)', cursor: 'pointer',
               }}
             >
-              <StatusDot status={i.severity} />
+              <StatusPill status={i.severity} size="sm" />
               <span style={{ fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.title}</span>
               <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', fontSize: 11 }}>{i.product}</span>
-              <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{t.incidents.statusLabel[i.status] ?? i.status}</span>
+              <IncidentSla incident={i} />
             </button>
           ))}
         </Panel>

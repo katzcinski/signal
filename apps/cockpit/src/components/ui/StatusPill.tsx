@@ -1,3 +1,4 @@
+import { t } from '@/i18n/de';
 import type { OverallStatus } from '@/types';
 
 const STATUS_COLOR: Record<string, string> = {
@@ -29,7 +30,7 @@ export function StatusPill({ status, size = 'md' }: Props) {
       fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap',
     }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-      {status}
+      {(t.status as Record<string, string>)[status] ?? status}
     </span>
   );
 }
