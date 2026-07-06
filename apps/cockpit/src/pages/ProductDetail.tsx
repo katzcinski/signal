@@ -1,6 +1,7 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useProduct } from '@/api/products';
+import { useObjectInspection } from '@/hooks/useObjectInspection';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -20,6 +21,39 @@ import type {
 const LineageMiniGraph = lazy(() =>
   import('@/components/LineageMiniGraph').then(module => ({ default: module.LineageMiniGraph })),
 );
+
+// Zwei-Ebenen-Inspektion auf den Objekt-Referenzen des Produkts (Ports +
+// Interior): der Objekt-Name öffnet das Quick-Checks-Popover ("was schlägt an
+// diesem Port gerade fehl?") statt den Produkt-Kontext direkt zu verlassen. Die
+// Vollansicht bleibt aus dem Popover heraus erreichbar — komplementär, ohne
+// neues Chrome. Sieht weiter wie der bisherige Link aus (Contract-Akzentfarbe).
+function ObjectInspectLink({
+  objectId,
+  onInspect,
+}: {
+  objectId: string;
+  onInspect: (objectId: string, event: MouseEvent<HTMLElement>) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={t.peek.openChecksFor.replace('{name}', objectId)}
+      onClick={event => onInspect(objectId, event)}
+      style={{
+        background: 'none',
+        border: 'none',
+        padding: 0,
+        color: 'var(--cont)',
+        cursor: 'pointer',
+        font: 'inherit',
+        textAlign: 'left',
+        overflowWrap: 'anywhere',
+      }}
+    >
+      {objectId}
+    </button>
+  );
+}
 
 function OwnerChips({ owners }: { owners: string[] }) {
   return (
@@ -135,6 +169,7 @@ export default function ProductDetail() {
   const { name = '' } = useParams();
   const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useProduct(name);
+  const { openChecks, overlays } = useObjectInspection();
 
   if (isLoading) {
     return (
@@ -163,11 +198,7 @@ export default function ProductDetail() {
       mono: true,
       sortable: true,
       sortValue: row => row.dataset,
-      render: row => (
-        <Link to={`/objects/${encodeURIComponent(row.dataset)}`} style={{ color: 'var(--cont)' }}>
-          {row.dataset}
-        </Link>
-      ),
+      render: row => <ObjectInspectLink objectId={row.dataset} onInspect={openChecks} />,
     },
     { key: 'kind', header: t.products.colKind, render: row => row.kind ?? '-' },
     {
@@ -190,11 +221,7 @@ export default function ProductDetail() {
       mono: true,
       sortable: true,
       sortValue: row => row.id,
-      render: row => (
-        <Link to={`/objects/${encodeURIComponent(row.id)}`} style={{ color: 'var(--cont)' }}>
-          {row.id}
-        </Link>
-      ),
+      render: row => <ObjectInspectLink objectId={row.id} onInspect={openChecks} />,
     },
     { key: 'layer', header: t.products.colLayer, render: row => row.layer ?? '-' },
     { key: 'role', header: t.products.colRole, render: row => row.role ?? '-' },
@@ -437,6 +464,8 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+
+      {overlays}
     </div>
   );
 }
