@@ -16,6 +16,8 @@ vi.mock('@/api/objects', () => ({
 }));
 vi.mock('@/api/contracts', () => ({
   useContracts: () => ({ data: state.contracts, isLoading: false, isError: false, refetch: vi.fn() }),
+  // Das SLA-Panel hält je aktiver Zeile einen eigenen Hook — hier neutral gemockt.
+  useContractSla: () => ({ data: undefined }),
 }));
 vi.mock('@/api/coverage', () => ({
   useCoverageSummary: () => ({ data: state.coverage }),

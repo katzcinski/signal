@@ -16,6 +16,8 @@ vi.mock('@/api/objects', () => ({
 }));
 vi.mock('@/api/contracts', () => ({
   useContracts: () => ({ data: state.contracts, isLoading: false, isError: false, refetch: vi.fn() }),
+  // Das SLA-Panel hält je aktiver Zeile einen eigenen Hook — hier neutral gemockt.
+  useContractSla: () => ({ data: undefined }),
 }));
 vi.mock('@/api/coverage', () => ({
   useCoverageSummary: () => ({ data: state.coverage }),
@@ -51,9 +53,12 @@ function renderPage() {
 }
 
 // Klickbare Zeilen tragen role="button" (Tastatur-A11y der Table), daher
-// über die .tbl-row-Klasse statt über getAllByRole('row') selektieren.
+// über die .tbl-row-Klasse statt über getAllByRole('row') selektieren. Auf die
+// Objektstatus-Tabelle (die erste der Seite) einschränken, da das SLA-Panel
+// darunter ebenfalls `.tbl-row`-Zeilen rendert.
 function objectColumnTexts(): string[] {
-  return Array.from(document.querySelectorAll('tbody tr.tbl-row'))
+  const objectTable = document.querySelector('table')!;
+  return Array.from(objectTable.querySelectorAll('tbody tr.tbl-row'))
     .map(row => row.querySelector('td')?.textContent ?? '');
 }
 

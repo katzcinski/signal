@@ -1,5 +1,6 @@
 // SLA-Uptime-Balken (sichtbar wenn lifecycle = active).
 import { useContractSla } from '@/api/contracts';
+import { slaColor } from '@/components/ui/SlaWindowValue';
 import { t } from '@/i18n/de';
 import { monoStyle } from './shared';
 
@@ -19,7 +20,7 @@ export function SlaBars({ product }: { product: string }) {
             {pct != null && (
               <div style={{
                 width: `${Math.max(0, Math.min(100, pct))}%`, height: '100%',
-                background: pct >= 99 ? 'var(--status-ok)' : pct >= 95 ? 'var(--status-warn)' : 'var(--status-fail)',
+                background: slaColor(pct),
               }} />
             )}
           </div>
