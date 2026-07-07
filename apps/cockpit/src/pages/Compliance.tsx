@@ -15,6 +15,7 @@ import { LifecycleTag } from '@/components/ui/LifecycleTag';
 import { ControlSelect } from '@/components/ui/ControlPrimitives';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { DistributionBar, type DistributionSegment } from '@/components/ui/DistributionBar';
+import { SlaOverviewPanel } from '@/components/compliance/SlaOverviewPanel';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { t } from '@/i18n/de';
 import type { Contract, Lifecycle, ObjectSummary } from '@/types';
@@ -328,6 +329,13 @@ export default function Governance() {
           />
         )}
       </Panel>
+
+      {/* SLA-Übersicht je aktivem Boundary-Contract (7/30/90-Tage-Compliance). */}
+      {!loading && (
+        <div style={{ marginTop: 'var(--s4)' }}>
+          <SlaOverviewPanel contracts={activeContracts} />
+        </div>
+      )}
 
       {/* Referenz als Disclosure: die Policy bleibt eine Klick entfernt, führt
           aber nicht mehr die Seite an — die handlungsrelevante Tabelle gewinnt Raum. */}

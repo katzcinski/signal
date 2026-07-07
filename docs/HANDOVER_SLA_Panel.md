@@ -1,5 +1,17 @@
 # Handover — SLA-Übersichts-Panel (Compliance-Seite)
 
+> **Status: umgesetzt (Option A).** Das Panel rendert auf der Compliance-Seite
+> je aktivem Boundary-Contract eine Zeile (aktueller Compliance-Status +
+> 7/30/90-Tage-Fenster). Neu: `components/compliance/SlaOverviewPanel.tsx` und
+> das geteilte Primitiv `components/ui/SlaWindowValue.tsx` (Schwellwerte/Farben,
+> nun auch von `SlaBars` genutzt). Entscheidungen zu den offenen Fragen unten:
+> **(1)** Option A (N Einzelabfragen je Zeile). **(2)** Zeile klickbar →
+> Objektdetail (`/objects/{product}`). **(3)** nur `active`. **(4)** stabile
+> Sortierung nach Produktname (worst-first ist unter Option A nicht möglich, da
+> die Fensterwerte erst pro Zeile geladen werden). Tests:
+> `src/tests/SlaOverviewPanel.test.tsx`. Die zuvor toten `governance.sla*`-Strings
+> werden jetzt gelesen.
+
 **Status:** offen · **Bereich:** Frontend (Compliance/Governance), optional Backend
 **Kontext:** Bei der Governance-UI-Überarbeitung (`claude/governance-ui-improvements-pgvzem`)
 fiel auf, dass die Compliance-Seite i18n-Strings für ein SLA-Panel besitzt, dieses
