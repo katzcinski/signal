@@ -32,7 +32,7 @@ const CONTRACTS = [
   // internal_gate zählt nicht als Boundary-Contract → P2 bleibt ungebunden.
   { product: 'P2', kind: 'internal_gate', lifecycle: 'active', version: '1.0.0' },
 ];
-const COVERAGE = { contract_coverage_pct: 50, with_active_contract: 1, objects_total: 2, contracts_breached: 3 };
+const COVERAGE = { contract_coverage_pct: 50, with_active_contract: 1, objects_total: 2, contracts_breached: 3, unvalidated_30d: [] as string[] };
 
 function LocationEcho() {
   const location = useLocation();
@@ -113,6 +113,20 @@ describe('Governance', () => {
     expect(screen.getByText('Keine Treffer für den Filter')).toBeInTheDocument();
   });
 
+  it('filters by space via the select', () => {
+    renderPage();
+
+    const spaceSelect = screen.getByRole('combobox', { name: 'Nach Space filtern' });
+    fireEvent.change(spaceSelect, { target: { value: 'FINANCE' } });
+    expect(objectColumnTexts()).toEqual(['OBJ_BARE']);
+  });
+
+  it('links to the contract workbench when no contract is active', () => {
+    state.contracts = [{ product: 'P2', kind: 'internal_gate', lifecycle: 'active', version: '1.0.0' }];
+    renderPage();
+    expect(screen.getByRole('link', { name: /Ersten Contract anlegen/ })).toHaveAttribute('href', '/contracts');
+  });
+
   it('navigates to the object detail on row click', () => {
     renderPage();
 
@@ -124,5 +138,44 @@ describe('Governance', () => {
     state.contracts = [{ product: 'P2', kind: 'internal_gate', lifecycle: 'active', version: '1.0.0' }];
     renderPage();
     expect(screen.getByText(/Noch keine aktiven Contracts/)).toBeInTheDocument();
+  });
+
+  it('surfaces stale objects via KPI, chip and filter', () => {
+    state.coverage = { ...COVERAGE, unvalidated_30d: ['P2'] };
+    renderPage();
+
+    // KPI zeigt die Zahl der überfälligen Objekte.
+    const staleKpi = screen.getByText('Unvalidiert >30d', { selector: 'div' }).parentElement!;
+    expect(within(staleKpi).getByText('1')).toBeInTheDocument();
+
+    // Der Marker sitzt auf der betroffenen Zeile.
+    const bare = within(screen.getByText('OBJ_BARE').closest('tr')!);
+    expect(bare.getByText('Unvalidiert')).toBeInTheDocument();
+
+    // KPI-Klick ist ein Deep-Link auf den Filter.
+    fireEvent.click(within(staleKpi).getByText('1'));
+    expect(objectColumnTexts()).toEqual(['OBJ_BARE']);
+  });
+
+  it('renders the estate lifecycle distribution', () => {
+    renderPage();
+    // P1 aktiv gebunden, P2 ungebunden → 1 aktiv, 1 ohne Contract.
+    expect(
+      screen.getByRole('img', { name: /Aktiv: 1.*Entwurf: 0.*Veraltet: 0.*Ohne Contract: 1/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('drills into breached objects from the KPI', () => {
+    state.contracts = [
+      { product: 'P1', kind: 'consumer_contract', lifecycle: 'active', version: '1.2.0', compliance: 'breached' },
+      { product: 'P2', kind: 'consumer_contract', lifecycle: 'active', version: '1.0.0', compliance: 'ok' },
+    ];
+    renderPage();
+
+    const covered = within(screen.getByText('OBJ_COVERED').closest('tr')!);
+    expect(covered.getByText('Verletzt')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nur verletzt' }));
+    expect(objectColumnTexts()).toEqual(['OBJ_COVERED']);
   });
 });
