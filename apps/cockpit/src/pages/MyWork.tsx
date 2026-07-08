@@ -131,21 +131,21 @@ function AttentionSummary({
           value={criticalAssigned}
           hint={t.myWork.attentionCriticalAssignedHint}
           accent="var(--status-crit)"
-          onClick={() => onNavigate('/incidents?severity=critical')}
+          onClick={() => onNavigate('/incidents?status=active&severity=critical&assigned=1')}
         />
         <AttentionTile
           label={t.myWork.attentionContractBreaches}
           value={contractBreaches}
           hint={t.myWork.attentionContractBreachesHint}
           accent="var(--cont)"
-          onClick={() => onNavigate('/incidents?kind=contract')}
+          onClick={() => onNavigate('/incidents?status=active&kind=contract')}
         />
         <AttentionTile
           label={t.myWork.attentionEngineeringSignals}
           value={engineeringSignals}
           hint={t.myWork.attentionEngineeringSignalsHint}
           accent="var(--qual)"
-          onClick={() => onNavigate('/incidents?kind=internal_gate')}
+          onClick={() => onNavigate('/incidents?status=active&kind=internal_gate')}
         />
         <AttentionTile
           label={t.myWork.attentionOpenProposals}
@@ -254,7 +254,7 @@ export default function MyWork() {
           {openProposals.length === 0 ? (
             <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.myWork.noProposals}</p>
           ) : openProposals.slice(0, 8).map((p: Proposal) => (
-            <RowButton key={p.id} onClick={() => navigate('/proposals?status=open')}>
+            <RowButton key={p.id} onClick={() => navigate(`/proposals?status=open&product=${encodeURIComponent(p.product)}`)}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, flex: 1 }}>{p.check_name}</span>
               <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-3)', fontSize: 11 }}>{p.product}</span>
               <span style={{ color: 'var(--cont)', fontSize: 11 }}>{t.myWork.review}</span>

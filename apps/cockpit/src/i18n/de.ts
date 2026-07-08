@@ -450,6 +450,7 @@ export const t = {
   incidents: {
     title: 'Incidents',
     tabs: {
+      active: 'Alle offen',
       open: 'Offen',
       acknowledged: 'Bestätigt',
       investigating: 'In Arbeit',
@@ -473,6 +474,7 @@ export const t = {
     kindGate: 'Engineering-Signal',
     filterKind: 'Art',
     filterAll: 'Alle',
+    filterAssigned: 'Nur zugewiesen',
     timeline: 'Verlauf',
     failedChecks: 'Fehlgeschlagene Checks',
     downstreamImpact: 'Downstream-Impact',
@@ -983,6 +985,7 @@ export const t = {
     reviewInContract: 'Im Contract prüfen →',
     groupByLabel: 'Gruppieren nach',
     statusFilterLabel: 'Status',
+    productFilterLabel: 'Objekt',
     statusFilter: {
       open: 'Offen',
       reviewed: 'Bearbeitet',

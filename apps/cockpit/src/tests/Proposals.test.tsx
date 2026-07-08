@@ -156,6 +156,18 @@ describe('Proposals', () => {
     expect(screen.getByText('snoozed_check')).toBeInTheDocument();
   });
 
+  it('filters to a single object via ?product= and clears it', () => {
+    renderProposals('/proposals?product=DS_GATE');
+
+    expect(screen.getByText('gate_open_check')).toBeInTheDocument();
+    expect(screen.queryByText('contract_open_check')).not.toBeInTheDocument();
+
+    // Aktiv-Filter-Chip nennt das Objekt und lässt sich einzeln löschen.
+    fireEvent.click(screen.getByLabelText(new RegExp('DS_GATE')));
+    expect(screen.getByTestId('location')).not.toHaveTextContent('product=DS_GATE');
+    expect(screen.getByText('contract_open_check')).toBeInTheDocument();
+  });
+
   it('uses skeleton cards while loading', () => {
     data.isLoading = true;
     renderProposals();

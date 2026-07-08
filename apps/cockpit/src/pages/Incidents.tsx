@@ -19,17 +19,22 @@ import { useRoleStore, canActOnIncidents } from '@/store/role';
 import type { FailedCheck, Incident, IncidentStatus } from '@/types';
 
 const INCIDENT_STATUS_TABS: IncidentStatus[] = ['open', 'acknowledged', 'investigating', 'resolved'];
-const TABS = [...INCIDENT_STATUS_TABS, 'checks'] as const;
+// 'active' = alle nicht gelösten Incidents (offen/bestätigt/in Arbeit) in einer
+// Liste. Das schließt die Lücke zu Zählern (Cockpit-KPIs, „Meine Arbeit"), die
+// über alle offenen Status hinweg zählen — der Sprung landet damit auf genau der
+// Menge, die die Zahl meint, statt nur auf dem Default-Tab „Offen".
+const TABS = ['active', ...INCIDENT_STATUS_TABS, 'checks'] as const;
 const SEVERITY_FILTERS = ['critical', 'fail', 'warn'] as const;
 
 type IncidentTab = typeof TABS[number];
 type KindFilter = 'all' | 'contract' | 'internal_gate';
-type QueryKey = 'status' | 'kind' | 'severity' | 'id';
+type QueryKey = 'status' | 'kind' | 'severity' | 'assigned' | 'id';
 
 const QUERY_DEFAULTS: Record<QueryKey, string> = {
   status: 'open',
   kind: 'all',
   severity: '',
+  assigned: '',
   id: '',
 };
 
@@ -38,7 +43,7 @@ function normalizeTab(value: string): IncidentTab {
 }
 
 function isIncidentStatus(value: IncidentTab): value is IncidentStatus {
-  return value !== 'checks';
+  return value !== 'checks' && value !== 'active';
 }
 
 function matchesKindFilter(incident: Incident, kindFilter: string) {
@@ -127,22 +132,27 @@ function SeverityFilterChips({ value, onChange }: { value: string; onChange: (va
 function ActiveIncidentFilters({
   kindFilter,
   severityFilter,
+  assignedFilter,
   onClearKind,
   onClearSeverity,
+  onClearAssigned,
 }: {
   kindFilter: string;
   severityFilter: string;
+  assignedFilter: boolean;
   onClearKind: () => void;
   onClearSeverity: () => void;
+  onClearAssigned: () => void;
 }) {
   const hasKind = kindFilter === 'contract' || kindFilter === 'internal_gate';
   const hasSeverity = Boolean(severityFilter);
-  if (!hasKind && !hasSeverity) return null;
+  if (!hasKind && !hasSeverity && !assignedFilter) return null;
 
   return (
     <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap', marginBottom: 'var(--s3)' }}>
       {hasKind && <ActiveFilterChip label={kindFilterLabel(kindFilter)} onClear={onClearKind} />}
       {hasSeverity && <ActiveFilterChip label={severityFilterLabel(severityFilter)} onClear={onClearSeverity} />}
+      {assignedFilter && <ActiveFilterChip label={t.incidents.filterAssigned} onClear={onClearAssigned} />}
     </div>
   );
 }
@@ -456,6 +466,7 @@ export default function Incidents() {
   const statusParam = searchParams.get('status') ?? QUERY_DEFAULTS.status;
   const kindFilter = searchParams.get('kind') ?? QUERY_DEFAULTS.kind;
   const severityFilter = searchParams.get('severity') ?? QUERY_DEFAULTS.severity;
+  const assignedFilter = (searchParams.get('assigned') ?? QUERY_DEFAULTS.assigned) === '1';
   const idParam = searchParams.get('id') ?? QUERY_DEFAULTS.id;
   const activeTab = normalizeTab(statusParam);
   const isChecksTab = activeTab === 'checks';
@@ -466,8 +477,10 @@ export default function Incidents() {
     useIncidents(undefined, severityFilter || undefined, serverKind);
 
   const visibleIncidents = useMemo(
-    () => incidents.filter(i => matchesKindFilter(i, kindFilter)),
-    [incidents, kindFilter],
+    () => incidents.filter(i =>
+      matchesKindFilter(i, kindFilter) && (!assignedFilter || Boolean(i.owner)),
+    ),
+    [incidents, kindFilter, assignedFilter],
   );
 
   const statusCounts = useMemo(
@@ -480,13 +493,13 @@ export default function Incidents() {
     ),
     [visibleIncidents],
   );
+  const activeCount = statusCounts.open + statusCounts.acknowledged + statusCounts.investigating;
 
-  const filteredIncidents = useMemo(
-    () => isIncidentStatus(activeTab)
-      ? visibleIncidents.filter(i => i.status === activeTab)
-      : [],
-    [activeTab, visibleIncidents],
-  );
+  const filteredIncidents = useMemo(() => {
+    if (activeTab === 'active') return visibleIncidents.filter(i => i.status !== 'resolved');
+    if (isIncidentStatus(activeTab)) return visibleIncidents.filter(i => i.status === activeTab);
+    return [];
+  }, [activeTab, visibleIncidents]);
 
   const columns = useMemo<ColDef<Incident>[]>(() => [
     {
@@ -538,6 +551,10 @@ export default function Incidents() {
     setQuery({ severity: value, id: '' });
   };
 
+  const selectAssigned = (value: boolean) => {
+    setQuery({ assigned: value ? '1' : '', id: '' });
+  };
+
   return (
     <div className="page-full">
       <PageHeader title={t.incidents.title} />
@@ -555,9 +572,11 @@ export default function Incidents() {
               marginLeft: tabKey === 'checks' ? 'auto' : undefined,
             }}
           >
-            {isIncidentStatus(tabKey)
-              ? `${t.incidents.tabs[tabKey] ?? tabKey} (${statusCounts[tabKey]})`
-              : t.incidents.tabs[tabKey] ?? tabKey}
+            {tabKey === 'active'
+              ? `${t.incidents.tabs.active} (${activeCount})`
+              : isIncidentStatus(tabKey)
+                ? `${t.incidents.tabs[tabKey] ?? tabKey} (${statusCounts[tabKey]})`
+                : t.incidents.tabs[tabKey] ?? tabKey}
           </button>
         ))}
       </div>
@@ -567,14 +586,21 @@ export default function Incidents() {
       ) : (
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s3)', flexWrap: 'wrap', marginBottom: 12 }}>
-            <KindFilterChips value={kindFilter} onChange={selectKind} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)', flexWrap: 'wrap' }}>
+              <KindFilterChips value={kindFilter} onChange={selectKind} />
+              <FilterChip active={assignedFilter} onClick={() => selectAssigned(!assignedFilter)}>
+                {t.incidents.filterAssigned}
+              </FilterChip>
+            </div>
             <SeverityFilterChips value={severityFilter} onChange={selectSeverity} />
           </div>
           <ActiveIncidentFilters
             kindFilter={kindFilter}
             severityFilter={severityFilter}
+            assignedFilter={assignedFilter}
             onClearKind={() => selectKind('all')}
             onClearSeverity={() => selectSeverity('')}
+            onClearAssigned={() => selectAssigned(false)}
           />
           {isError && <ErrorBanner onRetry={() => refetch()} />}
           {isLoading && <TableSkeleton columns={7} />}

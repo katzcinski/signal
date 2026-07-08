@@ -191,6 +191,28 @@ describe('MyWork', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('id=11');
   });
 
+  it('links attention tiles to filters that match their counts', () => {
+    renderMyWork();
+
+    const summary = screen.getByLabelText(t.myWork.attentionAriaLabel);
+    // Kritisch zugewiesen zählt über alle offenen Status + Owner → active + severity + assigned.
+    fireEvent.click(within(summary).getByRole('button', { name: new RegExp(t.myWork.attentionCriticalAssigned) }));
+    const loc = screen.getByTestId('location');
+    expect(loc).toHaveTextContent('status=active');
+    expect(loc).toHaveTextContent('severity=critical');
+    expect(loc).toHaveTextContent('assigned=1');
+  });
+
+  it('deep-links proposal rows to the object-scoped proposals view', () => {
+    renderMyWork();
+
+    fireEvent.click(screen.getByText('row_count_min'));
+    const loc = screen.getByTestId('location');
+    expect(loc).toHaveTextContent('/proposals');
+    expect(loc).toHaveTextContent('status=open');
+    expect(loc).toHaveTextContent('product=DS_CONTRACT');
+  });
+
   it('shows a retry banner for object query errors', () => {
     data.objectsError = true;
     renderMyWork();

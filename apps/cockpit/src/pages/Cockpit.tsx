@@ -175,6 +175,10 @@ export default function Cockpit() {
 
   const openIncidents = incidents.filter(i => i.status !== 'resolved');
   const criticalIncidents = openIncidents.filter(i => i.severity === 'critical').length;
+  // Gate-Signale = offene Engineering-Signal-Incidents (internal_gate). Zählung
+  // und Sprungziel teilen sich dieselbe Quelle, damit die Zahl die Landeliste
+  // erklärt (statt der abweichenden coverage.gates_failing-Check-Zählung).
+  const gateIncidents = openIncidents.filter(i => i.kind === 'internal_gate').length;
   const topIncidents = [...openIncidents]
     .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9))
     .slice(0, 5);
@@ -339,19 +343,19 @@ export default function Cockpit() {
           delta={incidentsDelta}
           deltaPositive={criticalIncidents > 0 ? false : undefined}
           accent={openIncidents.length > 0 ? 'var(--status-fail)' : 'var(--qual)'}
-          onClick={() => navigate('/incidents?status=open')}
+          onClick={() => navigate('/incidents?status=active')}
         />
         <Kpi
           label={t.cockpit.kpiGateSignals}
-          value={coverage?.gates_failing ?? 0}
-          accent={(coverage?.gates_failing ?? 0) > 0 ? 'var(--status-warn)' : 'var(--qual)'}
-          onClick={() => navigate('/incidents?status=open&kind=internal_gate')}
+          value={gateIncidents}
+          accent={gateIncidents > 0 ? 'var(--status-warn)' : 'var(--qual)'}
+          onClick={() => navigate('/incidents?status=active&kind=internal_gate')}
         />
         <Kpi
           label={t.cockpit.kpiUnvalidated}
           value={unvalidated.length}
           accent={unvalidated.length > 0 ? 'var(--status-warn)' : 'var(--qual)'}
-          onClick={() => navigate('/objects')}
+          onClick={() => navigate('/compliance?mode=stale')}
         />
       </div>
       )}

@@ -163,6 +163,40 @@ describe('Incidents page', () => {
     expect(screen.getByRole('button', { name: `${t.incidents.tabs.resolved} (1)` })).toBeInTheDocument();
   });
 
+  it('shows all non-resolved incidents on the active tab', () => {
+    renderIncidents('/incidents?status=active');
+
+    expect(screen.getByText('Open contract breach')).toBeInTheDocument();
+    expect(screen.getByText('Internal latency signal')).toBeInTheDocument();
+    expect(screen.getByText('Open gate signal')).toBeInTheDocument();
+    expect(screen.queryByText('Resolved breach')).not.toBeInTheDocument();
+    // Tab-Zähler = offen + bestätigt + in Arbeit (3 von 4).
+    expect(screen.getByRole('button', { name: `${t.incidents.tabs.active} (3)` })).toBeInTheDocument();
+  });
+
+  it('restricts the list to assigned incidents via ?assigned=1', () => {
+    renderIncidents('/incidents?status=active&assigned=1');
+
+    // team-a / team-b tragen einen Owner, DS_GATE_2 nicht.
+    expect(screen.getByText('Open contract breach')).toBeInTheDocument();
+    expect(screen.getByText('Internal latency signal')).toBeInTheDocument();
+    expect(screen.queryByText('Open gate signal')).not.toBeInTheDocument();
+    // Zähler folgt dem Assigned-Filter (2 zugewiesene offene).
+    expect(screen.getByRole('button', { name: `${t.incidents.tabs.active} (2)` })).toBeInTheDocument();
+  });
+
+  it('toggles the assigned filter through the URL and clears it', () => {
+    renderIncidents('/incidents?status=active');
+
+    fireEvent.click(screen.getByRole('button', { name: t.incidents.filterAssigned }));
+    expect(screen.getByTestId('location')).toHaveTextContent('assigned=1');
+    expect(screen.queryByText('Open gate signal')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(new RegExp(t.incidents.filterAssigned)));
+    expect(screen.getByTestId('location')).not.toHaveTextContent('assigned=1');
+    expect(screen.getByText('Open gate signal')).toBeInTheDocument();
+  });
+
   it('opens the drawer from a shared ?id= deep link', () => {
     renderIncidents('/incidents?status=acknowledged&kind=internal_gate&id=2');
 

@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useObjects } from '@/api/objects';
 import { useContracts } from '@/api/contracts';
 import { useCoverageSummary } from '@/api/coverage';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { useObjectInspection } from '@/hooks/useObjectInspection';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { Panel } from '@/components/ui/Panel';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -25,8 +26,15 @@ const BINDING_ORDER: Record<Lifecycle, number> = { draft: 1, active: 2, deprecat
 
 // Ein Filter treibt Tabelle und die Deep-Link-KPIs: 'all' | 'uncovered' |
 // 'breached' | 'stale'. Der Klick auf eine KPI setzt (bzw. löst) den passenden
-// Modus, damit die Zahl oben immer die Zeilen unten erklärt.
+// Modus, damit die Zahl oben immer die Zeilen unten erklärt. Der Modus lebt in
+// der URL (?mode=stale), damit Reload/Back/Deep-Links (z. B. das Cockpit-KPI
+// „>30d unvalidiert") wie auf jeder anderen Listenseite reproduzierbar sind.
 type FilterMode = 'all' | 'uncovered' | 'breached' | 'stale';
+const FILTER_MODES: readonly FilterMode[] = ['all', 'uncovered', 'breached', 'stale'];
+
+function normalizeMode(value: string): FilterMode {
+  return (FILTER_MODES as readonly string[]).includes(value) ? (value as FilterMode) : 'all';
+}
 
 // Contract-Bindung eines Objekts: Lifecycle-Chip + Version, oder ein bewusst
 // leiser „leerer Platz"-Chip (gestrichelt, neutral) für ungebundene Objekte —
@@ -77,11 +85,12 @@ export default function Governance() {
   // Zwei-Ebenen-Inspektion (wie Cockpit/Objekte): der Objekt-Name öffnet das
   // Quick-Checks-Popover, der Zeilenklick bleibt der Sprung ins Objektdetail.
   const { openChecks, overlays } = useObjectInspection();
-  const [search, setSearch] = useState('');
-  const [space, setSpace] = useState('');
-  const [mode, setMode] = useState<FilterMode>('all');
+  const [search, setSearch] = useSearchParamState('q');
+  const [space, setSpace] = useSearchParamState('space');
+  const [modeParam, setModeParam] = useSearchParamState('mode', 'all');
+  const mode = normalizeMode(modeParam);
   // Klick auf eine aktive KPI/Chip löst den Filter wieder — Toggle statt Sackgasse.
-  const toggle = (m: FilterMode) => setMode(cur => (cur === m ? 'all' : m));
+  const toggle = (m: FilterMode) => setModeParam(mode === m ? 'all' : m);
 
   const contracts = contractsQuery.data;
   const { boundaryContracts, contractByProduct, breachedIds } = useMemo(() => {

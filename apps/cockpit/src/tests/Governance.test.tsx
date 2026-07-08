@@ -38,12 +38,12 @@ const COVERAGE = { contract_coverage_pct: 50, with_active_contract: 1, objects_t
 
 function LocationEcho() {
   const location = useLocation();
-  return <div data-testid="location">{location.pathname}</div>;
+  return <div data-testid="location">{location.pathname}{location.search}</div>;
 }
 
-function renderPage() {
+function renderPage(route = '/compliance') {
   render(
-    <MemoryRouter initialEntries={['/compliance']}>
+    <MemoryRouter initialEntries={[route]}>
       <Routes>
         <Route path="/compliance" element={<><Governance /><LocationEcho /></>} />
         <Route path="/objects/:id" element={<LocationEcho />} />
@@ -157,8 +157,17 @@ describe('Governance', () => {
     const bare = within(screen.getByText('OBJ_BARE').closest('tr')!);
     expect(bare.getByText('Unvalidiert')).toBeInTheDocument();
 
-    // KPI-Klick ist ein Deep-Link auf den Filter.
+    // KPI-Klick ist ein Deep-Link auf den Filter — der Modus lebt in der URL.
     fireEvent.click(within(staleKpi).getByText('1'));
+    expect(objectColumnTexts()).toEqual(['OBJ_BARE']);
+    expect(screen.getByTestId('location')).toHaveTextContent('mode=stale');
+  });
+
+  it('hydrates the filter mode from the URL (?mode=stale)', () => {
+    state.coverage = { ...COVERAGE, unvalidated_30d: ['P2'] };
+    renderPage('/compliance?mode=stale');
+
+    // Deep-Link (z. B. vom Cockpit-KPI „>30d unvalidiert") reproduziert den Filter.
     expect(objectColumnTexts()).toEqual(['OBJ_BARE']);
   });
 
