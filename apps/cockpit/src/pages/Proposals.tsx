@@ -5,7 +5,7 @@ import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { Button } from '@/components/ui/Button';
-import { FilterChip } from '@/components/ui/FilterChip';
+import { FilterChip, ActiveFilterChip } from '@/components/ui/FilterChip';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { t } from '@/i18n/de';
@@ -369,9 +369,15 @@ export default function Proposals() {
   const role = useRoleStore(s => s.role);
   const [groupByParam, setGroupBy] = useSearchParamState('groupBy', 'product');
   const [statusParam, setStatusFilter] = useSearchParamState('status', 'open');
+  // ?product= grenzt auf ein Objekt ein — der Sprung „N Vorschläge für dieses
+  // Objekt" (MinedProposalsCallout, „Meine Arbeit") landet damit auf genau
+  // dessen Vorschlägen statt in der ungefilterten Gesamtliste.
+  const [productFilter, setProductFilter] = useSearchParamState('product');
   const groupBy = normalizeGroupBy(groupByParam);
   const statusFilter = normalizeStatusFilter(statusParam);
-  const visibleProposals = proposals.filter(p => proposalMatchesStatus(p, statusFilter));
+  const visibleProposals = proposals.filter(p =>
+    proposalMatchesStatus(p, statusFilter) && (!productFilter || p.product === productFilter),
+  );
   const clusters = groupBy === 'none' ? [] : clusterProposals(visibleProposals, groupBy);
 
   return (
@@ -388,6 +394,14 @@ export default function Proposals() {
         )}
       />
       {!canAcceptProposal(role) && <ReadOnlyBanner />}
+      {productFilter && (
+        <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap', marginBottom: 'var(--s3)' }}>
+          <ActiveFilterChip
+            label={`${t.proposals.productFilterLabel}: ${productFilter}`}
+            onClear={() => setProductFilter('')}
+          />
+        </div>
+      )}
       {isError && <ErrorBanner onRetry={() => refetch()} />}
 
       {isLoading ? (

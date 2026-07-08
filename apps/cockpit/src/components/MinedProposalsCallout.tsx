@@ -34,7 +34,7 @@ export function MinedProposalsCallout({ productId }: { productId: string }) {
         </span>
         <div style={{ flex: 1 }} />
         <button
-          onClick={() => navigate('/proposals')}
+          onClick={() => navigate(`/proposals?product=${encodeURIComponent(productId)}`)}
           style={{
             background: 'var(--cont)', color: '#fff', border: 'none',
             borderRadius: 'var(--r-md)', padding: '5px 12px', fontSize: 12, cursor: 'pointer',
