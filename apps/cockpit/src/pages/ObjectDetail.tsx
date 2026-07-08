@@ -20,6 +20,7 @@ import { ColumnLineagePanel } from '@/components/lineage/ColumnLineagePanel';
 import { Spark } from '@/components/ui/Spark';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { NotFoundState } from '@/components/ui/NotFoundState';
 import { ObjectAttentionBand } from '@/components/object-detail/ObjectAttentionBand';
 import { ObjectHero } from '@/components/object-detail/ObjectHero';
 import { MiniLineageSection } from '@/components/object-detail/MiniLineageSection';
@@ -114,7 +115,25 @@ export default function ObjectDetail() {
     );
   }
   if (isError) return <div className="page-full"><ErrorBanner onRetry={() => refetch()} /></div>;
-  if (!obj) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.objectDetail.notFound}</div>;
+  if (!obj) {
+    return (
+      <div className="page-full">
+        <Breadcrumbs items={[
+          { label: t.breadcrumb.home, to: '/' },
+          { label: t.breadcrumb.objects, to: '/objects' },
+          { label: id },
+        ]} />
+        <NotFoundState
+          title={t.objectDetail.notFound}
+          message={t.notFound.objectMessage}
+          actions={[
+            { label: t.notFound.objects, to: '/objects', primary: true },
+            { label: t.notFound.home, to: '/' },
+          ]}
+        />
+      </div>
+    );
+  }
 
   const canCreateChecks = canWriteContract(role, obj.owned_by);
   const openChecksWorkbench = () => {

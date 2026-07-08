@@ -93,6 +93,16 @@ export const t = {
     version: 'Version',
     start: 'Starten',
   },
+  notFound: {
+    title: 'Seite nicht gefunden',
+    message: 'Die aufgerufene Adresse existiert nicht oder wurde verschoben — vermutlich ein veralteter Link oder ein Tippfehler.',
+    home: 'Zur Übersicht',
+    objects: 'Zu den Objekten',
+    products: 'Zu den Produkten',
+    objectMessage: 'Dieses Objekt ist im aktuellen Inventar nicht vorhanden. Möglicherweise wurde es umbenannt oder aus dem Extrakt entfernt.',
+    runMessage: 'Dieser Lauf existiert nicht mehr oder die ID ist ungültig.',
+    productMessage: 'Dieses Produkt ist im aktuellen Extrakt nicht vorhanden.',
+  },
   status: {
     pass: 'Bestanden',
     fail: 'Fehlgeschlagen',
@@ -218,6 +228,8 @@ export const t = {
     lineageTitle: 'Lineage',
     noPorts: 'Keine Ports',
     noInterior: 'Kein Interior',
+    showAllRisk: 'Alle {count} anzeigen',
+    showLessRisk: 'Weniger anzeigen',
     findingTypes: {
       dangling_port: 'Dangling-Port',
       contested: 'Contested',

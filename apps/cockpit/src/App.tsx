@@ -23,6 +23,7 @@ const Notifications     = lazy(() => import('./pages/Notifications'));
 const Settings          = lazy(() => import('./pages/Settings'));
 const Environments      = lazy(() => import('./pages/Environments'));
 const InventoryAdmin    = lazy(() => import('./pages/InventoryAdmin'));
+const NotFound          = lazy(() => import('./pages/NotFound'));
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -61,6 +62,8 @@ export default function App() {
               <Route path="/settings"    element={<Settings />} />
               <Route path="/environments" element={<Environments />} />
               <Route path="/inventory-admin" element={<InventoryAdmin />} />
+              {/* Catch-all: vertippte / veraltete Deep-Links landen nicht im Leeren */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </Shell>

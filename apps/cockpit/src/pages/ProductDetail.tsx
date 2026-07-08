@@ -1,4 +1,4 @@
-import { lazy, Suspense, type MouseEvent, type ReactNode } from 'react';
+import { lazy, Suspense, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useProduct } from '@/api/products';
 import { useObjectInspection } from '@/hooks/useObjectInspection';
@@ -10,6 +10,7 @@ import { Panel } from '@/components/ui/Panel';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { TableSkeleton } from '@/components/ui/Skeleton';
+import { NotFoundState } from '@/components/ui/NotFoundState';
 import { t } from '@/i18n/de';
 import type {
   ProductFinding,
@@ -170,6 +171,7 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useProduct(name);
   const { openChecks, overlays } = useObjectInspection();
+  const [showAllRisk, setShowAllRisk] = useState(false);
 
   if (isLoading) {
     return (
@@ -188,7 +190,23 @@ export default function ProductDetail() {
   }
 
   if (!data) {
-    return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.common.notFound}</div>;
+    return (
+      <div className="page-full">
+        <Breadcrumbs items={[
+          { label: t.breadcrumb.home, to: '/' },
+          { label: t.products.title, to: '/products' },
+          { label: name },
+        ]} />
+        <NotFoundState
+          title={t.common.notFound}
+          message={t.notFound.productMessage}
+          actions={[
+            { label: t.notFound.products, to: '/products', primary: true },
+            { label: t.notFound.home, to: '/' },
+          ]}
+        />
+      </div>
+    );
   }
 
   const portColumns: ColDef<ProductPort>[] = [
@@ -234,6 +252,9 @@ export default function ProductDetail() {
   const mappedLayers = new Set(data.interior.map(item => item.layer).filter(Boolean)).size;
   const sourceCount = data.inbound_sources.length;
   const actionableRisk = data.upstream_risk.filter(item => item.upstream_breach || item.version_drift).length;
+  const RISK_PREVIEW = 4;
+  const visibleRisk = showAllRisk ? data.upstream_risk : data.upstream_risk.slice(0, RISK_PREVIEW);
+  const hiddenRiskCount = data.upstream_risk.length - visibleRisk.length;
   const sparseLineage = data.subgraph.nodes.length <= 1 || data.subgraph.edges.length === 0;
   const productSummary = [
     `${pluralize(data.ports.length, 'published port')}`,
@@ -381,7 +402,7 @@ export default function ProductDetail() {
                             padding: '7px 10px',
                           }}
                         >
-                          <code>{finding.object_id}</code>
+                          <ObjectInspectLink objectId={finding.object_id} onInspect={openChecks} />
                           <span style={{ color: 'var(--fg-3)' }}> - {finding.detail}</span>
                         </div>
                       ))}
@@ -406,7 +427,7 @@ export default function ProductDetail() {
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-                  {data.upstream_risk.slice(0, 4).map(entry => (
+                  {visibleRisk.map(entry => (
                     <Link
                       key={entry.product}
                       to={`/products/${encodeURIComponent(entry.product)}`}
@@ -458,6 +479,18 @@ export default function ProductDetail() {
                       <RiskFlags entry={entry} />
                     </Link>
                   ))}
+                  {(hiddenRiskCount > 0 || showAllRisk) && data.upstream_risk.length > RISK_PREVIEW && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAllRisk(prev => !prev)}
+                      style={{ alignSelf: 'center' }}
+                    >
+                      {showAllRisk
+                        ? t.products.showLessRisk
+                        : t.products.showAllRisk.replace('{count}', String(data.upstream_risk.length))}
+                    </Button>
+                  )}
                 </div>
               )}
             </Card>

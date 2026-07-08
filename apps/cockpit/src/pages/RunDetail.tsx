@@ -5,6 +5,7 @@ import { CheckStatusCell } from '@/components/ui/StatePill';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { Table, type ColDef } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { NotFoundState } from '@/components/ui/NotFoundState';
 import { Button } from '@/components/ui/Button';
 import { FilterChip } from '@/components/ui/FilterChip';
 import { ObjectSummaryCard } from '@/components/object-detail/ObjectSummaryCard';
@@ -55,7 +56,25 @@ export default function RunDetail() {
 
   if (isLoading) return <RunDetailSkeleton />;
   if (isError) return <div className="page-full"><ErrorBanner onRetry={() => refetch()} /></div>;
-  if (!run) return <div style={{ color: 'var(--fg-3)', padding: 'var(--s6)' }}>{t.runDetail.notFound}</div>;
+  if (!run) {
+    return (
+      <div className="page-full">
+        <Breadcrumbs items={[
+          { label: t.breadcrumb.home, to: '/' },
+          { label: t.breadcrumb.objects, to: '/objects' },
+          { label: `${t.breadcrumb.runs} ${id.slice(0, 12)}…` },
+        ]} />
+        <NotFoundState
+          title={t.runDetail.notFound}
+          message={t.notFound.runMessage}
+          actions={[
+            { label: t.notFound.objects, to: '/objects', primary: true },
+            { label: t.notFound.home, to: '/' },
+          ]}
+        />
+      </div>
+    );
+  }
 
   const durationMs = run.started_at && run.finished_at
     ? new Date(run.finished_at).getTime() - new Date(run.started_at).getTime()
@@ -97,7 +116,7 @@ export default function RunDetail() {
         { label: `${t.breadcrumb.runs} ${run.run_id.slice(0, 12)}…` },
       ]} />
       <div style={{ marginBottom: 20 }}>
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} style={{ marginBottom: 12 }}>{t.runDetail.back}</Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/objects/${run.dataset}`)} style={{ marginBottom: 12 }}>{t.runDetail.back}</Button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg-2)' }}>{run.run_id}</span>
           <StatusPill status={run.overall_status} />
