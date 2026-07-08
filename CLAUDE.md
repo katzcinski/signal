@@ -164,6 +164,8 @@ Use `npm run typecheck`/the pinned compiler from `node_modules`, never bare
   caller as author.
 - Push with `git push -u origin <branch>`; retry transient network failures with
   exponential backoff. Do **not** open a PR unless explicitly asked.
+- **Write commit messages and PR titles/descriptions in English**, even though
+  in-app copy and source comments stay German (match the surrounding code).
 
 ## When adding features
 
