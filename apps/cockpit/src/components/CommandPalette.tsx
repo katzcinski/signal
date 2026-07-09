@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
 import { toast } from 'sonner';
@@ -6,21 +6,9 @@ import { useObjects } from '@/api/objects';
 import { useContracts } from '@/api/contracts';
 import { api } from '@/api/client';
 import { useUIStore } from '@/store/ui';
+import { useRoleStore, canRunChecks } from '@/store/role';
+import { navForRole, type NavItem } from '@/components/layout/Sidebar';
 import { t } from '@/i18n/de';
-
-const ROUTES = [
-  { label: t.nav.cockpit, path: '/' },
-  { label: t.nav.objects, path: '/objects' },
-  { label: t.nav.products, path: '/products' },
-  { label: t.nav.contracts, path: '/contracts' },
-  { label: t.nav.lineage, path: '/lineage' },
-  { label: t.nav.incidents, path: '/incidents' },
-  { label: t.nav.proposals, path: '/proposals' },
-  { label: t.nav.compliance, path: '/compliance' },
-  { label: t.nav.library, path: '/library' },
-  { label: t.nav.schedules, path: '/schedules' },
-  { label: t.nav.notifications, path: '/notifications' },
-];
 
 interface Props { onClose: () => void }
 
@@ -36,6 +24,16 @@ export function CommandPalette({ onClose }: Props) {
   const { data: contracts = [] } = useContracts();
   const recents = useUIStore(s => s.recents);
   const pushRecent = useUIStore(s => s.pushRecent);
+  const role = useRoleStore(s => s.role);
+
+  // Seiten spiegeln die rollenabhängige Sidebar-Navigation (navForRole), damit
+  // rollenspezifische Landeseiten wie „Meine Arbeit" auch per Suche erreichbar
+  // sind und keine für die Rolle ausgeblendeten Seiten auftauchen.
+  const routes = useMemo(
+    () => navForRole(role).filter((e): e is NavItem => e !== 'divider'),
+    [role],
+  );
+  const canRun = canRunChecks(role);
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -85,7 +83,7 @@ export function CommandPalette({ onClose }: Props) {
 
   const recentItems = recents
     .map(r => { const [path, label] = r.split('|'); return { path, label: label || path }; })
-    .filter(r => ROUTES.some(x => x.path === r.path)
+    .filter(r => routes.some(x => x.to === r.path)
       || objects.some(o => `/objects/${o.id}` === r.path)
       || contracts.some(c => `/contracts?product=${c.product}` === r.path));
 
@@ -129,8 +127,8 @@ export function CommandPalette({ onClose }: Props) {
             )}
 
             <Command.Group heading={t.palette.pages}>
-              {ROUTES.map(r => (
-                <Command.Item key={r.path} value={`page ${r.label}`} onSelect={() => go(r.path, r.label)}>
+              {routes.map(r => (
+                <Command.Item key={r.to} value={`page ${r.label}`} onSelect={() => go(r.to, r.label)}>
                   {r.label}
                 </Command.Item>
               ))}
@@ -146,7 +144,9 @@ export function CommandPalette({ onClose }: Props) {
             </Command.Group>
 
             <Command.Group heading={t.palette.actions}>
-              {objects.slice(0, 50).map(o => (
+              {/* Run-Aktionen nur für run-berechtigte Rollen (Server verlangt
+                  steward+; Viewer bekämen sonst nur einen 403-Toast). */}
+              {canRun && objects.slice(0, 50).map(o => (
                 <Command.Item key={`run:${o.id}`} value={`run checks ${o.name} ${o.id}`} onSelect={() => runChecks(o.id)}>
                   {t.palette.runChecks} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{o.name}</span>
                 </Command.Item>

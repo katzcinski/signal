@@ -82,6 +82,12 @@ export function canProfileObject(role: Role): boolean {
   return role !== 'viewer';
 }
 
+/** Triggering runs loads HANA and requires steward role or higher
+ *  (routers/objects.py:trigger_run). */
+export function canRunChecks(role: Role): boolean {
+  return role !== 'viewer';
+}
+
 /** Managing schedules mirrors run-trigger authority — steward role or higher
  *  (routers/schedules.py:_require_steward). */
 export function canManageSchedules(role: Role): boolean {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { t } from '@/i18n/de';
@@ -122,7 +122,7 @@ function lastUseIncidentsCall() {
 describe('Incidents page', () => {
   beforeEach(() => {
     data.useIncidentsCalls.length = 0;
-    data.transition.mockClear();
+    data.transition.mockReset();
   });
 
   it('fetches incidents without a server status and filters the default open tab client-side', () => {
@@ -222,6 +222,37 @@ describe('Incidents page', () => {
 
     fireEvent.click(screen.getByLabelText(t.common.close));
     expect(screen.getByTestId('location')).not.toHaveTextContent('id=1');
+  });
+
+  it('follows a resolved incident to the resolved tab so the drawer does not go stale', () => {
+    // Der Übergangs-Mock ruft den onSuccess-Callback auf, damit followTransition greift.
+    data.transition.mockImplementation((_body: unknown, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.());
+    renderIncidents('/incidents?status=open&id=1');
+
+    expect(screen.getByRole('dialog', { name: 'Open contract breach' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: t.incidents.resolve }));
+    // Der Bestätigen-Button im Notiz-Panel (t.common.confirm kollidiert mit dem
+    // Acknowledge-Label) — über das Notiz-Feld eindeutig eingrenzen.
+    const notePanel = screen.getByPlaceholderText(t.incidents.notePlaceholder).closest('div') as HTMLElement;
+    fireEvent.click(within(notePanel).getByRole('button', { name: t.common.confirm }));
+
+    // Tab folgt dem Incident (status=resolved), id bleibt erhalten → Drawer bleibt konsistent.
+    expect(screen.getByTestId('location')).toHaveTextContent('status=resolved');
+    expect(screen.getByTestId('location')).toHaveTextContent('id=1');
+  });
+
+  it('does not jump tabs when an acknowledge keeps the incident on the active tab', () => {
+    data.transition.mockImplementation((_body: unknown, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.());
+    renderIncidents('/incidents?status=active&id=1');
+
+    fireEvent.click(screen.getByRole('button', { name: t.incidents.acknowledge }));
+    const notePanel = screen.getByPlaceholderText(t.incidents.notePlaceholder).closest('div') as HTMLElement;
+    fireEvent.click(within(notePanel).getByRole('button', { name: t.common.confirm }));
+
+    // acknowledged bleibt im „Aktiv"-Tab sichtbar → kein unnötiger Tab-Wechsel.
+    expect(screen.getByTestId('location')).toHaveTextContent('status=active');
+    expect(screen.getByTestId('location')).not.toHaveTextContent('status=acknowledged');
   });
 
   it('shows status counts beside the tabs', () => {
