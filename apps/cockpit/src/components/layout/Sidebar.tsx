@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { t } from '@/i18n/de';
 import { useRoleStore, type Role } from '@/store/role';
 import { useUIStore } from '@/store/ui';
@@ -35,7 +35,10 @@ function Icon({ name }: { name: IconKey }) {
   }
 }
 
-export interface NavItem { to: string; label: string; icon: IconKey; }
+// `aliases`: zusätzliche Pfade, die dieselbe Ansicht rendern (Route-Aliase wie
+// /coverage → /lineage). Der Eintrag leuchtet dort mit, sonst hätte der Nutzer
+// auf einer aliasierten Route kein „du bist hier".
+export interface NavItem { to: string; label: string; icon: IconKey; aliases?: string[]; }
 type SidebarEntry = NavItem | 'divider';
 
 const MY_WORK: NavItem = { to: '/my', label: t.nav.myWork, icon: 'my' };
@@ -45,7 +48,7 @@ const DQ_BLOCK: NavItem[] = [
   { to: '/',           label: t.nav.cockpit,    icon: 'cockpit' },
   { to: '/objects',    label: t.nav.objects,    icon: 'objects' },
   { to: '/products',   label: t.nav.products,   icon: 'products' },
-  { to: '/lineage',    label: t.nav.lineage,    icon: 'lineage' },
+  { to: '/lineage',    label: t.nav.lineage,    icon: 'lineage', aliases: ['/coverage'] },
   { to: '/incidents',  label: t.nav.incidents,  icon: 'incidents' },
   { to: '/proposals',  label: t.nav.proposals,  icon: 'proposals' },
   { to: '/library',    label: t.nav.library,    icon: 'library' },
@@ -100,6 +103,10 @@ export function Sidebar({ collapsed }: Props) {
   const role = useRoleStore(s => s.role);
   const theme = useUIStore(s => s.theme);
   const nav = navForRole(role);
+  const { pathname } = useLocation();
+
+  const matchesAlias = (aliases?: string[]) =>
+    aliases?.some(a => pathname === a || pathname.startsWith(`${a}/`)) ?? false;
 
   return (
     <aside style={{
@@ -147,29 +154,33 @@ export function Sidebar({ collapsed }: Props) {
               />
             );
           }
-          const { to, label, icon } = entry;
+          const { to, label, icon, aliases } = entry;
+          const aliasActive = matchesAlias(aliases);
           return (
             <NavLink
               key={to} to={to} end={to === '/'}
               title={label}
               aria-label={label}
-              style={({ isActive }) => ({
-                position: 'relative',
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: 'var(--s2) var(--s3)', margin: '1px 6px', borderRadius: 'var(--r-md)',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                color: isActive ? 'var(--fg)' : 'var(--fg-2)',
-                background: isActive ? 'var(--bg-2)' : 'transparent',
-                boxShadow: isActive ? 'inset 2px 0 0 var(--nav-active-bar)' : undefined,
-                fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden',
-                transition: 'color var(--t), background var(--t)',
-              })}
+              style={({ isActive }) => {
+                const active = isActive || aliasActive;
+                return {
+                  position: 'relative',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: 'var(--s2) var(--s3)', margin: '1px 6px', borderRadius: 'var(--r-md)',
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  color: active ? 'var(--fg)' : 'var(--fg-2)',
+                  background: active ? 'var(--bg-2)' : 'transparent',
+                  boxShadow: active ? 'inset 2px 0 0 var(--nav-active-bar)' : undefined,
+                  fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden',
+                  transition: 'color var(--t), background var(--t)',
+                };
+              }}
             >
               {({ isActive }) => (
                 <>
                   <span style={{
                     display: 'inline-flex', flexShrink: 0,
-                    color: isActive ? 'var(--nav-active-icon)' : 'inherit',
+                    color: isActive || aliasActive ? 'var(--nav-active-icon)' : 'inherit',
                     transition: 'color var(--t)',
                   }}>
                     <Icon name={icon} />

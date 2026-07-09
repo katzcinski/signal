@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import ProductDetail from '@/pages/ProductDetail';
+import { t } from '@/i18n/de';
 
 vi.mock('@/components/LineageMiniGraph', () => ({
   LineageMiniGraph: () => <div>Mini graph</div>,
@@ -45,10 +46,10 @@ describe('ProductDetail', () => {
     );
 
     expect(screen.getAllByText('sales_product').length).toBeGreaterThan(0);
-    expect(screen.getByText('No active findings across ports or interior objects.')).toBeTruthy();
-    expect(screen.getByText('No pinned-version drift or upstream breach signals detected.')).toBeTruthy();
+    expect(screen.getByText(t.products.noFindingsAcross)).toBeTruthy();
+    expect(screen.getByText(t.products.noUpstreamRisk)).toBeTruthy();
     expect(screen.queryByText('Pinned')).toBeNull();
-    expect(screen.getAllByText('Ports').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(t.products.portsLabel).length).toBeGreaterThan(0);
     expect(await screen.findByText('Mini graph')).toBeTruthy();
   });
 });

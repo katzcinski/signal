@@ -207,7 +207,7 @@ export default function Schedules() {
         )}
         actions={(
           <button
-            onClick={() => navigate('/objects')}
+            onClick={() => navigate('/objects?intent=schedule')}
             style={{ background: 'var(--cont)', color: '#fff', border: 'none', borderRadius: 'var(--r-lg)', padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
             + {t.schedules.panelTitle}

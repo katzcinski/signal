@@ -58,7 +58,7 @@ export function StatusHeatmap({ onInspect }: {
             {datasets.map(ds => (
               <div key={ds} style={{ display: 'flex', alignItems: 'center', gap: GAP, marginBottom: GAP }}>
                 <button
-                  onClick={e => onInspect ? onInspect(ds, e) : navigate(`/objects/${ds}`)}
+                  onClick={e => onInspect ? onInspect(ds, e) : navigate(`/objects/${encodeURIComponent(ds)}`)}
                   aria-label={onInspect ? t.peek.openChecksFor.replace('{name}', ds) : undefined}
                   title={ds}
                   style={{
