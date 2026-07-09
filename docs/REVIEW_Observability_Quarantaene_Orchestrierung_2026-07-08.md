@@ -32,11 +32,15 @@ Self-Healing-Möglichkeiten hat ein Tool wie Signal?
    Reconcile-Vertrag, Fähigkeits-Matrix pro Check-Familie und eine
    MVP-Reihenfolge (Promotion-Gate vor View-Split).
 3. **Orchestrierung:** ADR-0005 ist geliefert (Store-backed Poller,
-   `external`-Modus dokumentiert Task-Chain-Hoheit). Die harte Grenze bleibt:
-   **Task Chains können Signal nicht rufen** (kein HTTP-/Shell-Step). Größter
-   Hebel: **„on_load"-Trigger** — der Poller beobachtet die Run-Historie und
-   startet Checks, sobald ein neuer erfolgreicher Load erscheint. Dazu:
-   Verdict-Exit-Code in der CLI und (opt-in) Task-Chain-Trigger nach außen.
+   `external`-Modus dokumentiert Task-Chain-Hoheit). **Korrektur gegenüber den
+   bestehenden Konzept-Docs:** Task Chains können seit 2025 über **API-Tasks**
+   ausgehende HTTP-Calls machen (POST/PUT über eine HTTP-Connection, synchron
+   ≤ 60 s oder asynchron mit Status-Polling). Eine Chain kann Signal also
+   **nativ rufen** — größter Hebel ist ein async-kompatibler Run-Endpoint
+   (202 + `Location` → Status-Endpoint), der `proceed`/`block` auf
+   COMPLETED/FAILED mappt und damit das Promotion-Gate ohne CLI-Umweg
+   ermöglicht. Ergänzend: „on_load"-Trigger für nicht orchestrierte Objekte,
+   Verdict-Exit-Code in der CLI für Nicht-DSP-Orchestratoren.
 4. **Self-Healing:** Signal hat die Grundbausteine bereits (Auto-Recovery von
    Compliance/Incidents bei grünem Lauf, adaptive Baselines, Proposal-Miner,
    RCA). Ausbau entlang einer Reifegrad-Leiter: erkennen → diagnostizieren →
@@ -237,8 +241,12 @@ Reconcile ist idempotent: gleiche Generation zweimal anwenden = No-Op.
 **(4) MVP-Reihenfolge: B2 vor B1.** Das Staging-Promotion-Gate (objektgranular,
 keine Zusatz-Views) liefert 80 % des Werts mit 20 % der Mechanik und braucht
 nur: `enforcement_mode`-Feld (Layer 1–2 des Konzepts), CLI-Exit-Code 3,
-Episode + Badge. Der zeilenbasierte View-Split (B1) folgt, wenn ein Kunde ihn
-zieht — er hängt ohnehin an C5/WS G (Reject-Store) und am Reconcile-Skript.
+Episode + Badge. **Neu (§4.2):** über den API-Task-Schritttyp der Task Chains
+ist B2 sogar **nativ** abbildbar — die Chain ruft Signals Run-Endpoint
+asynchron und promotet nur bei COMPLETED; der CLI-Umweg entfällt für
+DSP-orchestrierte Pipelines. Der zeilenbasierte View-Split (B1) folgt, wenn
+ein Kunde ihn zieht — er hängt ohnehin an C5/WS G (Reject-Store) und am
+Reconcile-Skript.
 
 **(5) PII bleibt dicht (G8).** Quarantäne-Zeilen leben ausschließlich in
 Datasphere (`V_<obj>_QUARANTINE`); Signal speichert nur Counts + Prädikat +
@@ -260,47 +268,77 @@ Diagnostics-Pfad — keine neue Rohzeilen-Erfassung.
 | `@sap/datasphere-cli`-Wrapper | `datasphere_cli.py`: Spaces/Objekte/CSN — **kein** Task-Chain-Trigger |
 | Doppellauf-Schutz | `try_begin_run` (partieller Unique-Index) — prozessübergreifend |
 
-### 4.2 Die harte Grenze
+### 4.2 Korrektur: Task Chains können HTTP — API-Tasks
 
-Eine Datasphere-Task-Chain kann **keinen HTTP-Call und kein Shell-Kommando**
-ausführen — „Chain ruft Signal" existiert nicht als Schritttyp, und Datasphere
-liefert keine Webhooks. Inbound bleibt nur Polling (REST) oder ein externer
-Orchestrator, der beides kennt (Chain triggern **und** CLI rufen).
+Die Aussage in `Konzept_Enforcement_Modi_*` §3 („eine Task-Chain kann nicht
+nativ einen ausgehenden HTTP-Call machen") ist **überholt**. SAP hat 2025
+**API-Tasks** als Schritttyp in Task Chains eingeführt (SAP Help: *Run API
+Tasks in a Task Chain*):
+
+- **Aufruf:** HTTP **POST oder PUT** über eine vorab definierte, generische
+  **HTTP-Connection** (Host, Pfad, Credentials liegen in der Connection).
+- **Synchron:** wartet max. **60 s** auf die Antwort; Status-Code →
+  COMPLETED/FAILED des Tasks.
+- **Asynchron:** Request wird abgesetzt, danach pollt Datasphere einen
+  **Status-Endpoint** (aus dem `Location`-Response-Header oder explizit
+  konfiguriert) bis RUNNING → COMPLETED/FAILED.
+- **Grenze:** das Ergebnis ist **binär** (Task erfolgreich/fehlgeschlagen).
+  Task Chains verzweigen nicht auf Response-Inhalte — ein Drei-Wege-Verdict
+  (`proceed|quarantine|block`) ist nativ nicht abbildbar, wohl aber das
+  Zwei-Wege-Gate.
+
+Voraussetzungen auf Signal-Seite: Signal muss aus dem Tenant per HTTPS
+erreichbar sein, und der Aufruf braucht echte Auth (S5: `noauth` bindet nur
+loopback — für den Chain-Aufruf ist ein technischer Principal mit
+Run-Trigger-Recht nötig, `require_roles(steward,…)`).
 
 ### 4.3 Empfehlungen
 
-**R1 — „on_load"-Trigger (größter Hebel, rein additiv).** Dritter
-Schedule-Modus neben `internal`/`external`: der vorhandene Poller fragt die
-Run-Historie (bestehender `DatasphereClient`) und startet
+**R1 — Inbound-Integration über API-Task (größter Hebel).** Signals
+vorhandenes Muster passt bereits fast: `POST /api/objects/{id}/run` startet
+einen Hintergrund-Lauf und liefert `run_id`; `GET /api/runs/{run_id}`
+existiert. Für den API-Task-Async-Modus fehlt nur der formale Vertrag:
+Run-Start antwortet **202 + `Location: /api/runs/{run_id}/status`**, und der
+Status-Endpoint mappt den Lauf auf die von Datasphere erwartete
+RUNNING/COMPLETED/FAILED-Semantik — inkl. Verdict-Mapping `proceed`→
+COMPLETED, `block` (und vorerst auch `quarantine`) → FAILED. Damit wird die
+Chain `[Load → Staging] → [API-Task: Signal-Lauf] → [Promote nur bei Erfolg]`
+zum **nativen Promotion-Gate (B2) ohne CLI-Umweg**. Die exakten
+Status-Code-Erwartungen des API-Tasks sind am Tenant zu verifizieren
+(Feature ist jung, Details versionsabhängig); der 60-s-Sync-Modus ist für
+DQ-Läufe ungeeignet → async ist der Zielpfad.
+
+**R2 — „on_load"-Trigger (additiv, für nicht orchestrierte Objekte).**
+Dritter Schedule-Modus neben `internal`/`external`: der vorhandene Poller
+fragt die Run-Historie (bestehender `DatasphereClient`) und startet
 `start_object_run(...)`, sobald für das Objekt ein **neuer erfolgreicher
 Load** erscheint (Dedupe über `run_id`, Debounce, Catch-up-Politik wie 3.3
-der ADR). Damit laufen Checks *dann, wenn Daten kommen* — statt Kadenz zu
-raten. Kein Eingriff in Datasphere nötig; N+1-Problem (J5) durch Bulk-Abruf
-im Tick lösen. Erweitert ADR-0005 additiv (Backlog N).
+der ADR). Wichtig für Objekte, deren Chains man nicht anfassen darf/kann,
+und als Fallback ohne API-Task. N+1-Problem (J5) durch Bulk-Abruf im Tick
+lösen. Erweitert ADR-0005 additiv (Backlog N).
 
-**R2 — Verdict-Exit-Code in der CLI (klein, sofort).** Exit 0/1/3 +
+**R3 — Verdict-Exit-Code in der CLI (klein, sofort).** Exit 0/1/3 +
 `--no-enforce` + Verdict in der JSON-Ausgabe (Layer 3 des
-Enforcement-Konzepts). Das ist die Voraussetzung dafür, dass ein externer
-Orchestrator (und später eine Task-Chain-Verzweigung über den Orchestrator)
-`proceed|quarantine|block` unterscheiden kann — unabhängig davon, wann die
-Enforcement-Achse selbst kommt. Heute wirft die CLI Warn und Pass in einen
-Topf (`0`) und alles andere auf `1`.
+Enforcement-Konzepts). Bleibt relevant für **Nicht-DSP-Orchestratoren**
+(Airflow, Cron, CI) und Lite-Deployments ohne laufenden Service. Heute wirft
+die CLI Warn und Pass in einen Topf (`0`) und alles andere auf `1`.
 
-**R3 — Outbound-Trigger als bewusstes Opt-in.** Für Remediation-Flows kann
-Signal Chains **auslösen** (Data-Integration-API bzw. CLI-Wrapper um einen
-`tasks chains run`-Aufruf erweitern — Kommando-Oberfläche am Tenant
-verifizieren). Das ist kein Daten-Schreiben, aber ein Handeln auf dem Tenant:
-eigener technischer User, eigenes Setting (`DATASPHERE_ALLOW_TRIGGER`,
-Default **false**), jede Auslösung als Activity-Event auditiert. Ohne Opt-in
-bleibt Signal strikt beobachtend.
+**R4 — Outbound-Trigger als bewusstes Opt-in.** Für Remediation-Flows kann
+Signal Chains **auslösen** — die öffentliche Task-Chain-API existiert
+(`POST /api/v1/datasphere/tasks/chains/<space>/run/<chain>`). Das ist kein
+Daten-Schreiben, aber ein Handeln auf dem Tenant: eigener technischer User,
+eigenes Setting (`DATASPHERE_ALLOW_TRIGGER`, Default **false**), jede
+Auslösung als Activity-Event auditiert. Zusammen mit R1 schließt sich der
+Kreis: Chain ruft Signal (Gate), Signal ruft bei `quarantine` die
+Split-/Remediation-Chain (Drei-Wege-Verdict trotz binärem API-Task).
 
-**R4 — Kein Task-Monitor-Nachbau.** Abgrenzung aus `Konzept_Runs_Freshness.md`
+**R5 — Kein Task-Monitor-Nachbau.** Abgrenzung aus `Konzept_Runs_Freshness.md`
 bestätigt: tiefe Job-Logs verlinken, nicht spiegeln; Run-Info lebt in
 Objekt/Grid/Lineage/Incidents.
 
-**R5 — Run-Quellen vervollständigen (= Backlog J).** Transformation Flows +
+**R6 — Run-Quellen vervollständigen (= Backlog J).** Transformation Flows +
 Persist-Tasks abrufen, echten Payload pinnen, `records_transferred`/`is_delta`
-modellieren — Voraussetzung für R1 auf allen Objekttypen und für die
+modellieren — Voraussetzung für R2 auf allen Objekttypen und für die
 Volumen-Serie „gratis" aus Delta-Counts.
 
 ---
@@ -342,7 +380,7 @@ L4 Begrenzt        Auto-Release, Auto-Re-Check, Load-Retry   ◻ Konzept unten
 2. **Auto-Release der Quarantäne** (L4, an F gekoppelt): Episode schließt nach
    N aufeinanderfolgenden grünen Läufen automatisch (Policy je Contract,
    Default aus) — spiegelt die vorhandene Compliance-Auto-Recovery.
-3. **Load-Retry-Orchestrierung** (L4, an R3 gekoppelt): fehlgeschlagener
+3. **Load-Retry-Orchestrierung** (L4, an R4 gekoppelt): fehlgeschlagener
    Replication-Run erkannt → (opt-in) Retry-Chain auslösen, **Retry-Budget**
    (z. B. max. 2), danach Eskalation als Incident mit RCA. Ohne Opt-in:
    Notification mit Runbook-Link statt Trigger.
@@ -353,7 +391,7 @@ L4 Begrenzt        Auto-Release, Auto-Re-Check, Load-Retry   ◻ Konzept unten
 5. **Baseline-Re-Anchor nach gewolltem Regimewechsel** (L3): Accept eines
    Volumen-Proposals setzt die Baseline neu auf, statt wochenlang gegen das
    alte Regime zu warnen.
-6. **Freshness-getriebenes Nachfassen** (L4, an R1 gekoppelt): Objekt `late`
+6. **Freshness-getriebenes Nachfassen** (L4, an R2 gekoppelt): Objekt `late`
    und kein Run in Sicht → gezielter Check-Lauf + Timeliness-Incident statt
    stilles Warten auf den nächsten Slot.
 
@@ -374,16 +412,18 @@ L4 Begrenzt        Auto-Release, Auto-Re-Check, Load-Retry   ◻ Konzept unten
 
 | # | Empfehlung | Aufwand | Bezug |
 |---|---|---|---|
-| 1 | CLI-Verdict-Exit-Code (0/1/3, `--no-enforce`) | S | F Layer 3, §4.3 R2 |
-| 2 | O2-Spike: Katalog-/Monitoring-View-Zugriff des Space-Users verifizieren | S (1–2 PT) | K/O2, §2.2 |
-| 3 | `on_load`-Schedule-Modus (Run-getriggerte Checks) | M | N (neu), §4.3 R1 |
-| 4 | Run-Quellen vervollständigen + Payload pinnen | M | J, §4.3 R5 |
-| 5 | Enforcement-Achse MVP = B2 Promotion-Gate + Episoden-Lifecycle | M/L | F + §3.3 |
-| 6 | Katalog-Evidenz-Templates (`row_count_catalog`, `load_lag_catalog`) | M | §2.3, nach #2 |
-| 7 | Self-Healing L4-Paket (Auto-Re-Check, Auto-Release, Retry-Budget) | M | §5.3, nach #5 |
-| 8 | `OPEN_TASKS.md` E1 auf ✅ korrigieren (Code-Stand) | XS | §1.2 |
+| 1 | API-Task-Vertrag: 202+`Location`-Status-Endpoint für Run-Start, Verdict→COMPLETED/FAILED | M | §4.3 R1 (neu, entsperrt natives B2-Gate) |
+| 2 | CLI-Verdict-Exit-Code (0/1/3, `--no-enforce`) | S | F Layer 3, §4.3 R3 |
+| 3 | O2-Spike: Katalog-/Monitoring-View-Zugriff des Space-Users verifizieren | S (1–2 PT) | K/O2, §2.2 |
+| 4 | `on_load`-Schedule-Modus (Run-getriggerte Checks) | M | N (neu), §4.3 R2 |
+| 5 | Run-Quellen vervollständigen + Payload pinnen | M | J, §4.3 R6 |
+| 6 | Enforcement-Achse MVP = B2 Promotion-Gate + Episoden-Lifecycle | M/L | F + §3.3, nutzt #1 |
+| 7 | Katalog-Evidenz-Templates (`row_count_catalog`, `load_lag_catalog`) | M | §2.3, nach #3 |
+| 8 | Self-Healing L4-Paket (Auto-Re-Check, Auto-Release, Retry-Budget) | M | §5.3, nach #6 |
+| 9 | `OPEN_TASKS.md` E1 auf ✅ korrigieren; Enforcement-Konzept §3 aktualisieren | XS | §1.2, §4.2 |
 
-**Reihenfolge-Logik:** #1/#2 sind klein und entsperren alles Weitere; #3/#4
-machen die Freshness-Achse ereignisgetrieben statt kadenz-geraten; #5 bringt
-die Quarantäne vom Konzept in den ersten nutzbaren Schnitt; #6/#7 bauen auf
-den verifizierten Fundamenten auf.
+**Reihenfolge-Logik:** #1 macht Signal für DSP-orchestrierte Pipelines nativ
+gate-fähig und ist die Voraussetzung für das Quarantäne-MVP (#6); #2/#3 sind
+klein und entsperren die übrigen Pfade; #4/#5 machen die Freshness-Achse
+ereignisgetrieben statt kadenz-geraten; #7/#8 bauen auf den verifizierten
+Fundamenten auf.
