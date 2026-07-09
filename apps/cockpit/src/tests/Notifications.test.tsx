@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { t } from '@/i18n/de';
 import type { NotificationConfig } from '@/types';
@@ -6,6 +6,7 @@ import type { NotificationConfig } from '@/types';
 const h = vi.hoisted(() => ({
   cfg: { current: null as NotificationConfig | null },
   deleteChannel: vi.fn(),
+  createRule: vi.fn(),
 }));
 
 // Mock the API layer so the page renders without react-query/axios.
@@ -15,7 +16,7 @@ vi.mock('@/api/notifications', () => {
     useNotificationConfig: () => ({ data: h.cfg.current, isLoading: false, isError: false, refetch: () => {} }),
     useCreateChannel: noopMut, usePatchChannel: noopMut,
     useDeleteChannel: () => ({ mutate: h.deleteChannel, isPending: false }),
-    useCreateRule: noopMut, useDeleteRule: noopMut,
+    useCreateRule: () => ({ mutate: h.createRule, isPending: false }), useDeleteRule: noopMut,
     useCreateMute: noopMut, useDeleteMute: noopMut,
   };
 });
@@ -33,6 +34,7 @@ const baseConfig = (overrides: Partial<NotificationConfig> = {}): NotificationCo
 describe('Notifications page (UX-N2)', () => {
   beforeEach(() => {
     h.deleteChannel.mockClear();
+    h.createRule.mockClear();
   });
 
   it('renders channels and rule facets routing to the channel', () => {
@@ -52,6 +54,25 @@ describe('Notifications page (UX-N2)', () => {
     expect(screen.getByText(t.role.readOnlyBanner)).toBeInTheDocument();
     expect(screen.queryByText(t.notifications.addChannel)).not.toBeInTheDocument();
     expect(screen.queryByText(t.notifications.addMute)).not.toBeInTheDocument();
+  });
+
+  it('submits a rule with the synced channel once the first channel exists', () => {
+    // Start ohne Kanäle: das Regelformular ist noch nicht montiert.
+    h.cfg.current = baseConfig({ channels: [], rules: [] });
+    const { rerender } = render(<Notifications />);
+    expect(screen.queryByText(t.notifications.addRule)).not.toBeInTheDocument();
+
+    // Erster Kanal wird angelegt → Regelformular erscheint, channelId synchronisiert.
+    h.cfg.current = baseConfig({ rules: [] });
+    rerender(<Notifications />);
+
+    const ruleForm = screen.getByText(t.notifications.addRule).closest('div') as HTMLElement;
+    fireEvent.change(within(ruleForm).getByLabelText(t.notifications.name), { target: { value: 'My Rule' } });
+    fireEvent.click(screen.getByText(t.notifications.addRule));
+
+    // submit() no-opt nicht mehr stumm: createRule wird mit dem sichtbaren Kanal aufgerufen.
+    expect(h.createRule).toHaveBeenCalledTimes(1);
+    expect(h.createRule.mock.calls[0][0]).toMatchObject({ name: 'My Rule', channel_id: 1 });
   });
 
   it('requires confirmation before deleting a channel', () => {

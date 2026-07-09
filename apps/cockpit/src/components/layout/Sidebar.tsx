@@ -35,7 +35,7 @@ function Icon({ name }: { name: IconKey }) {
   }
 }
 
-interface NavItem { to: string; label: string; icon: IconKey; }
+export interface NavItem { to: string; label: string; icon: IconKey; }
 type SidebarEntry = NavItem | 'divider';
 
 const MY_WORK: NavItem = { to: '/my', label: t.nav.myWork, icon: 'my' };

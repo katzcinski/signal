@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDeleteButton } from '@/components/ui/ControlPrimitives';
@@ -45,8 +45,9 @@ function ChannelsSection({ channels, canEdit }: { channels: NotificationChannel[
   const [type, setType] = useState('slack');
   const [url, setUrl] = useState('');
 
+  const canSubmit = Boolean(name.trim() && url.trim());
   const submit = () => {
-    if (!name.trim() || !url.trim()) return;
+    if (!canSubmit) return;
     create.mutate({ name: name.trim(), type, url: url.trim() }, {
       onSuccess: () => { setName(''); setUrl(''); },
     });
@@ -92,7 +93,7 @@ function ChannelsSection({ channels, canEdit }: { channels: NotificationChannel[
           <Field label={t.notifications.url} style={{ flex: 1 }}>
             <Input style={{ width: '100%' }} placeholder="https://…" value={url} onChange={e => setUrl(e.target.value)} />
           </Field>
-          <Button variant="primary" disabled={create.isPending} onClick={submit}>{t.notifications.addChannel}</Button>
+          <Button variant="primary" disabled={create.isPending || !canSubmit} onClick={submit}>{t.notifications.addChannel}</Button>
         </div>
       )}
     </Panel>
@@ -110,6 +111,18 @@ function RulesSection({ rules, channels, canEdit }: { rules: NotificationRule[];
   const [space, setSpace] = useState('');
   const [product, setProduct] = useState('');
 
+  // Der <select> wird erst nach dem ersten Kanal montiert; die initiale
+  // useState-Wahl (leer, weil channels noch leer war) bleibt sonst hängen und
+  // submit() no-oped stumm. Auf einen gültigen Kanal synchronisieren, sobald
+  // sich die Liste ändert (bzw. der gewählte Kanal gelöscht wird).
+  useEffect(() => {
+    if (channels.length === 0) {
+      if (channelId !== '') setChannelId('');
+    } else if (!channels.some(c => c.id === channelId)) {
+      setChannelId(channels[0].id);
+    }
+  }, [channels, channelId]);
+
   const channelName = (id: number) => channels.find(c => c.id === id)?.name ?? `#${id}`;
   const facets = (r: NotificationRule) => {
     const parts = [
@@ -123,8 +136,9 @@ function RulesSection({ rules, channels, canEdit }: { rules: NotificationRule[];
     return parts.length ? parts.join(' · ') : t.notifications.any;
   };
 
+  const canSubmit = Boolean(name.trim()) && channelId !== '';
   const submit = () => {
-    if (!name.trim() || channelId === '') return;
+    if (!canSubmit) return;
     create.mutate(
       {
         name: name.trim(), channel_id: Number(channelId), match_severity: severity,
@@ -181,7 +195,7 @@ function RulesSection({ rules, channels, canEdit }: { rules: NotificationRule[];
               {channels.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           </Field>
-          <Button variant="primary" disabled={create.isPending} onClick={submit}>{t.notifications.addRule}</Button>
+          <Button variant="primary" disabled={create.isPending || !canSubmit} onClick={submit}>{t.notifications.addRule}</Button>
         </div>
       )}
     </Panel>
@@ -197,8 +211,9 @@ function MutesSection({ mutes, canEdit }: { mutes: NotificationMute[]; canEdit: 
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
 
+  const canSubmit = Boolean(from && to);
   const submit = () => {
-    if (!from || !to) return;
+    if (!canSubmit) return;
     create.mutate(
       { reason: reason.trim(), match_space: space.trim(), starts_at: new Date(from).toISOString(), ends_at: new Date(to).toISOString() },
       { onSuccess: () => { setReason(''); setSpace(''); setFrom(''); setTo(''); } },
@@ -237,7 +252,7 @@ function MutesSection({ mutes, canEdit }: { mutes: NotificationMute[]; canEdit: 
           <Field label={t.notifications.space}><Input style={{ width: 90 }} value={space} onChange={e => setSpace(e.target.value)} /></Field>
           <Field label={t.notifications.from}><Input type="datetime-local" value={from} onChange={e => setFrom(e.target.value)} /></Field>
           <Field label={t.notifications.to}><Input type="datetime-local" value={to} onChange={e => setTo(e.target.value)} /></Field>
-          <Button variant="primary" disabled={create.isPending} onClick={submit}>{t.notifications.addMute}</Button>
+          <Button variant="primary" disabled={create.isPending || !canSubmit} onClick={submit}>{t.notifications.addMute}</Button>
         </div>
       )}
     </Panel>

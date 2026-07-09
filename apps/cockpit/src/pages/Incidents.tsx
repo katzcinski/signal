@@ -157,7 +157,11 @@ function ActiveIncidentFilters({
   );
 }
 
-function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
+function IncidentDrawer({ id, onClose, onTransitioned }: {
+  id: number;
+  onClose: () => void;
+  onTransitioned: (status: IncidentStatus) => void;
+}) {
   const { data: incident, isLoading } = useIncident(id);
   const transition = useIncidentTransition(id);
   const navigate = useNavigate();
@@ -175,7 +179,14 @@ function IncidentDrawer({ id, onClose }: { id: number; onClose: () => void }) {
 
   const confirmAct = () => {
     if (!pendingStatus) return;
-    transition.mutate({ status: pendingStatus, note: noteInput.trim() || undefined });
+    const nextStatus = pendingStatus as IncidentStatus;
+    // Nach erfolgreichem Übergang die URL nachziehen (Tab folgt dem Incident),
+    // damit der Drawer nicht unter einem Tab stehen bleibt, der ihn nicht mehr
+    // listet — sonst zeigt ein Reload/Share einen gelösten Incident unter „Offen".
+    transition.mutate(
+      { status: nextStatus, note: noteInput.trim() || undefined },
+      { onSuccess: () => onTransitioned(nextStatus) },
+    );
     setPendingStatus(null);
     setNoteInput('');
   };
@@ -539,6 +550,15 @@ export default function Incidents() {
 
   const closeIncident = () => setQuery({ id: '' });
 
+  // Wenn ein Statuswechsel den Incident aus der aktuellen Tab-Liste entfernt,
+  // dem Incident folgen (Status-Tab wechseln), damit der offene Drawer nicht
+  // stale gegen die URL steht. Bleibt er sichtbar (z. B. open→acknowledged im
+  // „Aktiv"-Tab), keinen unnötigen Tab-Sprung auslösen.
+  const followTransition = (status: IncidentStatus) => {
+    const stillVisible = activeTab === 'active' ? status !== 'resolved' : activeTab === status;
+    if (!stillVisible) setQuery({ status });
+  };
+
   const selectTab = (tab: IncidentTab) => {
     setQuery({ status: tab, id: '' });
   };
@@ -619,7 +639,7 @@ export default function Incidents() {
       )}
 
       {!isChecksTab && activeIncidentId != null && (
-        <IncidentDrawer id={activeIncidentId} onClose={closeIncident} />
+        <IncidentDrawer id={activeIncidentId} onClose={closeIncident} onTransitioned={followTransition} />
       )}
     </div>
   );
