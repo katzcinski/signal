@@ -63,7 +63,15 @@ export default function ObjectDetail() {
   const tabTarget = resolveObjectDetailTabTarget(sp.get('tab'));
   const activeGroup = tabTarget.group;
   const tab = tabTarget.anchor;
-  const setTab = (next: Tab) => setSp({ tab: OBJECT_DETAIL_TAB_TARGETS[next].anchor });
+  // Tab-Wechsel spiegelt den Rest der Query (kein Wipe künftiger Parameter) und
+  // ersetzt den History-Eintrag statt zu pushen — konsistent mit allen anderen
+  // Tab-/Filter-Views (useSearchParamState), damit der Zurück-Button nicht durch
+  // jeden angetippten Tab läuft.
+  const setTab = (next: Tab) => setSp(prev => {
+    const params = new URLSearchParams(prev);
+    params.set('tab', OBJECT_DETAIL_TAB_TARGETS[next].anchor);
+    return params;
+  }, { replace: true });
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);

@@ -497,7 +497,7 @@ export default function Cockpit() {
               {unvalidated.map(objId => (
                 <button
                   key={objId}
-                  onClick={() => navigate(`/objects/${objId}`)}
+                  onClick={() => navigate(`/objects/${encodeURIComponent(objId)}`)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 'var(--s3)', width: '100%', textAlign: 'left',
                     padding: '6px 0', background: 'none', border: 'none',

@@ -1,5 +1,7 @@
+import { useDeferredValue, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProducts } from '@/api/products';
+import { useSearchParamState } from '@/hooks/useSearchParamState';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { LifecycleTag } from '@/components/ui/LifecycleTag';
 import { OwnershipTag } from '@/components/ui/OwnershipTag';
@@ -24,6 +26,35 @@ function OwnerList({ owners }: { owners: string[] }) {
 export default function Products() {
   const { data: products = [], isLoading, isError, refetch } = useProducts();
   const navigate = useNavigate();
+  const [search, setSearch] = useSearchParamState('q');
+  const deferredSearch = useDeferredValue(search);
+
+  const q = deferredSearch.trim().toLowerCase();
+  const rows = useMemo(() => (
+    q
+      ? products.filter(p =>
+          p.product.toLowerCase().includes(q) ||
+          p.owners.some(owner => owner.toLowerCase().includes(q)),
+        )
+      : products
+  ), [products, q]);
+
+  const searchInput = (
+    <input
+      type="search"
+      name="product-search"
+      autoComplete="off"
+      spellCheck={false}
+      value={search}
+      onChange={e => setSearch(e.target.value)}
+      placeholder={t.products.search}
+      aria-label={t.products.search}
+      style={{
+        background: 'var(--bg-2)', border: '1px solid var(--line-2)',
+        color: 'var(--fg)', borderRadius: 'var(--r-md)', padding: '5px 10px', fontSize: 12, minWidth: 220,
+      }}
+    />
+  );
 
   const columns: ColDef<ProductListItem>[] = [
     {
@@ -97,14 +128,14 @@ export default function Products() {
 
   return (
     <div className="page-full">
-      <PageHeader title={t.products.title} />
+      <PageHeader title={t.products.title} actions={searchInput} />
       {isError ? (
         <ErrorBanner onRetry={() => refetch()} />
       ) : (
         <div style={{ background: 'var(--bg-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
           <Table
             columns={columns}
-            rows={products}
+            rows={rows}
             rowKey={row => row.product}
             onRowClick={row => navigate(`/products/${encodeURIComponent(row.product)}`)}
             empty={t.products.empty}

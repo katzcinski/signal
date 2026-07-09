@@ -136,7 +136,7 @@ export function CommandPalette({ onClose }: Props) {
 
             <Command.Group heading={t.palette.objects}>
               {objects.slice(0, 50).map(o => (
-                <Command.Item key={`open:${o.id}`} value={`object ${o.name} ${o.id}`} onSelect={() => go(`/objects/${o.id}`, o.name)}>
+                <Command.Item key={`open:${o.id}`} value={`object ${o.name} ${o.id}`} onSelect={() => go(`/objects/${encodeURIComponent(o.id)}`, o.name)}>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)' }}>{o.name}</span>
                   <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{o.space}</span>
                 </Command.Item>
@@ -152,7 +152,7 @@ export function CommandPalette({ onClose }: Props) {
                 </Command.Item>
               ))}
               {contracts.slice(0, 50).map(c => (
-                <Command.Item key={`contract:${c.product}`} value={`contract ${c.product} open`} onSelect={() => go(`/contracts?product=${c.product}`, c.product)}>
+                <Command.Item key={`contract:${c.product}`} value={`contract ${c.product} open`} onSelect={() => go(`/contracts?product=${encodeURIComponent(c.product)}`, c.product)}>
                   {t.palette.openContract} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{c.product}</span>
                 </Command.Item>
               ))}

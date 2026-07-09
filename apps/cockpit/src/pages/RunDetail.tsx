@@ -112,11 +112,11 @@ export default function RunDetail() {
       <Breadcrumbs items={[
         { label: t.breadcrumb.home, to: '/' },
         { label: t.breadcrumb.objects, to: '/objects' },
-        { label: run.dataset, to: `/objects/${run.dataset}` },
+        { label: run.dataset, to: `/objects/${encodeURIComponent(run.dataset)}` },
         { label: `${t.breadcrumb.runs} ${run.run_id.slice(0, 12)}…` },
       ]} />
       <div style={{ marginBottom: 20 }}>
-        <Button variant="ghost" size="sm" onClick={() => navigate(`/objects/${run.dataset}`)} style={{ marginBottom: 12 }}>{t.runDetail.back}</Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/objects/${encodeURIComponent(run.dataset)}`)} style={{ marginBottom: 12 }}>{t.runDetail.back}</Button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg-2)' }}>{run.run_id}</span>
           <StatusPill status={run.overall_status} />

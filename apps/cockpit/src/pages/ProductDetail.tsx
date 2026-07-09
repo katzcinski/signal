@@ -109,8 +109,9 @@ function SectionCount({ value }: { value: number }) {
   );
 }
 
-function pluralize(count: number, singular: string, plural = `${singular}s`) {
-  return `${count} ${count === 1 ? singular : plural}`;
+// Zähler-abhängige Auswahl zwischen Singular-/Plural-Template und {n}-Einsetzung.
+function plural(count: number, one: string, many: string) {
+  return (count === 1 ? one : many).replace('{n}', String(count));
 }
 
 function ProfileFact({
@@ -140,8 +141,8 @@ function ProfileFact({
 
 function RiskFlags({ entry }: { entry: ProductUpstreamRiskEntry }) {
   const flags: Array<{ label: string; color: string }> = [];
-  if (entry.upstream_breach) flags.push({ label: 'Breach', color: 'var(--status-fail)' });
-  if (entry.version_drift) flags.push({ label: 'Version drift', color: 'var(--status-warn)' });
+  if (entry.upstream_breach) flags.push({ label: t.products.flagBreach, color: 'var(--status-fail)' });
+  if (entry.version_drift) flags.push({ label: t.products.flagVersionDrift, color: 'var(--status-warn)' });
   if (flags.length === 0 && entry.compliance) flags.push({ label: entry.compliance, color: 'var(--fg-2)' });
 
   return (
@@ -257,9 +258,13 @@ export default function ProductDetail() {
   const hiddenRiskCount = data.upstream_risk.length - visibleRisk.length;
   const sparseLineage = data.subgraph.nodes.length <= 1 || data.subgraph.edges.length === 0;
   const productSummary = [
-    `${pluralize(data.ports.length, 'published port')}`,
-    sourceCount > 0 ? `${pluralize(sourceCount, 'inbound source')} in the current extract` : 'no inbound sources in the current extract',
-    data.interior.length > 0 ? `${pluralize(data.interior.length, 'mapped interior object')}` : 'no mapped interior yet',
+    plural(data.ports.length, t.products.summaryPort, t.products.summaryPortPlural),
+    sourceCount > 0
+      ? plural(sourceCount, t.products.summarySource, t.products.summarySourcePlural)
+      : t.products.summaryNoSources,
+    data.interior.length > 0
+      ? plural(data.interior.length, t.products.summaryInterior, t.products.summaryInteriorPlural)
+      : t.products.summaryNoInterior,
   ].join(' • ');
 
   return (
@@ -297,7 +302,7 @@ export default function ProductDetail() {
         <div className="product-hero">
           <Card accent="var(--cont)" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-              <span className="mono-label">Product profile</span>
+              <span className="mono-label">{t.products.profileLabel}</span>
               <span style={{ fontSize: 'var(--fs-h1)', fontWeight: 700, lineHeight: 'var(--lh-tight)', color: 'var(--fg)', overflowWrap: 'anywhere' }}>
                 {data.product}
               </span>
@@ -308,22 +313,32 @@ export default function ProductDetail() {
 
             <div className="product-profile-grid">
               <div className="product-profile-section">
-                <ProfileFact label="Owners" value={<OwnerChips owners={data.owners} />} />
-                <ProfileFact label="Lifecycle" value={lifecycleLabel} />
-                <ProfileFact label="Health" value={<StatusPill status={data.own_health} size="sm" />} />
+                <ProfileFact label={t.products.ownersLabel} value={<OwnerChips owners={data.owners} />} />
+                <ProfileFact label={t.products.lifecycleLabel} value={lifecycleLabel} />
+                <ProfileFact label={t.products.healthLabel} value={<StatusPill status={data.own_health} size="sm" />} />
               </div>
 
               <div className="product-profile-section">
-                <ProfileFact label="Ports" value={data.ports.length} hint={`${activePorts} active contracts`} />
                 <ProfileFact
-                  label="Structure"
-                  value={`${data.interior.length} interior / ${sourceCount} sources`}
-                  hint={mappedLayers > 0 ? `${mappedLayers} mapped layers` : 'structure not mapped yet'}
+                  label={t.products.portsLabel}
+                  value={data.ports.length}
+                  hint={t.products.activeContracts.replace('{n}', String(activePorts))}
                 />
                 <ProfileFact
-                  label="Current signal"
-                  value={actionableRisk > 0 ? `${actionableRisk} upstream mismatch${actionableRisk === 1 ? '' : 'es'}` : 'No upstream mismatches'}
-                  hint={data.findings.length > 0 ? `${data.findings.length} findings still open` : 'No active findings'}
+                  label={t.products.structureLabel}
+                  value={t.products.interiorSources
+                    .replace('{interior}', String(data.interior.length))
+                    .replace('{sources}', String(sourceCount))}
+                  hint={mappedLayers > 0 ? t.products.mappedLayers.replace('{n}', String(mappedLayers)) : t.products.structureUnmapped}
+                />
+                <ProfileFact
+                  label={t.products.signalLabel}
+                  value={actionableRisk > 0
+                    ? plural(actionableRisk, t.products.upstreamMismatch, t.products.upstreamMismatchPlural)
+                    : t.products.noUpstreamMismatch}
+                  hint={data.findings.length > 0
+                    ? t.products.findingsOpen.replace('{n}', String(data.findings.length))
+                    : t.products.noFindingsShort}
                 />
               </div>
             </div>
@@ -336,19 +351,19 @@ export default function ProductDetail() {
             style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s1)' }}>
-              <span className="mono-label">Lineage</span>
+              <span className="mono-label">{t.products.lineageLabel}</span>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s3)', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)' }}>
-                  {sparseLineage ? 'Mapped object' : 'Upstream lineage'}
+                  {sparseLineage ? t.products.lineageMappedObject : t.products.lineageUpstream}
                 </span>
                 <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>
-                  {data.subgraph.nodes.length} nodes / {data.subgraph.edges.length} edges
+                  {t.products.nodesEdges
+                    .replace('{nodes}', String(data.subgraph.nodes.length))
+                    .replace('{edges}', String(data.subgraph.edges.length))}
                 </span>
               </div>
               <p style={{ color: 'var(--fg-3)', fontSize: 12, lineHeight: 1.5 }}>
-                {sparseLineage
-                  ? 'No mapped upstream objects were found for this product in the current extract.'
-                  : 'Open any node to inspect the upstream object detail.'}
+                {sparseLineage ? t.products.lineageSparseDesc : t.products.lineageDenseDesc}
               </p>
             </div>
             <Suspense fallback={<div style={{ color: 'var(--fg-3)', fontSize: 12, minHeight: 280 }}>{t.common.loading}</div>}>
@@ -380,7 +395,7 @@ export default function ProductDetail() {
               </div>
               {data.findings.length === 0 ? (
                 <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
-                  No active findings across ports or interior objects.
+                  {t.products.noFindingsAcross}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
@@ -423,7 +438,7 @@ export default function ProductDetail() {
               </div>
               {data.upstream_risk.length === 0 ? (
                 <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
-                  No pinned-version drift or upstream breach signals detected.
+                  {t.products.noUpstreamRisk}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
@@ -445,8 +460,8 @@ export default function ProductDetail() {
                     >
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', flexWrap: 'wrap' }}>
-                          <span className="mono-label">Upstream product</span>
-                          <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>Open detail</span>
+                          <span className="mono-label">{t.products.upstreamProduct}</span>
+                          <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>{t.products.openDetail}</span>
                         </div>
                         <div style={{ color: 'var(--fg)', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, marginTop: 4 }}>
                           {entry.product}
@@ -461,7 +476,7 @@ export default function ProductDetail() {
                             padding: '1px 7px',
                           }}
                           >
-                            pinned {entry.pinned_version}
+                            {t.products.pinnedVersion.replace('{v}', String(entry.pinned_version))}
                           </span>
                           <span style={{
                             borderRadius: 'var(--r-full)',
@@ -472,7 +487,7 @@ export default function ProductDetail() {
                             padding: '1px 7px',
                           }}
                           >
-                            current {entry.current_version ?? '-'}
+                            {t.products.currentVersion.replace('{v}', String(entry.current_version ?? '-'))}
                           </span>
                         </div>
                       </div>

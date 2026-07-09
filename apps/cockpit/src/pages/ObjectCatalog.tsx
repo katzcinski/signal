@@ -22,6 +22,10 @@ export default function ObjectCatalog() {
   const [textFilter, setTextFilter] = useSearchParamState('q');
   const [familyFilter, setFamilyFilter] = useSearchParamState('family');
   const [statusFilter, setStatusFilter] = useSearchParamState('dqstatus');
+  // Absicht aus dem „+ Zeitplan"-Button (Schedules): den Nutzer nicht kommentarlos
+  // auf dem Katalog absetzen, sondern erklären, dass ein Zeitplan pro Objekt im
+  // Reiter „Zeitplan" scharfgeschaltet wird.
+  const [intent, setIntent] = useSearchParamState('intent');
   const { openChecks, openPeek, overlays } = useObjectInspection();
   const navigate = useNavigate();
   const deferredTextFilter = useDeferredValue(textFilter);
@@ -125,6 +129,23 @@ export default function ObjectCatalog() {
   return (
     <div className="page-full">
       <PageHeader title={t.objects.title} actions={searchInput} />
+      {intent === 'schedule' && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--s3)',
+          background: 'color-mix(in srgb, var(--cont) 10%, var(--bg-2))',
+          border: '1px solid color-mix(in srgb, var(--cont) 40%, var(--line))',
+          borderRadius: 'var(--r-lg)', padding: '10px 14px', marginBottom: 12,
+        }}>
+          <span style={{ color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.5 }}>{t.schedules.catalogHint}</span>
+          <button
+            onClick={() => setIntent('')}
+            aria-label={t.common.close}
+            style={{ background: 'none', border: 'none', color: 'var(--fg-3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0 }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
         <FilterChip active={familyFilter === ''} onClick={() => setFamilyFilter('')}>{t.objects.allFamilies}</FilterChip>
         {FAMILIES.map(f => (
