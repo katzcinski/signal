@@ -104,11 +104,21 @@ dasselbe Objekt ausdrückbar ist. Das gilt für `not_null`, `completeness`,
 
 ## 3 — Aufruf-Topologie: Scheduler → CLI vs. API
 
-Eine Datasphere-Task-Chain orchestriert Datasphere-Objekte; sie kann **nicht**
-nativ ein Shell-Kommando ausführen oder einen ausgehenden HTTP-Call machen.
-„Die Task-Chain ruft die Signal-API" ist also **kein** vorhandener Schritttyp.
-Ein **externer Orchestrator** ist der Dirigent (ADR-0005: Scheduling ist extern,
-Cron/Task-Chain → CLI; die API triggert nur ad hoc).
+> **Update 2026-07-09 — Prämisse überholt.** SAP hat 2025 **API-Tasks** als
+> Schritttyp in Task Chains eingeführt (POST/PUT über eine HTTP-Connection,
+> synchron ≤ 60 s oder asynchron mit Status-Polling über den
+> `Location`-Header). „Die Task-Chain ruft die Signal-API" **ist** damit ein
+> vorhandener Schritttyp; das Verdict bleibt aus Chain-Sicht binär
+> (COMPLETED/FAILED). Konsequenzen und empfohlener Async-Vertrag: siehe
+> `REVIEW_Observability_Quarantaene_Orchestrierung_2026-07-08.md` §4.2/§4.3.
+> Die folgenden Absätze beschreiben den Stand vor diesem Feature; Option A
+> (CLI) bleibt für Nicht-DSP-Orchestratoren und Lite gültig.
+
+Eine Datasphere-Task-Chain orchestriert Datasphere-Objekte; sie konnte
+ursprünglich **nicht** nativ ein Shell-Kommando ausführen oder einen
+ausgehenden HTTP-Call machen. Ein **externer Orchestrator** war deshalb der
+Dirigent (ADR-0005: Scheduling ist extern, Cron/Task-Chain → CLI; die API
+triggert nur ad hoc).
 
 | | **Option A — CLI** (empfohlen) | **Option B — API** |
 |---|---|---|
