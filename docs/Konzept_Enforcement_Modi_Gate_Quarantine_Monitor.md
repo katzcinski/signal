@@ -37,6 +37,16 @@ Stopp verwandeln. Teams entscheiden sich **bewusst** für `gate`/`quarantine`.
 
 ## 1 — Architektur-Leitplanke: Signal entscheidet, Datasphere handelt
 
+> **Update 2026-07-10 — Prämisse gelockert.** Signal darf in seinem **eigenen
+> Open-SQL-Schema** Objekte anlegen (Tabellen, Views, Prozeduren). Die in
+> diesem Abschnitt beschriebene Auslagerung der Materialisierung an ein
+> externes Reconcile-Skript ist damit nur noch der Fallback; Split-Views,
+> Verdict-Tabellen, Gate-Prozeduren und episodische Quarantäne-Tabellen
+> materialisiert Signal selbst. Siehe
+> `Konzept_Datasphere_Integration_Gating_Quarantaene.md` (inkl.
+> ADR-0002-Amendment). Die Enforcement-Achse (§0, §4) und die Verdict-Regel
+> bleiben unverändert gültig.
+
 Signal ist **read-only** gegenüber HANA/Datasphere (ADR-0002, Gate G2). Es kann
 keine Zeilen physisch in eine Quarantäne-Tabelle verschieben. „Durchsetzung" ist
 deshalb ein **Urteil, das Signal berechnet** und das ein externer Orchestrator
