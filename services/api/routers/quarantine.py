@@ -105,4 +105,13 @@ def _transition(fn, quarantine_id: int, actor: str, note: str):
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     if not episode:
         raise HTTPException(status_code=404, detail=f"Quarantine episode {quarantine_id} not found")
+    # Slice ⑤: Status nach DQ_EPISODES spiegeln — die Release-View zeigt
+    # freigegebene Zeilen erst nach dem Spiegel. Best-effort über das
+    # ENFORCEMENT_ENVIRONMENT; ohne Konfiguration spiegelt der nächste Lauf.
+    try:
+        from ..enforcement import mirror_episode_via_environment
+        from ..settings import get_settings
+        mirror_episode_via_environment(get_settings(), episode)
+    except Exception:  # noqa: BLE001
+        pass
     return episode

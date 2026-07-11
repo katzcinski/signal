@@ -103,6 +103,39 @@ def _launch_due(now_iso: str) -> int:
     return launched
 
 
+def _bridge_tick() -> int:
+    """Slice ⑥ (SQL-Trigger-Bridge): offene `DQ_RUN_REQUESTS` claimen und über
+    denselben Ausführungspfad starten wie HTTP/Scheduler (start_object_run —
+    identische Verdict-/Episode-/Compliance-Seiteneffekte, F2-Schutz greift).
+    Opt-in: läuft nur mit ENFORCEMENT_SQL_BRIDGE_ENABLED + Environment."""
+    from .deps import get_store, get_inventory
+    from .enforcement import bridge_enabled, bridge_tick
+    from .routers.objects import start_object_run
+    from .settings import get_settings
+
+    settings = get_settings()
+    if not bridge_enabled(settings):
+        return 0
+    store = get_store()
+    inventory = get_inventory()
+
+    def _launch(object_id: str, obj: dict, env_cfg: dict | None) -> str | None:
+        result = start_object_run(
+            object_id=object_id,
+            obj=obj,
+            env_cfg=env_cfg,
+            execution_mode="auto",
+            triggered_by="sql_bridge",
+            actor="sql_bridge",
+            store=store,
+            settings=settings,
+            inventory=inventory,
+        )
+        return result.get("run_id") or None
+
+    return bridge_tick(settings, store, inventory, launch=_launch)
+
+
 def _loop(tick_seconds: int) -> None:
     logger.info("scheduler poller started (tick=%ss)", tick_seconds)
     # Wait first so app startup is not blocked and tests can drive _launch_due
@@ -112,6 +145,10 @@ def _loop(tick_seconds: int) -> None:
             _launch_due(datetime.now(timezone.utc).isoformat())
         except Exception:
             logger.exception("scheduler tick failed")
+        try:
+            _bridge_tick()
+        except Exception:
+            logger.exception("bridge tick failed")
     logger.info("scheduler poller stopped")
 
 

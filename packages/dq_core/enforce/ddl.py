@@ -151,11 +151,12 @@ BEGIN
 END'''
 
 
-def desired_objects() -> list[RemoteObject]:
-    """Soll-Zustand des Signal-Schemas (Slice ③) — Grundlage für Plan/Apply
-    und die spätere Registry (Konzept §7). Tabellen entstehen über die
-    Remote-Migrationen (nie ersetzen); View/Prozedur sind idempotent
-    CREATE OR REPLACE."""
+def desired_objects(*, include_bridge: bool = False) -> list[RemoteObject]:
+    """Soll-Zustand des Signal-Schemas (globale Infrastruktur) — Grundlage für
+    Plan/Apply und die Registry (Konzept §7). Tabellen entstehen über die
+    Remote-Migrationen (nie ersetzen); Views/Prozeduren sind idempotent
+    CREATE OR REPLACE. Bridge-Prozeduren (Slice ⑥) nur bei Opt-in —
+    `SQLSCRIPT_SYNC`-Verfügbarkeit ist Spike O6."""
     objects: list[RemoteObject] = []
     for version, statements in remote_migration_statements():
         for stmt in statements:
@@ -177,6 +178,16 @@ def desired_objects() -> list[RemoteObject]:
         name="P_DQ_ASSERT_GATE", kind="procedure", ddl=proc,
         manifest_hash=manifest_hash(proc), replaceable=True,
     ))
+    if include_bridge:
+        from .bridge import gate_bridge_procedure_ddl, request_run_procedure_ddl
+        for name, ddl in (
+            ("P_DQ_REQUEST_RUN", request_run_procedure_ddl()),
+            ("P_DQ_GATE", gate_bridge_procedure_ddl()),
+        ):
+            objects.append(RemoteObject(
+                name=name, kind="procedure", ddl=ddl,
+                manifest_hash=manifest_hash(ddl), replaceable=True,
+            ))
     return objects
 
 
@@ -188,12 +199,12 @@ def _created_table_name(stmt: str) -> str:
     return m.group(1) if m else ""
 
 
-def bootstrap_plan(existing_tables: set[str], schema: str) -> list[str]:
+def bootstrap_plan(existing_tables: set[str], schema: str, *, include_bridge: bool = False) -> list[str]:
     """Idempotenter Bootstrap: Tabellen nur wenn abwesend (nie ersetzen —
     sie tragen Zustand), View/Prozedur immer CREATE OR REPLACE. Liefert
     gebundene, ausführbare Statements in Reihenfolge."""
     statements: list[str] = []
-    for obj in desired_objects():
+    for obj in desired_objects(include_bridge=include_bridge):
         if obj.kind == "table" and obj.name in existing_tables:
             continue
         statements.append(bind_signal_schema(obj.ddl, schema))

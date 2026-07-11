@@ -126,6 +126,23 @@ class Settings(BaseSettings):
     # TTL des publizierten Verdicts in Sekunden (0 = kein Verfall). Abgelaufene
     # Verdicts behandelt P_DQ_ASSERT_GATE wie fehlende — fail-closed.
     enforcement_verdict_ttl_seconds: int = Field(default=0, ge=0)
+    # Slices ④–⑦ (alle Default aus / leer — Aktivierung ist ein Betriebsentscheid):
+    # Environment-Name für Enforcement-Arbeiten außerhalb des Lauf-Pfads
+    # (Bridge-Poller, Episoden-Spiegel bei API-Übergängen, Reconciler-Apply).
+    enforcement_environment: str = Field(default="")
+    # SQL-Trigger-Bridge (Slice ⑥): Poller claimt DQ_RUN_REQUESTS. O6-Spike
+    # (SQLSCRIPT_SYNC) gilt nur für P_DQ_GATE — der Poller ist unabhängig davon.
+    enforcement_sql_bridge_enabled: bool = Field(default=False)
+    # Retention der episodischen Quarantäne (Slice ⑤) — Pflicht-TTL in Tagen.
+    quarantine_ttl_days: int = Field(default=30, ge=1)
+    # Grace-Period des invalidate-then-drop (Reconciler, Slice ④).
+    reconciler_drop_grace_days: int = Field(default=14, ge=0)
+    # Outbound-Trigger (Slice ⑦): Signal darf bei quarantine-Verdict die
+    # hinterlegte Remediation-Chain auslösen. Kein Daten-Schreiben, aber ein
+    # Handeln auf dem Tenant → eigener Opt-in, jede Auslösung auditiert.
+    datasphere_allow_trigger: bool = Field(default=False)
+    # object_id → "SPACE/CHAIN_ID" (JSON-Objekt via Env setzbar).
+    quarantine_trigger_chains: dict[str, str] = Field(default_factory=dict)
 
 
 _settings: Settings | None = None

@@ -28,16 +28,20 @@ class EnforcementApplyIn(BaseModel):
 
 @router.get("/plan")
 def get_plan(principal: PrincipalDep):
-    """Soll-Zustand des Signal-Schemas (Dry-Run): verwaltete Objekte inkl.
-    DDL und manifest_hash. Zeigt DDL — steward+."""
+    """Soll-Zustand des Signal-Schemas (Dry-Run): globale Infrastruktur
+    (inkl. Bridge-Prozeduren bei Opt-in) und Split-Artefakte je Objekt
+    (Slice ④/⑤). Zeigt DDL — steward+."""
     if not principal.has_role("steward", "owner", "admin"):
         raise HTTPException(status_code=403, detail="Enforcement plan requires steward role or higher.")
     settings = get_settings()
     from dq_core.enforce import bind_signal_schema, desired_objects
+    from ..deps import get_inventory
+    from ..enforcement import desired_split_specs
 
     schema = settings.datasphere_signal_schema
+    include_bridge = bool(settings.enforcement_sql_bridge_enabled)
     objects = []
-    for obj in desired_objects():
+    for obj in desired_objects(include_bridge=include_bridge):
         objects.append({
             "name": obj.name,
             "kind": obj.kind,
@@ -47,10 +51,31 @@ def get_plan(principal: PrincipalDep):
             # der Plan ist dann Vorschau, Apply verweigert (fail-closed).
             "ddl": bind_signal_schema(obj.ddl, schema) if schema else obj.ddl,
         })
+    split_specs = []
+    for spec in desired_split_specs(settings, get_inventory()):
+        split_specs.append({
+            "object_id": spec.object_id,
+            "source": spec.source,
+            "clean_table": spec.clean_table,
+            "quarantine_table": spec.quarantine_table,
+            "released_view": spec.released_view,
+            "manifest_hash": spec.manifest_hash,
+            "predicates": [
+                {"check": p.check_name, "type": p.check_type, "condition": p.sql}
+                for p in spec.predicates
+            ],
+            # G6: nicht zeilenfähige Quarantäne-Checks explizit ausweisen.
+            "skipped": [
+                {"check": s.check_name, "type": s.check_type, "reason": s.reason}
+                for s in spec.skipped
+            ],
+        })
     return {
         "enabled": materialization_enabled(settings),
         "signal_schema": schema,
+        "bridge_enabled": include_bridge,
         "objects": objects,
+        "split_artifacts": split_specs,
     }
 
 
@@ -91,6 +116,14 @@ def apply_plan(
             schema=settings.datasphere_signal_schema,
         )
         applied = ensure_bootstrap(conn, settings, force=True)
+        # Slice ④/⑤: Split-Artefakte reconcilen (Soll sicherstellen, Waisen
+        # invalidieren, nach Grace droppen — DQ_Q_* nur per TTL, nie per Drop).
+        from ..deps import get_inventory
+        from ..enforcement import desired_split_specs, reconcile_split
+        specs = desired_split_specs(
+            settings, get_inventory(), default_schema=env_cfg.get("schema") or ""
+        )
+        reconciled = reconcile_split(conn, settings, specs)
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001
@@ -104,9 +137,12 @@ def apply_plan(
             except Exception:  # noqa: BLE001
                 pass
 
-    store.finish_operation(op_id, "done", result_json=json.dumps({"applied": len(applied)}))
+    store.finish_operation(op_id, "done", result_json=json.dumps({
+        "applied": len(applied), "reconciled": reconciled,
+    }))
     return {
         "operation_id": op_id,
         "signal_schema": settings.datasphere_signal_schema,
         "applied_statements": len(applied),
+        "reconciled": reconciled,
     }

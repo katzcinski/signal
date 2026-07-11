@@ -4574,7 +4574,7 @@
     },
     "/api/enforcement/plan": {
       "get": {
-        "description": "Soll-Zustand des Signal-Schemas (Dry-Run): verwaltete Objekte inkl.\nDDL und manifest_hash. Zeigt DDL \u2014 steward+.",
+        "description": "Soll-Zustand des Signal-Schemas (Dry-Run): globale Infrastruktur\n(inkl. Bridge-Prozeduren bei Opt-in) und Split-Artefakte je Objekt\n(Slice \u2463/\u2464). Zeigt DDL \u2014 steward+.",
         "operationId": "get_plan_api_enforcement_plan_get",
         "parameters": [
           {

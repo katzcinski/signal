@@ -179,8 +179,8 @@ footer{margin-top:80px;border-top:1px solid var(--line);padding-top:20px;font-si
     nicht gebauten Ausbaustufen ④–⑦ mit ihren Voraussetzungen, damit die Aufnahme-Entscheidung fundiert fällt.
   </p>
   <div class="legend">
-    <span class="badge impl">Implementiert (Slices ①–③, PR #98)</span>
-    <span class="badge plan">Konzept (Slices ④–⑦)</span>
+    <span class="badge impl">Implementiert (Slices ①–⑦, PR #98)</span>
+    <span class="badge plan">Opt-in dormant — Aktivierung gated durch Spikes (④–⑦)</span>
     <span class="badge spike">Spike offen</span>
   </div>
 </header>
@@ -345,7 +345,7 @@ footer{margin-top:80px;border-top:1px solid var(--line);padding-top:20px;font-si
   <article class="slice" id="slice4">
     <header role="button" tabindex="0" aria-expanded="false">
       <span class="num">④</span><h3>Reconciler &amp; Split-Artefakte — kontinuierliche Quarantäne</h3>
-      <span class="badge plan">Konzept</span><span class="chev">›</span>
+      <span class="badge impl">Implementiert · Opt-in</span><span class="chev">›</span>
       <p class="short">Signal materialisiert je Objekt ein CLEAN-Artefakt aus den Quarantäne-Prädikaten — <strong>empfohlen als Tabelle <code>DQ_CLEAN_&lt;OBJ&gt;</code>, je Lauf refresht</strong> (Variante A; Prädikat-Views bleiben Variante B). Flows importieren die Tabelle (zeigt live auf die hdbtable) und teilen sie per Standard-Sharing space-übergreifend — ohne Grants.</p>
     </header>
     <div class="body">
@@ -386,7 +386,7 @@ footer{margin-top:80px;border-top:1px solid var(--line);padding-top:20px;font-si
   <article class="slice" id="slice5">
     <header role="button" tabindex="0" aria-expanded="false">
       <span class="num">⑤</span><h3>Episodische Quarantäne — physisches Zeilen-Parken</h3>
-      <span class="badge plan">Konzept</span><span class="chev">›</span>
+      <span class="badge impl">Implementiert · Opt-in</span><span class="chev">›</span>
       <p class="short">Signal schnappschusst schlechte Zeilen per <code>INSERT…SELECT</code> in <code>DQ_Q_&lt;OBJ&gt;</code> (eigenes Schema), Steward gibt frei, der Kunden-Flow lädt aus der Release-View zurück. Auditierbar, mit Pflicht-TTL.</p>
     </header>
     <div class="body">
@@ -425,7 +425,7 @@ footer{margin-top:80px;border-top:1px solid var(--line);padding-top:20px;font-si
   <article class="slice" id="slice6">
     <header role="button" tabindex="0" aria-expanded="false">
       <span class="num">⑥</span><h3>SQL-Trigger-Bridge — frischer Lauf ganz ohne HTTP</h3>
-      <span class="badge plan">Konzept</span><span class="chev">›</span>
+      <span class="badge impl">Implementiert · Opt-in (O6 offen)</span><span class="chev">›</span>
       <p class="short"><code>P_DQ_GATE</code> fordert per Tabellen-Insert einen Lauf an, Signals Poller claimt ihn, die Prozedur wartet und prüft dann das frische Verdict. Der volle Gate-Loop aus purem SQL.</p>
     </header>
     <div class="body">
@@ -462,7 +462,7 @@ footer{margin-top:80px;border-top:1px solid var(--line);padding-top:20px;font-si
   <article class="slice" id="slice7">
     <header role="button" tabindex="0" aria-expanded="false">
       <span class="num">⑦</span><h3>Outbound-Trigger — Signal löst die Quarantäne-Chain aus</h3>
-      <span class="badge plan">Konzept</span><span class="chev">›</span>
+      <span class="badge impl">Implementiert · Opt-in</span><span class="chev">›</span>
       <p class="short">Bei <code>quarantine</code>-Verdict triggert Signal (opt-in) die Split-/Remediation-Chain über die öffentliche Task-Chain-API — das Drei-Wege-Verdict wird trotz binärem API-Task vollständig orchestrierbar.</p>
     </header>
     <div class="body">

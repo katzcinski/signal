@@ -62,16 +62,18 @@ class TestSchemaBinding:
 class TestBootstrapPlan:
     def test_full_plan_binds_everything(self):
         plan = bootstrap_plan(existing_tables=set(), schema="SIG")
-        assert len(plan) == 4
+        tables = {o.name for o in desired_objects() if o.kind == "table"}
+        replaceable = [o for o in desired_objects() if o.replaceable]
+        assert len(plan) == len(tables) + len(replaceable)
         assert all("{signal_schema}" not in stmt for stmt in plan)
         assert all('"SIG"' in stmt for stmt in plan)
 
     def test_existing_tables_are_skipped_views_replaced(self):
-        plan = bootstrap_plan(
-            existing_tables={"DQ_GATE_STATUS", "DQ_GATE_STATUS_HISTORY"}, schema="SIG"
-        )
-        # Nur View + Prozedur (CREATE OR REPLACE, idempotent).
-        assert len(plan) == 2
+        tables = {o.name for o in desired_objects() if o.kind == "table"}
+        plan = bootstrap_plan(existing_tables=tables, schema="SIG")
+        # Nur Views + Prozeduren (CREATE OR REPLACE, idempotent) — Tabellen
+        # tragen Zustand und werden nie ersetzt.
+        assert plan
         assert all("CREATE OR REPLACE" in stmt for stmt in plan)
 
 

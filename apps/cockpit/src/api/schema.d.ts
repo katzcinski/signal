@@ -708,8 +708,9 @@ export interface paths {
         };
         /**
          * Get Plan
-         * @description Soll-Zustand des Signal-Schemas (Dry-Run): verwaltete Objekte inkl.
-         *     DDL und manifest_hash. Zeigt DDL — steward+.
+         * @description Soll-Zustand des Signal-Schemas (Dry-Run): globale Infrastruktur
+         *     (inkl. Bridge-Prozeduren bei Opt-in) und Split-Artefakte je Objekt
+         *     (Slice ④/⑤). Zeigt DDL — steward+.
          */
         get: operations["get_plan_api_enforcement_plan_get"];
         put?: never;
