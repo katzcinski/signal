@@ -22,6 +22,10 @@ def main():
     parser.add_argument("--password", default=os.environ.get("HANA_PASSWORD", ""))
     parser.add_argument("--execution-mode", choices=["auto", "batch", "isolated"], default="auto")
     parser.add_argument("--output", choices=["text", "json"], default="text")
+    parser.add_argument(
+        "--no-enforce", action="store_true",
+        help="Beobachtungslauf: Exit-Code ist unabhängig vom Gate-Verdict immer 0.",
+    )
     args = parser.parse_args()
 
     from dq_core.connect.db_connection import MockConnection, get_connection
@@ -61,6 +65,7 @@ def main():
         print(json.dumps({
             "run_id": summary.run_id,
             "overall_status": summary.overall_status,
+            "gate_verdict": summary.gate_verdict,
             "total": summary.total,
             "passed": summary.passed,
             "failed": summary.failed,
@@ -68,9 +73,15 @@ def main():
     else:
         print(f"\nRun: {summary.run_id}")
         print(f"Status: {summary.overall_status.upper()}")
+        print(f"Verdict: {summary.gate_verdict.upper()}")
         print(f"Checks: {summary.passed}/{summary.total} passed")
 
-    sys.exit(0 if summary.overall_status in ("pass", "warn") else 1)
+    # Verdict → Exit-Code für externe Orchestratoren (Airflow/Cron/CI):
+    # proceed=0, block=1, quarantine=3. Bewusst nicht 2 — belegt durch argparse
+    # und fehlendes --host (oben). monitor-Fails eskalieren das Urteil nie.
+    if args.no_enforce:
+        sys.exit(0)
+    sys.exit({"proceed": 0, "block": 1, "quarantine": 3}.get(summary.gate_verdict, 1))
 
 
 if __name__ == "__main__":

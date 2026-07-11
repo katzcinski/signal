@@ -25,6 +25,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/connector": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Connector Status
+         * @description Aktuelle Connector-Konfiguration und CLI-Verfügbarkeit.
+         */
+        get: operations["get_connector_status_api_admin_connector_get"];
+        /**
+         * Put Connector Config
+         * @description Speichert Connector-Konfiguration in datasphere.yml oder .env.
+         *
+         *     REST und CLI können getrennte OAuth-Clients verwenden. Secrets werden je
+         *     nach Ziel entweder referenzbasiert in ``secrets.local.yml`` (persist_target
+         *     ``file``) oder direkt in ``.env`` (persist_target ``env``) gespeichert.
+         */
+        put: operations["put_connector_config_api_admin_connector_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/connector/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Connector Login
+         * @description Start the interactive Datasphere CLI OAuth login in a visible CMD window.
+         */
+        post: operations["open_connector_login_api_admin_connector_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/environments": {
         parameters: {
             query?: never;
@@ -59,6 +107,30 @@ export interface paths {
         post?: never;
         /** Delete Environment */
         delete: operations["delete_environment_api_admin_environments__name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/environments/{name}/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Environment Secret
+         * @description Speichert das Passwort für ein Environment in secrets.local.yml (gitignored).
+         *
+         *     Das Passwort verlässt diesen Endpoint nie — kein Log, keine Response (S-1).
+         *     Die Referenz (password_ref) muss im Environment konfiguriert sein und darf
+         *     kein plain:-Direktwert sein.
+         */
+        put: operations["set_environment_secret_api_admin_environments__name__secret_put"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -335,6 +407,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/contracts/{product}/drift": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Schema Drift Report
+         * @description Shift-Left (§A): Read-only-Report, ob die **Quelle** vom Schema-Versprechen
+         *     des Contracts abweicht. Persistenz + Incident laufen beim Extrakt, nicht hier.
+         *     Liefert zusätzlich die jüngste gespeicherte Drift-Historie.
+         */
+        get: operations["schema_drift_report_api_contracts__product__drift_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/contracts/{product}/export/bdc": {
         parameters: {
             query?: never;
@@ -371,6 +465,29 @@ export interface paths {
          *     datacontract-cli/Soda. Einweg; Compliance bleibt draußen (A1).
          */
         get: operations["export_odcs_api_contracts__product__export_odcs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contracts/{product}/observed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Observed Reality
+         * @description Beobachtete Realität je Garantie (P6): letzter Messwert, Sparkline-Reihe
+         *     und PASS/FAIL. Read-only-Rollup — der Compiler bildet Garantien auf Checks ab
+         *     (einzige Wahrheit für die Namensbildung), die persistierte Result-Historie
+         *     liefert die Werte. Aggregat-Werte, keine Rohzeilen (G8 unberührt).
+         */
+        get: operations["observed_reality_api_contracts__product__observed_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -560,6 +677,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/enforcement/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Plan
+         * @description Bootstrap der Gate-Infrastruktur anwenden. DDL im Tenant-Schema ist
+         *     eine Betriebsentscheidung — owner/admin; jede Anwendung ist eine
+         *     auditierte Operation.
+         */
+        post: operations["apply_plan_api_enforcement_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/enforcement/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plan
+         * @description Soll-Zustand des Signal-Schemas (Dry-Run): verwaltete Objekte inkl.
+         *     DDL und manifest_hash. Zeigt DDL — steward+.
+         */
+        get: operations["get_plan_api_enforcement_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/environments": {
         parameters: {
             query?: never;
@@ -569,7 +729,7 @@ export interface paths {
         };
         /**
          * List Environments
-         * @description Environment-Namen für den RunTriggerDialog — NIE Credentials (S-13).
+         * @description Environment names for the run trigger dialog, never credentials.
          */
         get: operations["list_environments_api_environments_get"];
         put?: never;
@@ -649,11 +809,7 @@ export interface paths {
         put?: never;
         /**
          * Trigger Extract
-         * @description Extract inventory/lineage and report counts.
-         *
-         *     FastAPI runs this sync handler in a threadpool, so the blocking I/O does not
-         *     stall the event loop. The response keeps the legacy top-level count fields
-         *     while also returning the richer status shape used by the Phase-1 admin UI.
+         * @description Start an operation-backed inventory extraction and return its ``op_id``.
          */
         post: operations["trigger_extract_api_extract_post"];
         delete?: never;
@@ -753,6 +909,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/incidents/{incident_id}/rca": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Incident Rca */
+        get: operations["get_incident_rca_api_incidents__incident_id__rca_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/incidents/{incident_id}/transition": {
         parameters: {
             query?: never;
@@ -843,6 +1016,31 @@ export interface paths {
          *     single column's lineage when ``column`` is given.
          */
         get: operations["get_column_lineage_api_lineage_columns_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lineage/columns/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Column Impact
+         * @description Transitive downstream impact of one column (UX-N7 / WS-C).
+         *
+         *     BFS over ``columnEdges`` from ``(object, column)``; every reachable
+         *     downstream column is reported once at its minimum hop distance, enriched
+         *     with the consumer object's ownership and coverage flag. Cycle-safe via a
+         *     visited set; ``truncated`` signals edges left unexplored at ``max_depth``.
+         */
+        get: operations["get_column_impact_api_lineage_columns_impact_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1155,6 +1353,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/objects/{object_id}/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Diff Object
+         * @description §B.2/§B.3: Distribution- bzw. Key-Reconciliation-Diff zweier Profil-Snapshots.
+         *
+         *     Liest ausschließlich gespeicherte Aggregat-Snapshots (kein HANA, keine
+         *     Rohzeilen — G8). Snapshots entstehen bei `POST /objects/{id}/profile`.
+         */
+        post: operations["diff_object_api_objects__object_id__diff_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/objects/{object_id}/profile": {
         parameters: {
             query?: never;
@@ -1191,6 +1412,11 @@ export interface paths {
         /**
          * Trigger Run
          * @description Trigger a DQ run for an object. Returns run_id immediately (202). [ENGINE-FROZEN]
+         *
+         *     API-Task-Vertrag (AP-1): die Antwort trägt einen `Location`-Header auf den
+         *     Status-Endpoint — ein Datasphere-API-Task im Async-Modus pollt diesen bis
+         *     RUNNING → COMPLETED/FAILED und macht die Task Chain damit zum nativen
+         *     Promotion-Gate (B2), ohne CLI-Umweg.
          *
          *     [AUTHZ] Runs lösen Last auf HANA aus — viewer darf nicht triggern.
          *     [SCHEMA-MAP] '{schema}' aus kompilierten Checks wird HIER gebunden (G2):
@@ -1412,6 +1638,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Quarantine */
+        get: operations["list_quarantine_api_quarantine_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quarantine/{quarantine_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Quarantine */
+        get: operations["get_quarantine_api_quarantine__quarantine_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quarantine/{quarantine_id}/confirm-reprocess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Reprocess
+         * @description Rückführung bestätigt (Kunden-Flow hat die Release-View geladen) —
+         *     Episode wird `resolved(reprocessed)`.
+         */
+        post: operations["confirm_reprocess_api_quarantine__quarantine_id__confirm_reprocess_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quarantine/{quarantine_id}/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reconcile Quarantine
+         * @description Rückkanal für externe Reconcile-Skripte (Fallback-Pfad ohne
+         *     Materialisierung): beobachtete Zeilenzahl melden → Episode `reconciled`.
+         */
+        post: operations["reconcile_quarantine_api_quarantine__quarantine_id__reconcile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quarantine/{quarantine_id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Release Quarantine
+         * @description [AUTHZ] Freigabe ist eine Governance-Entscheidung — steward+.
+         */
+        post: operations["release_quarantine_api_quarantine__quarantine_id__release_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs": {
         parameters: {
             query?: never;
@@ -1522,6 +1844,49 @@ export interface paths {
          * @description WS1-2: nur die Check-Ergebnisse eines Runs (ohne Run-Header).
          */
         get: operations["get_run_results_api_runs__run_id__results_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{run_id}/results/{check_name}/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run Result Segments */
+        get: operations["get_run_result_segments_api_runs__run_id__results__check_name__segments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{run_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Status
+         * @description API-Task-Vertrag (AP-1): Status-Endpoint für den asynchronen
+         *     Task-Chain-Aufruf. Solange der Lauf läuft RUNNING, danach das binäre
+         *     Verdict-Mapping: `proceed` → COMPLETED, `block` → FAILED; `quarantine`
+         *     folgt `fail_on` — Pipelines, die aus der CLEAN-View lesen, setzen
+         *     `fail_on=block` und laufen bei Quarantäne weiter (Isolation trägt die
+         *     View). Default ist fail-closed (`block_and_quarantine`). Ein Lauf im
+         *     Zustand `error` ist immer FAILED (fail-closed).
+         */
+        get: operations["get_run_status_api_runs__run_id__status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1658,6 +2023,11 @@ export interface components {
              * @default 0
              */
             duration_ms: number;
+            /**
+             * Enforcement
+             * @default monitor
+             */
+            enforcement: string;
             /** Error */
             error?: string | null;
             /**
@@ -1725,6 +2095,85 @@ export interface components {
              */
             yaml_preview: string;
         };
+        /** ConnectorIn */
+        ConnectorIn: {
+            /**
+             * Base Url
+             * @default
+             */
+            base_url: string;
+            /**
+             * Clear Cli Secret
+             * @default false
+             */
+            clear_cli_secret: boolean;
+            /**
+             * Clear Secret
+             * @default false
+             */
+            clear_secret: boolean;
+            /**
+             * Cli Authorization Url
+             * @default
+             */
+            cli_authorization_url: string;
+            /**
+             * Cli Client Id
+             * @default
+             */
+            cli_client_id: string;
+            /**
+             * Cli Client Secret
+             * @default
+             */
+            cli_client_secret: string;
+            /**
+             * Cli Host
+             * @default
+             */
+            cli_host: string;
+            /**
+             * Cli Oauth Secrets File
+             * @default
+             */
+            cli_oauth_secrets_file: string;
+            /**
+             * Cli Token Url
+             * @default
+             */
+            cli_token_url: string;
+            /**
+             * Client Id
+             * @default
+             */
+            client_id: string;
+            /**
+             * Client Secret
+             * @default
+             */
+            client_secret: string;
+            /**
+             * Persist Target
+             * @default file
+             * @enum {string}
+             */
+            persist_target: "file" | "env";
+            /**
+             * Space Id
+             * @default
+             */
+            space_id: string;
+            /**
+             * Token Url
+             * @default
+             */
+            token_url: string;
+            /**
+             * Use Cli
+             * @default false
+             */
+            use_cli: boolean;
+        };
         /**
          * ContractIn
          * @description Lifecycle ist bewusst KEIN Eingabefeld — Übergänge laufen nur über
@@ -1760,6 +2209,13 @@ export interface components {
              * @default internal_gate
              */
             kind: string;
+            /**
+             * Observability
+             * @default {}
+             */
+            observability: {
+                [key: string]: unknown;
+            };
             /**
              * Owned By
              * @default platform
@@ -1822,6 +2278,13 @@ export interface components {
              */
             lifecycle: string;
             /**
+             * Observability
+             * @default {}
+             */
+            observability: {
+                [key: string]: unknown;
+            };
+            /**
              * Owned By
              * @default platform
              */
@@ -1866,6 +2329,29 @@ export interface components {
             status?: string | null;
             /** Triggered By */
             triggered_by?: string | null;
+        };
+        /**
+         * DiffRequest
+         * @description §B: Data-Diff zweier gespeicherter Profil-Snapshots. Ohne IDs werden die
+         *     zwei jüngsten Snapshots des Objekts verglichen (base = älterer).
+         */
+        DiffRequest: {
+            /** Base Snapshot Id */
+            base_snapshot_id?: number | null;
+            /** Head Snapshot Id */
+            head_snapshot_id?: number | null;
+            /** Key Columns */
+            key_columns?: string[] | null;
+            /**
+             * Mode
+             * @default distribution
+             */
+            mode: string;
+        };
+        /** EnforcementApplyIn */
+        EnforcementApplyIn: {
+            /** Environment */
+            environment: string;
         };
         /** EnvironmentConfigIn */
         EnvironmentConfigIn: {
@@ -2142,6 +2628,93 @@ export interface components {
              */
             status: string;
         };
+        /** ObservedCheck */
+        ObservedCheck: {
+            /**
+             * Expect
+             * @default
+             */
+            expect: string;
+            /** Family */
+            family?: string | null;
+            /** Last Value */
+            last_value?: string | null;
+            /** Name */
+            name: string;
+            /** Passed */
+            passed?: boolean | null;
+            /**
+             * Points
+             * @default []
+             */
+            points: components["schemas"]["ObservedPoint"][];
+            /**
+             * Severity
+             * @default
+             */
+            severity: string;
+            /**
+             * State
+             * @default
+             */
+            state: string;
+            /**
+             * Type
+             * @default
+             */
+            type: string;
+        };
+        /** ObservedGuarantee */
+        ObservedGuarantee: {
+            /**
+             * Checks
+             * @default []
+             */
+            checks: components["schemas"]["ObservedCheck"][];
+            /** Family */
+            family: string;
+            /**
+             * State
+             * @default unknown
+             */
+            state: string;
+        };
+        /** ObservedOut */
+        ObservedOut: {
+            /** Dataset */
+            dataset: string;
+            /**
+             * Guarantees
+             * @default []
+             */
+            guarantees: components["schemas"]["ObservedGuarantee"][];
+            /** Product */
+            product: string;
+        };
+        /** ObservedPoint */
+        ObservedPoint: {
+            /**
+             * At
+             * @default
+             */
+            at: string;
+            /** Passed */
+            passed?: boolean | null;
+            /** Raw */
+            raw?: string | null;
+            /**
+             * Run Id
+             * @default
+             */
+            run_id: string;
+            /**
+             * State
+             * @default executed
+             */
+            state: string;
+            /** Value */
+            value?: number | null;
+        };
         /** ProductDetailOut */
         ProductDetailOut: {
             /** Findings */
@@ -2302,6 +2875,19 @@ export interface components {
              */
             status: string;
         };
+        /** QuarantineActionIn */
+        QuarantineActionIn: {
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** QuarantineReconcileIn */
+        QuarantineReconcileIn: {
+            /** Row Count */
+            row_count: number;
+        };
         /** RuleIn */
         RuleIn: {
             /** Channel Id */
@@ -2359,6 +2945,11 @@ export interface components {
              */
             finished_at: string;
             /**
+             * Gate Verdict
+             * @default proceed
+             */
+            gate_verdict: string;
+            /**
              * Overall Status
              * @default pass
              */
@@ -2396,6 +2987,37 @@ export interface components {
              */
             warnings: number;
         };
+        /**
+         * RunStatusOut
+         * @description API-Task-kompatibler Lauf-Status (AP-1): Datasphere pollt diesen
+         *     Endpoint (Location-Header) bis RUNNING → COMPLETED/FAILED.
+         */
+        RunStatusOut: {
+            /**
+             * Fail On
+             * @default block_and_quarantine
+             */
+            fail_on: string;
+            /**
+             * Gate Verdict
+             * @default proceed
+             */
+            gate_verdict: string;
+            /**
+             * Overall Status
+             * @default pass
+             */
+            overall_status: string;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Run State
+             * @default finished
+             */
+            run_state: string;
+            /** Status */
+            status: string;
+        };
         /** RunSummaryOut */
         RunSummaryOut: {
             /**
@@ -2425,6 +3047,11 @@ export interface components {
              * @default
              */
             finished_at: string;
+            /**
+             * Gate Verdict
+             * @default proceed
+             */
+            gate_verdict: string;
             /**
              * Overall Status
              * @default pass
@@ -2560,6 +3187,11 @@ export interface components {
              */
             mode: "internal" | "external";
         };
+        /** SecretBody */
+        SecretBody: {
+            /** Password */
+            password: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -2600,6 +3232,106 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActivityItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_connector_status_api_admin_connector_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_connector_config_api_admin_connector_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_connector_login_api_admin_connector_login_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -2734,6 +3466,42 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_environment_secret_api_admin_environments__name__secret_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecretBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             204: {
@@ -3207,6 +3975,37 @@ export interface operations {
             };
         };
     };
+    schema_drift_report_api_contracts__product__drift_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     export_bdc_api_contracts__product__export_bdc_post: {
         parameters: {
             query?: never;
@@ -3264,6 +4063,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    observed_reality_api_contracts__product__observed_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservedOut"];
                 };
             };
             /** @description Validation Error */
@@ -3546,6 +4378,74 @@ export interface operations {
             };
         };
     };
+    apply_plan_api_enforcement_apply_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnforcementApplyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plan_api_enforcement_plan_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_environments_api_environments_get: {
         parameters: {
             query?: never;
@@ -3721,7 +4621,7 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3798,6 +4698,7 @@ export interface operations {
                 status?: string | null;
                 severity?: string | null;
                 kind?: string | null;
+                group?: string | null;
                 limit?: number;
                 offset?: number;
             };
@@ -3860,6 +4761,37 @@ export interface operations {
         };
     };
     get_incident_api_incidents__incident_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_incident_rca_api_incidents__incident_id__rca_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3972,6 +4904,8 @@ export interface operations {
         parameters: {
             query?: {
                 space?: string | null;
+                seed?: string[] | null;
+                depth?: number;
             };
             header?: never;
             path?: never;
@@ -4004,6 +4938,39 @@ export interface operations {
             query: {
                 object: string;
                 column?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_column_impact_api_lineage_columns_impact_get: {
+        parameters: {
+            query: {
+                object: string;
+                column: string;
+                max_depth?: number;
             };
             header?: never;
             path?: never;
@@ -4076,7 +5043,9 @@ export interface operations {
     manifest_api_monitoring_manifest_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Service-Token"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4091,6 +5060,15 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4122,7 +5100,10 @@ export interface operations {
     request_monitoring_api_monitoring_shares__object_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
             path: {
                 object_id: string;
             };
@@ -4155,7 +5136,10 @@ export interface operations {
     remove_monitoring_api_monitoring_shares__object_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
             path: {
                 object_id: string;
             };
@@ -4188,7 +5172,9 @@ export interface operations {
     report_status_api_monitoring_shares__object_id__status_put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Service-Token"?: string | null;
+            };
             path: {
                 object_id: string;
             };
@@ -4573,6 +5559,44 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    diff_object_api_objects__object_id__diff_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DiffRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -5091,6 +6115,185 @@ export interface operations {
             };
         };
     };
+    list_quarantine_api_quarantine_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                product?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_quarantine_api_quarantine__quarantine_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quarantine_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_reprocess_api_quarantine__quarantine_id__confirm_reprocess_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                quarantine_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["QuarantineActionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reconcile_quarantine_api_quarantine__quarantine_id__reconcile_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                quarantine_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuarantineReconcileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    release_quarantine_api_quarantine__quarantine_id__release_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                quarantine_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["QuarantineActionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_runs_api_runs_get: {
         parameters: {
             query?: {
@@ -5273,6 +6476,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckResultOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_result_segments_api_runs__run_id__results__check_name__segments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                check_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_status_api_runs__run_id__status_get: {
+        parameters: {
+            query?: {
+                fail_on?: string;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunStatusOut"];
                 };
             };
             /** @description Validation Error */

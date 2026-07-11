@@ -116,6 +116,17 @@ class Settings(BaseSettings):
     # steward+-Principal (nie anonym offen). EventSource/Skript nutzen das Token.
     monitoring_service_token: str = Field(default="")
 
+    # Enforcement-Materialisierung (Slice ③, Konzept_Datasphere_Integration_*):
+    # Signal publiziert Gate-Verdicts als SQL-Oberfläche (DQ_GATE_STATUS +
+    # P_DQ_ASSERT_GATE) in SEIN Open-SQL-Schema — nie in Kundenschemata
+    # (ADR-0002-Amendment). Kill-Switch default AUS; ohne gesetztes Schema
+    # bleibt alles inert. Schema-Name wird zur Laufzeit gebunden (G2).
+    enforcement_materialize_enabled: bool = Field(default=False)
+    datasphere_signal_schema: str = Field(default="")
+    # TTL des publizierten Verdicts in Sekunden (0 = kein Verfall). Abgelaufene
+    # Verdicts behandelt P_DQ_ASSERT_GATE wie fehlende — fail-closed.
+    enforcement_verdict_ttl_seconds: int = Field(default=0, ge=0)
+
 
 _settings: Settings | None = None
 

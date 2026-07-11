@@ -100,6 +100,7 @@ describe('navForRole', () => {
       '/products',
       '/lineage',
       '/incidents',
+      '/quarantine',
       '/proposals',
       '/library',
       'divider',

@@ -13,6 +13,7 @@ const ProductDetail     = lazy(() => import('./pages/ProductDetail'));
 const ContractWorkbench = lazy(() => import('./pages/ContractWorkbench'));
 const Lineage           = lazy(() => import('./pages/LineagePage'));
 const Incidents         = lazy(() => import('./pages/Incidents'));
+const Quarantine        = lazy(() => import('./pages/Quarantine'));
 const Proposals         = lazy(() => import('./pages/Proposals'));
 const RunDetail         = lazy(() => import('./pages/RunDetail'));
 const RunCompare        = lazy(() => import('./pages/RunCompare'));
@@ -52,6 +53,7 @@ export default function App() {
               <Route path="/coverage"    element={<Lineage />} />
               <Route path="/schedules"   element={<Schedules />} />
               <Route path="/incidents"   element={<Incidents />} />
+              <Route path="/quarantine"  element={<Quarantine />} />
               <Route path="/proposals"   element={<Proposals />} />
               <Route path="/runs/compare" element={<RunCompare />} />
               <Route path="/runs/:id"    element={<RunDetail />} />

@@ -21,10 +21,12 @@ VALID_LIFECYCLES = {"draft", "active", "deprecated"}
 VALID_OWNED_BY = {"platform", "product"}
 VALID_SEVERITIES = {"critical", "fail", "warn"}
 VALID_KINDS = {"internal_gate", "consumer_contract", "provider_contract"}
+VALID_ENFORCEMENT = {"gate", "quarantine", "monitor"}
 
 _IDENT = {"type": "string", "pattern": SAFE_IDENTIFIER.pattern}
 _IDENT_LIST = {"type": "array", "items": _IDENT, "minItems": 1}
 _SEVERITY = {"enum": sorted(VALID_SEVERITIES)}
+_ENFORCEMENT = {"enum": sorted(VALID_ENFORCEMENT)}
 _OBS_BASELINE = {"enum": ["rolling", "seasonal"]}
 _OBS_SEASON = {"type": "array", "items": {"enum": ["dow", "eom", "hour"]}, "uniqueItems": True}
 _OBS_SENSITIVITY = {"enum": ["low", "medium", "high"]}
@@ -53,6 +55,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
         "owners": {"type": "array", "items": {"type": "string"}},
         "version": {"type": "string", "pattern": SEMVER.pattern},
         "lifecycle": {"enum": sorted(VALID_LIFECYCLES)},
+        "enforcement_default": _ENFORCEMENT,
         "description": {"type": "string"},
         # Accepted but ignored by the compiler; written by proposal accepts.
         "quality_proposals": {"type": "array"},
@@ -76,6 +79,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                         "columns": _IDENT_LIST,
                         "mode": {"enum": ["closed", "open"]},
                         "severity": _SEVERITY,
+                        "enforcement": _ENFORCEMENT,
                         # Optionale, rein deklarative Typ-/Nullability-/Key-Spezifikation
                         # (Konzept §A.5). Trägt KEIN SQL — Schlüssel sind Spaltennamen
                         # (S2-Identifier), Werte sind Enum-/Boolean-Metadaten. Speist den
@@ -111,6 +115,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                             "columns": _IDENT_LIST,
                             "unique": {"type": "boolean"},
                             "severity": _SEVERITY,
+                        "enforcement": _ENFORCEMENT,
                             "proposed": {"type": "boolean"},
                         },
                     },
@@ -126,6 +131,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                             "parent": _IDENT,
                             "parent_key": _IDENT_LIST,
                             "severity": _SEVERITY,
+                        "enforcement": _ENFORCEMENT,
                         },
                     },
                 },
@@ -137,6 +143,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                         "column": _IDENT,
                         "max_age": {"type": "string", "pattern": ISO_DURATION.pattern},
                         "severity": _SEVERITY,
+                        "enforcement": _ENFORCEMENT,
                     },
                 },
                 "volume": {
@@ -147,6 +154,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                         "baseline": {"enum": ["rolling"]},
                         "bounds": {"enum": ["auto"]},
                         "severity": _SEVERITY,
+                        "enforcement": _ENFORCEMENT,
                     },
                 },
                 "completeness": {
@@ -161,6 +169,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                             "segment_by": _IDENT,
                             "max_segments": {"type": "integer", "minimum": 1, "maximum": 500},
                             "severity": _SEVERITY,
+                        "enforcement": _ENFORCEMENT,
                         },
                     },
                 },
@@ -173,6 +182,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                         "properties": {
                             "columns": _IDENT_LIST,
                             "severity": _SEVERITY,
+                        "enforcement": _ENFORCEMENT,
                         },
                     },
                 },
@@ -201,6 +211,7 @@ CONTRACT_SCHEMA: dict[str, Any] = {
                     },
                     "expect": {"type": "string"},
                     "severity": _SEVERITY,
+                        "enforcement": _ENFORCEMENT,
                 },
             },
         },

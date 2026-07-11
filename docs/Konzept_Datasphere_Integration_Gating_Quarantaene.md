@@ -1,7 +1,12 @@
 # Konzept — Integration von Signal-Ausführung, Gating & Quarantäne in Datasphere-Pipelines
 
-**Adressat:** Plattform-Team, Beratung, Governance · **Stand:** 2026-07-10
-**Status:** Proposal (noch nicht implementiert) · **Branch:** `claude/signals-datasphere-integration-n8726p`
+**Adressat:** Plattform-Team, Beratung, Governance · **Stand:** 2026-07-11
+**Status:** In Umsetzung — Slices ①–③ implementiert (Enforcement-Achse inkl.
+Quarantäne-Episoden, API-Task-Vertrag 202+`Location`+Status-Endpoint,
+Verdict-Materialisierung `DQ_GATE_STATUS`/`P_DQ_ASSERT_GATE` + Plan/Apply);
+Slices ④–⑦ (Reconciler/Split-Views, episodische Zeilen-Tabellen, SQL-Bridge,
+Outbound-Trigger) offen — gated durch Spikes O5/O6.
+**Branch:** `claude/signals-datasphere-integration-n8726p`
 **Zweck:** Festlegen, wie Signal-Läufe, Gating und Quarantäne in **bestehende**
 Datasphere-Pipelines eingebettet werden — Task Chains, Transformation Flows und
 HANA-/SQLScript-Prozeduren — unter einer **neuen Prämisse**: Signal darf in

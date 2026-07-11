@@ -115,28 +115,30 @@ class ResultStore:
                    (run_id, dataset, schema_name, started_at, finished_at,
                     overall_status, total_checks, passed_checks, failed_checks,
                     warning_checks, triggered_by, contract_version, contract_hash,
-                    actor, run_state)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    actor, run_state, gate_verdict)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     summary.run_id, summary.dataset, summary.schema,
                     summary.started_at, summary.finished_at,
                     summary.overall_status, summary.total, summary.passed,
                     summary.failed, summary.warnings, summary.triggered_by,
                     summary.contract_version, summary.contract_hash,
-                    summary.actor, summary.run_state,
+                    summary.actor, summary.run_state, summary.gate_verdict,
                 ),
             )
             for result in summary.results:
                 row = conn.execute(
                     """INSERT INTO dq_check_results
                        (run_id, check_name, sql_text, expect_expr, severity,
-                        passed, actual_value, error_message, duration_ms, state, check_type, kind)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        passed, actual_value, error_message, duration_ms, state, check_type, kind,
+                        enforcement_mode)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (
                         summary.run_id, result.name, result.sql, result.expect,
                         result.severity, int(result.passed),
                         str(result.actual_value) if result.actual_value is not None else None,
                         result.error, result.duration_ms, result.state, result.type, result.kind,
+                        result.enforcement,
                     ),
                 ).lastrowid
                 # [PII-GATE] Only persist diagnostics when explicitly enabled (S1/G8).
@@ -279,15 +281,15 @@ class ResultStore:
                        (run_id, dataset, schema_name, started_at, finished_at,
                         overall_status, total_checks, passed_checks, failed_checks,
                         warning_checks, triggered_by, contract_version, contract_hash,
-                        actor, run_state)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        actor, run_state, gate_verdict)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (
                         summary.run_id, summary.dataset, summary.schema,
                         summary.started_at, summary.finished_at,
                         summary.overall_status, summary.total, summary.passed,
                         summary.failed, summary.warnings, summary.triggered_by,
                         summary.contract_version, summary.contract_hash,
-                        summary.actor, summary.run_state,
+                        summary.actor, summary.run_state, summary.gate_verdict,
                     ),
                 )
             return True
@@ -654,6 +656,185 @@ class ResultStore:
                     (row["id"], now, "system", "auto_resolved",
                      f"Folgelauf {run_id} vollständig grün — automatisch gelöst."),
                 )
+
+    # ------------------------------------------------------------------
+    # Quarantäne-Episoden (Enforcement-Achse) — Lifecycle analog Incidents:
+    # open → reconciled → released → resolved (+ superseded). Signal speichert
+    # nur Counts + Prädikat-Träger (Check-Namen); Rohzeilen bleiben in HANA (G8).
+    # ------------------------------------------------------------------
+
+    _QUARANTINE_TERMINAL = ("resolved", "superseded")
+
+    def open_quarantine(
+        self,
+        product: str,
+        run_id: str,
+        failed_checks: list[str],
+        contract_version: str = "",
+        manifest_hash: str = "",
+        actor: str = "",
+    ) -> int:
+        """Eröffnet eine Quarantäne-Episode — höchstens EINE nicht-terminale je
+        Produkt: existiert bereits eine, wird nur ein Event angehängt und die
+        Generation erhöht (gleiche Anti-Flut-Disziplin wie open_incident)."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT id, generation FROM dq_quarantine "
+                "WHERE product=? AND status NOT IN (?,?) ORDER BY id DESC LIMIT 1",
+                (product, *self._QUARANTINE_TERMINAL),
+            ).fetchone()
+            if row:
+                conn.execute(
+                    "UPDATE dq_quarantine SET run_id=?, failed_checks=?, "
+                    "generation=?, manifest_hash=? WHERE id=?",
+                    (run_id, json.dumps(failed_checks),
+                     int(row["generation"]) + 1, manifest_hash, row["id"]),
+                )
+                conn.execute(
+                    "INSERT INTO dq_quarantine_events(quarantine_id, at, actor, action, note) "
+                    "VALUES (?,?,?,?,?)",
+                    (row["id"], now, actor or "system", "note",
+                     f"Erneutes Quarantäne-Verdict in Run {run_id}: {', '.join(failed_checks)}"),
+                )
+                return int(row["id"])
+            cur = conn.execute(
+                """INSERT INTO dq_quarantine
+                   (product, run_id, status, failed_checks, contract_version,
+                    manifest_hash, generation, opened_at)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (product, run_id, "open", json.dumps(failed_checks),
+                 contract_version, manifest_hash, 1, now),
+            )
+            quarantine_id = int(cur.lastrowid)
+            conn.execute(
+                "INSERT INTO dq_quarantine_events(quarantine_id, at, actor, action, note) "
+                "VALUES (?,?,?,?,?)",
+                (quarantine_id, now, actor or "system", "opened",
+                 f"Quarantäne-Verdict in Run {run_id}: {', '.join(failed_checks)}"),
+            )
+            return quarantine_id
+
+    def reconcile_quarantine(self, quarantine_id: int, row_count: int, actor: str = "") -> dict[str, Any] | None:
+        """Split/Snapshot ist materialisiert — Episode kennt ihre Zeilenzahl."""
+        return self._transition_quarantine(
+            quarantine_id, "reconciled", allowed_from=("open", "reconciled"),
+            actor=actor or "system", note=f"{int(row_count)} Zeilen quarantänisiert",
+            extra_sql="row_count=?", extra_params=(int(row_count),),
+        )
+
+    def release_quarantine(self, quarantine_id: int, actor: str, note: str = "") -> dict[str, Any] | None:
+        """Steward-Freigabe: Zeilen erscheinen in der Release-View des Kunden-Flows."""
+        now = datetime.now(timezone.utc).isoformat()
+        return self._transition_quarantine(
+            quarantine_id, "released", allowed_from=("open", "reconciled"),
+            actor=actor, note=note,
+            extra_sql="released_at=?, released_by=?", extra_params=(now, actor),
+        )
+
+    def resolve_quarantine(
+        self, quarantine_id: int, actor: str, reason: str = "reprocessed", note: str = ""
+    ) -> dict[str, Any] | None:
+        """Abschluss: reprocessed (Rückführung bestätigt) | expired (TTL) | manual."""
+        now = datetime.now(timezone.utc).isoformat()
+        return self._transition_quarantine(
+            quarantine_id, "resolved", allowed_from=("open", "reconciled", "released"),
+            actor=actor, note=note or reason,
+            extra_sql="resolved_at=?, resolve_reason=?", extra_params=(now, reason),
+        )
+
+    def supersede_quarantine(self, quarantine_id: int, actor: str = "", note: str = "") -> dict[str, Any] | None:
+        """Contract/Prädikat hat sich geändert — Episode ist obsolet."""
+        now = datetime.now(timezone.utc).isoformat()
+        return self._transition_quarantine(
+            quarantine_id, "superseded", allowed_from=("open", "reconciled", "released"),
+            actor=actor or "system", note=note,
+            extra_sql="resolved_at=?, resolve_reason=?", extra_params=(now, "superseded"),
+        )
+
+    def _transition_quarantine(
+        self,
+        quarantine_id: int,
+        status: str,
+        *,
+        allowed_from: tuple[str, ...],
+        actor: str,
+        note: str,
+        extra_sql: str = "",
+        extra_params: tuple = (),
+    ) -> dict[str, Any] | None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_quarantine WHERE id=?", (quarantine_id,)
+            ).fetchone()
+            if not row:
+                return None
+            if row["status"] not in allowed_from:
+                raise ValueError(
+                    f"Quarantäne-Übergang {row['status']!r} → {status!r} ist nicht erlaubt."
+                )
+            set_clause = "status=?" + (f", {extra_sql}" if extra_sql else "")
+            conn.execute(
+                f"UPDATE dq_quarantine SET {set_clause} WHERE id=?",
+                (status, *extra_params, quarantine_id),
+            )
+            conn.execute(
+                "INSERT INTO dq_quarantine_events(quarantine_id, at, actor, action, note) "
+                "VALUES (?,?,?,?,?)",
+                (quarantine_id, now, actor, status, note),
+            )
+            updated = conn.execute(
+                "SELECT * FROM dq_quarantine WHERE id=?", (quarantine_id,)
+            ).fetchone()
+            return self._quarantine_row(updated)
+
+    def list_quarantine(
+        self,
+        status: str | None = None,
+        product: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        where, params = [], []
+        if status:
+            where.append("status=?")
+            params.append(status)
+        if product:
+            where.append("product=?")
+            params.append(product)
+        clause = ("WHERE " + " AND ".join(where)) if where else ""
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM dq_quarantine {clause} ORDER BY id DESC LIMIT ? OFFSET ?",
+                (*params, limit, offset),
+            ).fetchall()
+            return [self._quarantine_row(r) for r in rows]
+
+    def get_quarantine(self, quarantine_id: int) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM dq_quarantine WHERE id=?", (quarantine_id,)
+            ).fetchone()
+            if not row:
+                return None
+            episode = self._quarantine_row(row)
+            events = conn.execute(
+                "SELECT id, at, actor, action, note FROM dq_quarantine_events "
+                "WHERE quarantine_id=? ORDER BY id",
+                (quarantine_id,),
+            ).fetchall()
+            episode["events"] = [dict(e) for e in events]
+            return episode
+
+    @staticmethod
+    def _quarantine_row(row: sqlite3.Row) -> dict[str, Any]:
+        episode = dict(row)
+        try:
+            episode["failed_checks"] = json.loads(episode.get("failed_checks") or "[]")
+        except (TypeError, ValueError):
+            episode["failed_checks"] = []
+        return episode
 
     # ------------------------------------------------------------------
     # Profil-Snapshots (Konzept Data-Diff §B) — Distribution-/Key-Diff

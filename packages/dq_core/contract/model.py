@@ -13,6 +13,8 @@ class Guarantee:
     params: dict[str, Any] = field(default_factory=dict)
     severity: str = "fail"
     owned_by: str = "platform"
+    # Durchsetzung bei Breach (gate|quarantine|monitor); leer ⇒ Contract-Default.
+    enforcement: str = ""
 
 
 @dataclass
@@ -25,6 +27,9 @@ class Contract:
     version: str = "0.1.0"
     lifecycle: str = "draft"
     # allowed: draft | active | deprecated
+    # Enforcement-Default fürs ganze Produkt (Lite: ein Schalter); Garantien
+    # können ihn je Familie überschreiben. Default 'monitor' — nie blockierend.
+    enforcement_default: str = "monitor"
     guarantees: dict[str, Any] = field(default_factory=dict)
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -38,6 +43,7 @@ class Contract:
             owners=list(data.get("owners") or []),
             version=str(data.get("version", "0.1.0")),
             lifecycle=str(data.get("lifecycle", "draft")),
+            enforcement_default=str(data.get("enforcement_default", "monitor")),
             guarantees=dict(data.get("guarantees") or {}),
             raw=data,
         )
@@ -51,5 +57,6 @@ class Contract:
             "owners": self.owners,
             "version": self.version,
             "lifecycle": self.lifecycle,
+            "enforcement_default": self.enforcement_default,
             "guarantees": self.guarantees,
         }
