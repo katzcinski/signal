@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from ..auth.provider import PrincipalDep
@@ -422,11 +422,17 @@ def _failure_family(results) -> str:
 def trigger_run(
     object_id: str,
     principal: PrincipalDep,
+    response: Response,
     body: RunTriggerIn = Body(default=RunTriggerIn()),
     store: StoreDep = ...,
     inventory: list[dict] = Depends(get_inventory),
 ):
     """Trigger a DQ run for an object. Returns run_id immediately (202). [ENGINE-FROZEN]
+
+    API-Task-Vertrag (AP-1): die Antwort trägt einen `Location`-Header auf den
+    Status-Endpoint — ein Datasphere-API-Task im Async-Modus pollt diesen bis
+    RUNNING → COMPLETED/FAILED und macht die Task Chain damit zum nativen
+    Promotion-Gate (B2), ohne CLI-Umweg.
 
     [AUTHZ] Runs lösen Last auf HANA aus — viewer darf nicht triggern.
     [SCHEMA-MAP] '{schema}' aus kompilierten Checks wird HIER gebunden (G2):
@@ -454,7 +460,7 @@ def trigger_run(
             detail="No environment given and ALLOW_MOCK_CONNECTION=false — runs require a configured environment.",
         )
 
-    return start_object_run(
+    result = start_object_run(
         object_id=object_id,
         obj=obj,
         env_cfg=env_cfg,
@@ -465,6 +471,9 @@ def trigger_run(
         settings=settings,
         inventory=inventory,
     )
+    if result.get("run_id"):
+        response.headers["Location"] = f"/api/runs/{result['run_id']}/status"
+    return result
 
 
 def start_object_run(
@@ -590,6 +599,35 @@ def start_object_run(
                 resolved_schema=resolved_schema,
                 settings=settings,
             )
+
+            # Enforcement-Achse: Quarantäne-Verdict → Episode (B2, objektgranular).
+            # Nie run-kritisch — die Episode ist Meldung, nicht Voraussetzung.
+            try:
+                if summary.gate_verdict == "quarantine":
+                    failed_q = [
+                        r.name for r in summary.results
+                        if not r.passed and r.state in ("executed", "error")
+                        and r.severity in ("fail", "critical")
+                        and r.enforcement == "quarantine"
+                    ]
+                    store.open_quarantine(
+                        product=object_id,
+                        run_id=run_id,
+                        failed_checks=failed_q,
+                        contract_version=contract_version,
+                        actor="system",
+                    )
+            except Exception:
+                pass
+
+            # Slice ③: Verdict in die HANA-Konsum-Oberfläche (DQ_GATE_STATUS)
+            # publizieren — nur bei aktivierter Materialisierung (Kill-Switch),
+            # über dieselbe Connection/Identität (ADR-0002-Amendment).
+            try:
+                from ..enforcement import publish_verdict
+                publish_verdict(conn=conn, summary=summary, settings=settings)
+            except Exception:
+                pass  # Publikation ist Projektion — Result-Store bleibt primär
 
             # WS5-1: Baselines aus den Zeitreihen der Obs-Checks aktualisieren —
             # Rolling-Stats (Mean/Stddev/Perzentile/MAD) für volume/freshness.

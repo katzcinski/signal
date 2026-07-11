@@ -10,7 +10,15 @@ from typing import Any, Callable
 import yaml
 
 from .expectation import evaluate, validate_expectation
-from .models import CheckDef, CheckResult, DatasetConfig, RunSummary, VALID_SEVERITIES, VALID_KINDS
+from .models import (
+    CheckDef,
+    CheckResult,
+    DatasetConfig,
+    RunSummary,
+    VALID_ENFORCEMENT,
+    VALID_KINDS,
+    VALID_SEVERITIES,
+)
 from ..library.check_library import check_ids_where
 from ..store.sqlite_store import ResultStore
 
@@ -50,6 +58,7 @@ def load_dataset_config(path: Path, *, allow_empty: bool = False) -> DatasetConf
         expect = str(item.get("expect") or "").strip()
         severity = str(item.get("severity") or "fail").strip().lower()
         kind = str(item.get("kind") or "internal_gate").strip()
+        enforcement = str(item.get("enforcement") or "monitor").strip().lower()
         if not sql:
             raise ValueError(f'Check "{name}": "sql" fehlt.')
         if not expect:
@@ -58,6 +67,8 @@ def load_dataset_config(path: Path, *, allow_empty: bool = False) -> DatasetConf
             raise ValueError(f'Check "{name}": severity muss critical/fail/warn sein.')
         if kind not in VALID_KINDS:
             raise ValueError(f'Check "{name}": kind muss internal_gate/consumer_contract/provider_contract sein.')
+        if enforcement not in VALID_ENFORCEMENT:
+            raise ValueError(f'Check "{name}": enforcement muss gate/quarantine/monitor sein.')
         try:
             validate_expectation(expect)
         except ValueError as exc:
@@ -76,6 +87,7 @@ def load_dataset_config(path: Path, *, allow_empty: bool = False) -> DatasetConf
                 type=str(item.get("type") or "").strip(),
                 unit=str(item.get("unit") or "").strip(),
                 kind=kind,
+                enforcement=enforcement,
                 diagnostics_enabled=bool(diagnostics.get("enabled", False)),
                 diagnostics_columns=[str(c) for c in (diagnostics.get("columns") or [])],
             )
@@ -108,6 +120,7 @@ def dataset_config_to_yaml(config: DatasetConfig) -> str:
             **({"type": check.type} if check.type else {}),
             **({"unit": check.unit} if check.unit else {}),
             "kind": check.kind,
+            "enforcement": check.enforcement,
             **(
                 {"diagnostics": {"enabled": True, "columns": list(check.diagnostics_columns)}}
                 if check.diagnostics_enabled
@@ -163,6 +176,7 @@ def run_checks(
         results = _execute(conn, enabled_checks, mode, on_progress, previous)
 
     overall = _overall_status(results)
+    verdict = _gate_verdict(results)
     executed = [r for r in results if r.state in ("executed", "error")]
     summary = RunSummary(
         run_id=run_id,
@@ -177,6 +191,7 @@ def run_checks(
         warnings=sum(1 for result in executed if not result.passed and result.severity == "warn"),
         results=results,
         triggered_by=triggered_by,
+        gate_verdict=verdict,
     )
 
     if results_db is not None:
@@ -233,6 +248,7 @@ def _run_with_gating(
             name=check.name, sql=check.sql, expect=check.expect,
             severity=check.severity, passed=False,
             state="skipped_stale", type=check.type, kind=check.kind,
+            enforcement=check.enforcement,
         )
         results.append(skipped)
         if on_progress:
@@ -412,6 +428,7 @@ def _result_from_actual(check: CheckDef, actual: Any, duration_ms: int, *, previ
             duration_ms=duration_ms,
             type=check.type,
             kind=check.kind,
+            enforcement=check.enforcement,
         )
     except Exception as exc:  # noqa: BLE001
         return _error_result(check, str(exc), duration_ms, actual_value=actual)
@@ -436,6 +453,7 @@ def _error_result(
         state="error",
         type=check.type,
         kind=check.kind,
+        enforcement=check.enforcement,
     )
 
 
@@ -504,6 +522,22 @@ def _overall_status(results: list[CheckResult]) -> str:
     if "warn" in failed:
         return "warn"
     return "pass"
+
+
+def _gate_verdict(results: list[CheckResult]) -> str:
+    """Enforcement-Rollup (state-bewusst wie _overall_status, G6): nur
+    executed/error zählen. `monitor`-Fails eskalieren das Urteil NIE; ein
+    `warn`-Fail ist ein weiches Signal und blockiert ebenfalls nicht."""
+    failed = [
+        r for r in results
+        if r.state in ("executed", "error") and not r.passed
+        and r.severity in ("critical", "fail")
+    ]
+    if any(r.enforcement == "gate" for r in failed):
+        return "block"
+    if any(r.enforcement == "quarantine" for r in failed):
+        return "quarantine"
+    return "proceed"
 
 
 def _line_status(result: CheckResult) -> str:

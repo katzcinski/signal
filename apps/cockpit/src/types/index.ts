@@ -243,6 +243,7 @@ export interface RunSummary {
   contract_version: string;
   actor: string;
   run_state: RunState;
+  gate_verdict?: GateVerdict;
   results: CheckResult[];
 }
 
@@ -258,6 +259,7 @@ export interface RunListItem {
   warnings: number;
   run_state: RunState;
   triggered_by: string;
+  gate_verdict?: GateVerdict;
 }
 
 // ---- Run comparison / regression diff (GET /api/runs/compare) — UX-N5 ----
@@ -911,6 +913,32 @@ export interface IncidentEvent {
 }
 
 export interface IncidentDetail extends Incident {
+  events: IncidentEvent[];
+}
+
+// ---- Quarantäne: Enforcement-Episoden (Konzept_Datasphere_Integration) ----
+export type QuarantineStatus = 'open' | 'reconciled' | 'released' | 'resolved' | 'superseded';
+export type GateVerdict = 'proceed' | 'quarantine' | 'block';
+export type EnforcementMode = 'gate' | 'quarantine' | 'monitor';
+
+export interface QuarantineEpisode {
+  id: number;
+  product: string;
+  run_id: string;
+  status: QuarantineStatus;
+  failed_checks: string[];
+  contract_version: string;
+  manifest_hash: string;
+  generation: number;
+  row_count: number | null;
+  opened_at: string;
+  released_at: string | null;
+  released_by: string;
+  resolved_at: string | null;
+  resolve_reason: string;
+}
+
+export interface QuarantineEpisodeDetail extends QuarantineEpisode {
   events: IncidentEvent[];
 }
 

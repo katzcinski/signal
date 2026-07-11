@@ -58,6 +58,11 @@ export function canActOnIncidents(role: Role): boolean {
   return role !== 'viewer';
 }
 
+/** Quarantäne-Freigabe/Reprocess erfordert steward+ (routers/quarantine.py). */
+export function canActOnQuarantine(role: Role): boolean {
+  return role !== 'viewer';
+}
+
 /** UX-N2: notification config is platform-wide → platform-owner (admin) only. */
 export function canManageNotifications(role: Role): boolean {
   return role === 'admin';

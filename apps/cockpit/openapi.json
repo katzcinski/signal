@@ -194,6 +194,11 @@
             "title": "Duration Ms",
             "type": "integer"
           },
+          "enforcement": {
+            "default": "monitor",
+            "title": "Enforcement",
+            "type": "string"
+          },
           "error": {
             "anyOf": [
               {
@@ -295,6 +300,102 @@
         "title": "CompileOut",
         "type": "object"
       },
+      "ConnectorIn": {
+        "properties": {
+          "base_url": {
+            "default": "",
+            "maxLength": 512,
+            "title": "Base Url",
+            "type": "string"
+          },
+          "clear_cli_secret": {
+            "default": false,
+            "title": "Clear Cli Secret",
+            "type": "boolean"
+          },
+          "clear_secret": {
+            "default": false,
+            "title": "Clear Secret",
+            "type": "boolean"
+          },
+          "cli_authorization_url": {
+            "default": "",
+            "maxLength": 512,
+            "title": "Cli Authorization Url",
+            "type": "string"
+          },
+          "cli_client_id": {
+            "default": "",
+            "maxLength": 256,
+            "title": "Cli Client Id",
+            "type": "string"
+          },
+          "cli_client_secret": {
+            "default": "",
+            "maxLength": 4096,
+            "title": "Cli Client Secret",
+            "type": "string"
+          },
+          "cli_host": {
+            "default": "",
+            "maxLength": 512,
+            "title": "Cli Host",
+            "type": "string"
+          },
+          "cli_oauth_secrets_file": {
+            "default": "",
+            "maxLength": 1024,
+            "title": "Cli Oauth Secrets File",
+            "type": "string"
+          },
+          "cli_token_url": {
+            "default": "",
+            "maxLength": 512,
+            "title": "Cli Token Url",
+            "type": "string"
+          },
+          "client_id": {
+            "default": "",
+            "maxLength": 256,
+            "title": "Client Id",
+            "type": "string"
+          },
+          "client_secret": {
+            "default": "",
+            "maxLength": 4096,
+            "title": "Client Secret",
+            "type": "string"
+          },
+          "persist_target": {
+            "default": "file",
+            "enum": [
+              "file",
+              "env"
+            ],
+            "title": "Persist Target",
+            "type": "string"
+          },
+          "space_id": {
+            "default": "",
+            "maxLength": 128,
+            "title": "Space Id",
+            "type": "string"
+          },
+          "token_url": {
+            "default": "",
+            "maxLength": 512,
+            "title": "Token Url",
+            "type": "string"
+          },
+          "use_cli": {
+            "default": false,
+            "title": "Use Cli",
+            "type": "boolean"
+          }
+        },
+        "title": "ConnectorIn",
+        "type": "object"
+      },
       "ContractIn": {
         "description": "Lifecycle ist bewusst KEIN Eingabefeld \u2014 \u00dcberg\u00e4nge laufen nur \u00fcber\napprove/deprecate; PUT erzwingt draft (S-2).",
         "properties": {
@@ -327,6 +428,12 @@
             "default": "internal_gate",
             "title": "Kind",
             "type": "string"
+          },
+          "observability": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Observability",
+            "type": "object"
           },
           "owned_by": {
             "default": "platform",
@@ -409,6 +516,12 @@
             "default": "draft",
             "title": "Lifecycle",
             "type": "string"
+          },
+          "observability": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Observability",
+            "type": "object"
           },
           "owned_by": {
             "default": "platform",
@@ -538,6 +651,67 @@
           "load_type"
         ],
         "title": "DataLoadOut",
+        "type": "object"
+      },
+      "DiffRequest": {
+        "description": "\u00a7B: Data-Diff zweier gespeicherter Profil-Snapshots. Ohne IDs werden die\nzwei j\u00fcngsten Snapshots des Objekts verglichen (base = \u00e4lterer).",
+        "properties": {
+          "base_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Snapshot Id"
+          },
+          "head_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Snapshot Id"
+          },
+          "key_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Columns"
+          },
+          "mode": {
+            "default": "distribution",
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "title": "DiffRequest",
+        "type": "object"
+      },
+      "EnforcementApplyIn": {
+        "properties": {
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment"
+        ],
+        "title": "EnforcementApplyIn",
         "type": "object"
       },
       "EnvironmentConfigIn": {
@@ -1018,6 +1192,186 @@
         "title": "ObjectOut",
         "type": "object"
       },
+      "ObservedCheck": {
+        "properties": {
+          "expect": {
+            "default": "",
+            "title": "Expect",
+            "type": "string"
+          },
+          "family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family"
+          },
+          "last_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Value"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "points": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ObservedPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "severity": {
+            "default": "",
+            "title": "Severity",
+            "type": "string"
+          },
+          "state": {
+            "default": "",
+            "title": "State",
+            "type": "string"
+          },
+          "type": {
+            "default": "",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ObservedCheck",
+        "type": "object"
+      },
+      "ObservedGuarantee": {
+        "properties": {
+          "checks": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ObservedCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "state": {
+            "default": "unknown",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "family"
+        ],
+        "title": "ObservedGuarantee",
+        "type": "object"
+      },
+      "ObservedOut": {
+        "properties": {
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "guarantees": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ObservedGuarantee"
+            },
+            "title": "Guarantees",
+            "type": "array"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "dataset"
+        ],
+        "title": "ObservedOut",
+        "type": "object"
+      },
+      "ObservedPoint": {
+        "properties": {
+          "at": {
+            "default": "",
+            "title": "At",
+            "type": "string"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "raw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw"
+          },
+          "run_id": {
+            "default": "",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "state": {
+            "default": "executed",
+            "title": "State",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "title": "ObservedPoint",
+        "type": "object"
+      },
       "ProductDetailOut": {
         "properties": {
           "findings": {
@@ -1431,6 +1785,30 @@
         "title": "ProposalOut",
         "type": "object"
       },
+      "QuarantineActionIn": {
+        "properties": {
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "title": "QuarantineActionIn",
+        "type": "object"
+      },
+      "QuarantineReconcileIn": {
+        "properties": {
+          "row_count": {
+            "title": "Row Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "row_count"
+        ],
+        "title": "QuarantineReconcileIn",
+        "type": "object"
+      },
       "RuleIn": {
         "properties": {
           "channel_id": {
@@ -1502,6 +1880,11 @@
             "title": "Finished At",
             "type": "string"
           },
+          "gate_verdict": {
+            "default": "proceed",
+            "title": "Gate Verdict",
+            "type": "string"
+          },
           "overall_status": {
             "default": "pass",
             "title": "Overall Status",
@@ -1549,6 +1932,45 @@
         "title": "RunListItem",
         "type": "object"
       },
+      "RunStatusOut": {
+        "description": "API-Task-kompatibler Lauf-Status (AP-1): Datasphere pollt diesen\nEndpoint (Location-Header) bis RUNNING \u2192 COMPLETED/FAILED.",
+        "properties": {
+          "fail_on": {
+            "default": "block_and_quarantine",
+            "title": "Fail On",
+            "type": "string"
+          },
+          "gate_verdict": {
+            "default": "proceed",
+            "title": "Gate Verdict",
+            "type": "string"
+          },
+          "overall_status": {
+            "default": "pass",
+            "title": "Overall Status",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "run_state": {
+            "default": "finished",
+            "title": "Run State",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "run_id"
+        ],
+        "title": "RunStatusOut",
+        "type": "object"
+      },
       "RunSummaryOut": {
         "properties": {
           "actor": {
@@ -1578,6 +2000,11 @@
           "finished_at": {
             "default": "",
             "title": "Finished At",
+            "type": "string"
+          },
+          "gate_verdict": {
+            "default": "proceed",
+            "title": "Gate Verdict",
             "type": "string"
           },
           "overall_status": {
@@ -1802,6 +2229,21 @@
         "title": "ScheduleUpsertIn",
         "type": "object"
       },
+      "SecretBody": {
+        "properties": {
+          "password": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "SecretBody",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1897,6 +2339,209 @@
         "summary": "List Activity",
         "tags": [
           "activity"
+        ]
+      }
+    },
+    "/api/admin/connector": {
+      "get": {
+        "description": "Aktuelle Connector-Konfiguration und CLI-Verf\u00fcgbarkeit.",
+        "operationId": "get_connector_status_api_admin_connector_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Connector Status",
+        "tags": [
+          "admin",
+          "connector"
+        ]
+      },
+      "put": {
+        "description": "Speichert Connector-Konfiguration in datasphere.yml oder .env.\n\nREST und CLI k\u00f6nnen getrennte OAuth-Clients verwenden. Secrets werden je\nnach Ziel entweder referenzbasiert in ``secrets.local.yml`` (persist_target\n``file``) oder direkt in ``.env`` (persist_target ``env``) gespeichert.",
+        "operationId": "put_connector_config_api_admin_connector_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Connector Config",
+        "tags": [
+          "admin",
+          "connector"
+        ]
+      }
+    },
+    "/api/admin/connector/login": {
+      "post": {
+        "description": "Start the interactive Datasphere CLI OAuth login in a visible CMD window.",
+        "operationId": "open_connector_login_api_admin_connector_login_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open Connector Login",
+        "tags": [
+          "admin",
+          "connector"
         ]
       }
     },
@@ -2189,6 +2834,85 @@
           }
         },
         "summary": "Update Environment",
+        "tags": [
+          "admin",
+          "environments"
+        ]
+      }
+    },
+    "/api/admin/environments/{name}/secret": {
+      "put": {
+        "description": "Speichert das Passwort f\u00fcr ein Environment in secrets.local.yml (gitignored).\n\nDas Passwort verl\u00e4sst diesen Endpoint nie \u2014 kein Log, keine Response (S-1).\nDie Referenz (password_ref) muss im Environment konfiguriert sein und darf\nkein plain:-Direktwert sein.",
+        "operationId": "set_environment_secret_api_admin_environments__name__secret_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecretBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Environment Secret",
         "tags": [
           "admin",
           "environments"
@@ -3062,6 +3786,47 @@
         ]
       }
     },
+    "/api/contracts/{product}/drift": {
+      "get": {
+        "description": "Shift-Left (\u00a7A): Read-only-Report, ob die **Quelle** vom Schema-Versprechen\ndes Contracts abweicht. Persistenz + Incident laufen beim Extrakt, nicht hier.\nLiefert zus\u00e4tzlich die j\u00fcngste gespeicherte Drift-Historie.",
+        "operationId": "schema_drift_report_api_contracts__product__drift_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Schema Drift Report",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
     "/api/contracts/{product}/export/bdc": {
       "post": {
         "description": "Generate CSN + ORD artifact fragments for BDC integration. (WS5-4)\n\nEinseitig (E1): files are returned as JSON for manual deployment.\nNever writes to DB or catalog.",
@@ -3213,6 +3978,61 @@
           }
         },
         "summary": "Export Odcs",
+        "tags": [
+          "contracts"
+        ]
+      }
+    },
+    "/api/contracts/{product}/observed": {
+      "get": {
+        "description": "Beobachtete Realit\u00e4t je Garantie (P6): letzter Messwert, Sparkline-Reihe\nund PASS/FAIL. Read-only-Rollup \u2014 der Compiler bildet Garantien auf Checks ab\n(einzige Wahrheit f\u00fcr die Namensbildung), die persistierte Result-Historie\nliefert die Werte. Aggregat-Werte, keine Rohzeilen (G8 unber\u00fchrt).",
+        "operationId": "observed_reality_api_contracts__product__observed_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 15,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Observed Reality",
         "tags": [
           "contracts"
         ]
@@ -3678,9 +4498,147 @@
         ]
       }
     },
+    "/api/enforcement/apply": {
+      "post": {
+        "description": "Bootstrap der Gate-Infrastruktur anwenden. DDL im Tenant-Schema ist\neine Betriebsentscheidung \u2014 owner/admin; jede Anwendung ist eine\nauditierte Operation.",
+        "operationId": "apply_plan_api_enforcement_apply_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnforcementApplyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apply Plan",
+        "tags": [
+          "enforcement"
+        ]
+      }
+    },
+    "/api/enforcement/plan": {
+      "get": {
+        "description": "Soll-Zustand des Signal-Schemas (Dry-Run): verwaltete Objekte inkl.\nDDL und manifest_hash. Zeigt DDL \u2014 steward+.",
+        "operationId": "get_plan_api_enforcement_plan_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Plan",
+        "tags": [
+          "enforcement"
+        ]
+      }
+    },
     "/api/environments": {
       "get": {
-        "description": "Environment-Namen f\u00fcr den RunTriggerDialog \u2014 NIE Credentials (S-13).",
+        "description": "Environment names for the run trigger dialog, never credentials.",
         "operationId": "list_environments_api_environments_get",
         "responses": {
           "200": {
@@ -3984,7 +4942,7 @@
     },
     "/api/extract": {
       "post": {
-        "description": "Extract inventory/lineage and report counts.\n\nFastAPI runs this sync handler in a threadpool, so the blocking I/O does not\nstall the event loop. The response keeps the legacy top-level count fields\nwhile also returning the richer status shape used by the Phase-1 admin UI.",
+        "description": "Start an operation-backed inventory extraction and return its ``op_id``.",
         "operationId": "trigger_extract_api_extract_post",
         "parameters": [
           {
@@ -4048,7 +5006,7 @@
           }
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {}
@@ -4207,6 +5165,22 @@
           },
           {
             "in": "query",
+            "name": "group",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Group"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -4359,6 +5333,46 @@
         ]
       }
     },
+    "/api/incidents/{incident_id}/rca": {
+      "get": {
+        "operationId": "get_incident_rca_api_incidents__incident_id__rca_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Incident Rca",
+        "tags": [
+          "incidents"
+        ]
+      }
+    },
     "/api/incidents/{incident_id}/transition": {
       "post": {
         "description": "[AUTHZ] Statuswechsel/Assign/Note \u2014 jede Aktion landet in der Timeline.",
@@ -4500,6 +5514,37 @@
               ],
               "title": "Space"
             }
+          },
+          {
+            "in": "query",
+            "name": "seed",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seed"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "default": 2,
+              "maximum": 20,
+              "minimum": 0,
+              "title": "Depth",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -4585,6 +5630,68 @@
         ]
       }
     },
+    "/api/lineage/columns/impact": {
+      "get": {
+        "description": "Transitive downstream impact of one column (UX-N7 / WS-C).\n\nBFS over ``columnEdges`` from ``(object, column)``; every reachable\ndownstream column is reported once at its minimum hop distance, enriched\nwith the consumer object's ownership and coverage flag. Cycle-safe via a\nvisited set; ``truncated`` signals edges left unexplored at ``max_depth``.",
+        "operationId": "get_column_impact_api_lineage_columns_impact_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "object",
+            "required": true,
+            "schema": {
+              "title": "Object",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "column",
+            "required": true,
+            "schema": {
+              "title": "Column",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_depth",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Max Depth",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Column Impact",
+        "tags": [
+          "lineage"
+        ]
+      }
+    },
     "/api/metrics/health": {
       "get": {
         "description": "Self-observability: request counters, uptime, latency percentiles (JSON).",
@@ -4633,6 +5740,24 @@
       "get": {
         "description": "Soll-Zustand f\u00fcr das Provisioning-Skript: Identit\u00e4t + View-Name + Spalten\n+ vorgeschlagenes (\u00fcberschreibbares) Projektions-SQL je Objekt.",
         "operationId": "manifest_api_monitoring_manifest_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Service-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -4645,6 +5770,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Manifest",
@@ -4696,6 +5831,38 @@
               "title": "Object Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -4738,6 +5905,38 @@
             "schema": {
               "title": "Object Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
         ],
@@ -4783,6 +5982,22 @@
             "schema": {
               "title": "Object Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Service-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Token"
             }
           }
         ],
@@ -5549,6 +6764,91 @@
         ]
       }
     },
+    "/api/objects/{object_id}/diff": {
+      "post": {
+        "description": "\u00a7B.2/\u00a7B.3: Distribution- bzw. Key-Reconciliation-Diff zweier Profil-Snapshots.\n\nLiest ausschlie\u00dflich gespeicherte Aggregat-Snapshots (kein HANA, keine\nRohzeilen \u2014 G8). Snapshots entstehen bei `POST /objects/{id}/profile`.",
+        "operationId": "diff_object_api_objects__object_id__diff_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiffRequest",
+                "default": {
+                  "mode": "distribution"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Diff Object",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
     "/api/objects/{object_id}/profile": {
       "post": {
         "description": "Profile one object's columns over a live HANA connection.\n\nReturns per-column stats, PK candidates (single + composite), and\nheuristic key scores. Requires steward role or higher and a configured\nenvironment with a real HANA connection.",
@@ -5638,7 +6938,7 @@
     },
     "/api/objects/{object_id}/run": {
       "post": {
-        "description": "Trigger a DQ run for an object. Returns run_id immediately (202). [ENGINE-FROZEN]\n\n[AUTHZ] Runs l\u00f6sen Last auf HANA aus \u2014 viewer darf nicht triggern.\n[SCHEMA-MAP] '{schema}' aus kompilierten Checks wird HIER gebunden (G2):\naus dem Environment, sonst aus dem Inventar-Schema des Objekts.",
+        "description": "Trigger a DQ run for an object. Returns run_id immediately (202). [ENGINE-FROZEN]\n\nAPI-Task-Vertrag (AP-1): die Antwort tr\u00e4gt einen `Location`-Header auf den\nStatus-Endpoint \u2014 ein Datasphere-API-Task im Async-Modus pollt diesen bis\nRUNNING \u2192 COMPLETED/FAILED und macht die Task Chain damit zum nativen\nPromotion-Gate (B2), ohne CLI-Umweg.\n\n[AUTHZ] Runs l\u00f6sen Last auf HANA aus \u2014 viewer darf nicht triggern.\n[SCHEMA-MAP] '{schema}' aus kompilierten Checks wird HIER gebunden (G2):\naus dem Environment, sonst aus dem Inventar-Schema des Objekts.",
         "operationId": "trigger_run_api_objects__object_id__run_post",
         "parameters": [
           {
@@ -6551,6 +7851,385 @@
         ]
       }
     },
+    "/api/quarantine": {
+      "get": {
+        "operationId": "list_quarantine_api_quarantine_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Product"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Quarantine",
+        "tags": [
+          "quarantine"
+        ]
+      }
+    },
+    "/api/quarantine/{quarantine_id}": {
+      "get": {
+        "operationId": "get_quarantine_api_quarantine__quarantine_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quarantine_id",
+            "required": true,
+            "schema": {
+              "title": "Quarantine Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Quarantine",
+        "tags": [
+          "quarantine"
+        ]
+      }
+    },
+    "/api/quarantine/{quarantine_id}/confirm-reprocess": {
+      "post": {
+        "description": "R\u00fcckf\u00fchrung best\u00e4tigt (Kunden-Flow hat die Release-View geladen) \u2014\nEpisode wird `resolved(reprocessed)`.",
+        "operationId": "confirm_reprocess_api_quarantine__quarantine_id__confirm_reprocess_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quarantine_id",
+            "required": true,
+            "schema": {
+              "title": "Quarantine Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuarantineActionIn",
+                "default": {
+                  "note": ""
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Reprocess",
+        "tags": [
+          "quarantine"
+        ]
+      }
+    },
+    "/api/quarantine/{quarantine_id}/reconcile": {
+      "post": {
+        "description": "R\u00fcckkanal f\u00fcr externe Reconcile-Skripte (Fallback-Pfad ohne\nMaterialisierung): beobachtete Zeilenzahl melden \u2192 Episode `reconciled`.",
+        "operationId": "reconcile_quarantine_api_quarantine__quarantine_id__reconcile_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quarantine_id",
+            "required": true,
+            "schema": {
+              "title": "Quarantine Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuarantineReconcileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reconcile Quarantine",
+        "tags": [
+          "quarantine"
+        ]
+      }
+    },
+    "/api/quarantine/{quarantine_id}/release": {
+      "post": {
+        "description": "[AUTHZ] Freigabe ist eine Governance-Entscheidung \u2014 steward+.",
+        "operationId": "release_quarantine_api_quarantine__quarantine_id__release_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "quarantine_id",
+            "required": true,
+            "schema": {
+              "title": "Quarantine Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuarantineActionIn",
+                "default": {
+                  "note": ""
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Release Quarantine",
+        "tags": [
+          "quarantine"
+        ]
+      }
+    },
     "/api/runs": {
       "get": {
         "operationId": "list_runs_api_runs_get",
@@ -6879,6 +8558,108 @@
           }
         },
         "summary": "Get Run Results",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/results/{check_name}/segments": {
+      "get": {
+        "operationId": "get_run_result_segments_api_runs__run_id__results__check_name__segments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "check_name",
+            "required": true,
+            "schema": {
+              "title": "Check Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Result Segments",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/runs/{run_id}/status": {
+      "get": {
+        "description": "API-Task-Vertrag (AP-1): Status-Endpoint f\u00fcr den asynchronen\nTask-Chain-Aufruf. Solange der Lauf l\u00e4uft RUNNING, danach das bin\u00e4re\nVerdict-Mapping: `proceed` \u2192 COMPLETED, `block` \u2192 FAILED; `quarantine`\nfolgt `fail_on` \u2014 Pipelines, die aus der CLEAN-View lesen, setzen\n`fail_on=block` und laufen bei Quarant\u00e4ne weiter (Isolation tr\u00e4gt die\nView). Default ist fail-closed (`block_and_quarantine`). Ein Lauf im\nZustand `error` ist immer FAILED (fail-closed).",
+        "operationId": "get_run_status_api_runs__run_id__status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fail_on",
+            "required": false,
+            "schema": {
+              "default": "block_and_quarantine",
+              "title": "Fail On",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Status",
         "tags": [
           "runs"
         ]

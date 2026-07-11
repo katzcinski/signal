@@ -18,6 +18,7 @@ class CheckResultOut(BaseModel):
     state: str = "executed"
     type: str = ""
     kind: str = "internal_gate"
+    enforcement: str = "monitor"
 
 
 class RunSummaryOut(BaseModel):
@@ -38,6 +39,7 @@ class RunSummaryOut(BaseModel):
     contract_hash: str = ""
     actor: str = ""
     run_state: str = "finished"
+    gate_verdict: str = "proceed"
     results: list[CheckResultOut] = []
 
 
@@ -53,3 +55,16 @@ class RunListItem(BaseModel):
     warnings: int = 0
     run_state: str = "finished"
     triggered_by: str = "manual"
+    gate_verdict: str = "proceed"
+
+
+class RunStatusOut(BaseModel):
+    """API-Task-kompatibler Lauf-Status (AP-1): Datasphere pollt diesen
+    Endpoint (Location-Header) bis RUNNING → COMPLETED/FAILED."""
+
+    status: str  # RUNNING | COMPLETED | FAILED
+    run_id: str
+    run_state: str = "finished"
+    overall_status: str = "pass"
+    gate_verdict: str = "proceed"
+    fail_on: str = "block_and_quarantine"

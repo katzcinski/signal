@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from ..auth.provider import PrincipalDep
 from ..deps import StoreDep
-from ..schemas.run_schemas import RunSummaryOut, RunListItem, CheckResultOut
+from ..schemas.run_schemas import RunSummaryOut, RunListItem, CheckResultOut, RunStatusOut
 
 router = APIRouter(prefix="/api/runs", tags=["runs"])
 
@@ -80,6 +80,7 @@ def _result_out(row: dict) -> CheckResultOut:
         state=row.get("state", "executed"),
         type=row.get("check_type", "") or "",
         kind=row.get("kind", "internal_gate") or "internal_gate",
+        enforcement=row.get("enforcement_mode", "monitor") or "monitor",
     )
 
 
@@ -101,6 +102,7 @@ def _run_out(run: dict) -> RunSummaryOut:
         contract_hash=run.get("contract_hash", "") or "",
         actor=run.get("actor", "") or "",
         run_state=run.get("run_state", "finished"),
+        gate_verdict=run.get("gate_verdict", "proceed") or "proceed",
         results=[_result_out(r) for r in run.get("results", [])],
     )
 
@@ -181,6 +183,48 @@ def get_run(run_id: str, store: StoreDep = ...):
     if not run:
         raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found")
     return _run_out(run)
+
+
+_VALID_FAIL_ON = {"block", "block_and_quarantine"}
+
+
+@router.get("/{run_id}/status", response_model=RunStatusOut)
+def get_run_status(
+    run_id: str,
+    fail_on: str = Query(default="block_and_quarantine"),
+    store: StoreDep = ...,
+):
+    """API-Task-Vertrag (AP-1): Status-Endpoint für den asynchronen
+    Task-Chain-Aufruf. Solange der Lauf läuft RUNNING, danach das binäre
+    Verdict-Mapping: `proceed` → COMPLETED, `block` → FAILED; `quarantine`
+    folgt `fail_on` — Pipelines, die aus der CLEAN-View lesen, setzen
+    `fail_on=block` und laufen bei Quarantäne weiter (Isolation trägt die
+    View). Default ist fail-closed (`block_and_quarantine`). Ein Lauf im
+    Zustand `error` ist immer FAILED (fail-closed)."""
+    if fail_on not in _VALID_FAIL_ON:
+        raise HTTPException(status_code=422, detail=f"Unknown fail_on {fail_on!r}")
+    run = store.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Run {run_id!r} not found")
+
+    run_state = run.get("run_state", "finished")
+    verdict = run.get("gate_verdict", "proceed") or "proceed"
+    if run_state == "running":
+        status = "RUNNING"
+    elif run_state == "error":
+        status = "FAILED"
+    elif verdict == "block" or (verdict == "quarantine" and fail_on == "block_and_quarantine"):
+        status = "FAILED"
+    else:
+        status = "COMPLETED"
+    return RunStatusOut(
+        status=status,
+        run_id=run_id,
+        run_state=run_state,
+        overall_status=run.get("overall_status", "pass"),
+        gate_verdict=verdict,
+        fail_on=fail_on,
+    )
 
 
 @router.get("/{run_id}/results", response_model=list[CheckResultOut])

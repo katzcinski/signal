@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 from ..library.check_library import check_by_id, load_library
-from ..engine.models import CheckDef, DatasetConfig, VALID_OWNERS, VALID_SEVERITIES, VALID_KINDS
+from ..engine.models import CheckDef, DatasetConfig, VALID_ENFORCEMENT, VALID_OWNERS, VALID_SEVERITIES, VALID_KINDS
 
 SAFE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _ISO_DURATION = re.compile(r"^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$")
@@ -64,6 +64,15 @@ def _severity(g: dict[str, Any], default: str) -> str:
     return sev
 
 
+def _enforcement(g: dict[str, Any], default: str) -> str:
+    """Durchsetzungsmodus einer Garantie: eigenes Feld > Contract-Default.
+    Nur ein Dataclass-Feld — SQL bleibt unberührt (G1/G2)."""
+    mode = str(g.get("enforcement") or default)
+    if mode not in VALID_ENFORCEMENT:
+        raise CompileError(f"Unbekannter enforcement-Modus {mode!r}")
+    return mode
+
+
 def parse_iso_duration(s: str) -> int:
     """ISO-8601-Dauer (PT26H, P1D …) → Sekunden."""
     m = _ISO_DURATION.match(str(s or ""))
@@ -90,10 +99,10 @@ def _bind(template_id: str, dataset: str, params: dict[str, Any]) -> str:
 
 def _mk(template_id: str, dataset: str, params: dict[str, Any], *,
         name: str, expect: str, severity: str, owner: str, unit: str = "",
-        kind: str = "internal_gate") -> CheckDef:
+        kind: str = "internal_gate", enforcement: str = "monitor") -> CheckDef:
     return CheckDef(name=name, sql=_bind(template_id, dataset, params),
                     expect=expect, severity=severity, type=template_id,
-                    unit=unit, owned_by=owner, kind=kind)
+                    unit=unit, owned_by=owner, kind=kind, enforcement=enforcement)
 
 
 # ── Typed literal binding for the generic checks[] path ───────────────────────
@@ -155,7 +164,8 @@ def _bind_typed(template: str, dataset: str, bound: dict[str, str], *, where: st
 
 
 def _compile_check(chk: dict[str, Any], dataset: str, *, owner: str,
-                   cols: set[str] | None, where: str) -> CheckDef:
+                   cols: set[str] | None, where: str,
+                   enforcement_default: str = "monitor") -> CheckDef:
     """Eine library-instanziierte checks[]-Position → CheckDef. Die semantische
     Validierung (id existiert, Parameter vollständig & typgerecht) lebt hier,
     nicht im (bewusst library-agnostischen) Validator."""
@@ -202,7 +212,8 @@ def _compile_check(chk: dict[str, Any], dataset: str, *, owner: str,
     name = "_".join([cid, *idents]) if idents else cid
     return CheckDef(name=name, sql=_bind_typed(template, dataset, bound, where=where),
                     expect=expect, severity=severity, type=cid,
-                    unit=str(entry.get("unit") or ""), owned_by=owner)
+                    unit=str(entry.get("unit") or ""), owned_by=owner,
+                    enforcement=_enforcement(chk, enforcement_default))
 
 
 def compile_contract(
@@ -223,6 +234,9 @@ def compile_contract(
     if kind not in VALID_KINDS:
         raise CompileError(f"kind muss {sorted(VALID_KINDS)} sein, nicht {kind!r}")
     g = contract.get("guarantees") or {}
+    enf_default = str(contract.get("enforcement_default") or "monitor")
+    if enf_default not in VALID_ENFORCEMENT:
+        raise CompileError(f"Unbekannter enforcement_default {enf_default!r}")
     cols = inventory_columns
     checks: list[CheckDef] = []
 
@@ -235,20 +249,22 @@ def compile_contract(
             name="schema_columns",
             expect=("= %d" % len(expected)) if closed else (">= %d" % len(expected)),
             severity=_severity(schema_g, "critical"), owner=owner, kind=kind,
+            enforcement=_enforcement(schema_g, enf_default),
         ))
 
     for i, key in enumerate(g.get("keys") or []):
         kcols = _idents(key.get("columns") or [], f"guarantees.keys[{i}].columns", cols)
         sev = _severity(key, "critical")
+        enf = _enforcement(key, enf_default)
         if len(kcols) == 1:
             checks.append(_mk("duplicate", dataset, {"<SPALTE>": kcols[0]},
                               name=f"key_{kcols[0]}_unique", expect="= 0",
-                              severity=sev, owner=owner, kind=kind))
+                              severity=sev, owner=owner, kind=kind, enforcement=enf))
         else:
             key_expr = " || '|' || ".join(f'"{c}"' for c in kcols)
             checks.append(_mk("duplicate_composite", dataset, {"<KEY_EXPR>": key_expr},
                               name="key_" + "_".join(kcols) + "_unique", expect="= 0",
-                              severity=sev, owner=owner, kind=kind))
+                              severity=sev, owner=owner, kind=kind, enforcement=enf))
 
     for i, ref in enumerate(g.get("referential") or []):
         where = f"guarantees.referential[{i}]"
@@ -262,6 +278,7 @@ def compile_contract(
             {"<DIMENSION>": parent, "<FK>": fk[0], "<PK>": pk[0]},
             name=f"ref_{fk[0]}_{parent}", expect="= 0",
             severity=_severity(ref, "fail"), owner=owner, kind=kind,
+            enforcement=_enforcement(ref, enf_default),
         ))
 
     fresh = g.get("freshness")
@@ -270,14 +287,16 @@ def compile_contract(
         seconds = parse_iso_duration(fresh.get("max_age"))
         checks.append(_mk("freshness", dataset, {"<SPALTE>": col},
                           name=f"freshness_{col}", expect=f"< {seconds}",
-                          severity=_severity(fresh, "warn"), owner=owner, unit="s", kind=kind))
+                          severity=_severity(fresh, "warn"), owner=owner, unit="s", kind=kind,
+                          enforcement=_enforcement(fresh, enf_default)))
 
     vol = g.get("volume")
     if vol and vol.get("min_rows") is not None:
         min_rows = int(vol["min_rows"])
         checks.append(_mk("row_count", dataset, {},
                           name="volume_min_rows", expect=f">= {min_rows}",
-                          severity=_severity(vol, "warn"), owner=owner, kind=kind))
+                          severity=_severity(vol, "warn"), owner=owner, kind=kind,
+                          enforcement=_enforcement(vol, enf_default)))
     # volume.baseline=rolling ist Observability-Konfiguration (dq_baselines),
     # kein Contract-Check. volume_anomaly bleibt ein interner Runtime-Check.
 
@@ -296,18 +315,21 @@ def compile_contract(
                 unit="segments",
                 owned_by=owner,
                 kind=kind,
+                enforcement=_enforcement(comp, enf_default),
             ))
         else:
             checks.append(_mk("completeness_pct", dataset, {"<SPALTE>": col},
                               name=f"completeness_{col}", expect=f"<= {max_null_pct}",
-                              severity=_severity(comp, "warn"), owner=owner, unit="%", kind=kind))
+                              severity=_severity(comp, "warn"), owner=owner, unit="%", kind=kind,
+                              enforcement=_enforcement(comp, enf_default)))
 
     for i, nn in enumerate(g.get("not_null") or []):
         sev = _severity(nn, "fail")
+        enf = _enforcement(nn, enf_default)
         for col in _idents(nn.get("columns") or [], f"guarantees.not_null[{i}].columns", cols):
             checks.append(_mk("missing", dataset, {"<SPALTE>": col},
                               name=f"{col}_not_null", expect="= 0",
-                              severity=sev, owner=owner, kind=kind))
+                              severity=sev, owner=owner, kind=kind, enforcement=enf))
 
     # checks[]: library-instanziierte Checks (interne Gates, HANDOVER Iteration 1).
     # Additiv zu den Garantien und nach ihnen kompiliert — eine Quelle, ein
@@ -319,7 +341,8 @@ def compile_contract(
     for i, chk in enumerate(checks_in):
         if not isinstance(chk, dict):
             raise CompileError(f"checks[{i}] muss ein Objekt sein")
-        cd = _compile_check(chk, dataset, owner=owner, cols=cols, where=f"checks[{i}]")
+        cd = _compile_check(chk, dataset, owner=owner, cols=cols, where=f"checks[{i}]",
+                            enforcement_default=enf_default)
         if cd.name in seen:  # readable name collided (same check+column twice) → disambiguate
             cd.name = f"{cd.name}_{i}"
         seen.add(cd.name)

@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/ui';
 // symbols (⬡ ⊞ ⟁ …) that rendered inconsistently and carried no label. Each is
 // a 16px stroke icon; semantics come from the adjacent aria-label/title, so the
 // collapsed rail stays navigable for keyboard and screen-reader users.
-type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin' | 'environments';
+type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'quarantine' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin' | 'environments';
 
 function Icon({ name }: { name: IconKey }) {
   const common = {
@@ -24,6 +24,7 @@ function Icon({ name }: { name: IconKey }) {
     case 'lineage':    return <svg {...common}><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="12" r="2.5" /><circle cx="6" cy="18" r="2.5" /><path d="M8.2 7.3 15.8 11M8.2 16.7 15.8 13" /></svg>;
     case 'schedules':  return <svg {...common}><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 1.6" /></svg>;
     case 'incidents':  return <svg {...common}><path d="M5 21V4l13 .5L14 8l4 3.5L5 12" /></svg>;
+    case 'quarantine': return <svg {...common}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 9h16M4 15h16M9 4v16M15 4v16" /></svg>;
     case 'proposals':  return <svg {...common}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" /></svg>;
     case 'governance': return <svg {...common}><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6Z" /></svg>;
     case 'compliance': return <svg {...common}><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6Z" /><path d="M9 12l2 2 4-4" /></svg>;
@@ -50,6 +51,7 @@ const DQ_BLOCK: NavItem[] = [
   { to: '/products',   label: t.nav.products,   icon: 'products' },
   { to: '/lineage',    label: t.nav.lineage,    icon: 'lineage', aliases: ['/coverage'] },
   { to: '/incidents',  label: t.nav.incidents,  icon: 'incidents' },
+  { to: '/quarantine', label: t.nav.quarantine, icon: 'quarantine' },
   { to: '/proposals',  label: t.nav.proposals,  icon: 'proposals' },
   { to: '/library',    label: t.nav.library,    icon: 'library' },
 ];
