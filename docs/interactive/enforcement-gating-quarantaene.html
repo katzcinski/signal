@@ -217,7 +217,7 @@ footer{margin-top:80px;border-top:1px solid var(--line);padding-top:20px;font-si
     <tbody>
       <tr><td class="mono">DQ_GATE_STATUS (+HISTORY)</td><td>Gate-Zustand je Objekt, SQL-lesbar, Upsert nach jedem Lauf</td><td>Prozeduren, Chains, Ad-hoc-SQL</td><td><span class="badge impl">Slice ③</span></td></tr>
       <tr><td class="mono">P_DQ_ASSERT_GATE</td><td><code>CALL</code> → kommt zurück oder wirft (fail-closed, Fehlercodes 10050–10053)</td><td>Task-Chain-Prozedur-Schritt, Kunden-SQLScript</td><td><span class="badge impl">Slice ③</span></td></tr>
-      <tr><td class="mono">V_DQ_&lt;OBJ&gt;_CLEAN / _QUARANTINE</td><td>Zeilen-Split per Prädikat — kontinuierliche Quarantäne</td><td>Transformation Flows als Quelle</td><td><span class="badge plan">Slice ④</span></td></tr>
+      <tr><td class="mono">DQ_CLEAN_&lt;OBJ&gt; (Tabelle je Lauf) <em>oder</em> V_DQ_…_CLEAN (View)</td><td>Zeilen-Split — kontinuierliche Quarantäne; Tabelle: punktgenau konsistent zum Verdict</td><td>Transformation Flows (Import + Sharing)</td><td><span class="badge plan">Slice ④</span></td></tr>
       <tr><td class="mono">DQ_Q_&lt;OBJ&gt; + V_…_RELEASED</td><td>Physisches Zeilen-Parken mit Freigabe &amp; TTL — episodische Quarantäne</td><td>Steward (Cockpit), Re-Load-Flow</td><td><span class="badge plan">Slice ⑤</span></td></tr>
       <tr><td class="mono">DQ_RUN_REQUESTS + P_DQ_GATE</td><td>Lauf per SQL anfordern und auf frisches Verdict warten</td><td>Chains ohne HTTP, reine SQLScript-Pipelines</td><td><span class="badge plan">Slice ⑥</span></td></tr>
     </tbody>
@@ -344,16 +344,18 @@ footer{margin-top:80px;border-top:1px solid var(--line);padding-top:20px;font-si
   <!-- Slice 4 -->
   <article class="slice" id="slice4">
     <header role="button" tabindex="0" aria-expanded="false">
-      <span class="num">④</span><h3>Reconciler &amp; Split-Views — kontinuierliche Quarantäne</h3>
+      <span class="num">④</span><h3>Reconciler &amp; Split-Artefakte — kontinuierliche Quarantäne</h3>
       <span class="badge plan">Konzept</span><span class="chev">›</span>
-      <p class="short">Signal materialisiert je Objekt <code>V_DQ_&lt;OBJ&gt;_CLEAN</code> / <code>_QUARANTINE</code> aus den Quarantäne-Prädikaten. Flows lesen CLEAN — schlechte Zeilen betreten die Pipeline nie, geheilte fließen automatisch wieder mit.</p>
+      <p class="short">Signal materialisiert je Objekt ein CLEAN-Artefakt aus den Quarantäne-Prädikaten — <strong>empfohlen als Tabelle <code>DQ_CLEAN_&lt;OBJ&gt;</code>, je Lauf refresht</strong> (Variante A; Prädikat-Views bleiben Variante B). Flows importieren die Tabelle (zeigt live auf die hdbtable) und teilen sie per Standard-Sharing space-übergreifend — ohne Grants.</p>
     </header>
     <div class="body">
       <h4>Prozess</h4>
       <div class="seq" data-seq="slice4"></div>
       <h4>Technik</h4>
       <ul class="plain">
-        <li>Prädikat kommt gratis aus der Engine: jeder Quarantäne-Check kompiliert zu <code>COUNT(*) WHERE &lt;bad&gt;</code>; CLEAN = <code>WHERE NOT(bad₁ OR bad₂ …)</code>, explizite Spaltenprojektion (kein <code>SELECT *</code>).</li>
+        <li>Prädikat kommt gratis aus der Engine: CLEAN = <code>WHERE NOT(bad₁ OR bad₂ …)</code>, explizite Spaltenprojektion (kein <code>SELECT *</code>).</li>
+        <li><strong>Variante A (empfohlen):</strong> materialisierte Tabelle, Refresh im selben Post-Run-Schritt wie der Verdict-Upsert — CLEAN ist punktgenau konsistent zum validierenden Verdict, Prädikat läuft 1× je Lauf (O7 entfällt). Trade-off: Frische zwischen Läufen (on_load-Trigger minimiert) + Kopie-Kosten je Lauf (Größen-Schwelle als Setting).</li>
+        <li><strong>Variante B (Option):</strong> Prädikat-Views — immer aktuell, keine Kopie; braucht Rest-O5 (View-Import) und O7 (Prädikat je Lesen).</li>
         <li>Desired-State-Reconciler: Registry <code>DQ_OBJECTS</code> (manifest_hash, Generation), Drift-Erkennung (Handänderung → Flag + Overwrite), verwaiste Objekte: <strong>invalidate-then-drop</strong> mit Grace-Period — nie stilles 0-Zeilen-Verhalten.</li>
         <li>Zeilenfähig nur: <code>not_null</code>, <code>completeness</code>, <code>keys</code>, <code>referential</code>. <code>freshness</code>/<code>volume</code>/<code>schema</code> sind Objekt-Eigenschaften → bleiben beim Objekt-Gate.</li>
       </ul>
@@ -361,9 +363,10 @@ footer{margin-top:80px;border-top:1px solid var(--line);padding-top:20px;font-si
       <ul class="checklist">
         <li class="done">Slice ③: Registry-/Materialisierungs-Infrastruktur, Schema-Bindung, Kill-Switch</li>
         <li class="done">Enforcement-Achse + Prädikate (<code>_diagnostic_sql</code>) vorhanden</li>
-        <li class="todo"><strong>O5:</strong> darf der Open-SQL-User GRANTen, und sind seine Views als Flow-Quelle importierbar (eigener/fremder Space)?</li>
-        <li class="todo"><strong>O7:</strong> Prädikat-Performance auf großen Staging-Objekten (<code>keys</code>/<code>referential</code> erzeugen Fenster-/NOT-EXISTS-Formen)</li>
-        <li class="todo"><strong>O9:</strong> welche Marker-View-Konstruktion schlägt in Flows zuverlässig <em>laut</em> fehl (Invalidate-Mechanik)?</li>
+        <li class="done"><strong>O5-Kern bestätigt (2026-07-11):</strong> Tabellen-Import aus dem Open-SQL-Schema (Entität zeigt live auf hdbtable) + Cross-Space-Sharing funktionieren — Flow-Konsumpfad entsperrt, kein zweiter DB-User nötig</li>
+        <li class="todo"><strong>Rest-O5:</strong> haben Views denselben Import-/Sharing-Pfad? (nur Variante B) · EXECUTE-Grant an fremde DB-User (nur Rezept R-D)</li>
+        <li class="todo"><strong>O7:</strong> Prädikat-Performance je Lesen — <em>nur falls Variante B gewählt wird</em>; bei Variante A entfällt O7</li>
+        <li class="todo"><strong>O9:</strong> Invalidate muss <em>laut</em> fehlschlagen: bei Variante A Refresh-Stopp + Notification, nach Grace Drop der hdbtable (Import bricht) — verifizieren, dass der Flow dabei wirklich laut fehlschlägt; Marker-View-Frage bleibt für B</li>
       </ul>
       <h4>Lohnt sich, wenn …</h4>
       <div class="proscons">
@@ -373,7 +376,7 @@ footer{margin-top:80px;border-top:1px solid var(--line);padding-top:20px;font-si
           <li>kein revisionssicherer „was war wann geparkt“-Nachweis nötig ist</li>
         </ul>
         <ul class="plain">
-          <li><strong>Dagegen spricht:</strong> Prädikat wird bei jedem Lesen ausgewertet (O7!); kein Audit-Trail; View schützt nur Konsumenten, die sie nutzen — Gate bleibt zusätzlich nötig (Belt &amp; Suspenders)</li>
+          <li><strong>Dagegen spricht:</strong> Variante A kopiert den guten Bestand je Lauf (Speicher/Schreibzeit bei sehr großen Objekten — Schwelle setzen); kein Audit-Trail; das Artefakt schützt nur Konsumenten, die es nutzen — Gate bleibt zusätzlich nötig (Belt &amp; Suspenders)</li>
         </ul>
       </div>
     </div>
@@ -499,16 +502,16 @@ footer{margin-top:80px;border-top:1px solid var(--line);padding-top:20px;font-si
   <div class="tablewrap"><table>
     <thead><tr><th>Spike</th><th>Frage</th><th>Blockiert</th><th>Aufwand</th></tr></thead>
     <tbody>
-      <tr><td class="mono">O5</td><td>Kann der Open-SQL-User GRANTen? Sind seine Objekte als Flow-Quelle importierbar (eigener/fremder Space)?</td><td>④ ⑤ (und den Konsum aller Gate-Objekte durch fremde User)</td><td>1–2 PT am Tenant</td></tr>
+      <tr><td class="mono">O5 <span class="badge impl">geschrumpft</span></td><td>Kern bestätigt (2026-07-11): Tabellen-Import zeigt live auf die hdbtable, Cross-Space-Sharing funktioniert — Flow-Pfad entsperrt. Rest: View-Import (nur Variante B) · EXECUTE-Grant an fremde DB-User (nur Rezept R-D)</td><td>④-Variante B · R-D</td><td>0,5 PT</td></tr>
       <tr><td class="mono">O6</td><td>Ist <code>SQLSCRIPT_SYNC:SLEEP_SECONDS</code> im Open-SQL-Kontext verfügbar?</td><td>⑥ (Warte-Schleife; sonst Fallback zweigeteilte Chain)</td><td>&lt; 1 PT</td></tr>
-      <tr><td class="mono">O7</td><td>Performance der Split-Prädikate (<code>keys</code>/<code>referential</code>) auf großen Staging-Objekten?</td><td>④ (ggf. Empfehlung <code>quarantine_style=episodic</code>)</td><td>mit O5 kombinierbar</td></tr>
+      <tr><td class="mono">O7</td><td>Prädikat-Performance je Lesen — <strong>nur Variante B</strong>; bei Variante A (materialisierte CLEAN-Tabelle, Refresh je Lauf) entfällt O7</td><td>④ nur bei Views</td><td>nur falls B gewählt</td></tr>
       <tr><td class="mono">O8</td><td>Exakte Status-Code-/Auth-Erwartung von API-Task und Task-Chain-Run-API am Tenant?</td><td>Feinschliff von ② · ⑦</td><td>1 PT</td></tr>
-      <tr><td class="mono">O9</td><td>Welche Marker-View schlägt in Flows zuverlässig <em>laut</em> fehl (Invalidate)?</td><td>④ (Grace-Mechanik)</td><td>Teil von O5</td></tr>
+      <tr><td class="mono">O9</td><td>Invalidate laut: Variante A = Drop der hdbtable nach Grace (bricht der Flow laut?); Variante B = Marker-View-Konstruktion</td><td>④ (Grace-Mechanik)</td><td>Teil von Rest-O5</td></tr>
       <tr><td class="mono">O10</td><td>Datenschutz-Review der Data-Custody-Zone (TTL, Löschkonzept, AV)?</td><td>⑤</td><td>Governance-Termin</td></tr>
     </tbody>
   </table></div>
   <p style="margin-top:16px">
-    <strong>Empfohlene Reihenfolge bleibt:</strong> O5/O7/O9 gemeinsam am Tenant verproben → ④ Reconciler + Split-Views →
+    <strong>Empfohlene Reihenfolge:</strong> Rest-O5/O9 in einem halben Spike-Tag verproben → ④ Reconciler + CLEAN-Tabellen (Variante A) →
     ⑤ episodisch (nach O10 und gemeinsam mit der C5-Entscheidung) → ⑥ nur bei HTTP-Blockade oder SQLScript-only-Bedarf →
     ⑦ sobald es eine Ziel-Chain gibt.
   </p>
@@ -629,9 +632,9 @@ var SEQS = {
   steps:[
    {f:0,t:1,l:"Soll-Zustand berechnen",d:"Aus aktiven Contracts + Quarantäne-Prädikaten entsteht deterministische DDL je Objekt; manifest_hash = Hash der normalisierten DDL. Gleiche Contracts ⇒ gleicher Plan."},
    {f:1,t:1,self:1,l:"Plan: create / replace / invalidate / drop / drift",d:"Diff Soll ↔ Registry ↔ tatsächliches Schema. Handgeänderte Signal-Objekte = Drift → Flag im Cockpit + Overwrite. Plan ist als Dry-Run sichtbar, bevor irgendetwas angewendet wird."},
-   {f:1,t:2,l:"Apply: V_DQ_OBJ_CLEAN + V_DQ_OBJ_QUARANTINE",d:"CLEAN = WHERE NOT(bad₁ OR bad₂ …), explizite Spaltenprojektion. Registry DQ_OBJECTS hält Name, Kind, manifest_hash, Generation, Status. Jede DDL-Aktion ist ein Audit-Event."},
-   {f:3,t:2,l:"Flow liest V_DQ_OBJ_CLEAN als Quelle",d:"Schlechte Zeilen betreten den Flow nie. Wird die Ursache upstream behoben, fließen die Zeilen beim nächsten Flow-Lauf automatisch mit — dynamische Quarantäne ohne Freigabe-Zeremonie."},
-   {f:1,t:2,err:1,l:"Contract weg → invalidate, dann drop",d:"Verwaiste Views werden erst durch eine laut fehlschlagende Marker-Definition ersetzt (O9!) + Notification, nach Grace-Period (z. B. 14 Tage) endgültig gedroppt. Nie stilles 0-Zeilen-Verhalten — das wäre unsichtbarer Datenverlust."}
+   {f:1,t:2,l:"Apply: DQ_CLEAN_OBJ anlegen (Variante A) — Refresh je Lauf",d:"Tabelle statt View (Tenant-bestätigt: Import zeigt live auf die hdbtable, Sharing trägt sie in andere Spaces). Der Post-Run-Schritt, der das Verdict publiziert, schreibt auch den CLEAN-Bestand: DELETE+INSERT WHERE NOT(bad…) — punktgenau konsistent zum Verdict, Prädikat 1× je Lauf. Registry DQ_OBJECTS hält Name, Kind, manifest_hash, Generation."},
+   {f:3,t:2,l:"Flow importiert DQ_CLEAN_OBJ und liest sie als Quelle",d:"Import einmalig (Entität zeigt live auf die hdbtable), per Standard-Sharing auch space-übergreifend — keine Grants, kein zweiter DB-User. Schlechte Zeilen betreten den Flow nie; upstream Geheiltes kehrt mit dem nächsten Signal-Lauf zurück (on_load-Trigger hält die Lücke klein)."},
+   {f:1,t:2,err:1,l:"Contract weg → invalidate, dann drop",d:"Nie stilles 0-Zeilen-Verhalten (Leeren der Tabelle wäre unsichtbarer Datenverlust!): Invalidate = Refresh-Stopp + Notification + Registry invalidated; nach Grace-Period Drop der hdbtable — der Import bricht laut (O9: genau das verifizieren). Für B-Views bleibt die Marker-Konstruktion die offene Frage."}
   ]},
  slice5: {
   actors:[{l:"Engine",n:"verdict=quarantine"},{l:"Signal-Schema",n:"DQ_Q_… + Release-View"},{l:"Steward",n:"Cockpit"},{l:"Re-Load-Flow",n:"Kunde"}],

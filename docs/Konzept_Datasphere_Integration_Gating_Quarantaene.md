@@ -43,7 +43,7 @@ Damit werden vier Objektklassen im Signal-Schema zum Integrationsvertrag:
 |---|---|---|---|
 | 1 | **Verdict-Tabellen** | Gate-Zustand je Objekt/Lauf, SQL-lesbar | Prozeduren, Chains, Ad-hoc-SQL |
 | 2 | **Gate-Prozeduren** | `CALL` → Erfolg oder `SIGNAL_SQL_ERROR` (fail-closed) | Task-Chain-Prozedur-Schritt, Kunden-SQLScript |
-| 3 | **Split-Views** | `V_…_CLEAN` / `V_…_QUARANTINE` — kontinuierliche Zeilen-Quarantäne | Transformation Flows, Views, Chains |
+| 3 | **Split-Artefakte** | `DQ_CLEAN_<OBJ>` (Tabelle je Lauf, empfohlen) oder `V_…_CLEAN`/`V_…_QUARANTINE` (Views) — kontinuierliche Zeilen-Quarantäne | Transformation Flows (Import + Sharing), Views, Chains |
 | 4 | **Quarantäne-Tabellen** | episodisches Zeilen-Parken mit Lifecycle & Freigabe | Steward (Cockpit), Re-Load-Flow des Kunden |
 
 **Die harte Grenze (nicht verhandelbar):** Signal schreibt **ausschließlich in
@@ -114,12 +114,15 @@ Database Analysis User, TLS-Pflicht, Secret-Handling, Hub-Topologie §7).
   Auftrag des Aufrufers eine Zeile in `DQ_RUN_REQUESTS` ein — ebenfalls über
   eine `DEFINER`-Prozedur, nie per direktem `INSERT`-Grant.
 
-**Offener Spike (O5):** verifizieren, dass (a) der Open-SQL-User `GRANT` an
-andere Database-User des Tenants ausführen darf und (b) Objekte des
-Open-SQL-Schemas im **eigenen Space** als Quellen für Transformation Flows
-importierbar sind bzw. was für **fremde** Spaces nötig ist (Share/zweiter
-Grant). Analog zum bestehenden O2-Spike als Capability-Probe im Connector
-persistieren.
+**Spike O5 — geschrumpft (Tenant-Erkenntnis 2026-07-11):** Tabellen aus dem
+Open-SQL-Schema sind als Space-Entität importierbar (Entität zeigt **live**
+auf die hdbtable) und per Standard-Sharing space-übergreifend nutzbar — der
+Flow-/Sharing-Konsumpfad ist damit **ohne Grants und ohne zweiten DB-User
+bestätigt**. Als Rest-O5 zu verifizieren bleiben nur: (a) haben **Views**
+denselben Import-/Sharing-Pfad (relevant nur für Split-Variante B, §5.1) und
+(b) `EXECUTE`-Grant an fremde DB-User für `P_DQ_ASSERT_GATE` (relevant nur
+für Rezept R-D, wenn Kunden-Prozeduren unter anderer Identität laufen).
+Ergebnis als Capability-Probe im Connector persistieren (analog O2).
 
 ---
 
@@ -231,25 +234,51 @@ gewählt; sie teilen sich das Prädikat (`WHERE <bad>`), das die Engine bereits
 als `_diagnostic_sql` erzeugt (`check_engine.py`) — G1 bleibt intakt, SQL
 entsteht nur im Compiler/Generator.
 
-### 5.1 Kontinuierliche Quarantäne — Split-Views (Klasse 3)
+### 5.1 Kontinuierliche Quarantäne — Split-Artefakte (Klasse 3)
 
-Signal materialisiert je Objekt mit mindestens einer
-`enforcement=quarantine`-Garantie zwei Views im eigenen Schema:
+> **Update 2026-07-11 — Tenant-Erkenntnis eingearbeitet.** Tabellen aus dem
+> Open-SQL-Schema sind als Space-Entität importierbar (zeigen **live** auf die
+> hdbtable) und per Standard-Sharing in andere Spaces reichbar — der
+> Flow-/Sharing-Konsumpfad braucht **keine** DB-Grants und keinen zweiten
+> DB-User. Deshalb ist die empfohlene Default-Form jetzt die **materialisierte
+> CLEAN-Tabelle** (Variante A); die ursprüngliche Prädikat-View bleibt als
+> Variante B erhalten.
+
+**Variante A (empfohlen): materialisierte CLEAN-Tabelle, Refresh je Lauf.**
+Signal schreibt im selben Post-Run-Schritt, der das Verdict publiziert
+(§Prozess C), den bereinigten Bestand in eine Tabelle im eigenen Schema:
 
 ```sql
-CREATE OR REPLACE VIEW V_DQ_<OBJ>_CLEAN AS
+-- je Lauf, atomar (DELETE+INSERT in einer Transaktion bzw. Staging-Swap):
+DELETE FROM "<signal_schema>"."DQ_CLEAN_<OBJ>";
+INSERT INTO "<signal_schema>"."DQ_CLEAN_<OBJ>"
   SELECT <explizite Spaltenprojektion aus Inventar/CSN>
   FROM   "<gebundenes_schema>"."<objekt>"
   WHERE  NOT ( <bad_1> OR <bad_2> OR … );      -- OR-Vereinigung aller Quarantäne-Prädikate
-
-CREATE OR REPLACE VIEW V_DQ_<OBJ>_QUARANTINE AS
-  SELECT … FROM … WHERE ( <bad_1> OR <bad_2> OR … );
 ```
 
-- **Semantik: dynamisch.** Ein Transformation Flow liest `V_DQ_<OBJ>_CLEAN`
-  als Quelle statt des Rohobjekts. Schlechte Zeilen betreten den Flow nie;
-  wird die Ursache upstream behoben, fließen die Zeilen beim nächsten
-  Flow-Lauf **automatisch** mit — keine Freigabe-Zeremonie, keine Kopie.
+- **Konsum (bestätigt):** Tabelle einmal in den Space importieren (Entität
+  zeigt auf die hdbtable) → als Quelle in Transformation Flows nutzen → per
+  Sharing in Konsumenten-Spaces reichen. Keine Grants, kein zweiter User.
+- **Konsistenz-Gewinn:** der CLEAN-Bestand ist **punktgenau konsistent zum
+  Verdict**, das ihn validiert hat — kein Drift zwischen Prüfung und Lesen.
+  Das Prädikat läuft einmal je Lauf statt je Lesen (O7 entfällt für A).
+- **Trade-offs, ehrlich:** (a) Frische zwischen Läufen — upstream geheilte
+  Zeilen kehren erst mit dem nächsten Lauf zurück; der `on_load`-Trigger
+  (AP-5) hält die Lücke klein. (b) Schreib-/Speicherkosten einer Kopie des
+  guten Bestands je Lauf — bei sehr großen Objekten Größen-Schwelle als
+  Setting (darüber Variante B oder nur Objekt-Gate B2).
+
+**Variante B (Option): Prädikat-Views** (`V_DQ_<OBJ>_CLEAN` /
+`V_DQ_<OBJ>_QUARANTINE`, `WHERE NOT(<bad>)` bzw. `WHERE <bad>`) — immer
+aktuell, keine Kopie, selbstheilend beim Upstream-Fix. Setzt voraus, dass
+Views aus dem Open-SQL-Schema denselben Import-/Sharing-Pfad haben wie
+Tabellen (**O5-Rest**) und die Prädikat-Kosten je Lesen tragbar sind
+(**O7 — nur für B relevant**; `keys`/`referential` erzeugen
+Fenster-/`NOT EXISTS`-Formen).
+
+Für beide Varianten gilt:
+
 - **Explizite Spaltenprojektion, kein `SELECT *`** (wie Hub-Views,
   ADR-0002 §7) — Schema-Drift bleibt sichtbar.
 - **Fähigkeits-Matrix** (aus Review §3.3, unverändert gültig): zeilenbasiert
@@ -257,14 +286,10 @@ CREATE OR REPLACE VIEW V_DQ_<OBJ>_QUARANTINE AS
   formulierbare `distribution`/`aggregate`-Garantien. `freshness`, `volume`,
   `schema` sind Objekt-Eigenschaften → niemals Teil des Split-Prädikats,
   sie wirken über das Objekt-Gate (§4/§6).
-- **Ehrlichkeits-Grenze:** die CLEAN-View schützt nur Konsumenten, die sie
-  auch benutzen. Sie ersetzt kein Gate — Empfehlung ist Gate **und** View
-  (Belt-and-Suspenders): Gate stoppt bei `block`, View filtert bei
-  `quarantine`.
-- **Kostenhinweis:** das Prädikat wird bei jedem Lesen ausgewertet
-  (Column-Store-Filter, meist billig; `keys`/`referential` erzeugen
-  Fenster-/`NOT EXISTS`-Formen — Performance auf großen Staging-Objekten ist
-  Teil des O5-Spikes).
+- **Ehrlichkeits-Grenze:** das CLEAN-Artefakt schützt nur Konsumenten, die es
+  auch benutzen. Es ersetzt kein Gate — Empfehlung ist Gate **und**
+  Split-Artefakt (Belt-and-Suspenders): Gate stoppt bei `block`, das Artefakt
+  filtert bei `quarantine`.
 
 **Anti-Pattern (im Doc-Sinne verboten):** eine „gated View", die bei
 `block`-Verdict **0 Zeilen** liefert. Das ist stiller Datenverlust — ein
@@ -319,12 +344,12 @@ Lauf endet, gate_verdict = quarantine
 
 ### 5.3 Wahl der Semantik
 
-| Kriterium | Kontinuierlich (Views) | Episodisch (Tabellen) |
+| Kriterium | Kontinuierlich (Split-Artefakt) | Episodisch (Tabellen) |
 |---|---|---|
 | Audit-Trail „was war wann geparkt" | ✗ | ✓ |
 | Freigabe-Workflow / Vier-Augen | ✗ (implizit) | ✓ |
-| Selbstheilend bei Upstream-Fix | ✓ automatisch | ✗ (Freigabe nötig) |
-| Kosten | Prädikat je Lesen | Kopie + Speicher + TTL-Jobs |
+| Selbstheilend bei Upstream-Fix | ✓ (A: nächster Lauf · B: sofort) | ✗ (Freigabe nötig) |
+| Kosten | A: Kopie je Lauf · B: Prädikat je Lesen | Kopie + Speicher + TTL-Jobs |
 | Rückführung kompletter Zeilen | n/a (nie kopiert) | ✓ Release-View |
 | Default-Empfehlung | Standard für Flows | für regulierte/auditpflichtige Objekte |
 
@@ -502,7 +527,7 @@ Principal `steward+`, S5 beachten: echte Auth, kein `noauth`).
 ```
 [Load → Staging]
 → [Prozedur-Schritt: CALL "<SIGNAL_SCHEMA>"."P_DQ_GATE"('<obj>', 900, 10, 'block')]
-→ [Transformation Flow liest V_DQ_<OBJ>_CLEAN]
+→ [Transformation Flow liest das CLEAN-Artefakt (importiertes DQ_CLEAN_<OBJ> bzw. V_DQ_<OBJ>_CLEAN)]
 → [Promote]
 ```
 Bridge-Latenz einkalkulieren; `fail_on='block'`, weil der Flow CLEAN
@@ -510,7 +535,7 @@ konsumiert — Quarantäne isoliert, blockiert aber nicht.
 
 ### R-C — Transformation Flow ohne Chain-Änderung
 
-Flow-Quelle vom Rohobjekt auf `V_DQ_<OBJ>_CLEAN` umstellen; Lauf-Trigger via
+Flow-Quelle vom Rohobjekt auf das CLEAN-Artefakt umstellen (Variante A: importierte `DQ_CLEAN_<OBJ>`-Entität, per Sharing auch space-übergreifend); Lauf-Trigger via
 `on_load` (§6.4). Kein Gate-Schritt — Schutzwirkung: Zeilen-Isolation ja,
 harter Stopp nein. Für harten Stopp Chain um den Flow legen (R-A/R-B).
 
@@ -631,11 +656,11 @@ Zusätzlich:
 
 | # | Punkt | Behandlung |
 |---|---|---|
-| O5 | Grant-Fähigkeit des Open-SQL-Users + Import von Open-SQL-Objekten als Flow-Quelle (eigener/fremder Space) | Spike vor Slice ③, Capability-Probe im Connector |
-| O6 | `SQLSCRIPT_SYNC:SLEEP_SECONDS` im Tenant verfügbar? | Spike vor Slice ⑥; Fallback: zweigeteilte Chain (Request-Schritt + Assert-Schritt) |
-| O7 | Performance der Split-Prädikate (`keys`/`referential`) auf großen Staging-Objekten | Messung im O5-Spike; ggf. `quarantine_style=episodic` empfehlen |
+| O5 | **Rest-O5** (geschrumpft, 2026-07-11): Tabellen-Import aus dem Open-SQL-Schema (live auf hdbtable) + Cross-Space-Sharing sind am Tenant **bestätigt** — der Flow-/Sharing-Pfad ist entsperrt. Offen bleiben: (a) haben **Views** denselben Import-/Sharing-Pfad (nur Variante B §5.1)? (b) `EXECUTE`-Grant an fremde DB-User für `P_DQ_ASSERT_GATE` (nur Rezept R-D, wenn Kunden-Prozeduren unter anderer Identität laufen) | halber Spike-Tag; Capability-Probe im Connector |
+| O6 | `SQLSCRIPT_SYNC:SLEEP_SECONDS` im Tenant verfügbar? | Spike vor Slice ⑥; Fallback: zweigeteilte Chain (Request-Schritt + Assert-Schritt) — alternativ Fallback direkt als Primärdesign beschließen |
+| O7 | Performance der Split-Prädikate (`keys`/`referential`) je Lesen — **nur Variante B**; bei Variante A (materialisierte CLEAN-Tabelle) entfällt O7 | nur messen, falls B gewählt wird |
 | O8 | Exakte API-Task-Statuscode-Erwartung | unverändert AP-1-Spike |
-| O9 | Verhalten der Marker-View (Invalidate) — welche Konstruktion schlägt in Flows zuverlässig laut fehl? | Teil des O5-Spikes |
+| O9 | Verhalten des Invalidate-Markers — welche Konstruktion schlägt in Flows zuverlässig laut fehl? Bei Variante A: **Leeren wäre stilles 0-Zeilen-Anti-Pattern (§5.1)** — Invalidate = Refresh-Stopp + Notification, nach Grace **Drop** der hdbtable (Import bricht laut). Zu verifizieren: bricht der Flow beim Drop wirklich laut? Marker-View-Frage bleibt für B | Teil des Rest-O5-Spikes |
 | O10 | Datenschutz-Review der Data-Custody-Zone (TTL, Löschkonzept, Auftragsverarbeitung) | vor Slice ⑤ mit Governance klären |
 
 ## 13 — Verifikation (End-to-End, nach Umsetzung)
