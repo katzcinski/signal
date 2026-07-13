@@ -56,6 +56,17 @@ CONTRACT_SCHEMA: dict[str, Any] = {
         "version": {"type": "string", "pattern": SEMVER.pattern},
         "lifecycle": {"enum": sorted(VALID_LIFECYCLES)},
         "enforcement_default": _ENFORCEMENT,
+        # Quarantäne-Policy (Slices ④/⑤): style steuert die Materialisierung
+        # (continuous=CLEAN-Tabelle, episodic=Zeilen-Parken, both=beides);
+        # auto_release schließt Episoden nach N grünen Läufen (Default: aus).
+        "quarantine": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "style": {"enum": ["continuous", "episodic", "both"]},
+                "auto_release_after_green_runs": {"type": "integer", "minimum": 1, "maximum": 50},
+            },
+        },
         "description": {"type": "string"},
         # Accepted but ignored by the compiler; written by proposal accepts.
         "quality_proposals": {"type": "array"},

@@ -27,6 +27,7 @@ function ModeCard({ choice, active, onClick, disabled }: {
     manual:   { c: 'var(--status-stale)', title: t.schedules.modeManual,        desc: t.schedules.modeManualDesc },
     internal: { c: 'var(--qual)',         title: t.schedules.modeInternalTitle,  desc: t.schedules.modeInternalDesc },
     external: { c: 'var(--obs)',          title: t.schedules.modeExternalTitle,  desc: t.schedules.modeExternalDesc },
+    on_load:  { c: 'var(--obs)',          title: t.schedules.modeOnLoadTitle,    desc: t.schedules.modeOnLoadDesc },
   }[choice];
   return (
     <button
@@ -139,7 +140,7 @@ export function SchedulePanel({ objectId }: { objectId: string }) {
 
       {/* mode chooser */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-        {(['manual', 'internal', 'external'] as Choice[]).map(c => (
+        {(['manual', 'internal', 'external', 'on_load'] as Choice[]).map(c => (
           <ModeCard key={c} choice={c} active={choice === c} disabled={!canEdit} onClick={() => setChoice(c)} />
         ))}
       </div>

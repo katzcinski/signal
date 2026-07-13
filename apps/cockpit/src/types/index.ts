@@ -72,7 +72,7 @@ export interface EnvironmentsResponse {
 // A per-object scheduling toggle: manual (no row), internal (Signal's poller
 // drives the cadence) or external (a Task Chain / cron → CLI drives it; the
 // poller never claims it).
-export type ScheduleMode = 'internal' | 'external';
+export type ScheduleMode = 'internal' | 'external' | 'on_load';
 
 export interface Schedule {
   schedule_id: string;
@@ -437,12 +437,14 @@ export interface GuaranteeSchema {
   columns: string[];
   mode: 'closed' | 'open';
   severity?: Severity;
+  enforcement?: EnforcementMode;
 }
 
 export interface GuaranteeKey {
   columns: string[];
   unique: boolean;
   severity?: Severity;
+  enforcement?: EnforcementMode;
   proposed?: boolean;
 }
 
@@ -451,12 +453,14 @@ export interface GuaranteeReferential {
   parent: string;
   parent_key: string[];  // single-column in v1
   severity?: Severity;
+  enforcement?: EnforcementMode;
 }
 
 export interface GuaranteeFreshness {
   column: string;
   max_age: string; // ISO-8601 duration, e.g. PT24H
   severity?: Severity;
+  enforcement?: EnforcementMode;
 }
 
 export interface GuaranteeVolume {
@@ -464,6 +468,7 @@ export interface GuaranteeVolume {
   baseline?: 'rolling';
   bounds?: 'auto';
   severity?: Severity;
+  enforcement?: EnforcementMode;
 }
 
 export interface GuaranteeCompleteness {
@@ -472,11 +477,13 @@ export interface GuaranteeCompleteness {
   segment_by?: string;
   max_segments?: number;
   severity?: Severity;
+  enforcement?: EnforcementMode;
 }
 
 export interface GuaranteeNotNull {
   columns: string[];
   severity?: Severity;
+  enforcement?: EnforcementMode;
 }
 
 export interface ContractGuarantees {

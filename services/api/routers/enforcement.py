@@ -26,6 +26,12 @@ class EnforcementApplyIn(BaseModel):
     environment: str
 
 
+class CapabilityIn(BaseModel):
+    key: str
+    status: str  # ok | unavailable | error | manual
+    detail: str = ""
+
+
 @router.get("/plan")
 def get_plan(principal: PrincipalDep):
     """Soll-Zustand des Signal-Schemas (Dry-Run): globale Infrastruktur
@@ -146,3 +152,82 @@ def apply_plan(
         "applied_statements": len(applied),
         "reconciled": reconciled,
     }
+
+
+@router.get("/capabilities")
+def list_capabilities(store: StoreDep = ...):
+    """Verifizierte Tenant-Fähigkeiten (Rest-O5/O6) + offene manuelle Checks.
+    Grundlage für Aktivierungs-Entscheidungen der Slices ④/⑥."""
+    from ..enforcement import MANUAL_CAPABILITIES
+    known = store.list_capabilities()
+    known_keys = {c["key"] for c in known}
+    # Offene manuelle Checks sichtbar machen, auch bevor je eine Probe lief (G6).
+    pending = [
+        {"key": k, "status": "manual", "detail": hint, "environment": "", "checked_at": ""}
+        for k, hint in MANUAL_CAPABILITIES.items() if k not in known_keys
+    ]
+    return {"capabilities": known + pending}
+
+
+@router.post("/capabilities")
+def record_capability(
+    principal: PrincipalDep,
+    body: CapabilityIn = Body(...),
+    store: StoreDep = ...,
+):
+    """Ergebnis eines manuellen Spike-Checks eintragen (Spike-Kit §Ablauf)."""
+    if not principal.has_role("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Recording capabilities requires owner role or higher.")
+    if body.status not in {"ok", "unavailable", "error", "manual"}:
+        raise HTTPException(status_code=422, detail=f"Unknown status {body.status!r}")
+    store.set_capability(body.key, body.status, body.detail)
+    return {"capabilities": store.list_capabilities()}
+
+
+@router.post("/probe")
+def run_probe(
+    principal: PrincipalDep,
+    body: EnforcementApplyIn = Body(...),
+    store: StoreDep = ...,
+):
+    """Automatisierbare Pre-Flight-Probes am Tenant ausführen (harmlose
+    Probe-Objekte im eigenen Schema, sofort gedroppt). Bewusst OHNE den
+    Materialisierungs-Kill-Switch nutzbar — die Probe ist der Schritt DAVOR;
+    nur das Ziel-Schema muss konfiguriert sein."""
+    if not principal.has_role("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Capability probe requires owner role or higher.")
+    settings = get_settings()
+    if not settings.datasphere_signal_schema:
+        raise HTTPException(status_code=409, detail="DATASPHERE_SIGNAL_SCHEMA is not configured.")
+    env_cfg = get_environment(body.environment)
+    if env_cfg is None:
+        raise HTTPException(status_code=422, detail=f"Unknown environment {body.environment!r}")
+
+    from dq_core.connect.db_connection import get_connection
+    from ..enforcement import run_capability_probes
+
+    op_id = str(uuid.uuid4())
+    store.begin_operation(op_id, "capability_probe", created_by=principal.name)
+    conn = None
+    try:
+        conn = get_connection(
+            host=env_cfg.get("host", ""),
+            port=int(env_cfg.get("port", 443)),
+            user=env_cfg.get("user", ""),
+            password=env_cfg.get("password", ""),
+            schema=settings.datasphere_signal_schema,
+        )
+        results = run_capability_probes(conn, settings, store)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        store.finish_operation(op_id, "error", error=str(exc))
+        raise HTTPException(status_code=502, detail="Capability probe failed — see server logs.") from exc
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001
+                pass
+    store.finish_operation(op_id, "done", result_json=json.dumps(results))
+    return {"operation_id": op_id, "results": results, "capabilities": store.list_capabilities()}

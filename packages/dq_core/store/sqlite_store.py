@@ -439,7 +439,7 @@ class ResultStore:
 
     def update_schedule(self, schedule_id: str, **fields: Any) -> dict[str, Any] | None:
         """Patch mutable columns. Unknown keys are ignored (fail-closed shape)."""
-        allowed = {"mode", "environment", "execution_mode", "interval_seconds", "enabled", "next_due_at"}
+        allowed = {"mode", "environment", "execution_mode", "interval_seconds", "enabled", "next_due_at", "last_external_run_id"}
         updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
         if not updates:
             return self.get_schedule(schedule_id)
@@ -656,6 +656,26 @@ class ResultStore:
                     (row["id"], now, "system", "auto_resolved",
                      f"Folgelauf {run_id} vollständig grün — automatisch gelöst."),
                 )
+
+    # ------------------------------------------------------------------
+    # Capability-Probe (Rest-O5/O6) — verifizierte Tenant-Fähigkeiten
+    # ------------------------------------------------------------------
+
+    def set_capability(self, key: str, status: str, detail: str = "", environment: str = "") -> None:
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO dq_capabilities(key, status, detail, environment, checked_at) "
+                "VALUES (?,?,?,?,?)",
+                (key, status, detail[:500], environment,
+                 datetime.now(timezone.utc).isoformat()),
+            )
+
+    def list_capabilities(self) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT key, status, detail, environment, checked_at FROM dq_capabilities ORDER BY key"
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     # ------------------------------------------------------------------
     # Quarantäne-Episoden (Enforcement-Achse) — Lifecycle analog Incidents:

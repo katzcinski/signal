@@ -2,12 +2,17 @@
 
 **Adressat:** Plattform-Team, Beratung, Governance · **Stand:** 2026-07-11
 **Status:** Implementiert — Slices ①–⑦ (Enforcement-Achse, API-Task-Vertrag,
-Verdict-Materialisierung, Split-Artefakte Variante A + Reconciler, episodische
-Quarantäne inkl. Episoden-Spiegel/Release-View/TTL, SQL-Bridge, Outbound-
-Trigger). Slices ④–⑦ sind Code-seitig fertig, aber hinter Opt-ins dormant
-(`ENFORCEMENT_MATERIALIZE_ENABLED`, `ENFORCEMENT_SQL_BRIDGE_ENABLED`,
+Verdict-Materialisierung, Split-Artefakte Variante A + Reconciler mit
+Drift-Erkennung, episodische Quarantäne inkl. Episoden-Spiegel/Release-View/TTL,
+SQL-Bridge, Outbound-Trigger) sowie Aktivierungs-Werkzeuge: Capability-Probe
+(Rest-O5/O6, `/api/enforcement/probe|capabilities`), Quarantäne-Policy
+(`quarantine.style` + `auto_release_after_green_runs`), `on_load`-Schedule-Modus
+(AP-5) und das Enforcement-Panel im Cockpit. Slices ④–⑦ sind hinter Opt-ins
+dormant (`ENFORCEMENT_MATERIALIZE_ENABLED`, `ENFORCEMENT_SQL_BRIDGE_ENABLED`,
 `DATASPHERE_ALLOW_TRIGGER`, alle Default aus) — die **Aktivierung** am Tenant
-bleibt durch die Rest-Spikes gegated (Rest-O5/O6/O8/O9/O10, §12).
+bleibt durch die Rest-Spikes gegated (Spike-Kit + O10-Dossier liegen bereit:
+`docs/spikes/Spike_Kit_Enforcement_Aktivierung.md`,
+`docs/O10_Datenschutz_Review_Custody_Zone.md`).
 **Branch:** `claude/signals-datasphere-integration-n8726p`
 **Zweck:** Festlegen, wie Signal-Läufe, Gating und Quarantäne in **bestehende**
 Datasphere-Pipelines eingebettet werden — Task Chains, Transformation Flows und
@@ -355,8 +360,12 @@ Lauf endet, gate_verdict = quarantine
 | Rückführung kompletter Zeilen | n/a (nie kopiert) | ✓ Release-View |
 | Default-Empfehlung | Standard für Flows | für regulierte/auditpflichtige Objekte |
 
-Konfiguriert wird die Semantik am Contract (`quarantine_style:
-continuous | episodic | both`), Default `continuous`.
+Konfiguriert wird die Semantik am Contract (`quarantine.style:
+continuous | episodic | both`), **Default `both`** — die episodische Hälfte
+trägt die Freigabe-/Rückführungs-Story (und später Healing); wer nur
+kontinuierlich isolieren will, stellt bewusst um. Ergänzend:
+`quarantine.auto_release_after_green_runs: N` (Default aus) gibt Episoden
+nach N durchgängig grünen Läufen automatisch frei (Self-Healing L4).
 
 ---
 

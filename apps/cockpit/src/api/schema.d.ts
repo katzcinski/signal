@@ -699,6 +699,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/enforcement/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Capabilities
+         * @description Verifizierte Tenant-Fähigkeiten (Rest-O5/O6) + offene manuelle Checks.
+         *     Grundlage für Aktivierungs-Entscheidungen der Slices ④/⑥.
+         */
+        get: operations["list_capabilities_api_enforcement_capabilities_get"];
+        put?: never;
+        /**
+         * Record Capability
+         * @description Ergebnis eines manuellen Spike-Checks eintragen (Spike-Kit §Ablauf).
+         */
+        post: operations["record_capability_api_enforcement_capabilities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/enforcement/plan": {
         parameters: {
             query?: never;
@@ -715,6 +740,29 @@ export interface paths {
         get: operations["get_plan_api_enforcement_plan_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/enforcement/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Probe
+         * @description Automatisierbare Pre-Flight-Probes am Tenant ausführen (harmlose
+         *     Probe-Objekte im eigenen Schema, sofort gedroppt). Bewusst OHNE den
+         *     Materialisierungs-Kill-Switch nutzbar — die Probe ist der Schritt DAVOR;
+         *     nur das Ziel-Schema muss konfiguriert sein.
+         */
+        post: operations["run_probe_api_enforcement_probe_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1959,6 +2007,18 @@ export interface components {
             /** Summary */
             summary: string;
         };
+        /** CapabilityIn */
+        CapabilityIn: {
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Key */
+            key: string;
+            /** Status */
+            status: string;
+        };
         /** ChannelIn */
         ChannelIn: {
             /**
@@ -3157,6 +3217,9 @@ export interface components {
          *
          *     mode=internal → Signal's poller runs the object every ``interval_seconds``.
          *     mode=external → an outside orchestrator (Task Chain / cron → CLI) drives it;
+         *     mode=on_load → AP-5: der Poller startet einen Lauf, sobald die Datasphere-
+         *     Run-Historie einen NEUEN erfolgreichen Load für das Objekt zeigt (Dedupe
+         *     über die zuletzt gesehene externe Run-ID);
          *     Signal records runs but never fires the poller for it.
          */
         ScheduleUpsertIn: {
@@ -3186,7 +3249,7 @@ export interface components {
              * @default internal
              * @enum {string}
              */
-            mode: "internal" | "external";
+            mode: "internal" | "external" | "on_load";
         };
         /** SecretBody */
         SecretBody: {
@@ -4415,6 +4478,62 @@ export interface operations {
             };
         };
     };
+    list_capabilities_api_enforcement_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    record_capability_api_enforcement_capabilities_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CapabilityIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_plan_api_enforcement_plan_get: {
         parameters: {
             query?: never;
@@ -4426,6 +4545,42 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_probe_api_enforcement_probe_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-DQ-Role"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnforcementApplyIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

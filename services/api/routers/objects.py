@@ -625,9 +625,22 @@ def start_object_run(
             # Episoden-Snapshot + Spiegel, TTL-Housekeeping — alles hinter dem
             # Materialisierungs-Kill-Switch, über dieselbe Connection/Identität
             # (ADR-0002-Amendment). Nie run-kritisch: Result-Store bleibt primär.
+            quarantine_policy = (active_contract or {}).get("quarantine") or {}
             try:
                 from ..enforcement import post_run
-                post_run(conn, summary, settings, store, episode_id=episode_id)
+                post_run(conn, summary, settings, store, episode_id=episode_id,
+                         policy=quarantine_policy)
+            except Exception:
+                pass
+
+            # Auto-Release (Policy je Contract, Default aus): nach N grünen
+            # Läufen offene Episoden automatisch freigeben — Store-seitig auch
+            # ohne Materialisierung wirksam, Spiegel läuft mit, wenn möglich.
+            try:
+                if summary.gate_verdict == "proceed":
+                    from ..enforcement import auto_release
+                    auto_release(settings, store, object_id=object_id,
+                                 policy=quarantine_policy, conn=conn)
             except Exception:
                 pass
 

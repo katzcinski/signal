@@ -44,6 +44,29 @@
         "title": "ActivityItem",
         "type": "object"
       },
+      "CapabilityIn": {
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "status"
+        ],
+        "title": "CapabilityIn",
+        "type": "object"
+      },
       "ChannelIn": {
         "properties": {
           "enabled": {
@@ -2186,7 +2209,7 @@
         "type": "object"
       },
       "ScheduleUpsertIn": {
-        "description": "Per-object scheduling toggle.\n\nmode=internal \u2192 Signal's poller runs the object every ``interval_seconds``.\nmode=external \u2192 an outside orchestrator (Task Chain / cron \u2192 CLI) drives it;\nSignal records runs but never fires the poller for it.",
+        "description": "Per-object scheduling toggle.\n\nmode=internal \u2192 Signal's poller runs the object every ``interval_seconds``.\nmode=external \u2192 an outside orchestrator (Task Chain / cron \u2192 CLI) drives it;\nmode=on_load \u2192 AP-5: der Poller startet einen Lauf, sobald die Datasphere-\nRun-Historie einen NEUEN erfolgreichen Load f\u00fcr das Objekt zeigt (Dedupe\n\u00fcber die zuletzt gesehene externe Run-ID);\nSignal records runs but never fires the poller for it.",
         "properties": {
           "enabled": {
             "default": true,
@@ -2220,7 +2243,8 @@
             "default": "internal",
             "enum": [
               "internal",
-              "external"
+              "external",
+              "on_load"
             ],
             "title": "Mode",
             "type": "string"
@@ -4572,6 +4596,98 @@
         ]
       }
     },
+    "/api/enforcement/capabilities": {
+      "get": {
+        "description": "Verifizierte Tenant-F\u00e4higkeiten (Rest-O5/O6) + offene manuelle Checks.\nGrundlage f\u00fcr Aktivierungs-Entscheidungen der Slices \u2463/\u2465.",
+        "operationId": "list_capabilities_api_enforcement_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Capabilities",
+        "tags": [
+          "enforcement"
+        ]
+      },
+      "post": {
+        "description": "Ergebnis eines manuellen Spike-Checks eintragen (Spike-Kit \u00a7Ablauf).",
+        "operationId": "record_capability_api_enforcement_capabilities_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapabilityIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Capability",
+        "tags": [
+          "enforcement"
+        ]
+      }
+    },
     "/api/enforcement/plan": {
       "get": {
         "description": "Soll-Zustand des Signal-Schemas (Dry-Run): globale Infrastruktur\n(inkl. Bridge-Prozeduren bei Opt-in) und Split-Artefakte je Objekt\n(Slice \u2463/\u2464). Zeigt DDL \u2014 steward+.",
@@ -4631,6 +4747,80 @@
           }
         },
         "summary": "Get Plan",
+        "tags": [
+          "enforcement"
+        ]
+      }
+    },
+    "/api/enforcement/probe": {
+      "post": {
+        "description": "Automatisierbare Pre-Flight-Probes am Tenant ausf\u00fchren (harmlose\nProbe-Objekte im eigenen Schema, sofort gedroppt). Bewusst OHNE den\nMaterialisierungs-Kill-Switch nutzbar \u2014 die Probe ist der Schritt DAVOR;\nnur das Ziel-Schema muss konfiguriert sein.",
+        "operationId": "run_probe_api_enforcement_probe_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-DQ-Role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dq-Role"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnforcementApplyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Probe",
         "tags": [
           "enforcement"
         ]

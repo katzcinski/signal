@@ -226,26 +226,34 @@ def desired_split_specs(settings, inventory: list[dict], *, default_schema: str 
             specs.append(spec)
     return specs
 
-def ensure_split_artifacts(conn: Any, settings, spec: split.SplitSpec) -> list[str]:
+def _style_wants(style: str, part: str) -> bool:
+    """quarantine.style (Contract-Policy): continuous | episodic | both."""
+    return style == "both" or style == part
+
+
+def ensure_split_artifacts(conn: Any, settings, spec: split.SplitSpec, *, style: str = "both") -> list[str]:
     """CLEAN-/Quarantäne-Tabelle + Release-View sicherstellen und in der
-    Registry verbuchen. Tabellen nie ersetzen (tragen Zustand); die View ist
-    idempotent CREATE OR REPLACE."""
+    Registry verbuchen — gesteuert durch die Contract-Policy `quarantine.style`.
+    Tabellen nie ersetzen (tragen Zustand); die View ist idempotent
+    CREATE OR REPLACE."""
     schema = settings.datasphere_signal_schema
     existing = _existing_tables(conn, schema)
     applied: list[str] = []
     statements: list = []
-    if spec.predicates and spec.clean_table not in existing:
-        statements.append(split.clean_create_ddl(spec, schema))
-        applied.append(spec.clean_table)
-    if spec.quarantine_table not in existing:
-        statements.append(split.quarantine_create_ddl(spec, schema))
-        applied.append(spec.quarantine_table)
-    statements.append(split.released_view_ddl(spec, schema))
-    for name, kind in (
-        (spec.clean_table, "table"),
-        (spec.quarantine_table, "table"),
-        (spec.released_view, "view"),
-    ):
+    desired: list[tuple[str, str]] = []
+    if _style_wants(style, "continuous") and spec.predicates:
+        if spec.clean_table not in existing:
+            statements.append(split.clean_create_ddl(spec, schema))
+            applied.append(spec.clean_table)
+        desired.append((spec.clean_table, "table"))
+    if _style_wants(style, "episodic"):
+        if spec.quarantine_table not in existing:
+            statements.append(split.quarantine_create_ddl(spec, schema))
+            applied.append(spec.quarantine_table)
+        statements.append(split.released_view_ddl(spec, schema))
+        desired.append((spec.quarantine_table, "table"))
+        desired.append((spec.released_view, "view"))
+    for name, kind in desired:
         statements.append(split.registry_upsert_statement(
             schema, name=name, kind=kind, object_id=spec.object_id,
             hash_=spec.manifest_hash, status="active",
@@ -264,10 +272,29 @@ def refresh_clean(conn: Any, settings, spec: split.SplitSpec) -> bool:
 
 
 def reconcile_split(conn: Any, settings, specs: list[split.SplitSpec]) -> dict[str, Any]:
-    """Desired-State-Abgleich (Konzept §7): Soll sicherstellen, Waisen
-    invalidieren, nach Grace-Period droppen. `DQ_Q_*` ist vom Drop
+    """Desired-State-Abgleich (Konzept §7): Soll sicherstellen, Drift beheben,
+    Waisen invalidieren, nach Grace-Period droppen. `DQ_Q_*` ist vom Drop
     ausgenommen — geparkte Zeilen verwaisen nicht, sie laufen ab (TTL)."""
     schema = settings.datasphere_signal_schema
+    registry = {
+        str(row[0]): {"kind": str(row[1]), "hash": str(row[3] or ""), "status": str(row[4] or "")}
+        for row in _fetch_all(conn, split.registry_select_statement(schema))
+    }
+
+    # Drift (Prädikat-/Spalten-Änderung): CLEAN ist abgeleiteter Bestand →
+    # Drop + Neuanlage, der nächste Refresh füllt. DQ_Q trägt geparkte Zeilen →
+    # nie droppen, Drift nur ausweisen (Episoden laufen über TTL aus).
+    drifted: list[str] = []
+    drift_kept: list[str] = []
+    for spec in specs:
+        reg = registry.get(spec.clean_table)
+        if reg and reg["status"] == "active" and reg["hash"] and reg["hash"] != spec.manifest_hash:
+            _execute(conn, [split.drop_statement(schema, name=spec.clean_table, kind="table")])
+            drifted.append(spec.clean_table)
+        reg_q = registry.get(spec.quarantine_table)
+        if reg_q and reg_q["status"] == "active" and reg_q["hash"] and reg_q["hash"] != spec.manifest_hash:
+            drift_kept.append(spec.quarantine_table)
+
     ensured: list[str] = []
     for spec in specs:
         ensured.extend(ensure_split_artifacts(conn, settings, spec))
@@ -278,27 +305,28 @@ def reconcile_split(conn: Any, settings, specs: list[split.SplitSpec]) -> dict[s
     }
     invalidated: list[str] = []
     dropped: list[str] = []
-    rows = _fetch_all(conn, split.registry_select_statement(schema))
     grace_days = int(getattr(settings, "reconciler_drop_grace_days", 14) or 0)
-    for row in rows:
-        name, kind, _object_id, _hash, status = (str(row[0]), str(row[1]), row[2], row[3], str(row[4]))
+    for name, reg in registry.items():
         if name in desired_names or not name.startswith(("DQ_CLEAN_", "DQ_Q_", "V_DQ_RELEASED_")):
             continue
-        if status == "active":
+        if reg["status"] == "active":
             # Invalidate zuerst — nie sofort droppen (Kunden-Flows referenzieren
             # das Artefakt möglicherweise als Quelle). CLEAN wird ab jetzt nicht
             # mehr refresht; der Drop nach Grace bricht den Import laut (O9).
             _execute(conn, [split.registry_mark_statement(schema, name=name, status="invalidated")])
             invalidated.append(name)
-        elif status == "invalidated" and not name.startswith("DQ_Q_"):
+        elif reg["status"] == "invalidated" and not name.startswith("DQ_Q_"):
             due = _fetch_all(conn, *_grace_due_statement(schema, name, grace_days))
             if due and due[0] and int(due[0][0] or 0) == 1:
                 _execute(conn, [
-                    split.drop_statement(schema, name=name, kind=kind),
+                    split.drop_statement(schema, name=name, kind=reg["kind"]),
                     split.registry_mark_statement(schema, name=name, status="dropped"),
                 ])
                 dropped.append(name)
-    return {"ensured": ensured, "invalidated": invalidated, "dropped": dropped}
+    return {
+        "ensured": ensured, "invalidated": invalidated, "dropped": dropped,
+        "drifted": drifted, "drift_kept": drift_kept,
+    }
 
 
 def _grace_due_statement(schema: str, name: str, grace_days: int) -> tuple[str, tuple]:
@@ -406,16 +434,20 @@ def expire_quarantine(conn: Any, settings, store, spec: split.SplitSpec) -> int:
 # ---------------------------------------------------------------------------
 
 def post_run(
-    conn: Any, summary, settings, store, *, episode_id: int | None = None, contract_id: str = ""
+    conn: Any, summary, settings, store, *,
+    episode_id: int | None = None, contract_id: str = "",
+    policy: dict[str, Any] | None = None,
 ) -> None:
     """Nach Lauf-Abschluss: Verdict publizieren, CLEAN refreshen, bei
-    Quarantäne-Verdict Snapshot + Episoden-Spiegel, TTL-Housekeeping.
+    Quarantäne-Verdict Snapshot + Episoden-Spiegel, TTL-Housekeeping —
+    gesteuert durch die Contract-Policy `quarantine.style` (Default `both`).
     Nie run-kritisch — der Aufrufer fängt Fehler ab; Result-Store bleibt
     primäre Wahrheit."""
     if not materialization_enabled(settings) or conn is None:
         return
     publish_verdict(conn, summary, settings, contract_id=contract_id)
 
+    style = str((policy or {}).get("style") or "both")
     spec = split.build_spec(summary.dataset, summary.results)
     if spec is None:
         if episode_id is not None:
@@ -423,22 +455,58 @@ def post_run(
             mirror_episode(conn, settings, episode)
         return
 
-    ensure_split_artifacts(conn, settings, spec)
-    refresh_clean(conn, settings, spec)
+    ensure_split_artifacts(conn, settings, spec, style=style)
+    if _style_wants(style, "continuous"):
+        refresh_clean(conn, settings, spec)
 
     if episode_id is not None and summary.gate_verdict == "quarantine":
         episode = store.get_quarantine(episode_id) or {}
-        count = snapshot_quarantine(
-            conn, settings, spec,
-            episode_id=episode_id,
-            generation=int(episode.get("generation", 1) or 1),
-            run_id=summary.run_id,
-        )
-        if count is not None and episode.get("status") in ("open", "reconciled"):
-            episode = store.reconcile_quarantine(episode_id, count) or episode
+        if _style_wants(style, "episodic"):
+            count = snapshot_quarantine(
+                conn, settings, spec,
+                episode_id=episode_id,
+                generation=int(episode.get("generation", 1) or 1),
+                run_id=summary.run_id,
+            )
+            if count is not None and episode.get("status") in ("open", "reconciled"):
+                episode = store.reconcile_quarantine(episode_id, count) or episode
         mirror_episode(conn, settings, episode)
 
-    expire_quarantine(conn, settings, store, spec)
+    if _style_wants(style, "episodic"):
+        expire_quarantine(conn, settings, store, spec)
+
+
+def auto_release(
+    settings, store, *, object_id: str, policy: dict[str, Any] | None, conn: Any = None
+) -> int:
+    """Self-Healing L4 (Default aus): offene/reconciled Episoden automatisch
+    freigeben, wenn die letzten N Läufe des Objekts durchgängig `proceed`
+    waren (Policy `quarantine.auto_release_after_green_runs` je Contract).
+    Store-seitig immer möglich; der HANA-Spiegel läuft mit, wenn eine
+    Verbindung da ist."""
+    n = int((policy or {}).get("auto_release_after_green_runs") or 0)
+    if n <= 0:
+        return 0
+    runs = [r for r in store.get_runs(object_id, limit=n * 2) if r.get("run_state") == "finished"]
+    recent = runs[:n]
+    if len(recent) < n or any((r.get("gate_verdict") or "proceed") != "proceed" for r in recent):
+        return 0
+    released = 0
+    for episode in store.list_quarantine(product=object_id, limit=50):
+        if episode.get("status") not in ("open", "reconciled"):
+            continue
+        updated = store.release_quarantine(
+            int(episode["id"]), "system",
+            note=f"Auto-Release: {n} aufeinanderfolgende grüne Läufe",
+        )
+        if updated:
+            released += 1
+            if conn is not None:
+                try:
+                    mirror_episode(conn, settings, updated)
+                except Exception:  # noqa: BLE001
+                    pass
+    return released
 
 
 # ---------------------------------------------------------------------------
@@ -507,6 +575,95 @@ def bridge_tick(settings, store, inventory: list[dict], *, launch) -> int:
         except Exception:  # noqa: BLE001
             pass
     return launched
+
+
+# ---------------------------------------------------------------------------
+# Capability-Probe (Rest-O5/O6) — Pre-Flight VOR der Aktivierung
+# ---------------------------------------------------------------------------
+
+# Manuell zu verprobende Fähigkeiten (nicht automatisierbar — Data-Builder-UI
+# bzw. zweiter DB-User nötig). Sie erscheinen als status='manual' in der Liste,
+# bis jemand das Ergebnis über den Endpoint einträgt (G6: sichtbar offen).
+MANUAL_CAPABILITIES: dict[str, str] = {
+    "flow_table_import": "Tabelle aus dem Open-SQL-Schema im Data Builder importieren (zeigt live auf hdbtable) — laut Tenant-Erkenntnis 2026-07-11 bestätigt, hier gegenprüfen",
+    "flow_view_import": "View aus dem Open-SQL-Schema als Flow-Quelle importierbar? (nur Split-Variante B)",
+    "cross_space_sharing": "Importierte Entität per Sharing in einen zweiten Space reichen",
+    "execute_grant_foreign_user": "EXECUTE auf P_DQ_ASSERT_GATE an fremden DB-User granten (nur Rezept R-D)",
+    "invalidate_drop_loud": "O9: Flow bricht beim Drop der importierten hdbtable LAUT (kein stilles Leerlaufen)",
+    "api_task_status_codes": "O8: Statuscode-Erwartung des API-Tasks am Tenant (202+Location, Polling-Verhalten)",
+}
+
+
+def run_capability_probes(conn: Any, settings, store) -> dict[str, dict[str, str]]:
+    """Automatisierbare Fähigkeiten am Tenant verproben (harmlose Probe-Objekte
+    im eigenen Schema, sofort wieder gedroppt) und Ergebnisse persistieren.
+    Manuelle Checks werden als offen registriert, nie überschrieben, wenn
+    bereits ein Ergebnis eingetragen wurde."""
+    from dq_core.enforce import bind_signal_schema
+
+    schema = settings.datasphere_signal_schema
+    suffix = uuid.uuid4().hex[:8].upper()
+    results: dict[str, dict[str, str]] = {}
+
+    def _probe(key: str, statements: list[str], cleanup: list[str], *, unavailable_ok: bool = False):
+        cursor = conn.cursor()
+        try:
+            for stmt in statements:
+                cursor.execute(bind_signal_schema(stmt, schema))
+            results[key] = {"status": "ok", "detail": ""}
+        except Exception as exc:  # noqa: BLE001
+            status = "unavailable" if unavailable_ok else "error"
+            results[key] = {"status": status, "detail": str(exc)[:300]}
+        finally:
+            for stmt in cleanup:
+                try:
+                    cursor.execute(bind_signal_schema(stmt, schema))
+                except Exception:  # noqa: BLE001
+                    pass
+            try:
+                cursor.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    table = f"DQ_PROBE_{suffix}"
+    _probe(
+        "open_sql_table_write",
+        [f'CREATE TABLE "{{signal_schema}}"."{table}" ("X" INTEGER)',
+         f'INSERT INTO "{{signal_schema}}"."{table}" VALUES (1)',
+         f'SELECT COUNT(*) FROM "{{signal_schema}}"."{table}"'],
+        [f'DROP TABLE "{{signal_schema}}"."{table}"'],
+    )
+    view = f"DQ_PROBE_V_{suffix}"
+    _probe(
+        "open_sql_view",
+        [f'CREATE OR REPLACE VIEW "{{signal_schema}}"."{view}" AS SELECT 1 AS "X" FROM DUMMY',
+         f'SELECT "X" FROM "{{signal_schema}}"."{view}"'],
+        [f'DROP VIEW "{{signal_schema}}"."{view}"'],
+    )
+    proc = f"DQ_PROBE_P_{suffix}"
+    _probe(
+        "sqlscript_sync",  # O6 — gates P_DQ_GATE (Bridge-Warte-Schleife)
+        [(f'CREATE OR REPLACE PROCEDURE "{{signal_schema}}"."{proc}" ()\n'
+          "LANGUAGE SQLSCRIPT AS\nBEGIN\n  USING SQLSCRIPT_SYNC AS DQ_SYNC;\n"
+          "  CALL DQ_SYNC:SLEEP_SECONDS(1);\nEND"),
+         f'CALL "{{signal_schema}}"."{proc}" ()'],
+        [f'DROP PROCEDURE "{{signal_schema}}"."{proc}"'],
+        unavailable_ok=True,
+    )
+    _probe(
+        "catalog_tables_read",
+        ["SELECT COUNT(*) FROM SYS.TABLES WHERE SCHEMA_NAME = CURRENT_SCHEMA"],
+        [],
+    )
+
+    env_name = getattr(settings, "enforcement_environment", "") or ""
+    for key, res in results.items():
+        store.set_capability(key, res["status"], res["detail"], env_name)
+    existing = {c["key"] for c in store.list_capabilities()}
+    for key, hint in MANUAL_CAPABILITIES.items():
+        if key not in existing:
+            store.set_capability(key, "manual", hint, env_name)
+    return results
 
 
 # ---------------------------------------------------------------------------

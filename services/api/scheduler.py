@@ -136,6 +136,94 @@ def _bridge_tick() -> int:
     return bridge_tick(settings, store, inventory, launch=_launch)
 
 
+_SUCCESS_STATES = {"COMPLETED", "SUCCESS", "SUCCESSFUL", "FINISHED", "OK", "DONE"}
+
+
+def _external_run_id(run: dict) -> str:
+    for key in ("id", "runId", "run_id", "executionId", "correlationId"):
+        value = run.get(key)
+        if value:
+            return str(value)
+    # Feldnamen sind ungepinnt (Backlog J) — deterministischer Fallback.
+    return f"{run.get('objectId', '')}:{run.get('endTime') or run.get('startTime') or ''}"
+
+
+def _on_load_tick() -> int:
+    """AP-5 (`mode=on_load`): startet einen Lauf, sobald die Datasphere-
+    Run-Historie einen NEUEN erfolgreichen Load für das Objekt zeigt.
+    Dedupe über die zuletzt gesehene externe Run-ID am Schedule — derselbe
+    Load löst nie zwei Läufe aus; der F2-Schutz bleibt die harte Grenze."""
+    from .datasphere import get_client
+    from .deps import get_store, get_inventory, get_environment
+    from .routers.objects import start_object_run
+    from .settings import get_settings
+
+    store = get_store()
+    schedules = [
+        s for s in store.list_schedules()
+        if s.get("mode") == "on_load" and s.get("enabled")
+    ]
+    if not schedules:
+        return 0
+    client = get_client()
+    if client is None:
+        logger.debug("on_load: kein Datasphere-Client konfiguriert — Tick übersprungen")
+        return 0
+    settings = get_settings()
+    inventory = get_inventory()
+    launched = 0
+    for sched in schedules:
+        sid = sched["schedule_id"]
+        object_id = sched["object_id"]
+        try:
+            obj = _resolve_object(inventory, object_id)
+            if obj is None:
+                store.record_schedule_run(sid, "", "error_object_missing")
+                continue
+            space = str(obj.get("space", "") or settings.datasphere_space_id or "")
+            loads = client.get_data_loads(space, object_id, top=10)
+            newest_ok = next(
+                (r for r in loads
+                 if str(r.get("status") or r.get("state") or "").upper() in _SUCCESS_STATES),
+                None,
+            )
+            if newest_ok is None:
+                continue
+            rid = _external_run_id(newest_ok)
+            if not rid or rid == (sched.get("last_external_run_id") or ""):
+                continue  # Dedupe: dieser Load wurde bereits verarbeitet
+
+            env_name = sched.get("environment") or ""
+            env_cfg = get_environment(env_name) if env_name else None
+            if env_name and env_cfg is None:
+                store.record_schedule_run(sid, "", "error_unknown_environment")
+                continue
+            if env_cfg is None and not settings.allow_mock_connection:
+                store.record_schedule_run(sid, "", "error_no_environment")
+                continue
+
+            result = start_object_run(
+                object_id=object_id,
+                obj=obj,
+                env_cfg=env_cfg,
+                execution_mode=sched.get("execution_mode") or "auto",
+                triggered_by="scheduler:on_load",
+                actor="scheduler",
+                store=store,
+                settings=settings,
+                inventory=inventory,
+            )
+            store.record_schedule_run(sid, result.get("run_id", ""), result.get("status", ""))
+            if result.get("status") == "started":
+                # Anker erst nach erfolgreichem Start setzen — already_running
+                # versucht es im nächsten Tick erneut (Dedupe verhindert Stürme).
+                store.update_schedule(sid, last_external_run_id=rid)
+                launched += 1
+        except Exception:
+            logger.exception("on_load schedule %s: tick failed", sid)
+    return launched
+
+
 def _loop(tick_seconds: int) -> None:
     logger.info("scheduler poller started (tick=%ss)", tick_seconds)
     # Wait first so app startup is not blocked and tests can drive _launch_due
@@ -145,6 +233,10 @@ def _loop(tick_seconds: int) -> None:
             _launch_due(datetime.now(timezone.utc).isoformat())
         except Exception:
             logger.exception("scheduler tick failed")
+        try:
+            _on_load_tick()
+        except Exception:
+            logger.exception("on_load tick failed")
         try:
             _bridge_tick()
         except Exception:
