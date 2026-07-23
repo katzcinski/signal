@@ -1,6 +1,6 @@
 # Handover — Observability-Quellen, Quarantäne-MVP & Task-Chain-Orchestrierung
 
-**Status:** offen (Review abgeschlossen, Umsetzung nicht begonnen)
+**Status:** teilweise überholt (2026-07-23): Der Quarantäne-/Gating-Teil ist über [`Konzept_Datasphere_Integration_Gating_Quarantaene.md`](Konzept_Datasphere_Integration_Gating_Quarantaene.md) Slices ①–③ **implementiert** (Enforcement-Achse, `/api/quarantine`, Verdict-Materialisierung, API-Task-Vertrag `GET /api/runs/{id}/status`). Offen bleiben die Observability-Quellen-Pakete (Task-Log-Freshness) und Slices ④–⑦.
 **Bereich:** Engine (`dq_core`), API (`services/api`), CLI, Datasphere-Integration
 **Branch des Reviews:** `claude/ess-observability-quarantine-wcgnh6`
 **Stand:** 2026-07-09

@@ -1,6 +1,8 @@
 # OPEN TASKS — Konsolidierter Backlog (alle Bereiche) · Signal
 
-> **Stand:** 2026-07-04 · **Zweck:** Ein einziger Einstiegspunkt über **alle**
+> **Stand:** 2026-07-23 (E/F/N gegen den Code nachgeführt: Obs-Intelligence v1
+> und Enforcement-Achse/Quarantäne sind seit 2026-07 in `main`) ·
+> **Zweck:** Ein einziger Einstiegspunkt über **alle**
 > offenen Punkte, die heute über die `docs/`-Konzepte, Pläne, Reviews und
 > Handovers verstreut sind. Diese Datei **ersetzt** die Quelldokumente nicht —
 > sie verlinkt sie und hält den aggregierten Status. Detailtiefe (Acceptance,
@@ -39,8 +41,8 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **B**  | Spaltenebene-Lineage + Impact (UX-N7 / O3) | ✅ Done | H | `PLAN_UX-N7_Column_Lineage.md` |
 | **C**  | `HanaResultStore` (O6) + HANA-Migrationen + Smoke | ◻ Offen | H | `Implementation_HANA_Connection_Progress.md` WS E/F |
 | **D**  | Managed Service (Instanz-pro-Tenant) | ◻ Offen | H | `PLAN_Managed_Service_v1.md` |
-| **E**  | Observability-Mehrwert (z-Score, Freshness, Impact) | ◑ Teilweise | M | `PLAN_Observability_Mehrwert_v1.md` |
-| **F**  | Durchsetzungs-Achse `gate \| quarantine \| monitor` | ◻ Offen | M | `Konzept_Enforcement_Modi_*.md` |
+| **E**  | Observability-Mehrwert (z-Score, Freshness, Impact) | ◑ Teilweise (E1/E3 ✅, E2 offen) | M | `PLAN_Observability_Mehrwert_v1.md` |
+| **F**  | Durchsetzungs-Achse `gate \| quarantine \| monitor` | ◑ Teilweise (Slices ①–③ ✅) | M | `Konzept_Datasphere_Integration_Gating_Quarantaene.md` |
 | **G**  | OpenLineage-Emitter | ◻ Offen | L | `Scope_OpenLineage_Emitter.md` |
 | **H**  | Multi-Plattform-Executor (BDC/Databricks) | ◻ Offen | L | `Konzept_MultiPlattform_Executor_BDC.md` |
 | **I**  | Meridian-Port Restpunkte | ◑ Teilweise | M | `HANDOVER-meridian-port.md` |
@@ -48,7 +50,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **K**  | HANDOVER-Spikes / offene Entscheidungen (O1–O7) | ◑ Teilweise | div. | `HANDOVER.md` §5 |
 | **L**  | Verifikation & Nice-to-have (HANA-Smoke, en-Locale, Prometheus, E2E) | 🧪 | L | div. |
 | **M**  | Workflow-Audit-Follow-ups (P1/P2/P3, 2026-06-30) | ◻ Offen | H/M | `WORKFLOW_AUDIT_2026-06-30.md` |
-| **N**  | Scheduling Phase 2 | ◻ Offen | M | `ADR-0005_Scheduling.md` |
+| **N**  | Scheduling Phase 2 | ◑ Teilweise (N2 ✅) | M | `ADR-0005_Scheduling.md` |
 | **O**  | Lineage UX Phase 3 | ◻ Offen | M/L | `Spec_Lineage_UX_Redesign.md` |
 | **P**  | Data-Product/BDC Phase 2 + Verifikationspunkte | ◻ Offen | M/L | `ADR-0003`, `ADR-0004`, `PLAN_ADR-0003-0004_Implementation.md` |
 | **Q**  | Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) | ◻ Offen | L | Abschnitt Q |
@@ -112,13 +114,14 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
   Schema-Evolution je Objekt über Zeit (hinzugefügte/entfernte/typgeänderte
   Spalten, Contract-Bruch markieren). `diff.py` trägt Type-Narrowing erst mit
   Schema v2 (Batch 5 „Out of scope").
-  *Querverweis (Stand 2026-07-04):* Der Datenpfad existiert bereits vollständig —
+  *Querverweis (Stand 2026-07-23):* Der Datenpfad existiert bereits vollständig —
   Drift-Persistenz beim Extract (`services/api/schema_drift_service.py`, Hook in
-  `routers/extract.py`), Report-API (`GET /api/contracts/{p}/schema-drift` in
+  `routers/extract.py`), Report-API (`GET /api/contracts/{p}/drift` in
   `routers/contracts.py`) und FE-Binding (`useSchemaDrift` in
-  `apps/cockpit/src/api/contracts.ts`, derzeit von keiner Seite genutzt), inkl.
-  Tests (`tests/unit/test_schema_drift_*`). Offen ist **nur noch der Screen**
-  (lazy Page + Route in `App.tsx` + Strings in `i18n/de.ts` + vitest).
+  `apps/cockpit/src/api/contracts.ts`, genutzt vom `SchemaDriftBanner` in der
+  Workbench), inkl. Tests (`tests/unit/test_schema_drift_*`). Offen ist **nur
+  noch der eigenständige Screen** (Schema-Evolution über Zeit: lazy Page + Route
+  in `App.tsx` + Strings in `i18n/de.ts` + vitest).
   *Acceptance:* Spaltenänderungen je Objekt über Zeit, Contract-Bruch markiert.
 
 UX-N7 (Spalten-Lineage) ist erledigt; historische Details und Restrisiken stehen in **B**.
@@ -198,8 +201,9 @@ Test-Endpoint), WS F5 (`FileSecretResolver` + `PUT …/secret`) und WS D
   `scripts/generate_environments.py` + `DatasphereClient.list_db_users()`.
 - **C5 · WS G — Quarantäne/Reject-Store** (optional, nach E): zeilen-genaue
   Verstöße per `INSERT … SELECT` direkt in HANA (PK + Allowlist), Rohzeile berührt
-  den App-Prozess nie (E6 strikt). Default-off je Garantie. **Überschneidet sich
-  mit F (`quarantine`-Modus)** — gemeinsam entscheiden.
+  den App-Prozess nie (E6 strikt). Default-off je Garantie. **= F Slices ④–⑤**
+  (episodische Zeilen-Tabellen): der `quarantine`-Modus mit Episoden-Lifecycle
+  ist geliefert, die Zeilen-Ebene läuft über die Integration-Slices.
 
 **Aufwand (Doc):** ≈ 7,5–10,5 PT (ohne WS G).
 **Acceptance:** `STORE_BACKEND=hana` legt Tabellen im konfigurierten Open-SQL-
@@ -230,33 +234,42 @@ Scope: **Instanz-pro-Tenant**, `tenant_id`/Row-Level-Pooling bewusst de-scoped.
 
 ## E — Observability-Mehrwert ◑ [M]
 
-**Quelle:** [`PLAN_Observability_Mehrwert_v1.md`](PLAN_Observability_Mehrwert_v1.md)
-(Status: „noch kein Code").
+**Quelle:** [`PLAN_Observability_Mehrwert_v1.md`](PLAN_Observability_Mehrwert_v1.md);
+umgesetzt weitgehend über Observability-Intelligence v1
+([`HANDOVER_Observability_Intelligence_v1_Implementation.md`](HANDOVER_Observability_Intelligence_v1_Implementation.md),
+Migrationen 010–015).
 
-- **E1 · Robuster MAD-z-Score.** `[M]` ◑ — `obs/baselines.py` berechnet bereits
-  `median`+`mad` und persistiert `mad`; der **Verdikt-Pfad** nutzt aber weiter
-  `compute_bounds()` (`mean ± σ·stddev`). `robust_zscore = 0.6745·(x−median)/mad`
-  ergänzen (Sonderfall `mad==0`), Schwellen `|z|>k`⇒FAIL / `|z|>0.7k`⇒WARN
-  (k=3.5), `median` als Spalte in `dq_baselines` (**neue Migration 010**),
-  `WARMUP_N` als Gate. `compute_bounds()` bleibt nur noch für Bound-Anzeige.
+- **E1 · Robuster MAD-z-Score.** `[M]` ✅ — geliefert: `robust_zscore()` +
+  `compute_robust_bounds()` in `obs/baselines.py`, `median` in `dq_baselines`
+  (Migration `010_baseline_median`), saisonale Buckets (Migration 011).
 - **E2 · Freshness via Task-Log.** `[M]` ◻ — schließt „blinde" Objekte; setzt auf
   vorhandenem Scheduling/Task-Chain-Trigger auf. **Überschneidet sich mit J.**
-- **E3 · Lineage-Impact am Alert.** `[M]` ◻ — höchste Sichtbarkeit, größter
-  Eingriff; betroffene Downstream-Consumer am Breach zeigen. Nutzt **B**
-  (Spalten-/Objekt-Lineage) für die feinkörnige Variante.
+- **E3 · Lineage-Impact am Alert.** `[M]` ✅ — geliefert: Impact-Snapshot je
+  Incident (`dq_incidents.impacted_objects`, Migration `015_incident_impact`),
+  angezeigt in der Incident-Inbox und in Notifications. Die feinkörnige
+  Spalten-Variante bleibt an **B**/Live-CSN (I3) gebunden.
 
 ---
 
-## F — Durchsetzungs-Achse `gate | quarantine | monitor` ◻ [M]
+## F — Durchsetzungs-Achse `gate | quarantine | monitor` ◑ [M]
 
-**Quelle:** [`Konzept_Enforcement_Modi_Gate_Quarantine_Monitor.md`](Konzept_Enforcement_Modi_Gate_Quarantine_Monitor.md)
-(Status: Proposal, nicht implementiert; `enforcement_mode` existiert nicht im Code).
+**Quelle:** [`Konzept_Datasphere_Integration_Gating_Quarantaene.md`](Konzept_Datasphere_Integration_Gating_Quarantaene.md)
+(löst das ursprüngliche
+[`Konzept_Enforcement_Modi_Gate_Quarantine_Monitor.md`](Konzept_Enforcement_Modi_Gate_Quarantine_Monitor.md)
+als Umsetzungsgrundlage ab).
 
-Dritte Zustands-Achse je Check — *welche Aktion* ein Breach auslöst —, orthogonal
-zu `severity` und Lite/Full. Eigenes Feld `enforcement_mode`, **Default `monitor`**
-(keine grüne Pipeline wird zum Überraschungs-Stopp). `quarantine` koppelt an den
-Reject-Store aus **C5/WS G**. Signal bleibt read-only; Datasphere handelt.
-*Vor Umsetzung:* Engine/Compiler/Store-Eingriffe + Default-Disziplin verproben.
+**Geliefert (2026-07, Slices ①–③):** `enforcement` auf CheckDef/CheckResult/
+Guarantee + `enforcement_default` am Contract (Default `monitor`),
+`gate_verdict`-Rollup `proceed|quarantine|block` (G6-state-bewusst), Migration
+016 (`enforcement_mode`, `gate_verdict`, `dq_quarantine` + Events),
+CLI-Exit-Codes 0/1/3 + `--no-enforce`, `GET /api/runs/{id}/status`
+(API-Task-Vertrag), `/api/quarantine` (Episoden-Lifecycle, steward+),
+Verdict-Materialisierung `packages/dq_core/enforce/` + `/api/enforcement/plan|apply`
+(doppelt gegated), Quarantäne-Seite im Cockpit. Siehe `Tooldokumentation.md` §3.8.
+
+**Offen (Slices ④–⑦):** Reconciler/Split-Views, episodische **Zeilen**-Tabellen
+(Reject-Store, = **C5/WS G**), SQL-Bridge, Task-Chain-Vorlagen — plus
+Live-Tenant-Verifikation der Materialisierung (Spikes O5/O6 im Konzept).
 
 ---
 
@@ -407,16 +420,16 @@ künftige Regressionen gehören in das normale Lint-Gate.
 
 ---
 
-## N — Scheduling Phase 2 ◻ [M]
+## N — Scheduling Phase 2 ◑ [M]
 
 **Quelle:** [`ADR-0005_Scheduling.md`](ADR-0005_Scheduling.md). Der store-backed
 Poller bleibt additiv; externer Scheduler/Task-Chain via CLI bleibt Default.
 
 - **N1 · Cron-Ausdrücke statt fixer Intervalle.** `[M]` ◻ — zusätzlich zum
   Intervallmodell eine verständliche Cron-Repräsentation + Validierung.
-- **N2 · Cockpit-Schalter pro Objekt.** `[M]` ◻ — `manual/internal/external`,
-  `enabled`, Environment und nächste Fälligkeit im Objekt-Detail/Ops-Screen
-  sichtbar und bedienbar machen.
+- **N2 · Cockpit-Schalter pro Objekt.** `[M]` ✅ — geliefert:
+  `SchedulePanel` im Objekt-Detail (Tab „History/Ops") + Ops-Screen
+  `pages/Schedules.tsx` (`/schedules`).
 - **N3 · HANA-Store-Parität für `dq_schedules`.** `[H]` ◻ — hängt praktisch an
   **C2**; Schedule-Claim, Last-Run-Felder und Doppellauf-Schutz müssen auf HANA
   dieselbe Semantik haben wie SQLite.
@@ -498,14 +511,14 @@ bleibt unverändert grün.
 echter CSN-Extract (I3) ──► Live-Verifikation von B ──► OL3 / E3
 HanaStore (C2) ═ D1 ──────► C (Full-Deploy) + D (Managed) + F-quarantine/C5
 HanaStore (C2) ───────────► N3 (Schedule-Store-Parität)
-E1 (z-Score)  ── eigenständig, kleinster Hebel, sofort machbar
 M1-M6 (Workflow-Audit) ───► Branch-/CI-Wahrheit vor weiterer Produktpolitur
 J1 (skip/downgrade) ── Entscheidung vor Freshness-Gating (E2/J)
+F ④–⑦ (Zeilen-Quarantäne/Reconciler) ═ C5 ──► braucht Live-Tenant-Spikes (O5/O6)
 P5 (BDC/HDLF) ────────────► H / Product-Discovery / technische Load-Lag-Achse
 ```
 
-**Empfohlene Reihenfolge nach Hebel/Aufwand:** E1 (klein, sofort) → M1/M2/M3/M6
+**Empfohlene Reihenfolge nach Hebel/Aufwand:** M1/M2/M3/M6
 (Workflow-Korrektheit + CI-Wahrheit) → C2/D1 (`HanaStore`, entsperrt
 Full+Managed und N3) → I3 (Live-Verifikation Spalten-Lineage) →
-J1-Entscheidung → A1/A2. O/N/P/F/G/H bleiben nachgelagert, bis Demo- oder
-Kundenbedarf sie zieht.
+J1-Entscheidung → A1/A2. O/N/P/F④–⑦/G/H bleiben nachgelagert, bis Demo- oder
+Kundenbedarf sie zieht. (E1/E3, F①–③ und N2 sind seit 2026-07 geliefert.)

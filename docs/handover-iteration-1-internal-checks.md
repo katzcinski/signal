@@ -1,6 +1,6 @@
 # Handover — Iteration 1: Full check library in the internal DQ-Checks frame
 
-**Status:** ready to implement · **Branch:** `claude/check-library-classification` · **PR:** [#32](https://github.com/katzcinski/signal/pull/32) · **Baseline commit:** `3bd41d5`
+**Status:** **implemented** (historisch; Compiler-`checks:`-Pfad, `contracts.py`-Persistenz, `GateCheck`-Typ, Library v6 — siehe `OPEN_TASKS.md` „Bereits geschlossen") · **Branch:** `claude/check-library-classification` · **PR:** [#32](https://github.com/katzcinski/signal/pull/32) · **Baseline commit:** `3bd41d5`
 
 This document hands off **Iteration 1** of the "internal checks" design. It is self-contained: an implementer should be able to start from here without the originating conversation.
 

@@ -1,7 +1,7 @@
 # Implementation Batch 6 — Editor-Modus aus `kind` ableiten
 
 **Adressat:** Entwicklung · **Stand:** 2026-06-19
-**Grundlage:** `ADR-0002_Editor-Modus_aus_Kind.md` (Entscheidung R1–R4).
+**Grundlage:** `ADR-0006_Editor-Modus_aus_Kind.md` (Entscheidung R1–R4).
 **Zweck:** Den frei togglebaren Lite/Full-Modus durch einen **kind-abgeleiteten Default mit asymmetrisch beschränktem Override** ersetzen, Einstiegspunkte vereinheitlichen und die Begriffe entkoppeln.
 
 > Verwandt: `Betriebsmodi_Lite_und_Full.md` (wird in Schritt 6 nachgezogen) · `ADR-0001_Quality-Gates_vs_Contracts.md` §7 (Orthogonalität Lite/Full ↔ `kind`).

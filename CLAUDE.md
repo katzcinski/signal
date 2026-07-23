@@ -19,8 +19,10 @@ operating modes on one codebase: **Lite** (binding without versioning/approval
 ceremony) and **Full** (SemVer, approval, breaking-change protection).
 
 The authoritative reference is [`docs/Tooldokumentation.md`](docs/Tooldokumentation.md).
-See also [`docs/Betriebsmodi_Lite_und_Full.md`](docs/Betriebsmodi_Lite_und_Full.md)
-and [`docs/HANDOVER.md`](docs/HANDOVER.md).
+See also [`docs/Betriebsmodi_Lite_und_Full.md`](docs/Betriebsmodi_Lite_und_Full.md);
+the full doc index with per-document status (active vs. historical) is
+[`docs/README.md`](docs/README.md), the consolidated backlog is
+[`docs/OPEN_TASKS.md`](docs/OPEN_TASKS.md).
 
 ## Repository layout
 
@@ -30,14 +32,18 @@ packages/dq_core/      # Framework-free engine — pip-installable, ZERO web imp
   store/               #   Result-Store (SQLite/HANA) + numbered SQL migrations
   connect/             #   HANA connection (hdbcli) + MockConnection
   contract/            #   model, validator, compiler, diff, gate_g3, seed, ODCS export, compliance
+  enforce/             #   enforcement/verdict materialization (DDL/DML plans, framework-free)
   library/             #   check library (sql_template catalog, check_library.json)
   lineage/             #   lineage / CSN analysis
   obs/                 #   rolling baselines + proposal miner
+  product/             #   data-product aggregate (ADR-0004)
   profile/             #   data profiling + PK detection heuristics
+  validator/           #   standalone validation building blocks
 services/api/          # FastAPI app — routers, auth, settings, SSE, Git writer, Datasphere client
 apps/cockpit/          # Vite + React 18 + TS (strict) frontend
 cli/                   # dq_check_runner.py — run the engine without the API (cron/task-chain)
 contracts/             # Contract YAMLs — Git is the source of truth
+products/              # Data-product manifests (<name>.yaml — identity, owner, ports)
 data/                  # inventory.json / lineage.json (extract snapshots)
 scripts/               # seed.py, export_openapi.py
 docs/                  # concepts, plans, ADRs, reviews, operating modes, tool reference

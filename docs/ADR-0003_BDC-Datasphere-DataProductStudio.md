@@ -200,7 +200,7 @@ Kernbotschaft der Tabelle: **Der teuerste Posten ist Wissen (G-5/G-6), nicht Cod
 
 **Neutral**
 
-- Lite/Full bleibt orthogonal (ADR-0002): Speicherort und Zeremonie-Tiefe sind unabhängig. Ein HDLF-Produkt kann Tier-2/Full sein, ein HANA-Produkt Tier-0/internal.
+- Lite/Full bleibt orthogonal (ADR-0006): Speicherort und Zeremonie-Tiefe sind unabhängig. Ein HDLF-Produkt kann Tier-2/Full sein, ein HANA-Produkt Tier-0/internal.
 - ORD/ODCS-Seam (Zusatz-Doc) bleibt die offene Baustelle; diese ADR verschiebt sie nicht, schärft aber die HDLF-spezifischen Fragen.
 
 ---
