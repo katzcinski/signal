@@ -3,7 +3,7 @@
 **Adressat:** Beratung, Plattform-Team, Fachbereich, Governance · **Stand:** 2026-06-15
 **Zweck:** Wie das DQ- & Observability-Cockpit zwei Reifegrade von Data-Product-Verbindlichkeit bedient — den **Lite-Einstieg** (Verbindlichkeit ohne Org-Change) und den **Voll-Modus** (governte Data Products mit Versionierung & Approval) — auf demselben technischen Unterbau.
 
-> Verwandte Dokumente: `ADR-0002_Editor-Modus_aus_Kind.md` (Modus-Default folgt dem `kind`; Override kontrolliert) · `HANDOVER.md` (technischer Implementierungsplan, Workstreams, Gates) · `Konzept_DQ_Observability_Cockpit.md` (fachliches Konzept).
+> Verwandte Dokumente: `ADR-0006_Editor-Modus_aus_Kind.md` (Modus-Default folgt dem `kind`; Override kontrolliert) · `HANDOVER.md` (technischer Implementierungsplan, Workstreams, Gates) · `Konzept_DQ_Observability_Cockpit.md` (fachliches Konzept).
 
 ---
 
@@ -151,7 +151,7 @@ Der Wechsel ist **kein Rebuild** — gleicher Unterbau, nur mehr Zeremonie und e
 | Erste governte Änderung | regulärer `draft → diff → approve`-Pfad | Owner |
 | Breaking-Schutz | Ab jetzt greift G3 bei jeder Änderung blockierend | System |
 
-> **Hinweis (ADR-0002):** Der Editor-**Default**-Modus folgt dem `kind` (Gate → Schnell zertifizieren, Contract → Freigabe-Workflow); der Toggle bleibt als Override. Auf einem **bereits zertifizierten** Contract entfällt der Schnell-Override — jede weitere Änderung läuft über die Freigabe (G3-Schutz bleibt serverautoritativ).
+> **Hinweis (ADR-0006):** Der Editor-**Default**-Modus folgt dem `kind` (Gate → Schnell zertifizieren, Contract → Freigabe-Workflow); der Toggle bleibt als Override. Auf einem **bereits zertifizierten** Contract entfällt der Schnell-Override — jede weitere Änderung läuft über die Freigabe (G3-Schutz bleibt serverautoritativ).
 
 **Empfehlung:** Lite für die 3–5 wichtigsten Konsum-Objekte starten; die sichtbare Coverage-Map als Gesprächsanker nutzen („dieses Objekt, von dem ihr lebt, trägt heute null Garantien"), um Ownership organisch auszulösen.
 
