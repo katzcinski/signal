@@ -11,6 +11,7 @@ import {
   useAdminEnvironments, useCreateEnvironment, useUpdateEnvironment, useDeleteEnvironment,
   useStartConnectionTest, useOperationStream, type EnvironmentInput,
 } from '@/api/environments';
+import { useEntropyConfig } from '@/api/integrations';
 import { t } from '@/i18n/de';
 import { canManageEnvironments, useRoleStore } from '@/store/role';
 import type { AdminEnvironment, ConnectionTestResult } from '@/types';
@@ -232,6 +233,61 @@ function ConnectionsSection({ environments, canEdit }: { environments: AdminEnvi
   );
 }
 
+function EntropySection() {
+  const { data, isLoading } = useEntropyConfig();
+
+  const modeColor =
+    data?.mode === 'live' ? 'var(--status-pass)'
+      : data?.mode === 'dry_run' ? 'var(--status-warn)'
+        : 'var(--fg-3)';
+  const modeLabel =
+    data?.mode === 'live' ? t.entropy.modeLive
+      : data?.mode === 'dry_run' ? t.entropy.modeDryRun
+        : t.entropy.modeOff;
+  const modeHint =
+    data?.mode === 'live' ? t.entropy.modeLiveHint
+      : data?.mode === 'dry_run' ? t.entropy.modeDryRunHint
+        : t.entropy.modeOffHint;
+
+  return (
+    <Panel title={t.entropy.title}>
+      <p style={hint}>{t.entropy.hint}</p>
+      {isLoading && <p style={empty}>{t.common.loading}</p>}
+      {data && (
+        <>
+          <div style={row}>
+            <span style={{ fontSize: 12, fontWeight: 600, minWidth: 90 }}>{t.entropy.status}</span>
+            <span style={chip(modeColor)}>{modeLabel}</span>
+            <span style={chip(data.url_set ? 'var(--status-pass)' : 'var(--status-warn)')}>
+              {data.url_set ? t.entropy.urlSet : t.entropy.urlMissing}
+            </span>
+            <span style={chip(data.token_set ? 'var(--status-pass)' : 'var(--status-warn)')}>
+              {data.token_set ? t.entropy.tokenSet : t.entropy.tokenMissing}
+            </span>
+            <span style={chip('var(--cont)')}>{t.entropy.allowlist}: {data.allowlist_count}</span>
+          </div>
+          <div style={row}>
+            <span style={{ fontSize: 12, fontWeight: 600, minWidth: 90 }}>{t.entropy.sourceOfTruth}</span>
+            <span style={chip('var(--cont)')}>
+              {data.source_of_truth === 'signal' ? t.entropy.sotSignal : t.entropy.sotEntropy}
+            </span>
+            <span style={chip(data.marketplace_verified ? 'var(--status-pass)' : 'var(--status-warn)')}>
+              {data.marketplace_verified ? t.entropy.verified : t.entropy.unverified}
+            </span>
+          </div>
+          <p style={{ ...hint, marginTop: 'var(--s2)', marginBottom: 0 }}>{modeHint}</p>
+          {!data.marketplace_verified && (
+            <p style={{ ...hint, marginBottom: 0, color: 'var(--status-warn)' }}>
+              {t.entropy.validationPending}
+            </p>
+          )}
+          <p style={{ ...hint, marginBottom: 0 }}>{t.entropy.envOnlyHint}</p>
+        </>
+      )}
+    </Panel>
+  );
+}
+
 export default function Settings() {
   const { data, isLoading, isError, refetch } = useAdminEnvironments();
   const role = useRoleStore(s => s.role);
@@ -251,6 +307,7 @@ export default function Settings() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
             <ConnectionsSection environments={data.environments} canEdit={canEdit} />
             <ConnectorPanel canEdit={canEditConnector} />
+            <EntropySection />
           </div>
         </>
       )}

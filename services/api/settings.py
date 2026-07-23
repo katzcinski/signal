@@ -127,6 +127,29 @@ class Settings(BaseSettings):
     # Verdicts behandelt P_DQ_ASSERT_GATE wie fehlende — fail-closed.
     enforcement_verdict_ttl_seconds: int = Field(default=0, ge=0)
 
+    # ── Entropy-Data-Integration (Contract-/Result-Marktplatz) ────────────────
+    # Signal = das SAP/HANA-Quality-Backend hinter einem Data-Product-Marktplatz
+    # (Entropy Data): es erzeugt das verifizierte Grün, das der Marktplatz nur
+    # anzeigt. Architektur wie der geplante OpenLineage-Emitter: opt-in,
+    # fail-open, außerhalb von dq_core (G7-neutral).
+    #
+    # Kill-Switch default AUS. Ohne gesetzte URL bleibt alles inert. Jeder
+    # Ziel-Host wird — wie beim Breach-Webhook — gegen die Allowlist geprüft
+    # (kein SSRF-Bypass, S6). Das Token wird nie in Responses gespiegelt (S-14).
+    entropy_publish_enabled: bool = Field(default=False)
+    entropy_url: str = Field(default="")            # Basis-URL der Entropy-Result-/Registry-API
+    entropy_token: str = Field(default="")          # Bearer-Token (nie in Responses)
+    entropy_allowlist: list[str] = Field(default=[])  # Host-Regex-Muster (SSRF-Gate, S6)
+    # E1 — Source-of-Truth pro Kunde, NIE bidirektional:
+    #   "signal"  → Signal authort, Entropy zeigt (Default; Einweg-Export).
+    #   "entropy" → Entropy authort, Signal konsumiert ODCS & erzwingt (Import-Pfad).
+    entropy_source_of_truth: Literal["signal", "entropy"] = Field(default="signal")
+    # E2/E3 — Ehrliches Flag: ist ein externer Marktplatz wie Entropy als reale,
+    # gegenverifizierte API bestätigt? Solange false, ist der Export ein
+    # Best-Guess-Payload und läuft NUR als Dry-Run (kein Netz-Publish), damit wir
+    # nicht gegen einen unbestätigten Endpunkt/Standard schreiben.
+    entropy_marketplace_verified: bool = Field(default=False)
+
 
 _settings: Settings | None = None
 

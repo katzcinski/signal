@@ -147,13 +147,40 @@ statt sie zu erhöhen.
 
 ## 7 — Offene Punkte
 
+> **Umsetzungsstand (2026-07-23):** Der Seam ist als **opt-in, fail-open**-
+> Integration gebaut — architektonisch wie der geplante OpenLineage-Emitter und
+> die Enforcement-Materialisierung. Neue Bausteine:
+> - **Result-/Contract-Publisher** `services/api/entropy.py` (G7-neutral,
+>   SSRF-sicher über die `webhook.py`-Guards, Bearer-Token). Hängt am
+>   Run-Abschluss (`routers/objects.py`) und an manuellen Endpunkten.
+> - **ODCS→Signal-Import** `packages/dq_core/contract/odcs_import.py`
+>   (`from_odcs`, framework-frei, G1: nur Garantien, SQL-Regeln landen in
+>   `dropped`). API: `POST /api/integrations/entropy/import/odcs`.
+> - **ODPS-1.0-Export** `packages/dq_core/product/odps_export.py`
+>   (`to_odps`). API: `GET /api/products/{name}/export/odps`.
+> - **Settings** `ENTROPY_PUBLISH_ENABLED/URL/TOKEN/ALLOWLIST`,
+>   `ENTROPY_SOURCE_OF_TRUTH` (E1-Routing), `ENTROPY_MARKETPLACE_VERIFIED`
+>   (E2/E3-Flag). Status-Panel in den Cockpit-Einstellungen.
+>
+> **Wichtiger Vorbehalt (Best-Guess-Routing):** Solange
+> `ENTROPY_MARKETPLACE_VERIFIED` false ist — d. h. bis die reale Entropy-API in
+> Form/Auth gegenverifiziert ist — läuft **jeder Publish als Dry-Run** (Payload
+> gebaut, nicht gesendet), und ODPS-Dokumente tragen `x-signal-validation:
+> unverified`. So ist die Integration Ende-zu-Ende testbar, ohne gegen einen
+> unbestätigten Endpunkt/Standard zu schreiben. Das Wire-Format (`_PAYLOAD_SPEC
+> = "signal-entropy/0.1-unverified"`) ist bewusst als vorläufig markiert.
+
 - **E1 [H]** — Source-of-Truth-Modus je Kunde (§5): Signal-authort vs.
-  Entropy-authort. Mit echtem Kunden validieren, bevor festgeklopft.
+  Entropy-authort. **Adapter beidseitig gebaut** (Export via `to_odcs`, Import
+  via `from_odcs`, Routing via `ENTROPY_SOURCE_OF_TRUTH`, nie bidirektional);
+  mit echtem Kunden noch zu validieren, bevor festgeklopft.
 - **E2 [H]** — Entropy Result-Ingest-API: genaue Form/Auth des `--publish`-Endpoints,
-  Mapping `RunSummary`/`CheckResult` → Entropy-Quality-Payload. (Architektur-Doc war
-  beim Sichten HTTP 403 — gegen die echte API/Docs verifizieren.)
-- **E3 [M]** — ODPS-1.0-Mapping: Product-Manifest → ODPS, verlustfrei? Custom-
-  Extensions nötig?
+  Mapping `RunSummary`/`CheckResult` → Entropy-Quality-Payload. **Mapping gebaut
+  (Best-Guess-Payload), Dispatch hinter dem `verified`-Flag als Dry-Run** — die
+  echte API/Docs (Architektur-Doc war beim Sichten HTTP 403) bleiben zu verifizieren.
+- **E3 [M]** — ODPS-1.0-Mapping: Product-Manifest → ODPS. **Export gebaut,
+  flagged `unverified`**; Verlustfreiheit/Custom-Extensions gegen einen realen
+  Marktplatz noch offen.
 - **E4 [M]** — Überlappungs-Politik: in welchen Deals tritt Signal die Authoring-/
   Marktplatz-Schicht aktiv an Entropy ab (§4) — Messaging/Positionierung festlegen.
 - **E5 [L]** — Embrace-Move (§6d): HANA-Backend zur datacontract-cli beitragen? Nur

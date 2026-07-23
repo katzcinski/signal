@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 from .middleware import ObservabilityMiddleware
 from .secrets import init_resolver
 from .settings import get_settings
-from .routers import library, objects, runs, lineage, contracts, incidents, proposals, stream, checks, extract, metrics, data_loads, activity, notifications, profile, operations, environments, products, schedules, monitoring, quarantine, enforcement
+from .routers import library, objects, runs, lineage, contracts, incidents, proposals, stream, checks, extract, metrics, data_loads, activity, notifications, profile, operations, environments, products, schedules, monitoring, quarantine, enforcement, integrations
 
 logging.basicConfig(
     level=logging.INFO,
@@ -150,7 +150,7 @@ def create_app() -> FastAPI:
                    activity.router, notifications.router, profile.router, operations.router,
                    environments.router, products.router, schedules.router,
                    monitoring.router, connector.router, quarantine.router,
-                   enforcement.router]:
+                   enforcement.router, integrations.router]:
         app.include_router(router)
 
     @app.get("/api/health")
