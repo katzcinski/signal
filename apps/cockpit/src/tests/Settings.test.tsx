@@ -25,6 +25,18 @@ vi.mock('@/components/ConnectorPanel', () => ({
   ConnectorPanel: () => null,
 }));
 
+// The Entropy integration section fetches its config via react-query; stub it so
+// these HANA-connection tests need no QueryClientProvider.
+vi.mock('@/api/integrations', () => ({
+  useEntropyConfig: () => ({
+    data: {
+      enabled: false, url_set: false, token_set: false, allowlist_count: 0,
+      source_of_truth: 'signal', marketplace_verified: false, mode: 'off',
+    },
+    isLoading: false,
+  }),
+}));
+
 import Settings from '@/pages/Settings';
 
 const baseConfig = (overrides: Partial<AdminEnvironmentsResponse> = {}): AdminEnvironmentsResponse => ({

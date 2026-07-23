@@ -629,6 +629,16 @@ def start_object_run(
             except Exception:
                 pass  # Publikation ist Projektion — Result-Store bleibt primär
 
+            # Entropy-Data-Publish: das verifizierte Grün an den Marktplatz melden
+            # (opt-in, fail-open, außerhalb dq_core). Dry-Run, solange der
+            # Marktplatz nicht gegenverifiziert ist (E2/E3). Nie run-kritisch.
+            try:
+                from ..entropy import publish_run_result, publish_enabled
+                if publish_enabled(settings):
+                    publish_run_result(summary, active_contract, settings)
+            except Exception:
+                pass  # Marktplatz-Publish ist Projektion — Result-Store bleibt primär
+
             # WS5-1: Baselines aus den Zeitreihen der Obs-Checks aktualisieren —
             # Rolling-Stats (Mean/Stddev/Perzentile/MAD) für volume/freshness.
             try:

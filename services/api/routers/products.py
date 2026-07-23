@@ -313,3 +313,32 @@ def get_product(
             upstream=upstream,
         ),
     )
+
+
+@router.get("/{product}/export/odps")
+def export_odps(product: str):
+    """E3: ODPS-1.0-Export des Product-Manifests (Einweg-Derivat, YAML=SoT).
+
+    Produktseitiges Analog zum ODCS-Contract-Export. ⚠ Best-Guess-Feldschema:
+    solange kein realer ODPS-Marktplatz gegenverifiziert ist (Setting
+    `entropy_marketplace_verified`), trägt das Dokument `x-signal-validation:
+    unverified` — der Aufrufer sieht ehrlich, dass die Form noch aussteht.
+    """
+    from dq_core.product.odps_export import to_odps
+    from dq_core.product.model import load_all_manifests
+
+    settings = get_settings()
+    manifest = next(
+        (m for m in load_all_manifests(settings.products_dir) if m.product == product),
+        None,
+    )
+    if manifest is None:
+        raise HTTPException(status_code=404, detail=f"Product {product!r} not found")
+
+    contracts_by_dataset = _load_contracts_by_dataset(settings.contracts_dir)
+    doc = to_odps(
+        manifest,
+        contract_lookup=lambda dataset: contracts_by_dataset.get(dataset),
+        verified=bool(getattr(settings, "entropy_marketplace_verified", False)),
+    )
+    return doc

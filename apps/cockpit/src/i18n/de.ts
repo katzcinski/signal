@@ -1524,4 +1524,31 @@ export const t = {
     nameInvalid: 'Nur Buchstaben, Ziffern sowie . _ - erlaubt (max. 64 Zeichen).',
     requiredHint: 'Host und Benutzer sind erforderlich.',
   },
+  entropy: {
+    title: 'Entropy Data — Marktplatz-Integration',
+    hint:
+      'Signal ist das SAP/HANA-Quality-Backend hinter einem Data-Product-Marktplatz: es erzeugt das verifizierte Grün, das der Marktplatz nur anzeigt. Publish ist opt-in und fail-open (per ENV konfiguriert), jeder Ziel-Host wird gegen die Allowlist geprüft (SSRF).',
+    status: 'Status',
+    modeOff: 'Aus',
+    modeDryRun: 'Dry-Run',
+    modeLive: 'Live',
+    modeOffHint: 'Kein Publish — ENTROPY_PUBLISH_ENABLED ist aus oder es fehlt eine Ziel-URL.',
+    modeDryRunHint:
+      'Publish aktiv, aber der Marktplatz ist noch nicht gegenverifiziert (E2/E3): Payloads werden gebaut, aber NICHT gesendet. Setze ENTROPY_MARKETPLACE_VERIFIED, sobald die reale Entropy-API bestätigt ist.',
+    modeLiveHint: 'Publish aktiv und Marktplatz verifiziert — Ergebnisse/Contracts werden gesendet.',
+    urlSet: 'Ziel-URL gesetzt',
+    urlMissing: 'Keine Ziel-URL',
+    tokenSet: 'Token hinterlegt',
+    tokenMissing: 'Kein Token',
+    allowlist: 'Allowlist-Einträge',
+    sourceOfTruth: 'Source of Truth',
+    sotSignal: 'Signal authort → Entropy zeigt',
+    sotEntropy: 'Entropy authort → Signal erzwingt',
+    verified: 'Marktplatz verifiziert',
+    unverified: 'Nicht verifiziert (Best-Guess-Schema)',
+    validationPending:
+      'Validierung ausstehend: Ob ein externer Marktplatz wie Entropy in dieser Form real besteht, ist noch nicht gegenverifiziert. Bis dahin läuft der Export als Dry-Run und Dokumente tragen die Kennzeichnung „unverified".',
+    envOnlyHint:
+      'Diese Werte werden serverseitig per Umgebungsvariablen gesetzt (ENTROPY_*), nicht hier — diese Ansicht zeigt nur den aktuellen Status.',
+  },
 };
