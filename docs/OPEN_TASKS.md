@@ -52,6 +52,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **O**  | Lineage UX Phase 3 | ◻ Offen | M/L | `Spec_Lineage_UX_Redesign.md` |
 | **P**  | Data-Product/BDC Phase 2 + Verifikationspunkte | ◻ Offen | M/L | `ADR-0003`, `ADR-0004`, `PLAN_ADR-0003-0004_Implementation.md` |
 | **Q**  | Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) | ◻ Offen | L | Abschnitt Q |
+| **R**  | Entropy-Data-Integration — Publisher/Import/ODPS (Validierung offen) | ◑ Teilweise | M | Abschnitt R · `Zusatz_EntropyData_Integration_und_Defensibility.md` |
 
 > **Bereits geschlossen, obwohl ein Quelldoc es noch offen führt:** Interne
 > DQ-Checks-Library im Builder (`handover-iteration-1-internal-checks.md`) ist
@@ -489,6 +490,52 @@ driften:
 settings)`. Reine Strukturänderung — **kein** Verhaltens-/Payload-Unterschied,
 der SSRF-Pfad über `fire_webhook` bleibt unangetastet, und `test_notify.py`
 bleibt unverändert grün.
+
+---
+
+## R — Entropy-Data-Integration ◑ [M]
+
+**Quelle:** [`Zusatz_EntropyData_Integration_und_Defensibility.md`](Zusatz_EntropyData_Integration_und_Defensibility.md)
+§7 (dort der volle Umsetzungsstand). **Geliefert (2026-07-23):** Publisher
+(`services/api/entropy.py`, opt-in/fail-open/SSRF-sicher, am Run-Hook +
+manuellen Endpunkten), ODCS→Signal-Import (`dq_core/contract/odcs_import.py`,
+`from_odcs`, G1/G7), ODPS-1.0-Export (`dq_core/product/odps_export.py`,
+`to_odps`), Integrations-Router, Settings-Block (`ENTROPY_*`) und ein
+Status-Panel in den Einstellungen. Tests: 18 neu, Backend/Frontend grün.
+
+**Leitgedanke des Restrisikos:** Der Wire-Contract gegenüber Entropy ist ein
+dokumentierter **Best Guess** — die reale API war beim Sichten HTTP 403. Deshalb
+läuft alles hinter dem `ENTROPY_MARKETPLACE_VERIFIED`-Flag als **Dry-Run**
+(Payload gebaut, nicht gesendet); ODPS-Dokumente tragen `x-signal-validation:
+unverified`. Kein Silent-Publish gegen einen unbestätigten Endpunkt/Standard.
+
+- **R1 · E2 [H] — Entropy-Result-Ingest-API gegenverifizieren.** ◻ Genaue
+  Form/Auth des `--publish`-Endpoints (Pfad, Header, Payload-Schema) gegen die
+  reale API/Docs prüfen; das Best-Guess-Mapping `RunSummary`/`CheckResult` →
+  Quality-Payload (`_quality_payload`, Spec `signal-entropy/0.1-unverified`)
+  bestätigen oder anpassen. **Blockiert das Umlegen von Dry-Run auf Live**
+  (`ENTROPY_MARKETPLACE_VERIFIED=true`).
+- **R2 · E1 [H] — Source-of-Truth-Modus mit echtem Kunden validieren.** ◻
+  Adapter beidseitig gebaut (`ENTROPY_SOURCE_OF_TRUTH=signal|entropy`, nie
+  bidirektional). Am Kunden bestätigen, welcher Modus greift, und den
+  Import-Pfad (`from_odcs`) gegen ein reales Entropy-ODCS-Dokument testen
+  (heute nur gegen den `to_odcs`-Roundtrip verifiziert).
+- **R3 · E3 [M] — ODPS-1.0-Feldschema gegenverifizieren.** ◻ `to_odps` bildet
+  den öffentlich dokumentierten Stand nach; Verlustfreiheit + nötige
+  Custom-Extensions gegen einen realen ODPS-Marktplatz prüfen, dann das
+  `unverified`-Flag entfernen. Setzt teilweise auf echtem CSN-/Lineage-Extrakt
+  auf (Querbezug I3, s. Querschnitt).
+- **R4 · [M] — Manuelle Publish-Actions im Contract-Workbench.** ◻ Heute sind
+  Contract-/Result-Publish nur per API bzw. am Run-Hook erreichbar; der Settings-
+  Screen zeigt nur den Konfig-Status. Einen expliziten „An Entropy publizieren"-
+  Button (steward+) in die Contract-Workbench heben, inkl. Sichtbarmachen des
+  Dry-Run-/Dropped-Reports aus dem Import.
+- **R5 · E4 [M] — Überlappungs-Positionierung.** ◻ Messaging festlegen, in
+  welchen Deals Signal die Authoring-/Marktplatz-Schicht aktiv an Entropy abtritt
+  (Entropy = Schaufenster, Signal = Enforcement) — Doc-/Deck-seitig, kein Code.
+- **R6 · E5 [L] — Embrace-Move.** ◻ Prüfen, ob ein generisches HANA-Backend zur
+  `datacontract-cli` beigetragen wird (nur generische Checks; SAP-Checks bleiben
+  proprietär). Senkt die Integrationsreibung zu Entropy.
 
 ---
 
