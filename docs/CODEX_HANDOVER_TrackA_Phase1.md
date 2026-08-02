@@ -1,7 +1,7 @@
 # Codex Handover — Track A Phase 1: Data Product Aggregate
 
 **Date:** 2026-06-23  
-**Status:** Ready to implement — all design decisions resolved (grilling session 2026-06-23)  
+**Status:** **implemented** (historisch; Phase 1 geliefert als `packages/dq_core/product/` + `routers/products.py` + `/products`-Seiten — Phase-2-Punkte in `OPEN_TASKS.md` **P**)  
 **Source docs:** `ADR-0004_DataProduct-als-Komposition.md` · `PLAN_ADR-0003-0004_Implementation.md` · `CONTEXT.md`  
 **Constraint:** Engine/Compiler/Store untouched (`[ENGINE-FROZEN]`). Additive, read-side only. No migrations.
 

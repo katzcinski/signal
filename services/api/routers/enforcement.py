@@ -4,7 +4,7 @@ P_DQ_ASSERT_GATE).
 
 Plan ist reine Berechnung (Dry-Run, keine Verbindung); Apply führt die DDL
 über die Space-User-Verbindung aus — doppelt gegated (Kill-Switch + Schema,
-`services/api/enforcement.py`) und als Operation auditiert (ADR-0005-Kanal).
+`services/api/enforcement.py`) und als Operation auditiert (ADR-0007-Kanal).
 """
 from __future__ import annotations
 

@@ -499,7 +499,7 @@ Das Studio emittiert ORD-Descriptoren; Signal erzeugt ODCS-Exports. In beiden F�
 ## Verwandte Dokumente
 
 - `ADR-0001_Quality-Gates_vs_Contracts.md` — boundary-Diskriminator, Tiering
-- `ADR-0002_Editor-Modus_aus_Kind.md` — Lite/Full-Modalität
+- `ADR-0006_Editor-Modus_aus_Kind.md` — Lite/Full-Modalität
 - `ADR-0003_BDC-Datasphere-DataProductStudio.md` — Studio-Integration, HDLF, SQL-Port
 - `ADR-0004_DataProduct-als-Komposition.md` — Manifest-Modell, Intent vs. Reality
 - `Betriebsmodi_Lite_und_Full.md` — Prozess-Zeremonie

@@ -1,7 +1,7 @@
 # Konzept — Durchsetzungsmodi: Gate · Quarantäne · Monitoring
 
 **Adressat:** Plattform-Team, Governance, Fachbereich · **Stand:** 2026-06-25
-**Status:** Proposal (noch nicht implementiert) · **Branch:** `claude/three-mode-operandi-ask4mt`
+**Status:** **Umgesetzt** (2026-07, Slices ①–③ via [`Konzept_Datasphere_Integration_Gating_Quarantaene.md`](Konzept_Datasphere_Integration_Gating_Quarantaene.md)): `enforcement` auf CheckDef/Guarantee (Default `monitor`), `gate_verdict`-Rollup, Migration 016, `/api/quarantine`, CLI-Exit-Codes 0/1/3. Implementierter Stand: `Tooldokumentation.md` §3.8.
 **Zweck:** Eine **dritte Zustands-Achse** einführen — *welche Aktion* ein
 Breach auslöst (`gate | quarantine | monitor`) — orthogonal zu `severity`
 (*wie schlimm*) und zum Lite/Full-Zeremonie-Pfad (*wie viel Prozess*).

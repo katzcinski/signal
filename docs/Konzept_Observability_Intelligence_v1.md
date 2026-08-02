@@ -5,7 +5,7 @@
 > [`HANDOVER_Observability_Intelligence_v1_Implementation.md`](HANDOVER_Observability_Intelligence_v1_Implementation.md).
 > Bei Widerspruch gewinnt das Handover.
 
-**Stand:** 2026-06-29 · **Status:** Konzept (Entwurf) · **Bezug:**
+**Stand:** 2026-06-29 · **Status:** **Umgesetzt** (2026-07: Migrationen 010–015 — robuste/saisonale Baselines, Segment-Details, RCA-Snapshots, Incident-Clustering, Impact-Snapshot) · **Bezug:**
 [`Marktanalyse_DQ_Observability_2026.md`](Marktanalyse_DQ_Observability_2026.md) (Tier 1),
 [`Tooldokumentation.md`](Tooldokumentation.md) (implementierter Stand)
 

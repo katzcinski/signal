@@ -1,6 +1,6 @@
 # PLAN — Observability-Mehrwert für Signal (v1)
 
-**Stand:** 2026-06-25 · **Status:** Vorschlag / Planung (noch kein Code)
+**Stand:** 2026-06-25 · **Status:** teilweise umgesetzt (2026-07: robuster MAD-z-Score in `obs/baselines.py` + Migration 010; Incident-Impact-Snapshot via Migration 015 — offen bleibt Task-Log-Freshness, siehe `OPEN_TASKS.md` **E**)
 **Quelle:** Abgleich der Referenzarchitektur *„Data Quality Observability für
 SAP Datasphere & HANA Cloud" (v0.1)* gegen den implementierten Signal-Stand.
 

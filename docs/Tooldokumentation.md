@@ -1,6 +1,6 @@
 # Signal — Tooldokumentation (vollständige Referenz)
 
-**Stand:** 2026-06-22 · **Komponente:** Data Quality & Observability Cockpit für SAP Datasphere
+**Stand:** 2026-07-23 · **Komponente:** Data Quality & Observability Cockpit für SAP Datasphere
 
 Diese Datei ist die zusammenhängende technische Referenz und beschreibt den **implementierten Stand**. Einstieg und Schnellstart: [`../README.md`](../README.md). Betriebsmodi/Personas: [`Betriebsmodi_Lite_und_Full.md`](Betriebsmodi_Lite_und_Full.md). Gate-vs-Contract-Klassifikation (`kind`): [`ADR-0001_Quality-Gates_vs_Contracts.md`](ADR-0001_Quality-Gates_vs_Contracts.md). Fachliches Konzept: [`Konzept_DQ_Observability_Cockpit.md`](Konzept_DQ_Observability_Cockpit.md). Implementierungs-/Planungshistorie & Gates: [`HANDOVER.md`](HANDOVER.md), [`PLAN_Remediation_v2.md`](PLAN_Remediation_v2.md).
 
@@ -29,7 +29,7 @@ Signal verwandelt **semantische Garantien** über Datasphere-Objekte in **determ
 
 - **Contracts tragen Garantien, nie SQL** (Gate G1). Der einzige Ort, an dem SQL entsteht, ist der Compiler.
 - **Engine ist eingefroren & frameworkfrei** (`dq_core` importiert nie FastAPI). Erweitern statt ändern.
-- **Drei Zustands-Achsen sind getrennt**: Lifecycle (Erstellung) · Compliance (Halten der Zusage) · Coverage (Abdeckung).
+- **Vier Zustands-Achsen sind getrennt**: Lifecycle (Erstellung) · Compliance (Halten der Zusage) · Coverage (Abdeckung) · Enforcement (Konsequenz eines Breaches: `gate | quarantine | monitor`).
 - **`kind` trennt Quality Gate von Contract** (ADR-0001): „Checks überall, Contracts nur an den Parteigrenzen." Gleiche Engine/Regel, unterschiedliche Konsequenz — ein `internal_gate`-Fehler ist ein Engineering-Signal, ein `*_contract`-Fehler ein governance-relevanter Compliance-Breach.
 - **Ein Code, zwei Deployments**: lokal (SQLite/NoAuth) und Kunde (HANA/OIDC) über Auth-/Store-Abstraktion, ohne Code-Zweige.
 
@@ -144,9 +144,9 @@ Der Compiler ist **deterministisch**: Header-Hash = f(Contract-Hash, Library-Ver
 | Versionierung | keine Pflicht | SemVer, Breaking ⇒ Major (G3) |
 | Breaking-Gate | nur für bereits zertifizierte `*_contract` | immer blockierend (nur `*_contract`) |
 
-Lite/Full beschreibt die **Prozess-Zeremonie** und ist **orthogonal** zu `kind` (Grenz-Klassifikation). Der Editor-**Default**-Modus wird aus dem `kind` abgeleitet (`internal_gate` → Lite/„Schnell zertifizieren", `*_contract` → Full/„Freigabe-Workflow"); der Override entfällt auf bereits zertifizierten Contracts (ADR-0002). Vollständig in [`Betriebsmodi_Lite_und_Full.md`](Betriebsmodi_Lite_und_Full.md) und [`ADR-0002_Editor-Modus_aus_Kind.md`](ADR-0002_Editor-Modus_aus_Kind.md).
+Lite/Full beschreibt die **Prozess-Zeremonie** und ist **orthogonal** zu `kind` (Grenz-Klassifikation). Der Editor-**Default**-Modus wird aus dem `kind` abgeleitet (`internal_gate` → Lite/„Schnell zertifizieren", `*_contract` → Full/„Freigabe-Workflow"); der Override entfällt auf bereits zertifizierten Contracts (ADR-0006). Vollständig in [`Betriebsmodi_Lite_und_Full.md`](Betriebsmodi_Lite_und_Full.md) und [`ADR-0006_Editor-Modus_aus_Kind.md`](ADR-0006_Editor-Modus_aus_Kind.md).
 
-### 3.6 Check-Bibliothek & Familien-Rollup
+### 3.7 Check-Bibliothek & Familien-Rollup
 
 `packages/dq_core/library/check_library.json` ist die einzige Quelle für Engine-Defaults **und** UI-Picker: **24 Templates in 4 Kategorien** (Vollständigkeit · Konsistenz · Verteilung & Aggregate · Aktualität & Sonstiges). Der Cockpit-Rollup klassifiziert je **Check-Typ** (`ResultStore._OBS_TYPES`): **Observability** = `freshness, row_count, schema, volume_delta, column_count, recent_volume`; alles andere = **Quality**.
 
@@ -155,6 +155,16 @@ Lite/Full beschreibt die **Prozess-Zeremonie** und ist **orthogonal** zu `kind` 
 - SAP/BDC-spezifische Templates wurden zugunsten allgemein gebräuchlicher, Soda-/GX-naher Checks entfernt.
 
 Der **Compiler** (§3.2) bildet Garantie-Familien auf eine feste Template-Teilmenge ab; die übrige Bibliothek steht dem manuellen Check Builder zur Verfügung.
+
+### 3.8 Enforcement-Achse — `gate | quarantine | monitor`
+
+`enforcement` ist die vierte Zustands-Achse je Check/Garantie (Default **`monitor`** — keine grüne Pipeline wird zum Überraschungs-Stopp), plus `enforcement_default` am Contract. Sie beschreibt, *welche Konsequenz* ein Breach hat, orthogonal zu `severity` und Lite/Full:
+
+- **`monitor`** — nur beobachten (Compliance/Incident wie bisher).
+- **`gate`** — der Lauf erhält das Verdict `block`; die konsumierende Task-Chain stoppt.
+- **`quarantine`** — Verdict `quarantine`; im Lauf-Pfad wird eine **Quarantäne-Episode** geöffnet (Lifecycle `open → reconciled → released → resolved`, `+ superseded`, Migration 016).
+
+Aus den Check-Ergebnissen rollt ein state-bewusstes (G6) **`gate_verdict`** je Lauf auf: `proceed | quarantine | block`. Konsum-Pfade: CLI-Exit-Codes 0/1/3 (`--no-enforce` schaltet ab), `GET /api/runs/{id}/status` (API-Task-Vertrag mit `fail_on`-Mapping) und — opt-in, doppelt gegated über `ENFORCEMENT_MATERIALIZE_ENABLED` + `DATASPHERE_SIGNAL_SCHEMA` — die **Verdict-Materialisierung** ins Signal-eigene Open-SQL-Schema (`packages/dq_core/enforce/`, `V_DQ_GATE_STATUS`, `P_DQ_ASSERT_GATE`), damit Datasphere-Task-Chains das Gate SQL-seitig abfragen können. Signal bleibt dabei read-only gegenüber **Kundendaten** (ADR-0002-Amendment: Schreiben nur im eigenen Schema). Konzepte: [`Konzept_Enforcement_Modi_Gate_Quarantine_Monitor.md`](Konzept_Enforcement_Modi_Gate_Quarantine_Monitor.md), [`Konzept_Datasphere_Integration_Gating_Quarantaene.md`](Konzept_Datasphere_Integration_Gating_Quarantaene.md).
 
 ---
 
@@ -169,16 +179,27 @@ Result-Store-Schema über nummerierte, idempotente Migrationen (`packages/dq_cor
 | `003_compliance_events_run_guard` | Compliance-Event-Log + Doppellauf-Guard |
 | `004_incident_lifecycle` | Incident-Tabellen + Timeline |
 | `005_notification_routing` | Notification-Kanäle/Regeln/Mutes |
+| `006_artifact_kind` | `dq_check_results.kind` (ADR-0001-Diskriminator, Default `internal_gate`) |
 | `007_incident_kind` | `dq_incidents.kind` (Engineering-Signal vs. Contract-Breach, Backfill `consumer_contract`) + `dq_notification_rules.match_kind` (Wildcard wenn leer) |
+| `008_operations` | Generischer Operation-/Progress-Kanal (ADR-0007) |
+| `009_schedules` | `dq_schedules` + Due-Run-Claim-Queue (ADR-0005, Option E) |
+| `010_baseline_median` | Observability-Intelligence v1: robuste globale Baselines (`median`/`mad`) |
+| `011_baseline_buckets` | Observability-Intelligence v1: saisonale Baseline-Buckets |
+| `012_segment_results` | Observability-Intelligence v1: allowlisted Aggregat-Segment-Details |
+| `013_incident_rca` | Observability-Intelligence v1: persistierte RCA-Snapshots + Contract-Kind-Index |
+| `014_incident_clustering` | Observability-Intelligence v1: Incident-Clustering für Notification-Dedupe |
 | `014_schema_snapshots` | Shift-Left-Schema-Drift: `dq_schema_snapshots` (Quellschema-Historie) + `dq_schema_drift` (Drift-Befunde gegen das Contract-Versprechen) |
+| `015_incident_impact` | Observability-Intelligence v1: `dq_incidents.impacted_objects` (Downstream-Impact-Snapshot) |
 | `015_profile_snapshots` | Data-Diff: `dq_profile_snapshots` (Aggregat-Profile als Snapshots für Distribution-/Key-Diff, ohne Sample-Rows) |
+| `016_enforcement` | Enforcement-Achse: `dq_check_results.enforcement_mode`, `dq_runs.gate_verdict`, `dq_quarantine` + `dq_quarantine_events` (Episoden-Lifecycle) |
 
-> Nummer 006 ist im Repo nicht belegt (übersprungen): Der `kind`-Diskriminator (Batch 2) lebt als Contract-Metadatum im YAML/Git und brauchte keine Store-Migration. Der Runner gleicht per Dateiname gegen `schema_migrations` ab; Lücken in der Nummerierung sind unkritisch.
+> Die Nummern **014** und **015** sind doppelt belegt (je zwei Dateien aus parallelen Feature-Strängen). Das ist unschön, aber unkritisch und bleibt so: Der Runner trackt Migrationen per **Dateiname** in `schema_migrations`, nicht per Nummer, und ausgelieferte Migrationen werden nie umbenannt. Neue Migrationen beginnen bei `017_…`.
 
 **Zentrale Tabellen (Auszug):**
 
-- `dq_runs(run_id PK, dataset, schema_name, started_at, finished_at, overall_status, total/passed/failed/warning_checks, run_state, contract_version, contract_hash, actor, triggered_by)`
-- `dq_check_results(id PK, run_id FK, check_name, sql_text, expect_expr, severity, passed, actual_value, error_message, duration_ms, state)` — `state ∈ {executed, skipped_stale, skipped_dependency, downgraded, error}`
+- `dq_runs(run_id PK, dataset, schema_name, started_at, finished_at, overall_status, total/passed/failed/warning_checks, run_state, contract_version, contract_hash, actor, triggered_by, gate_verdict)` — `gate_verdict ∈ {proceed, quarantine, block}`
+- `dq_check_results(id PK, run_id FK, check_name, sql_text, expect_expr, severity, passed, actual_value, error_message, duration_ms, state, kind, enforcement_mode)` — `state ∈ {executed, skipped_stale, skipped_dependency, downgraded, error}`
+- `dq_quarantine` + `dq_quarantine_events` — Quarantäne-Episoden (`open → reconciled → released → resolved`, `+ superseded`), Dedupe je Produkt über `manifest_hash`
 - `dq_diagnostics(id PK, run_id, check_name, row_data)` — **PII-Kanal**, default leer
 - `dq_compliance(product PK, contract_version, compliance, since, last_run_id)`
 - `contract_index(product PK, lifecycle, owned_by, version, head_hash, updated_at)` — Lese-Index (Git ist keine Query-DB)
@@ -206,6 +227,7 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | POST | `/api/objects/{id}/run` | Lauf auslösen → `202 {run_id}` `[AUTHZ]` |
 | POST | `/api/objects/{id}/profile` | Profil-Lauf (Stats-Tuple) |
 | GET | `/api/runs` · `/api/runs/{id}` | Läufe (paginiert `limit/offset`) / Detail |
+| GET | `/api/runs/{id}/status` | API-Task-Vertrag: `RUNNING/COMPLETED/FAILED` + `gate_verdict` (`fail_on`-Mapping für Task-Chains) |
 | GET | `/api/runs/{id}/results` · `/diagnostics` · `/events` | Ergebnisse · PII-gated Rohzeilen · SSE |
 | GET | `/api/runs/compare?base=&head=` | Lauf-/Versions-Vergleich (Statuswechsel je Check, inkl. `value_delta` vorher→nachher — B-1 Data-Diff) |
 | POST | `/api/objects/{id}/diff` | Data-Diff zweier Profil-Snapshots: `distribution` (Verteilungs-Diff) bzw. `keys` (Key-Reconciliation) `[AUTHZ steward+]` |
@@ -225,6 +247,7 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | POST | `/api/contracts/{product}/compile?dry_run=` | Garantien → Checks (persistiert nur `active`) |
 | POST | `/api/contracts/{product}/deprecate` | active → deprecated |
 | GET | `/api/contracts/{product}/sla` | SLA-%-Fenster (7/30/90 d); für `internal_gate` leer (`null`) |
+| GET | `/api/contracts/{product}/observed` | Beobachtete Realität je Garantie: letzter Messwert, Sparkline-Reihe, PASS/FAIL (read-only-Rollup) |
 | GET | `/api/contracts/{product}/export/odcs` · POST `/export/bdc` | ODCS-3.1 (nur `*_contract`, sonst 409) · CSN/ORD-Fragmente |
 | POST | `/api/contracts/reindex` | Index-Rebuild nach externem `git pull` `[AUTHZ]` |
 
@@ -251,6 +274,18 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | GET | `/api/metrics/health` · `/api/datasphere/*` · `/api/data-loads` | Betriebs-/Lastmetadaten |
 | GET | `/api/notifications/...` · POST/PATCH/DELETE `channels|rules|mutes` | Notification-Routing (Regeln optional kind-gefiltert via `match_kind`) |
 | GET | `/api/badge/{product}` | einbettbares Status-Badge |
+
+### Data Products, Quarantäne, Enforcement, Operations, Schedules
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/api/products` · `/api/products/{product}` | Data-Product-Aggregat (ADR-0004): Komposition, Boundary, Findings-Rollup |
+| GET | `/api/quarantine` · `/{id}` | Quarantäne-Episoden (Filter Status), Detail + Event-Timeline |
+| POST | `/api/quarantine/{id}/release` · `/confirm-reprocess` · `/reconcile` | Episoden-Übergänge (`steward+`, 409 bei unzulässigem Übergang) |
+| GET | `/api/enforcement/plan` · POST `/apply` | Materialisierungs-Plan (DDL/DML-Vorschau) · Apply ins Signal-Schema (`owner/admin`, Operations-Audit, doppelt gegated §3.8) |
+| GET | `/api/operations/{op_id}` · `/events` | Generischer Operation-/Progress-Kanal (ADR-0007): Poll + SSE |
+| GET/PUT/DELETE | `/api/objects/{id}/schedule` · GET `/api/schedules` | Pro-Objekt-Scheduling `manual/internal/external` (ADR-0005) + Ops-Sicht (`steward+`) |
+| GET/PUT | `/api/admin/connector` · POST `/login` | Datasphere-Connector-Konfiguration + OAuth-Login `[AUTHZ admin]` |
 
 ### Monitoring (Hub-Sharing, Hybrid)
 
@@ -298,6 +333,15 @@ Settings über `pydantic-settings` (`services/api/settings.py`). Auszug:
 | `NOTIFICATIONS_FILE` | `notifications.yml` | YAML-Fallback für Kanäle/Regeln (DB schlägt YAML) |
 | `DATASPHERE_*` / `DATASPHERE_USE_CLI` | — / `false` | Datasphere-API/CLI-Zugang (Lastmetadaten) |
 | `DATASPHERE_MONITORING_SPACE` | `""` | Hub-Space für „Für Monitoring vormerken"; leer = Feature aus. Signal schreibt **nicht** in Datasphere — das Provisioning übernimmt ein externes Skript. |
+| `MONITORING_SERVICE_TOKEN` | `""` | Token für den Skript-Callback (`PUT /api/monitoring/shares/{id}/status`) |
+| `SECRETS_FILE` | `secrets.local.yml` | lokaler Secret-Store für `password_ref`/`secret_ref` |
+| `PRODUCTS_DIR` | `products` | Data-Product-Definitionen (ADR-0004) |
+| `CONNECTOR_FILE` | `datasphere.yml` | persistierte Connector-Konfiguration (`/api/admin/connector`) |
+| `SEGMENT_VALUE_COLUMNS` | `[]` | Allowlist der Segment-Wertspalten (Obs-Intelligence, Migration 012) |
+| `INCIDENT_CLUSTER_WINDOW_MINUTES` | `15` | Zeitfenster fürs Incident-Clustering (Notification-Dedupe) |
+| `ENFORCEMENT_MATERIALIZE_ENABLED` | `false` | Kill-Switch der Verdict-Materialisierung (§3.8); nur zusammen mit `DATASPHERE_SIGNAL_SCHEMA` aktiv |
+| `DATASPHERE_SIGNAL_SCHEMA` | `""` | Signal-eigenes Open-SQL-Schema für `V_DQ_GATE_STATUS`/`P_DQ_ASSERT_GATE` (zur Laufzeit gebunden, G2) |
+| `ENFORCEMENT_VERDICT_TTL_SECONDS` | `0` | Verdict-Verfallszeit in der materialisierten Gate-Sicht (`0` = kein TTL) |
 
 Environments-Datei bindet das `{schema}` zur Laufzeit — Contracts bleiben environment-frei.
 
@@ -315,10 +359,12 @@ python cli/dq_check_runner.py \
   [--dry-run] [--mock] \
   [--host HOST --port 443 --user U --password P] \
   [--execution-mode auto|batch|isolated] \
-  [--output text|json]
+  [--output text|json] [--no-enforce]
 ```
 
 `--mock` läuft gegen die `MockConnection` (kein HANA). `--dry-run` persistiert nicht. Credentials kommen alternativ aus `HANA_USER`/`HANA_PASSWORD`. `--schema` bindet den `{schema}`-Platzhalter `[SCHEMA-MAP]`.
+
+**Exit-Codes folgen dem `gate_verdict`** (§3.8): `0` = proceed, `1` = block, `3` = quarantine (bewusst nicht 2 — das bleibt der Usage-/Config-Fehler). `--no-enforce` schaltet das Verdict-Mapping ab (immer 0 bei erfolgreichem Lauf); Task-Chains/Cron nutzen den Exit-Code als Gate.
 
 ---
 
@@ -331,12 +377,16 @@ Vite + React 18 + TS strict, TanStack Query v5, React Router, Tailwind (Design-T
 | `/` | Cockpit | DQ-Health-Verlauf (Trend-Graph), Familien-Rollups (Observability/Quality), Brennpunkte, Status-Grid (Objekt × Familie), Reliability-Heatmap, SLA-Panel, Activity-Feed; stale sichtbar (G6) |
 | `/my` | MyWork | Rollen-Landing; Incidents nach `kind` getrennt (Contract-Breach vs. Engineering-Signal) |
 | `/objects`, `/objects/:id` | Katalog/Detail | Faceted Search; Checks, Sparkline, „Verlauf"-Tab (Zeitreihen), Profiling-Drawer, Run-Trigger, „Für Monitoring vormerken" |
+| `/products`, `/products/:name` | Data Products | Produkt-Aggregat (ADR-0004): Komposition, Boundary, Findings |
 | `/contracts` | Contract-Workbench | Garantie-Editor (Modus aus `kind`), Compile, Breaking-Diff, Promotion-Flow, Govern-Onboarding |
-| `/lineage`, `/coverage` | Lineage-/Coverage-Map | Cytoscape; Coverage-Status je Node, Dimension-Switcher (Internal\|Contract\|All), Gate = gestrichelt |
+| `/lineage`, `/coverage` | Lineage-/Coverage-Map | Schematic-SVG-Lineage (Legacy-Cytoscape-Map als Fallback-Ansicht); Coverage-Status je Node, Dimension-Switcher (Internal\|Contract\|All), Gate = gestrichelt; `/coverage` ist Route-Alias derselben Ansicht |
 | `/incidents` | Incidents | Incident-Inbox + Timeline; `kind`-Badge & -Filter (Engineering-Signal vs. Contract-Breach) |
+| `/quarantine` | Quarantäne | Episoden-Inbox (Tabs nach Status), Drawer mit Event-Timeline, Freigabe-/Reprocess-Aktionen (§3.8) |
 | `/proposals` | Proposals | Miner-Vorschläge (Inbox), kind-Badge |
-| `/runs/:id`, `/runs/compare` | Run-Detail/-Vergleich | Live-Log (SSE) + Polling; Regressions-Diff zweier Runs |
-| `/governance`, `/library`, `/notifications` | Verwaltung | ACLs/Compliance-Ampel (nur Contracts), Check-Library-Browser, Routing (inkl. `match_kind`) |
+| `/runs/:id`, `/runs/compare` | Run-Detail/-Vergleich | Live-Log (SSE) + Polling; Regressions-Diff zweier Runs; `gate_verdict`-Anzeige |
+| `/schedules` | Schedules | Ops-Sicht der pro-Objekt-Zeitpläne (`manual/internal/external`, ADR-0005) |
+| `/compliance`, `/library`, `/notifications` | Verwaltung | ACLs/Compliance-Ampel (nur Contracts; `/governance` leitet hierher um), Check-Library-Browser, Routing (inkl. `match_kind`) |
+| `/settings`, `/environments`, `/inventory-admin` | Administration | Einstellungen (inkl. Datasphere-Connector), HANA-Verbindungen + Test (Operation/SSE), Inventar-Pflege |
 
 UI-Regeln: Status-Ampel (grün/gelb/rot/grau) ist **exklusiv**; Familienfarben nur für Dekor/Diagramme. Status-Encoding ≥3-von-4 (Farbe + Form/Glyph + Label, Carbon). Alle Strings zentral in `i18n/de.ts` (de-only). CSP gesetzt, ESLint mit `react/no-danger`; `dangerouslySetInnerHTML` verboten (S8).
 
@@ -410,6 +460,9 @@ make lint           # py_compile + tsc --noEmit
 | **Compliance** | `compliant \| breached \| unknown` — ob die aktive Zusage gehalten wird (nur Store) |
 | **Coverage** | `covered \| partial \| gap \| out_of_scope` — Abdeckungsgrad eines Objekts |
 | **Lite / Full** | Betriebsmodi: ohne / mit Versions-Approval-Zeremonie |
+| **Enforcement** | `gate \| quarantine \| monitor` — welche Konsequenz ein Breach hat (Default `monitor`) |
+| **Gate-Verdict** | `proceed \| quarantine \| block` — state-bewusster Rollup je Lauf; konsumiert via CLI-Exit-Code, `/api/runs/{id}/status` oder materialisierte Gate-Sicht |
+| **Quarantäne-Episode** | persistenter Quarantäne-Zustand je Produkt (`open → reconciled → released → resolved`, `+ superseded`) |
 | **Run / RunSummary** | ein Ausführungslauf einer Check-Suite + dessen Ergebnis |
 | **Proposal** | datengetriebener Garantie-Vorschlag aus dem Miner |
 | **Incident** | persistente Breach-Episode mit Timeline |

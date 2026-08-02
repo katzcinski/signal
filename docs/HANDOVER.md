@@ -3,7 +3,13 @@
 **Adressat:** Coding-Agent · **Modus:** sequentiell, ein Workstream nach dem anderen, Acceptance je Schritt grün halten.
 **Stand:** 2026-06-09 · gegründet auf bestehende Engine-Module + Review v0.1 (alle Deltas D1–D14 eingearbeitet).
 
-> **Lies zuerst:** `IMPLEMENTATION_PLAN_DQ_Cockpit.md` (Rahmen, gesetzte Entscheidungen E1–E6/B1–B4) und `REVIEW_Implementierungsplan_DQ_Cockpit.md` (Befunde F/A/U/S, Delta-Liste). Dieses Dokument ist die ausführbare Synthese. Bei Widerspruch gewinnt dieses Dokument.
+> **Status (2026-07-23): historisch — Workstreams sind umgesetzt.** Der
+> implementierte Stand steht in [`Tooldokumentation.md`](Tooldokumentation.md);
+> die verbliebenen Spikes/Entscheidungen (O1–O7, §5) werden in
+> [`OPEN_TASKS.md`](OPEN_TASKS.md) **K** geführt. Bei Widerspruch gewinnt der
+> Code bzw. die Tooldokumentation.
+
+> **Lies zuerst:** [`REVIEW_Implementierungsplan.md`](REVIEW_Implementierungsplan.md) (Befunde F/A/U/S, Delta-Liste; der dort reviewte ursprüngliche Implementierungsplan ist nicht mehr im Repo). Dieses Dokument ist die ausführbare Synthese. Bei Widerspruch gewinnt dieses Dokument.
 
 ## Boundary-Tags (im Code als Kommentar setzen, wo markiert)
 

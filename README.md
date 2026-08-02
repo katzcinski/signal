@@ -68,6 +68,7 @@ services/api/          # FastAPI — Router, Auth, Settings, SSE, Git-Writer
 apps/cockpit/          # Vite + React 18 + TS (strict) Frontend
 cli/                   # dq_check_runner.py — Engine ohne API (Cron/Task-Chain)
 contracts/             # Contract-YAMLs (Git = Wahrheit)
+products/              # Data-Product-Manifeste (<name>.yaml — Identität, Owner, Ports)
 data/                  # inventory.json / lineage.json (Extrakt-Snapshots)
 docs/                  # Konzepte, Pläne, Reviews, Betriebsmodi, Tooldokumentation
 tests/                 # pytest (unit + api)
@@ -90,9 +91,14 @@ tests/                 # pytest (unit + api)
 | Dokument | Inhalt |
 |---|---|
 | [`docs/ADR-0001_Quality-Gates_vs_Contracts.md`](docs/ADR-0001_Quality-Gates_vs_Contracts.md) | Trennung interner Quality Gates von Contracts via `kind` — **umgesetzt** (Batch 1–5) |
-| [`docs/ADR-0002_Editor-Modus_aus_Kind.md`](docs/ADR-0002_Editor-Modus_aus_Kind.md) | Editor-Modus (Lite/Full) aus dem `kind` ableiten — umgesetzt (Batch 6) |
+| [`docs/ADR-0002_Datasphere-DB-Zugriff.md`](docs/ADR-0002_Datasphere-DB-Zugriff.md) | DB-Identität: technischer Space-User statt Database Analysis User (read-only; Amendment: Schreiben nur im Signal-eigenen Schema) |
 | [`docs/ADR-0003_BDC-Datasphere-DataProductStudio.md`](docs/ADR-0003_BDC-Datasphere-DataProductStudio.md) | Signal in einem BDC/Datasphere-Setup (HDLF-Spaces vs. SQL-Output-Port) |
-| [`docs/ADR-0004_DataProduct-als-Komposition.md`](docs/ADR-0004_DataProduct-als-Komposition.md) | Datenprodukt als Komposition über Lineage — Manifest + abgeleitetes Interieur |
+| [`docs/ADR-0004_DataProduct-als-Komposition.md`](docs/ADR-0004_DataProduct-als-Komposition.md) | Datenprodukt als Komposition über Lineage — Manifest + abgeleitetes Interieur — umgesetzt (Phase 1) |
+| [`docs/ADR-0005_Scheduling.md`](docs/ADR-0005_Scheduling.md) | Scheduling extern (Task-Chain/Cron) vs. intern (Store-backed Poller, Option E) — umgesetzt |
+| [`docs/ADR-0006_Editor-Modus_aus_Kind.md`](docs/ADR-0006_Editor-Modus_aus_Kind.md) | Editor-Modus (Lite/Full) aus dem `kind` ableiten — umgesetzt (Batch 6); früher „ADR-0002" |
+| [`docs/ADR-0007_Generic-Operation-Progress-Channel.md`](docs/ADR-0007_Generic-Operation-Progress-Channel.md) | Generischer Operation-/Progress-Kanal (DQ-Run vs. Operation) — umgesetzt; früher „ADR-0005" |
+
+Der vollständige Index über **alle** Dokumente in `docs/` (inkl. Status aktiv/historisch) steht in [`docs/README.md`](docs/README.md).
 
 **Offene Punkte & Status** (was noch aussteht)
 
@@ -118,7 +124,7 @@ tests/                 # pytest (unit + api)
 | [`docs/Kundendeck_DataProducts_Lite.md`](docs/Kundendeck_DataProducts_Lite.md) | Präsentations-Gerüst für den Kundenpitch |
 | [`docs/Konzept_DQ_Observability_Cockpit.md`](docs/Konzept_DQ_Observability_Cockpit.md) | Fachliches Gesamtkonzept |
 | [`docs/ADR-0001_Quality-Gates_vs_Contracts.md`](docs/ADR-0001_Quality-Gates_vs_Contracts.md) | ADR: Trennung interner Quality Gates von Contracts (umgesetzt) |
-| [`docs/ADR-0002_Editor-Modus_aus_Kind.md`](docs/ADR-0002_Editor-Modus_aus_Kind.md) | ADR: Editor-Modus (Lite/Full) aus dem Artifact-`kind` ableiten (angenommen) |
+| [`docs/ADR-0006_Editor-Modus_aus_Kind.md`](docs/ADR-0006_Editor-Modus_aus_Kind.md) | ADR: Editor-Modus (Lite/Full) aus dem Artifact-`kind` ableiten (angenommen) |
 | [`docs/ADR-0003_BDC-Datasphere-DataProductStudio.md`](docs/ADR-0003_BDC-Datasphere-DataProductStudio.md) | ADR: Signal in einem BDC/Datasphere-Setup mit Data-Product-Studio-Produkten (HDLF-Spaces vs. SQL-Output-Port) |
 | [`docs/ADR-0004_DataProduct-als-Komposition.md`](docs/ADR-0004_DataProduct-als-Komposition.md) | ADR: Datenprodukt als Komposition über Lineage — Manifest + abgeleitetes Interieur (Vorschlag) |
 | [`docs/Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md`](docs/Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md) | Briefing/Übergabe für einen Vortrag zu Datenprodukten & Data Contracts in DSP/BDC |

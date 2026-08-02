@@ -1,6 +1,8 @@
-# ADR-0005 - Generic Operation Progress Channel
+# ADR-0007 - Generic Operation Progress Channel
 
 **Status:** accepted - grilled against the code on 2026-06-22.
+
+> **Numbering note (2026-07-23):** originally filed as "ADR-0005", colliding with `ADR-0005_Scheduling.md`; renumbered to **ADR-0007**. Older references to "ADR-0005" in the context of the operation/progress channel mean this ADR.
 
 Signal distinguishes a **DQ Run** from an **Operation**. A DQ Run executes quality checks and can produce persisted check results, compliance changes, and incidents; an Operation is user-triggered background work that reports progress and returns a verdict without being a quality-check execution.
 

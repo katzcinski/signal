@@ -1,6 +1,6 @@
 # Konzept: Shift-Left-Schema-Drift & Data-Diff v1 (Tier-2-Features)
 
-**Stand:** 2026-06-29 · **Status:** Konzept (Entwurf) · **Bezug:**
+**Stand:** 2026-06-29 · **Status:** **Backend umgesetzt** (2026-07: Migrationen `014_schema_snapshots`/`015_profile_snapshots`, `GET /api/contracts/{p}/drift`, `POST /api/objects/{id}/diff`, `value_delta` in `/api/runs/compare`); offen ist nur der Schema-Drift-Screen (`OPEN_TASKS.md` **A2**) · **Bezug:**
 [`Marktanalyse_DQ_Observability_2026.md`](Marktanalyse_DQ_Observability_2026.md) (Tier 2,
 §2.1 & §2.2), [`Tooldokumentation.md`](Tooldokumentation.md) (implementierter Stand)
 

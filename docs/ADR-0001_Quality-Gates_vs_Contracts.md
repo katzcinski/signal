@@ -4,7 +4,7 @@
 **Status:** *Umgesetzt* (implemented) — über Batch 1–5 ausgeliefert (Kurzfassung siehe §12).
 **Zweck:** Festhalten der Architektur-Entscheidung, ob und wie Signal **interne Data-Quality-Checks** von der **Contract-/Governance-Ebene** getrennt modelliert — als Reaktion auf das Konzeptpapier *„Data Contracts für ein Fact-View-Datenprodukt in SAP Datasphere / BDC"*.
 
-> Verwandte Dokumente: `ADR-0002_Editor-Modus_aus_Kind.md` (operationalisiert die Lite/Full-↔-`kind`-Orthogonalität aus §7 im UI) · `Betriebsmodi_Lite_und_Full.md` (Lite/Full auf einem Unterbau) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam) · `HANDOVER.md` (Workstreams, Gates) · `Konzept_DQ_Observability_Cockpit.md` (fachliches Konzept).
+> Verwandte Dokumente: `ADR-0006_Editor-Modus_aus_Kind.md` (operationalisiert die Lite/Full-↔-`kind`-Orthogonalität aus §7 im UI) · `Betriebsmodi_Lite_und_Full.md` (Lite/Full auf einem Unterbau) · `Zusatz_ContractLifecycle_ORDBDCIntegration.md` (ORD/ODCS-Seam) · `HANDOVER.md` (Workstreams, Gates) · `Konzept_DQ_Observability_Cockpit.md` (fachliches Konzept).
 
 ---
 
@@ -158,7 +158,7 @@ Die „Beförderung" `internal_gate → *_contract` ist damit der explizite Mome
 
 **Neutral**
 
-- Lite/Full (Betriebsmodi) bleibt orthogonal: Lite/Full beschreibt *Prozess-Zeremonie*, `kind` beschreibt *Grenz-Klassifikation*. Ein `outbound_contract` kann im Lite- wie im Full-Modus geführt werden. → **ADR-0002** operationalisiert diese Orthogonalität im UI: der Editor-Modus wird aus dem `kind` vorbelegt (Override kontrolliert), statt frei togglebar zu sein.
+- Lite/Full (Betriebsmodi) bleibt orthogonal: Lite/Full beschreibt *Prozess-Zeremonie*, `kind` beschreibt *Grenz-Klassifikation*. Ein `outbound_contract` kann im Lite- wie im Full-Modus geführt werden. → **ADR-0006** operationalisiert diese Orthogonalität im UI: der Editor-Modus wird aus dem `kind` vorbelegt (Override kontrolliert), statt frei togglebar zu sein.
 
 ---
 

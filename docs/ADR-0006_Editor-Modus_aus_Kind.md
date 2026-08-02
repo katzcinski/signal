@@ -1,7 +1,9 @@
-# ADR-0002 — Editor-Modus (Lite/Full) aus dem Artifact-`kind` ableiten
+# ADR-0006 — Editor-Modus (Lite/Full) aus dem Artifact-`kind` ableiten
 
 **Adressat:** Beratung, Plattform-Team, Governance, Entwicklung · **Stand:** 2026-06-19
 **Status:** *Angenommen* (accepted) — Umsetzung siehe `Implementation_Batch6_Mode_Kind_Defaulting.md`.
+
+> **Hinweis zur Nummerierung (2026-07-23):** Diese ADR hieß ursprünglich „ADR-0002" und kollidierte mit `ADR-0002_Datasphere-DB-Zugriff.md`. Sie wurde auf **ADR-0006** umnummeriert; ältere Dokumente, die „ADR-0002" im Kontext Editor-Modus/Lite-Full zitieren, meinen diese ADR.
 **Zweck:** Festhalten, wie der Editor-Modus der Contract Workbench (Lite vs. Full) und die Artifact-Klassifikation (`kind`) zueinander stehen — und die heute inkonsistente, frei togglebare Kopplung in eine klare Regel überführen.
 
 > Verwandte Dokumente: `ADR-0001_Quality-Gates_vs_Contracts.md` (Trennung Gate/Contract via `kind`) · `Betriebsmodi_Lite_und_Full.md` (Lite/Full-Prozesse, wird durch diese ADR aktualisiert) · `Implementation_Batch5_Kind_Gated_Lifecycle_Ceremony.md` (kind-gegateter Lifecycle).

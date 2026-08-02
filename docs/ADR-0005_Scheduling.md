@@ -1,7 +1,7 @@
 # ADR-0005 — Scheduling: extern (Task-Chain/Cron) vs. intern (Store-backed Poller)
 
 **Adressat:** Beratung, Plattform-Team, Entwicklung · **Stand:** 2026-06-24
-**Status:** *Vorschlag* (proposed) — Prototyp implementiert auf `claude/signal-scheduler-options-ycdvnx`.
+**Status:** *Angenommen* (accepted) — **umgesetzt in `main`** (Option E: Migration `009_schedules`, `services/api/scheduler.py`, `PUT/GET/DELETE /api/objects/{id}/schedule`, `GET /api/schedules`, opt-in via `SCHEDULER_ENABLED`). Phase-2-Punkte im Backlog: `OPEN_TASKS.md` **N**.
 **Zweck:** Festhalten, wie regelmäßige DQ-Läufe geplant werden — und warum Scheduling ein **pro-Objekt umschaltbares** Attribut wird (manuell / intern / extern), statt eine globale Betriebsentscheidung.
 
 > Verwandte Dokumente: `Tooldokumentation.md` §7 (CLI), §10 (Deployment) · `ADR-0001` (Gates vs. Contracts, G7-Framework-Isolation).
