@@ -19,6 +19,7 @@ Status in `OPEN_TASKS.md` bzw. der Banner im Dokumentkopf.
 | [`Betriebsmodi_Lite_und_Full.md`](Betriebsmodi_Lite_und_Full.md) | Lite vs. Full — Prozess, Personas, Tooling |
 | [`Checks_Statuses_Flows.md`](Checks_Statuses_Flows.md) | Wie Signal über Objekte urteilt: Checks, Status-Achsen, Flows |
 | [`TOOLTIP_CATALOG.md`](TOOLTIP_CATALOG.md) | Tooltip-/Begriffskatalog fürs Cockpit |
+| [`Datenfluesse_Quelle_vs_Signal.md`](Datenfluesse_Quelle_vs_Signal.md) | **Datenfluss-Landkarte** — welche Daten aus der Quelle, welche aus Signals eigenen Tabellen/Views; Zonen-Modell, Quarantäne- und Healing-Pfade (Diagramme) |
 
 ## Architektur-Entscheidungen (ADRs)
 
