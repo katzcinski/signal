@@ -44,7 +44,7 @@ umnummeriert (Hinweis jeweils im Dokumentkopf).
 | [`Konzept_Enforcement_Modi_Gate_Quarantine_Monitor.md`](Konzept_Enforcement_Modi_Gate_Quarantine_Monitor.md) | Durchsetzungs-Achse `gate \| quarantine \| monitor` | **umgesetzt** (Slices ①–③) |
 | [`Konzept_Datasphere_Integration_Gating_Quarantaene.md`](Konzept_Datasphere_Integration_Gating_Quarantaene.md) | Gating & Quarantäne in Datasphere-Pipelines (Open-SQL-Materialisierung) | in Umsetzung: ①–③ implementiert, ④–⑦ offen |
 | [`Konzept_Observability_Intelligence_v1.md`](Konzept_Observability_Intelligence_v1.md) | Baselines, Segmente, RCA, Clustering (Tier 1) | **umgesetzt** (Migrationen 010–015) |
-| [`Konzept_ShiftLeft_DataDiff_v1.md`](Konzept_ShiftLeft_DataDiff_v1.md) | Schema-Drift der Quelle + Data-Diff (Tier 2) | Backend umgesetzt; Screen offen (A2) |
+| [`Konzept_ShiftLeft_DataDiff_v1.md`](Konzept_ShiftLeft_DataDiff_v1.md) | Schema-Drift der Quelle + Data-Diff (Tier 2) | **umgesetzt** inkl. Screen `/schema-drift` (A2, 2026-08) |
 | [`Konzept_Runs_Freshness.md`](Konzept_Runs_Freshness.md) | Run-/Load-Info als Freshness-Achse | teilweise; Entscheidungen offen (`OPEN_TASKS` J) |
 | [`Konzept_Managed_Service_Provisioning.md`](Konzept_Managed_Service_Provisioning.md) | Managed Service: Provisionierung, Tenant-Isolation | Konzept (`OPEN_TASKS` D) |
 | [`Konzept_MultiPlattform_Executor_BDC.md`](Konzept_MultiPlattform_Executor_BDC.md) | Executor für HANA · HDLF · Databricks | Konzept (`OPEN_TASKS` H) |

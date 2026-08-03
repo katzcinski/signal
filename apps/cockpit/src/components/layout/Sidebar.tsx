@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/ui';
 // symbols (⬡ ⊞ ⟁ …) that rendered inconsistently and carried no label. Each is
 // a 16px stroke icon; semantics come from the adjacent aria-label/title, so the
 // collapsed rail stays navigable for keyboard and screen-reader users.
-type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'quarantine' | 'enforcement' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin' | 'environments';
+type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'schemaDrift' | 'incidents' | 'quarantine' | 'enforcement' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin' | 'environments';
 
 function Icon({ name }: { name: IconKey }) {
   const common = {
@@ -23,6 +23,7 @@ function Icon({ name }: { name: IconKey }) {
     case 'contracts':  return <svg {...common}><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v4h4" /><path d="M10 13h6M10 17h6" /></svg>;
     case 'lineage':    return <svg {...common}><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="12" r="2.5" /><circle cx="6" cy="18" r="2.5" /><path d="M8.2 7.3 15.8 11M8.2 16.7 15.8 13" /></svg>;
     case 'schedules':  return <svg {...common}><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 1.6" /></svg>;
+    case 'schemaDrift': return <svg {...common}><rect x="4" y="4" width="6" height="16" rx="1" /><rect x="14" y="4" width="6" height="10" rx="1" /><path d="M17 17v4M15 19l2 2 2-2" /></svg>;
     case 'incidents':  return <svg {...common}><path d="M5 21V4l13 .5L14 8l4 3.5L5 12" /></svg>;
     case 'quarantine': return <svg {...common}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 9h16M4 15h16M9 4v16M15 4v16" /></svg>;
     case 'enforcement': return <svg {...common}><path d="M6 3v18M6 4h11l-3 3.5L17 11H6" /></svg>;
@@ -51,6 +52,7 @@ const DQ_BLOCK: NavItem[] = [
   { to: '/objects',    label: t.nav.objects,    icon: 'objects' },
   { to: '/products',   label: t.nav.products,   icon: 'products' },
   { to: '/lineage',    label: t.nav.lineage,    icon: 'lineage', aliases: ['/coverage'] },
+  { to: '/schema-drift', label: t.nav.schemaDrift, icon: 'schemaDrift' },
   { to: '/incidents',  label: t.nav.incidents,  icon: 'incidents' },
   { to: '/quarantine', label: t.nav.quarantine, icon: 'quarantine' },
   { to: '/proposals',  label: t.nav.proposals,  icon: 'proposals' },

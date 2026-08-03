@@ -952,6 +952,59 @@ class ResultStore:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_schema_snapshots(self, object_name: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Snapshot-Historie eines Objekts, **älteste zuerst** (Evolution über Zeit).
+
+        Das Limit greift auf die jüngsten Snapshots — bei mehr Historie fällt
+        der älteste Rand weg, nicht der aktuelle."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM ("
+                "  SELECT * FROM dq_schema_snapshots WHERE object_name=? "
+                "  ORDER BY id DESC LIMIT ?"
+                ") ORDER BY id ASC",
+                (object_name, limit),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def list_schema_drift_objects(self) -> list[dict[str, Any]]:
+        """Rollup je Objekt über Snapshots × Drift-Befunde (Evolution-Overview).
+
+        Ein Objekt erscheint, sobald es mindestens einen Snapshot **oder** einen
+        Drift-Befund trägt; `last_incident_id` ist das Incident des jüngsten
+        Befunds mit Incident (Incident-IDs wachsen monoton)."""
+        with self._conn() as conn:
+            snap_rows = conn.execute(
+                "SELECT object_name, COUNT(*) AS snapshots, "
+                "MIN(captured_at) AS first_captured_at, MAX(captured_at) AS last_captured_at, "
+                "COUNT(DISTINCT inventory_hash) AS distinct_schemas "
+                "FROM dq_schema_snapshots GROUP BY object_name"
+            ).fetchall()
+            drift_rows = conn.execute(
+                "SELECT object_name, COUNT(*) AS findings, "
+                "COALESCE(SUM(breaking), 0) AS breaking, "
+                "MAX(detected_at) AS last_detected_at, "
+                "(SELECT d2.incident_id FROM dq_schema_drift d2 "
+                "  WHERE d2.object_name = d.object_name AND d2.incident_id IS NOT NULL "
+                "  ORDER BY d2.id DESC LIMIT 1) AS last_incident_id "
+                "FROM dq_schema_drift d GROUP BY object_name"
+            ).fetchall()
+
+        base = {
+            "snapshots": 0, "first_captured_at": None, "last_captured_at": None,
+            "distinct_schemas": 0, "findings": 0, "breaking": 0,
+            "last_detected_at": None, "last_incident_id": None,
+        }
+        merged: dict[str, dict[str, Any]] = {}
+        for r in snap_rows:
+            merged[r["object_name"]] = {**base, "object_name": r["object_name"], **dict(r)}
+        for r in drift_rows:
+            row = merged.setdefault(
+                r["object_name"], {**base, "object_name": r["object_name"]}
+            )
+            row.update({k: r[k] for k in r.keys() if k != "object_name"})
+        return sorted(merged.values(), key=lambda r: r["object_name"])
+
     def list_incidents(
         self,
         status: str | None = None,

@@ -1094,6 +1094,55 @@ export interface SchemaDriftReport {
   history: SchemaDriftHistoryRow[];
 }
 
+// ---- Schema-Evolution-Screen (GET /api/schema-drift[…]) — A2/UX-N9 ----
+export interface SchemaDriftObjectRow {
+  object_name: string;
+  snapshots: number;
+  first_captured_at: string | null;
+  last_captured_at: string | null;
+  distinct_schemas: number;
+  findings: number;
+  breaking: number;
+  last_detected_at: string | null;
+  last_incident_id: number | null;
+  column_count: number | null;
+  product: string | null;
+  kind: string | null;
+  contract_version: string | null;
+  lifecycle: string | null;
+}
+
+export interface SchemaEvolutionSnapshot {
+  id: number;
+  captured_at: string;
+  inventory_hash: string;
+  column_count: number;
+}
+
+export interface SchemaEvolutionChange {
+  category: SchemaDriftCategory;
+  column: string;
+  before: string;
+  after: string;
+}
+
+export interface SchemaEvolutionStep {
+  from_id: number;
+  to_id: number;
+  from_at: string;
+  to_at: string;
+  changes: SchemaEvolutionChange[];
+}
+
+export interface SchemaEvolutionOut {
+  object_name: string;
+  contract: { product: string; version: string; kind: string; lifecycle: string } | null;
+  snapshots: SchemaEvolutionSnapshot[];
+  steps: SchemaEvolutionStep[];
+  drift_events: SchemaDriftHistoryRow[];
+  latest_columns: { name?: string; type?: string; key?: unknown; nullable?: unknown }[];
+}
+
 // ---- Data-Diff über Profil-Snapshots (POST /api/objects/{id}/diff) — Konzept §B ----
 export interface MetricDelta {
   base: number | null;

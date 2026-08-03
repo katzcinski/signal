@@ -286,6 +286,7 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | GET | `/api/operations/{op_id}` · `/events` | Generischer Operation-/Progress-Kanal (ADR-0007): Poll + SSE |
 | GET/PUT/DELETE | `/api/objects/{id}/schedule` · GET `/api/schedules` | Pro-Objekt-Scheduling `manual/internal/external` (ADR-0005) + Ops-Sicht (`steward+`) |
 | GET/PUT | `/api/admin/connector` · POST `/login` | Datasphere-Connector-Konfiguration + OAuth-Login `[AUTHZ admin]` |
+| GET | `/api/schema-drift` · `/{object}` | Schema-Evolution (A2/UX-N9): Rollup je Objekt (Snapshots × Drift × Contract) · Snapshot-Diffs über Zeit + Drift-Historie mit Incident-Referenz |
 
 ### Monitoring (Hub-Sharing, Hybrid)
 
@@ -385,6 +386,7 @@ Vite + React 18 + TS strict, TanStack Query v5, React Router, Tailwind (Design-T
 | `/proposals` | Proposals | Miner-Vorschläge (Inbox), kind-Badge |
 | `/runs/:id`, `/runs/compare` | Run-Detail/-Vergleich | Live-Log (SSE) + Polling; Regressions-Diff zweier Runs; `gate_verdict`-Anzeige |
 | `/schedules` | Schedules | Ops-Sicht der pro-Objekt-Zeitpläne (`manual/internal/external`, ADR-0005) |
+| `/schema-drift` | Schema-Drift | Schema-Evolution je Objekt über Zeit (A2/UX-N9): Snapshot-Diffs (Spalten hinzu/entfernt/Typ), Contract-Brüche mit Incident-Deep-Link |
 | `/compliance`, `/library`, `/notifications` | Verwaltung | ACLs/Compliance-Ampel (nur Contracts; `/governance` leitet hierher um), Check-Library-Browser, Routing (inkl. `match_kind`) |
 | `/settings`, `/environments`, `/inventory-admin` | Administration | Einstellungen (inkl. Datasphere-Connector), HANA-Verbindungen + Test (Operation/SSE), Inventar-Pflege |
 

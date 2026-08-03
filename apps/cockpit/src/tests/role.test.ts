@@ -99,6 +99,7 @@ describe('navForRole', () => {
       '/objects',
       '/products',
       '/lineage',
+      '/schema-drift',
       '/incidents',
       '/quarantine',
       '/proposals',

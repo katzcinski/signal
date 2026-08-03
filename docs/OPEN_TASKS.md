@@ -37,7 +37,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | ID | Thema | Status | Prio | Quelle |
 |----|-------|--------|------|--------|
 | **A1** | Teilbarer Quality-Report / Data-Docs-Snapshot (UX-N6) | ◻ Offen | M | Abschnitt A |
-| **A2** | Schema-Drift-/Change-Screen (UX-N9) | ◻ Offen | M | Abschnitt A |
+| **A2** | Schema-Drift-/Change-Screen (UX-N9) | ✅ Done | M | Abschnitt A |
 | **B**  | Spaltenebene-Lineage + Impact (UX-N7 / O3) | ✅ Done | H | `PLAN_UX-N7_Column_Lineage.md` |
 | **C**  | `HanaResultStore` (O6) + HANA-Migrationen + Smoke | ◻ Offen | H | `Implementation_HANA_Connection_Progress.md` WS E/F |
 | **D**  | Managed Service (Instanz-pro-Tenant) | ◻ Offen | H | `PLAN_Managed_Service_v1.md` |
@@ -93,7 +93,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | UX-N6 | Teilbarer Quality-Report / Data-Docs (Link/PDF) | ◻ Offen | Badge existiert (`/badge/{p}`), Report-Snapshot fehlt → **A1** |
 | UX-N7 | Spaltenebene-Lineage + Impact-Analyse | ✅ Done | DAG + Impact-API + UI gegen Demo-Daten; Live-Tenant-CSN bleibt Verifikation unter **I/L** |
 | UX-N8 | Check-/Expectation-Library-Browser | ✅ Done | Tooldoku §8 (`/library`) |
-| UX-N9 | Schema-Drift-/Change-Screen | ◻ Offen | — → **A2** |
+| UX-N9 | Schema-Drift-/Change-Screen | ✅ Done | `/schema-drift` (Overview + Evolution je Objekt) → **A2** |
 | UX-N10 | Status-Heatmap Objekt × Tag | ✅ Done | Tooldoku §8 (Cockpit) |
 | UX-N11 | Echte Charts (Threshold-/Anomalie-Band, Zeitraum-Picker) | ✅ Done | — |
 | UX-N12 | Health-Gauge mit Trendrichtung | ✅ Done | Tooldoku §8 (Cockpit) |
@@ -101,7 +101,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | UX-N14 | Profiling-/Sample-Row-View hinter `[PII-GATE]` | ✅ Done | Tooldoku §5/§6 (`/profile`, `ALLOW_PROFILE_SAMPLES`) |
 | UX-N15 | Activity-/Audit-Feed | ✅ Done | Tooldoku §5 (`/api/activity`) |
 
-**Offen (2):** UX-N6 (teilbarer Report, **A1**) · UX-N9 (Schema-Drift-Screen, **A2**).
+**Offen (1):** UX-N6 (teilbarer Report, **A1**).
 
 ### Offene Punkte (Detail)
 
@@ -110,19 +110,18 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
   auth-gegatete **Report-Snapshot** (Link/PDF für Nicht-Nutzer, GX-Vorbild) fehlt.
   Kein `/report`-Route im Backend.
   *Acceptance:* öffentlich teilbarer, auth-gegateter Report-Snapshot.
-- **A2 · UX-N9 — Schema-Drift-/Change-Screen.** `[M]` ◻
-  Schema-Evolution je Objekt über Zeit (hinzugefügte/entfernte/typgeänderte
-  Spalten, Contract-Bruch markieren). `diff.py` trägt Type-Narrowing erst mit
-  Schema v2 (Batch 5 „Out of scope").
-  *Querverweis (Stand 2026-07-23):* Der Datenpfad existiert bereits vollständig —
-  Drift-Persistenz beim Extract (`services/api/schema_drift_service.py`, Hook in
-  `routers/extract.py`), Report-API (`GET /api/contracts/{p}/drift` in
-  `routers/contracts.py`) und FE-Binding (`useSchemaDrift` in
-  `apps/cockpit/src/api/contracts.ts`, genutzt vom `SchemaDriftBanner` in der
-  Workbench), inkl. Tests (`tests/unit/test_schema_drift_*`). Offen ist **nur
-  noch der eigenständige Screen** (Schema-Evolution über Zeit: lazy Page + Route
-  in `App.tsx` + Strings in `i18n/de.ts` + vitest).
-  *Acceptance:* Spaltenänderungen je Objekt über Zeit, Contract-Bruch markiert.
+- **A2 · UX-N9 — Schema-Drift-/Change-Screen.** `[M]` ✅ (2026-08-03)
+  Eigenständiger Screen unter `/schema-drift`: Overview je Objekt (Snapshots,
+  distinct Schemata, Befunde/breaking, Contract-Bindung) + Evolution über Zeit
+  (konsekutive Snapshot-Diffs via `diff_snapshots` in
+  `dq_core/contract/schema_drift.py`, frameworkfrei) + Drift-Historie gegen den
+  Contract mit Incident-Deep-Link. API `GET /api/schema-drift[/{object}]`
+  (`routers/schema_drift.py`), Store-Rollups (`get_schema_snapshots`,
+  `list_schema_drift_objects`), Page `pages/SchemaDrift.tsx` + Nav + `de.ts`;
+  Tests: `tests/unit/test_schema_drift_evolution.py`,
+  `tests/api/test_schema_drift_screen.py`, `src/tests/SchemaDrift.test.tsx`.
+  `diff.py`-Type-Narrowing (Schema v2) bleibt bewusst außen vor.
+  *Acceptance erfüllt:* Spaltenänderungen je Objekt über Zeit, Contract-Bruch markiert.
 
 UX-N7 (Spalten-Lineage) ist erledigt; historische Details und Restrisiken stehen in **B**.
 
@@ -520,5 +519,6 @@ P5 (BDC/HDLF) ────────────► H / Product-Discovery / te
 **Empfohlene Reihenfolge nach Hebel/Aufwand:** M1/M2/M3/M6
 (Workflow-Korrektheit + CI-Wahrheit) → C2/D1 (`HanaStore`, entsperrt
 Full+Managed und N3) → I3 (Live-Verifikation Spalten-Lineage) →
-J1-Entscheidung → A1/A2. O/N/P/F④–⑦/G/H bleiben nachgelagert, bis Demo- oder
-Kundenbedarf sie zieht. (E1/E3, F①–③ und N2 sind seit 2026-07 geliefert.)
+J1-Entscheidung → A1. O/N/P/F④–⑦/G/H bleiben nachgelagert, bis Demo- oder
+Kundenbedarf sie zieht. (E1/E3, F①–③ und N2 sind seit 2026-07 geliefert;
+A2 seit 2026-08.)

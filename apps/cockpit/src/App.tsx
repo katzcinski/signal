@@ -12,6 +12,7 @@ const Products          = lazy(() => import('./pages/Products'));
 const ProductDetail     = lazy(() => import('./pages/ProductDetail'));
 const ContractWorkbench = lazy(() => import('./pages/ContractWorkbench'));
 const Lineage           = lazy(() => import('./pages/LineagePage'));
+const SchemaDrift       = lazy(() => import('./pages/SchemaDrift'));
 const Incidents         = lazy(() => import('./pages/Incidents'));
 const Quarantine        = lazy(() => import('./pages/Quarantine'));
 const Enforcement       = lazy(() => import('./pages/Enforcement'));
@@ -52,6 +53,7 @@ export default function App() {
               <Route path="/lineage"     element={<Lineage />} />
               {/* Route alias (WS4): /coverage rendert dieselbe Lineage-Ansicht */}
               <Route path="/coverage"    element={<Lineage />} />
+              <Route path="/schema-drift" element={<SchemaDrift />} />
               <Route path="/schedules"   element={<Schedules />} />
               <Route path="/incidents"   element={<Incidents />} />
               <Route path="/quarantine"  element={<Quarantine />} />
