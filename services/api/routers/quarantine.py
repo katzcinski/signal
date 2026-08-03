@@ -53,10 +53,47 @@ def release_quarantine(
     body: QuarantineActionIn = Body(default=QuarantineActionIn()),
     store: StoreDep = ...,
 ):
-    """[AUTHZ] Freigabe ist eine Governance-Entscheidung — steward+."""
+    """[AUTHZ] Freigabe ist eine Governance-Entscheidung — steward+.
+
+    Healing-Vorbedingungen (Konzept_Manuelles_Healing §2), sobald an dieser
+    Episode korrigiert wurde:
+    * **Vier-Augen** bei Contract-Kinds — Korrigierender ≠ Freigebender.
+    * **Heal → Re-Check → Release** — erfüllt das Bad-Prädikat noch Zeilen,
+      ist die Episode nicht freigabefähig.
+    Episoden ohne Korrekturen laufen unverändert durch (keine neue Hürde für
+    den bestehenden Quarantäne-Fluss).
+    """
     if not principal.has_role("steward", "owner", "admin"):
         raise HTTPException(status_code=403, detail="Quarantine release requires steward role or higher.")
+    _assert_healing_preconditions(store, quarantine_id, principal)
     return _transition(store.release_quarantine, quarantine_id, principal.name, body.note)
+
+
+def _assert_healing_preconditions(store, quarantine_id: int, principal) -> None:
+    corrections = store.list_healing_corrections(episode_id=quarantine_id, limit=1)
+    if not corrections:
+        return
+    from ..deps import get_inventory
+    from ..healing import requires_four_eyes, run_recheck, split_spec_for
+    from ..settings import get_settings
+
+    episode = store.get_quarantine(quarantine_id) or {}
+    product = episode.get("product", "")
+    settings = get_settings()
+
+    if requires_four_eyes(product, settings) and principal.name in store.correction_actors(quarantine_id):
+        raise HTTPException(
+            status_code=409,
+            detail="Four-eyes rule: the corrector of a contract episode must not release it.",
+        )
+
+    spec = split_spec_for(settings, get_inventory(), product)
+    remaining = run_recheck(settings, spec, quarantine_id) if spec is not None else None
+    if remaining:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{remaining} row(s) still violate the quarantine predicate — heal or re-check first.",
+        )
 
 
 @router.post("/{quarantine_id}/confirm-reprocess")

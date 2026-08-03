@@ -89,12 +89,17 @@ class ResultStore:
     @staticmethod
     def _run_migration(conn: sqlite3.Connection, sql: str) -> None:
         """Run a migration statement-by-statement, skipping ADD COLUMN
-        statements that fail because the column already exists."""
-        for stmt in sql.split(";"):
-            # Strip comment-only lines at the top of a statement, then check
-            # if anything executable remains.
-            lines = [ln for ln in stmt.splitlines() if not ln.strip().startswith("--")]
-            executable = "\n".join(lines).strip()
+        statements that fail because the column already exists.
+
+        Comment-only lines are stripped *before* splitting on ';' — a semicolon
+        inside a comment would otherwise cut a statement in half and produce a
+        syntax error far from its cause.
+        """
+        body = "\n".join(
+            ln for ln in sql.splitlines() if not ln.strip().startswith("--")
+        )
+        for stmt in body.split(";"):
+            executable = stmt.strip()
             if not executable:
                 continue
             try:
@@ -1004,6 +1009,199 @@ class ResultStore:
             )
             row.update({k: r[k] for k in r.keys() if k != "object_name"})
         return sorted(merged.values(), key=lambda r: r["object_name"])
+
+    # ------------------------------------------------------------------
+    # Healing-Workbench (Migration 019) — H1 Korrekturen, H3 Patches
+    # ------------------------------------------------------------------
+
+    def add_healing_correction(
+        self,
+        *,
+        object_id: str,
+        episode_id: int,
+        row_key: dict[str, Any],
+        column_name: str,
+        before_value: Any,
+        after_value: Any,
+        reason: str = "",
+        actor: str = "",
+        applied: bool = False,
+        apply_error: str = "",
+    ) -> dict[str, Any]:
+        """H1: Korrektur auditieren. Der Store ist die Wahrheit — die
+        HANA-Materialisierung ist opt-in und wird über `applied` ausgewiesen
+        (G6-Disziplin: ein nicht materialisierter Eintrag ist sichtbar, nicht
+        stillschweigend verschwunden)."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            cur = conn.execute(
+                "INSERT INTO dq_healing_corrections(object_id, episode_id, row_key, "
+                "column_name, before_value, after_value, reason, actor, created_at, "
+                "applied, apply_error) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    object_id, int(episode_id), json.dumps(row_key, sort_keys=True),
+                    column_name,
+                    None if before_value is None else str(before_value),
+                    None if after_value is None else str(after_value),
+                    reason, actor, now, int(bool(applied)), apply_error,
+                ),
+            )
+            row = conn.execute(
+                "SELECT * FROM dq_healing_corrections WHERE id=?", (cur.lastrowid,)
+            ).fetchone()
+        return self._correction_row(row)
+
+    @staticmethod
+    def _correction_row(row: Any) -> dict[str, Any]:
+        d = dict(row)
+        d["applied"] = bool(d.get("applied", 0))
+        try:
+            d["row_key"] = json.loads(d.get("row_key") or "{}")
+        except (TypeError, ValueError):
+            d["row_key"] = {}
+        return d
+
+    def list_healing_corrections(
+        self, *, object_id: str | None = None, episode_id: int | None = None, limit: int = 200
+    ) -> list[dict[str, Any]]:
+        where, params = [], []
+        if object_id:
+            where.append("object_id=?")
+            params.append(object_id)
+        if episode_id is not None:
+            where.append("episode_id=?")
+            params.append(int(episode_id))
+        clause = ("WHERE " + " AND ".join(where)) if where else ""
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM dq_healing_corrections {clause} ORDER BY id DESC LIMIT ?",
+                (*params, limit),
+            ).fetchall()
+        return [self._correction_row(r) for r in rows]
+
+    def correction_actors(self, episode_id: int) -> set[str]:
+        """Akteure, die an dieser Episode korrigiert haben — Grundlage der
+        Vier-Augen-Regel bei Contract-Kinds (Korrigierender ≠ Freigebender)."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT actor FROM dq_healing_corrections WHERE episode_id=?",
+                (int(episode_id),),
+            ).fetchall()
+        return {str(r["actor"]) for r in rows if r["actor"]}
+
+    def upsert_healing_patch(
+        self,
+        *,
+        patch_id: str,
+        object_id: str,
+        keys: dict[str, Any],
+        values: dict[str, Any],
+        reason: str = "",
+        actor: str = "",
+        valid_until: str | None = None,
+        applied: bool = False,
+        apply_error: str = "",
+    ) -> dict[str, Any]:
+        """H3: Patch anlegen/ersetzen. Ein aktiver Patch je (Objekt, Schlüssel) —
+        ein neuer Patch auf denselben Schlüssel ersetzt den alten (`revoked`),
+        damit die Healed-View nie zwei Wahrheiten kennt."""
+        now = datetime.now(timezone.utc).isoformat()
+        key_json = json.dumps(keys, sort_keys=True)
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE dq_healing_patches SET status='revoked', revoked_at=?, revoked_by=? "
+                "WHERE object_id=? AND key_json=? AND status='active'",
+                (now, actor, object_id, key_json),
+            )
+            conn.execute(
+                "INSERT INTO dq_healing_patches(id, object_id, key_json, patch_json, reason, "
+                "actor, created_at, valid_until, status, applied, apply_error) "
+                "VALUES (?,?,?,?,?,?,?,?,'active',?,?)",
+                (
+                    patch_id, object_id, key_json, json.dumps(values, sort_keys=True),
+                    reason, actor, now, valid_until, int(bool(applied)), apply_error,
+                ),
+            )
+            row = conn.execute("SELECT * FROM dq_healing_patches WHERE id=?", (patch_id,)).fetchone()
+        return self._patch_row(row)
+
+    @staticmethod
+    def _patch_row(row: Any) -> dict[str, Any]:
+        d = dict(row)
+        d["applied"] = bool(d.get("applied", 0))
+        for field, target in (("key_json", "keys"), ("patch_json", "values")):
+            try:
+                d[target] = json.loads(d.get(field) or "{}")
+            except (TypeError, ValueError):
+                d[target] = {}
+        return d
+
+    def list_healing_patches(
+        self, *, object_id: str | None = None, status: str | None = None, limit: int = 200
+    ) -> list[dict[str, Any]]:
+        """Patches auflisten; abgelaufene werden beim Lesen als `expired`
+        ausgewiesen (die Healed-View filtert sie ohnehin über valid_until)."""
+        where, params = [], []
+        if object_id:
+            where.append("object_id=?")
+            params.append(object_id)
+        if status:
+            where.append("status=?")
+            params.append(status)
+        clause = ("WHERE " + " AND ".join(where)) if where else ""
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM dq_healing_patches {clause} ORDER BY created_at DESC LIMIT ?",
+                (*params, limit),
+            ).fetchall()
+        now = datetime.now(timezone.utc).isoformat()
+        out = []
+        for r in rows:
+            patch = self._patch_row(r)
+            if patch["status"] == "active" and patch.get("valid_until") and patch["valid_until"] <= now:
+                patch["status"] = "expired"
+            out.append(patch)
+        return out
+
+    def get_healing_patch(self, patch_id: str) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute("SELECT * FROM dq_healing_patches WHERE id=?", (patch_id,)).fetchone()
+        return self._patch_row(row) if row else None
+
+    def revoke_healing_patch(self, patch_id: str, actor: str) -> dict[str, Any] | None:
+        """Zurücknehmen statt löschen: die Zeile bleibt als Audit stehen."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._conn() as conn:
+            cur = conn.execute(
+                "UPDATE dq_healing_patches SET status='revoked', revoked_at=?, revoked_by=? "
+                "WHERE id=? AND status='active'",
+                (now, actor, patch_id),
+            )
+            if cur.rowcount == 0:
+                row = conn.execute(
+                    "SELECT * FROM dq_healing_patches WHERE id=?", (patch_id,)
+                ).fetchone()
+                if row is None:
+                    return None
+                raise ValueError("Patch ist nicht aktiv — bereits zurückgenommen oder abgelaufen")
+            row = conn.execute("SELECT * FROM dq_healing_patches WHERE id=?", (patch_id,)).fetchone()
+        return self._patch_row(row)
+
+    def mark_healing_applied(self, *, correction_id: int | None = None,
+                             patch_id: str | None = None,
+                             applied: bool = True, error: str = "") -> None:
+        """Materialisierungs-Ergebnis nachtragen (HANA-Projektion)."""
+        with self._conn() as conn:
+            if correction_id is not None:
+                conn.execute(
+                    "UPDATE dq_healing_corrections SET applied=?, apply_error=? WHERE id=?",
+                    (int(bool(applied)), error, int(correction_id)),
+                )
+            if patch_id is not None:
+                conn.execute(
+                    "UPDATE dq_healing_patches SET applied=?, apply_error=? WHERE id=?",
+                    (int(bool(applied)), error, patch_id),
+                )
 
     # ------------------------------------------------------------------
     # Meta-KV + Digest-Claim (Migration 018)

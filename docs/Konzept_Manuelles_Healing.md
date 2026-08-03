@@ -1,6 +1,8 @@
 # Konzept — Manuelle Healing-Mechanismen (Datenkorrektur & Wiedereinspeisung)
 
-**Stand:** 2026-08-03 · **Status:** Konzept/Evaluierung (kein Code) ·
+**Stand:** 2026-08-03 · **Status:** **H1 + H3 umgesetzt** (Healing-Workbench
+`/healing`, API `/api/healing`, Migrationen store-019 / remote-003);
+H2/H4/H5 zu evaluieren → [`OPEN_TASKS.md`](OPEN_TASKS.md) Abschnitt **R** ·
 **Kontext:** [`Konzept_Datasphere_Integration_Gating_Quarantaene.md`](Konzept_Datasphere_Integration_Gating_Quarantaene.md)
 (Slices ④–⑦), ADR-0002 (+ Schreib-Amendment), `OPEN_TASKS.md` F/C5.
 
@@ -138,6 +140,32 @@ False-Positive-Quote je Garantie als Kalibrier-Feedback. Aufwand <1 PT.
 | H3 Patch-Overlay | ja (Overlay) | ✓ | Patch-Tabelle, pro Feld | keine | View-Adoption | ~4–6 PT |
 | H4 Reprocess | ja | ✓ (nach Einspeisung) | Episode-Events | keine | Slice ⑦, O5/O6 | mit ⑦ |
 | H5 Regel-Ausgang | ja | ✓ | Incident/Proposal | keine | Backtest ✅ | <1 PT |
+
+---
+
+## 4b / Umsetzungsstand (2026-08)
+
+**H1 und H3 sind gebaut** — die Empfehlung aus §5 ist damit für die ersten
+beiden Stufen eingelöst:
+
+| Baustein | Umsetzung |
+|---|---|
+| H1 Korrektur | `dq_core/enforce/healing.py` (`correction_statement`, Schattenspalte `_DQ_ORIGINAL`, Stempel `_DQ_CORRECTED_*`), Prozedur-Tür `P_DQ_CORRECT_ROW` im Soll-Zustand, Audit `DQ_HEAL_LOG` (remote-003) |
+| H1 Re-Check | `recheck_statement` gegen dasselbe Bad-Prädikat; `GET/POST /api/healing/episodes/{id}/recheck` |
+| Heal→Re-Check→Release | Freigabe-Guard in `routers/quarantine.py`: offene Verstöße blocken die Freigabe (409), **sobald** an der Episode korrigiert wurde |
+| Vier-Augen | Contract-Kinds: Korrigierender ≠ Freigebender (409), `internal_gate` bleibt frei |
+| H3 Overlay | `PatchSpec`, `patch_table_ddl`, `healed_view_ddl` (LEFT JOIN + `COALESCE` je Spalte, Gültigkeitsfenster), Patch-CRUD im Store (store-019) |
+| Oberfläche | Healing-Workbench `/healing` (Episoden-Tab H1, Patch-Tab H3), rollen-gespiegelt (Korrektur steward+, Patch owner+) |
+
+**Bewusst so umgesetzt:** Der Result-Store ist die Wahrheit, die
+HANA-Materialisierung ist opt-in (`ENFORCEMENT_MATERIALIZE_ENABLED`) und wird je
+Eintrag über `applied` ausgewiesen — ein nicht projizierter Eintrag ist sichtbar,
+nicht stillschweigend verschwunden (G6). G8 bleibt unangetastet: die Workbench
+zeigt **keine** Rohzeilen, der Nutzer benennt Zeilenschlüssel und Zielwert.
+
+**Verifikation offen (🧪):** Der `hdbcli`-Pfad ist hier nicht ausführbar —
+`P_DQ_CORRECT_ROW`, Re-Check und Healed-View gehören in dieselben Live-Spikes
+wie die übrige Materialisierung (O5/O6), siehe `OPEN_TASKS` **R4**.
 
 ---
 

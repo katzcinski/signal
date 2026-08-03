@@ -283,7 +283,9 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 |---|---|---|
 | GET | `/api/products` · `/api/products/{product}` | Data-Product-Aggregat (ADR-0004): Komposition, Boundary, Findings-Rollup |
 | GET | `/api/quarantine` · `/{id}` | Quarantäne-Episoden (Filter Status), Detail + Event-Timeline |
-| POST | `/api/quarantine/{id}/release` · `/confirm-reprocess` · `/reconcile` | Episoden-Übergänge (`steward+`, 409 bei unzulässigem Übergang) |
+| POST | `/api/quarantine/{id}/release` · `/confirm-reprocess` · `/reconcile` | Episoden-Übergänge (`steward+`, 409 bei unzulässigem Übergang); Freigabe zusätzlich 409 bei offenen Verstößen bzw. Vier-Augen-Verletzung, sobald an der Episode geheilt wurde |
+| GET/POST | `/api/healing/overview` · `/episodes/{id}` · `/episodes/{id}/corrections` · `/recheck` | Healing H1 (`steward+`): Parkbucht-Korrektur mit Schattenspalte `_DQ_ORIGINAL`, Re-Check gegen das Bad-Prädikat |
+| GET/POST | `/api/healing/patches` · `/patches/{id}/revoke` · `/plan` | Healing H3 (`owner+` für Schreiben): Patch-Overlay `DQ_PATCH_<OBJ>` + `V_DQ_HEALED_<OBJ>`, Rücknahme mit Audit; `plan` = DDL-Vorschau |
 | GET | `/api/enforcement/plan` · POST `/apply` | Materialisierungs-Plan (DDL/DML-Vorschau) · Apply ins Signal-Schema (`owner/admin`, Operations-Audit, doppelt gegated §3.8) |
 | GET | `/api/operations/{op_id}` · `/events` | Generischer Operation-/Progress-Kanal (ADR-0007): Poll + SSE |
 | GET/PUT/DELETE | `/api/objects/{id}/schedule` · GET `/api/schedules` | Pro-Objekt-Scheduling `manual/internal/external` (ADR-0005) + Ops-Sicht (`steward+`) |
@@ -387,6 +389,7 @@ Vite + React 18 + TS strict, TanStack Query v5, React Router, Tailwind (Design-T
 | `/lineage`, `/coverage` | Lineage-/Coverage-Map | Schematic-SVG-Lineage (Legacy-Cytoscape-Map als Fallback-Ansicht); Coverage-Status je Node, Dimension-Switcher (Internal\|Contract\|All), Gate = gestrichelt; `/coverage` ist Route-Alias derselben Ansicht |
 | `/incidents` | Incidents | Incident-Inbox + Timeline; `kind`-Badge & -Filter (Engineering-Signal vs. Contract-Breach) |
 | `/quarantine` | Quarantäne | Episoden-Inbox (Tabs nach Status), Drawer mit Event-Timeline, Freigabe-/Reprocess-Aktionen (§3.8) |
+| `/healing` | Healing-Workbench | Manuelle Datenkorrektur (`Konzept_Manuelles_Healing` H1/H3): Parkbucht-Korrektur je Episode mit Re-Check-Zähler, Patch-Overlay mit Gültigkeit/Rücknahme; schreibt nur im Signal-Schema, Quelle bleibt read-only |
 | `/proposals` | Proposals | Miner-Vorschläge (Inbox), kind-Badge |
 | `/runs/:id`, `/runs/compare` | Run-Detail/-Vergleich | Live-Log (SSE) + Polling; Regressions-Diff zweier Runs; `gate_verdict`-Anzeige |
 | `/schedules` | Schedules | Ops-Sicht der pro-Objekt-Zeitpläne (`manual/internal/external`, ADR-0005) |

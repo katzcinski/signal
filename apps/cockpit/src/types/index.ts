@@ -1164,6 +1164,94 @@ export interface SchemaEvolutionOut {
   latest_columns: { name?: string; type?: string; key?: unknown; nullable?: unknown }[];
 }
 
+// ---- Healing-Workbench (/api/healing) — Konzept_Manuelles_Healing H1/H3 ----
+export interface HealingEpisodeRow {
+  episode_id: number;
+  object_id: string;
+  status: string;
+  row_count: number | null;
+  failed_checks: string[];
+  opened_at: string;
+  corrections: number;
+  kind: string;
+  four_eyes: boolean;
+}
+
+export interface HealingCorrection {
+  id: number;
+  object_id: string;
+  episode_id: number;
+  row_key: Record<string, string>;
+  column_name: string;
+  before_value: string | null;
+  after_value: string | null;
+  reason: string;
+  actor: string;
+  created_at: string;
+  applied: boolean;
+  apply_error: string;
+}
+
+export interface HealingPatch {
+  id: string;
+  object_id: string;
+  keys: Record<string, string>;
+  values: Record<string, string>;
+  reason: string;
+  actor: string;
+  created_at: string;
+  valid_until: string | null;
+  status: 'active' | 'revoked' | 'expired';
+  revoked_at: string | null;
+  revoked_by: string;
+  applied: boolean;
+  apply_error: string;
+}
+
+export interface HealingOverview {
+  materialization_enabled: boolean;
+  signal_schema: string;
+  episodes: HealingEpisodeRow[];
+  patches: HealingPatch[];
+  patches_total: number;
+  corrections_total: number;
+}
+
+export interface HealingEpisodeDetail {
+  episode: QuarantineEpisode;
+  object_id: string;
+  kind: string;
+  four_eyes: boolean;
+  columns: string[];
+  key_columns: string[];
+  row_capable: boolean;
+  predicates: { check: string; type: string }[];
+  skipped: { check: string; type: string; reason: string }[];
+  remaining_bad_rows: number | null;
+  release_ready: boolean;
+  corrections: HealingCorrection[];
+  correction_actors: string[];
+}
+
+export interface HealingPlan {
+  object_id: string;
+  enabled: boolean;
+  signal_schema: string;
+  h1: {
+    quarantine_table: string;
+    upgrade: string[];
+    procedure: string;
+    row_capable: boolean;
+  } | null;
+  h3: {
+    patch_table: string;
+    healed_view: string;
+    key_columns: string[];
+    patch_columns: string[];
+    ddl: string[];
+  } | null;
+}
+
 // ---- Garantie-Backtesting (POST /api/contracts/{p}/backtest) — V1 ----
 export interface BacktestWindow {
   days: number;

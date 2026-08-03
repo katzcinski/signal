@@ -46,7 +46,7 @@ umnummeriert (Hinweis jeweils im Dokumentkopf).
 | [`Konzept_Observability_Intelligence_v1.md`](Konzept_Observability_Intelligence_v1.md) | Baselines, Segmente, RCA, Clustering (Tier 1) | **umgesetzt** (Migrationen 010–015) |
 | [`Konzept_ShiftLeft_DataDiff_v1.md`](Konzept_ShiftLeft_DataDiff_v1.md) | Schema-Drift der Quelle + Data-Diff (Tier 2) | **umgesetzt** inkl. Screen `/schema-drift` (A2, 2026-08) |
 | [`Konzept_Runs_Freshness.md`](Konzept_Runs_Freshness.md) | Run-/Load-Info als Freshness-Achse | teilweise; Entscheidungen offen (`OPEN_TASKS` J) |
-| [`Konzept_Manuelles_Healing.md`](Konzept_Manuelles_Healing.md) | Manuelle Healing-Mechanismen: Parkbucht-Korrektur, Fix-at-Source, Patch-Overlay, Reprocess | Konzept/Evaluierung (2026-08) |
+| [`Konzept_Manuelles_Healing.md`](Konzept_Manuelles_Healing.md) | Manuelle Healing-Mechanismen: Parkbucht-Korrektur, Fix-at-Source, Patch-Overlay, Reprocess | **H1+H3 umgesetzt** (Workbench `/healing`); H2/H4/H5 = `OPEN_TASKS` R |
 | [`Konzept_Managed_Service_Provisioning.md`](Konzept_Managed_Service_Provisioning.md) | Managed Service: Provisionierung, Tenant-Isolation | Konzept (`OPEN_TASKS` D) |
 | [`Konzept_MultiPlattform_Executor_BDC.md`](Konzept_MultiPlattform_Executor_BDC.md) | Executor für HANA · HDLF · Databricks | Konzept (`OPEN_TASKS` H) |
 | [`Konzept_Meridian_Inventory_Integration.md`](Konzept_Meridian_Inventory_Integration.md) | Meridian-Inventar als Admin-Tool | Konzept |

@@ -54,6 +54,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **O**  | Lineage UX Phase 3 | ◻ Offen | M/L | `Spec_Lineage_UX_Redesign.md` |
 | **P**  | Data-Product/BDC Phase 2 + Verifikationspunkte | ◻ Offen | M/L | `ADR-0003`, `ADR-0004`, `PLAN_ADR-0003-0004_Implementation.md` |
 | **Q**  | Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) | ◻ Offen | L | Abschnitt Q |
+| **R**  | Healing-Restoptionen H2/H4/H5 (zu evaluieren) | ◻ Offen | M/L | `Konzept_Manuelles_Healing.md` |
 
 > **Bereits geschlossen, obwohl ein Quelldoc es noch offen führt:** Interne
 > DQ-Checks-Library im Builder (`handover-iteration-1-internal-checks.md`) ist
@@ -501,6 +502,40 @@ driften:
 settings)`. Reine Strukturänderung — **kein** Verhaltens-/Payload-Unterschied,
 der SSRF-Pfad über `fire_webhook` bleibt unangetastet, und `test_notify.py`
 bleibt unverändert grün.
+
+---
+
+## R — Healing-Restoptionen (zu evaluieren) ◻ [M/L]
+
+**Quelle:** [`Konzept_Manuelles_Healing.md`](Konzept_Manuelles_Healing.md).
+**Umgesetzt (2026-08):** **H1** (Parkbucht-Korrektur mit Schattenspalten,
+`P_DQ_CORRECT_ROW`, Episode-Re-Check, Vier-Augen bei Contract-Kinds) und **H3**
+(Patch-Overlay `DQ_PATCH_<OBJ>` + `V_DQ_HEALED_<OBJ>`, TTL/Rücknahme) — beide
+über die Healing-Workbench (`/healing`, API `/api/healing`). Die folgenden
+Optionen sind bewusst **noch nicht gebaut** und vor einer Umsetzung zu bewerten:
+
+- **R1 · H2 — Fix-at-Source als geführter Flow.** `[M]` ◻ — die fachliche
+  Default-Haltung, heute nur implizit: Incident → Owner → Korrektur an der
+  Quelle → Re-Extract/Re-Run als Verifikation. Zu evaluieren ist die geführte
+  Oberfläche (Incident-Aktion „An Quelle beheben" mit Verifikations-Run und
+  Status-Rückmeldung), nicht der Mechanismus — Bausteine existieren alle.
+  *Aufwand laut Konzept:* ~1–2 PT, reine Workflow-/UI-Schicht.
+- **R2 · H4 — Geführter Reprocess (Wiedereinspeisung).** `[M]` ◻ — korrigierte
+  Zeilen per `INSERT … SELECT` in den Ziel-Flow zurückführen; gibt dem
+  vorhandenen `confirm-reprocess`-Übergang seinen technischen Unterbau.
+  **Hängt an F-Slice ⑦** (Task-Chain-Vorlagen) und den Live-Spikes O5/O6 —
+  nicht vor deren Klärung planen.
+- **R3 · H5 — Regel-Healing als expliziter Triage-Ausgang.** `[L/M]` ◻ —
+  Incident-Drawer-Ausgang „False Positive → Schwelle prüfen" mit Deep-Link in
+  Workbench/Backtest plus Resolve-Kategorie `false_positive`; liefert die
+  False-Positive-Quote je Garantie als Kalibrier-Feedback (ergänzt V1
+  Backtesting). Billigster der drei, aber ohne reale Incident-Volumina
+  wenig aussagekräftig — deshalb bewusst nachgelagert.
+- **R4 · Offene Entscheidungen aus dem Konzept §6.** ◻ — Cockpit-Zeilen-Editor
+  hinter dem G8-Gate vs. DB-only-Korrektur (aktuell DB-only + Cockpit-Anzeige);
+  Kollisionsregel Patch × neue Quell-Lieferung (Patch gewinnt vs. Lieferung
+  gewinnt + Re-Open); Patch-TTL-/Review-Pflicht; Live-Verifikation von
+  `P_DQ_CORRECT_ROW` und Re-Check am echten Tenant (mit O5/O6 bündeln).
 
 ---
 
