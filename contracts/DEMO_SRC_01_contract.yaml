@@ -21,14 +21,17 @@ guarantees:
     - SRC_COL_11
     - SRC_COL_12
     mode: closed
+    severity: warn
+    enforcement: quarantine
   volume:
     baseline: rolling
     bounds: auto
     severity: warn
+observability: {}
 checks:
 - id: invalid
   params:
     <SPALTE>: SRC_COL_01
   expect: < 10
   severity: fail
-lifecycle: draft
+lifecycle: active
