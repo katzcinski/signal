@@ -24,6 +24,7 @@ import {
 import { GuaranteeEditor } from '@/components/workbench/GuaranteeEditor';
 import { CheckBuilder } from '@/components/workbench/CheckBuilder';
 import { CompilePanel } from '@/components/workbench/CompilePanel';
+import { BacktestPanel } from '@/components/workbench/BacktestPanel';
 import { BreakingDiffPanel } from '@/components/workbench/BreakingDiffPanel';
 import { SlaBars } from '@/components/workbench/SlaBars';
 import { ContractList } from '@/components/workbench/ContractList';
@@ -369,6 +370,7 @@ function EditorPane({ product, onPromote, promotePending }: {
   const checkDiffContent = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <CompilePanel objectId={product} dataset={draft.dataset || product} />
+      <BacktestPanel product={product} draft={draft} />
       <BreakingDiffPanel
         entries={entries}
         pending={diff.isPending}

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useProposals, useProposalAction } from '@/api/proposals';
+import { BacktestBadge } from '@/components/BacktestBadge';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -147,6 +148,14 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       </div>
 
       <ExpectDiff current={proposal.current_expect} proposed={proposal.proposed_expect} />
+
+      <div>
+        <BacktestBadge
+          product={proposal.product}
+          checkName={proposal.check_name}
+          expect={proposal.proposed_expect}
+        />
+      </div>
 
       <div>
         <div style={{ fontSize: 10, color: 'var(--fg-3)', marginBottom: 6 }}>{t.proposals.confidence}</div>

@@ -37,7 +37,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | ID | Thema | Status | Prio | Quelle |
 |----|-------|--------|------|--------|
 | **A1** | Teilbarer Quality-Report / Data-Docs-Snapshot (UX-N6) | ◻ Offen | M | Abschnitt A |
-| **A2** | Schema-Drift-/Change-Screen (UX-N9) | ◻ Offen | M | Abschnitt A |
+| **A2** | Schema-Drift-/Change-Screen (UX-N9) | ✅ Done | M | Abschnitt A |
 | **B**  | Spaltenebene-Lineage + Impact (UX-N7 / O3) | ✅ Done | H | `PLAN_UX-N7_Column_Lineage.md` |
 | **C**  | `HanaResultStore` (O6) + HANA-Migrationen + Smoke | ◻ Offen | H | `Implementation_HANA_Connection_Progress.md` WS E/F |
 | **D**  | Managed Service (Instanz-pro-Tenant) | ◻ Offen | H | `PLAN_Managed_Service_v1.md` |
@@ -54,6 +54,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **O**  | Lineage UX Phase 3 | ◻ Offen | M/L | `Spec_Lineage_UX_Redesign.md` |
 | **P**  | Data-Product/BDC Phase 2 + Verifikationspunkte | ◻ Offen | M/L | `ADR-0003`, `ADR-0004`, `PLAN_ADR-0003-0004_Implementation.md` |
 | **Q**  | Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) | ◻ Offen | L | Abschnitt Q |
+| **R**  | Healing-Restoptionen H2/H4/H5 (zu evaluieren) | ◻ Offen | M/L | `Konzept_Manuelles_Healing.md` |
 
 > **Bereits geschlossen, obwohl ein Quelldoc es noch offen führt:** Interne
 > DQ-Checks-Library im Builder (`handover-iteration-1-internal-checks.md`) ist
@@ -93,7 +94,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | UX-N6 | Teilbarer Quality-Report / Data-Docs (Link/PDF) | ◻ Offen | Badge existiert (`/badge/{p}`), Report-Snapshot fehlt → **A1** |
 | UX-N7 | Spaltenebene-Lineage + Impact-Analyse | ✅ Done | DAG + Impact-API + UI gegen Demo-Daten; Live-Tenant-CSN bleibt Verifikation unter **I/L** |
 | UX-N8 | Check-/Expectation-Library-Browser | ✅ Done | Tooldoku §8 (`/library`) |
-| UX-N9 | Schema-Drift-/Change-Screen | ◻ Offen | — → **A2** |
+| UX-N9 | Schema-Drift-/Change-Screen | ✅ Done | `/schema-drift` (Overview + Evolution je Objekt) → **A2** |
 | UX-N10 | Status-Heatmap Objekt × Tag | ✅ Done | Tooldoku §8 (Cockpit) |
 | UX-N11 | Echte Charts (Threshold-/Anomalie-Band, Zeitraum-Picker) | ✅ Done | — |
 | UX-N12 | Health-Gauge mit Trendrichtung | ✅ Done | Tooldoku §8 (Cockpit) |
@@ -101,7 +102,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | UX-N14 | Profiling-/Sample-Row-View hinter `[PII-GATE]` | ✅ Done | Tooldoku §5/§6 (`/profile`, `ALLOW_PROFILE_SAMPLES`) |
 | UX-N15 | Activity-/Audit-Feed | ✅ Done | Tooldoku §5 (`/api/activity`) |
 
-**Offen (2):** UX-N6 (teilbarer Report, **A1**) · UX-N9 (Schema-Drift-Screen, **A2**).
+**Offen (1):** UX-N6 (teilbarer Report, **A1**).
 
 ### Offene Punkte (Detail)
 
@@ -110,19 +111,18 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
   auth-gegatete **Report-Snapshot** (Link/PDF für Nicht-Nutzer, GX-Vorbild) fehlt.
   Kein `/report`-Route im Backend.
   *Acceptance:* öffentlich teilbarer, auth-gegateter Report-Snapshot.
-- **A2 · UX-N9 — Schema-Drift-/Change-Screen.** `[M]` ◻
-  Schema-Evolution je Objekt über Zeit (hinzugefügte/entfernte/typgeänderte
-  Spalten, Contract-Bruch markieren). `diff.py` trägt Type-Narrowing erst mit
-  Schema v2 (Batch 5 „Out of scope").
-  *Querverweis (Stand 2026-07-23):* Der Datenpfad existiert bereits vollständig —
-  Drift-Persistenz beim Extract (`services/api/schema_drift_service.py`, Hook in
-  `routers/extract.py`), Report-API (`GET /api/contracts/{p}/drift` in
-  `routers/contracts.py`) und FE-Binding (`useSchemaDrift` in
-  `apps/cockpit/src/api/contracts.ts`, genutzt vom `SchemaDriftBanner` in der
-  Workbench), inkl. Tests (`tests/unit/test_schema_drift_*`). Offen ist **nur
-  noch der eigenständige Screen** (Schema-Evolution über Zeit: lazy Page + Route
-  in `App.tsx` + Strings in `i18n/de.ts` + vitest).
-  *Acceptance:* Spaltenänderungen je Objekt über Zeit, Contract-Bruch markiert.
+- **A2 · UX-N9 — Schema-Drift-/Change-Screen.** `[M]` ✅ (2026-08-03)
+  Eigenständiger Screen unter `/schema-drift`: Overview je Objekt (Snapshots,
+  distinct Schemata, Befunde/breaking, Contract-Bindung) + Evolution über Zeit
+  (konsekutive Snapshot-Diffs via `diff_snapshots` in
+  `dq_core/contract/schema_drift.py`, frameworkfrei) + Drift-Historie gegen den
+  Contract mit Incident-Deep-Link. API `GET /api/schema-drift[/{object}]`
+  (`routers/schema_drift.py`), Store-Rollups (`get_schema_snapshots`,
+  `list_schema_drift_objects`), Page `pages/SchemaDrift.tsx` + Nav + `de.ts`;
+  Tests: `tests/unit/test_schema_drift_evolution.py`,
+  `tests/api/test_schema_drift_screen.py`, `src/tests/SchemaDrift.test.tsx`.
+  `diff.py`-Type-Narrowing (Schema v2) bleibt bewusst außen vor.
+  *Acceptance erfüllt:* Spaltenänderungen je Objekt über Zeit, Contract-Bruch markiert.
 
 UX-N7 (Spalten-Lineage) ist erledigt; historische Details und Restrisiken stehen in **B**.
 
@@ -505,6 +505,40 @@ bleibt unverändert grün.
 
 ---
 
+## R — Healing-Restoptionen (zu evaluieren) ◻ [M/L]
+
+**Quelle:** [`Konzept_Manuelles_Healing.md`](Konzept_Manuelles_Healing.md).
+**Umgesetzt (2026-08):** **H1** (Parkbucht-Korrektur mit Schattenspalten,
+`P_DQ_CORRECT_ROW`, Episode-Re-Check, Vier-Augen bei Contract-Kinds) und **H3**
+(Patch-Overlay `DQ_PATCH_<OBJ>` + `V_DQ_HEALED_<OBJ>`, TTL/Rücknahme) — beide
+über die Healing-Workbench (`/healing`, API `/api/healing`). Die folgenden
+Optionen sind bewusst **noch nicht gebaut** und vor einer Umsetzung zu bewerten:
+
+- **R1 · H2 — Fix-at-Source als geführter Flow.** `[M]` ◻ — die fachliche
+  Default-Haltung, heute nur implizit: Incident → Owner → Korrektur an der
+  Quelle → Re-Extract/Re-Run als Verifikation. Zu evaluieren ist die geführte
+  Oberfläche (Incident-Aktion „An Quelle beheben" mit Verifikations-Run und
+  Status-Rückmeldung), nicht der Mechanismus — Bausteine existieren alle.
+  *Aufwand laut Konzept:* ~1–2 PT, reine Workflow-/UI-Schicht.
+- **R2 · H4 — Geführter Reprocess (Wiedereinspeisung).** `[M]` ◻ — korrigierte
+  Zeilen per `INSERT … SELECT` in den Ziel-Flow zurückführen; gibt dem
+  vorhandenen `confirm-reprocess`-Übergang seinen technischen Unterbau.
+  **Hängt an F-Slice ⑦** (Task-Chain-Vorlagen) und den Live-Spikes O5/O6 —
+  nicht vor deren Klärung planen.
+- **R3 · H5 — Regel-Healing als expliziter Triage-Ausgang.** `[L/M]` ◻ —
+  Incident-Drawer-Ausgang „False Positive → Schwelle prüfen" mit Deep-Link in
+  Workbench/Backtest plus Resolve-Kategorie `false_positive`; liefert die
+  False-Positive-Quote je Garantie als Kalibrier-Feedback (ergänzt V1
+  Backtesting). Billigster der drei, aber ohne reale Incident-Volumina
+  wenig aussagekräftig — deshalb bewusst nachgelagert.
+- **R4 · Offene Entscheidungen aus dem Konzept §6.** ◻ — Cockpit-Zeilen-Editor
+  hinter dem G8-Gate vs. DB-only-Korrektur (aktuell DB-only + Cockpit-Anzeige);
+  Kollisionsregel Patch × neue Quell-Lieferung (Patch gewinnt vs. Lieferung
+  gewinnt + Re-Open); Patch-TTL-/Review-Pflicht; Live-Verifikation von
+  `P_DQ_CORRECT_ROW` und Re-Check am echten Tenant (mit O5/O6 bündeln).
+
+---
+
 ## Querschnitt-Abhängigkeiten (worauf zuerst)
 
 ```
@@ -520,5 +554,6 @@ P5 (BDC/HDLF) ────────────► H / Product-Discovery / te
 **Empfohlene Reihenfolge nach Hebel/Aufwand:** M1/M2/M3/M6
 (Workflow-Korrektheit + CI-Wahrheit) → C2/D1 (`HanaStore`, entsperrt
 Full+Managed und N3) → I3 (Live-Verifikation Spalten-Lineage) →
-J1-Entscheidung → A1/A2. O/N/P/F④–⑦/G/H bleiben nachgelagert, bis Demo- oder
-Kundenbedarf sie zieht. (E1/E3, F①–③ und N2 sind seit 2026-07 geliefert.)
+J1-Entscheidung → A1. O/N/P/F④–⑦/G/H bleiben nachgelagert, bis Demo- oder
+Kundenbedarf sie zieht. (E1/E3, F①–③ und N2 sind seit 2026-07 geliefert;
+A2 seit 2026-08.)

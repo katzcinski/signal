@@ -10,6 +10,7 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { FilterChip, ActiveFilterChip } from '@/components/ui/FilterChip';
+import { SavedViewsBar } from '@/components/SavedViewsBar';
 import { t } from '@/i18n/de';
 import type { ObjectSummary } from '@/types';
 
@@ -175,6 +176,16 @@ export default function ObjectCatalog() {
           </select>
         </div>
       </div>
+      <SavedViewsBar
+        current={{ q: textFilter, family: familyFilter, dqstatus: statusFilter, space: spaceFilter }}
+        hasActiveFilter={hasActiveFilter}
+        onApply={params => {
+          setTextFilter(params.q ?? '');
+          setFamilyFilter(params.family ?? '');
+          setStatusFilter(params.dqstatus ?? '');
+          setSpaceFilter(params.space ?? '');
+        }}
+      />
       {hasActiveFilter && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
           {textFilter && <ActiveFilterChip label={`"${textFilter}"`} onClear={() => setTextFilter('')} />}

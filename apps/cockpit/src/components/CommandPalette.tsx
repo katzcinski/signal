@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useObjects } from '@/api/objects';
 import { useContracts } from '@/api/contracts';
 import { api } from '@/api/client';
-import { useUIStore } from '@/store/ui';
+import { THEMES, useUIStore } from '@/store/ui';
 import { useRoleStore, canRunChecks } from '@/store/role';
 import { navForRole, type NavItem } from '@/components/layout/Sidebar';
 import { t } from '@/i18n/de';
@@ -24,6 +24,7 @@ export function CommandPalette({ onClose }: Props) {
   const { data: contracts = [] } = useContracts();
   const recents = useUIStore(s => s.recents);
   const pushRecent = useUIStore(s => s.pushRecent);
+  const setTheme = useUIStore(s => s.setTheme);
   const role = useRoleStore(s => s.role);
 
   // Seiten spiegeln die rollenabhängige Sidebar-Navigation (navForRole), damit
@@ -78,6 +79,15 @@ export function CommandPalette({ onClose }: Props) {
       loading: `${t.toast.runStarting} ${id}…`,
       success: `${t.toast.runStarted} ${id}.`,
       error: `${t.toast.runError} ${id}.`,
+    });
+  };
+
+  const sendDigest = () => {
+    onClose();
+    toast.promise(api.post('/notifications/digest/send').then(r => r.data), {
+      loading: t.notifications.digestSending,
+      success: t.palette.digestSent,
+      error: t.palette.digestError,
     });
   };
 
@@ -154,6 +164,31 @@ export function CommandPalette({ onClose }: Props) {
               {contracts.slice(0, 50).map(c => (
                 <Command.Item key={`contract:${c.product}`} value={`contract ${c.product} open`} onSelect={() => go(`/contracts?product=${encodeURIComponent(c.product)}`, c.product)}>
                   {t.palette.openContract} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{c.product}</span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+
+            <Command.Group heading={t.palette.system}>
+              {/* Quick-Filter: gängige Triage-Einstiege als ein Tastendruck. */}
+              <Command.Item value="quick offene incidents open" onSelect={() => go('/incidents?status=open', t.palette.quickOpenIncidents)}>
+                {t.palette.quickOpenIncidents}
+              </Command.Item>
+              <Command.Item value="quick schema drift" onSelect={() => go('/schema-drift', t.palette.quickSchemaDrift)}>
+                {t.palette.quickSchemaDrift}
+              </Command.Item>
+              {role !== 'viewer' && (
+                <Command.Item value="quick überfällige zeitpläne overdue" onSelect={() => go('/schedules?filter=overdue', t.palette.quickOverdueSchedules)}>
+                  {t.palette.quickOverdueSchedules}
+                </Command.Item>
+              )}
+              {role !== 'viewer' && (
+                <Command.Item value="digest senden quality" onSelect={sendDigest}>
+                  {t.palette.sendDigest}
+                </Command.Item>
+              )}
+              {THEMES.map(th => (
+                <Command.Item key={`theme:${th}`} value={`theme wechseln ${th}`} onSelect={() => { setTheme(th); onClose(); }}>
+                  {t.palette.setTheme} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{th}</span>
                 </Command.Item>
               ))}
             </Command.Group>

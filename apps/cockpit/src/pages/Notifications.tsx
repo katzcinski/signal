@@ -9,7 +9,9 @@ import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import {
   useNotificationConfig, useCreateChannel, usePatchChannel, useDeleteChannel,
   useCreateRule, useDeleteRule, useCreateMute, useDeleteMute,
+  useDigestPreview, useSendDigest,
 } from '@/api/notifications';
+import { useRoleStore } from '@/store/role';
 import { t } from '@/i18n/de';
 import type { NotificationChannel, NotificationRule, NotificationMute } from '@/types';
 
@@ -68,6 +70,13 @@ function ChannelsSection({ channels, canEdit }: { channels: NotificationChannel[
               onChange={e => patch.mutate({ id: c.id, enabled: e.target.checked })}
             />
             {c.enabled ? t.notifications.enabled : t.notifications.disabled}
+          </label>
+          <label style={{ fontSize: 11, color: c.digest_enabled ? 'var(--cont)' : 'var(--fg-3)', display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)' }}>
+            <input
+              type="checkbox" checked={c.digest_enabled} disabled={!canEdit}
+              onChange={e => patch.mutate({ id: c.id, digest_enabled: e.target.checked })}
+            />
+            {t.notifications.digestSubscribe}
           </label>
           {canEdit && (
             <ConfirmDeleteButton
@@ -202,6 +211,70 @@ function RulesSection({ rules, channels, canEdit }: { rules: NotificationRule[];
   );
 }
 
+// --- Qualitäts-Digest (V4) ---
+function DigestSection() {
+  const { data } = useDigestPreview();
+  const send = useSendDigest();
+  const role = useRoleStore(s => s.role);
+  const canSend = role !== 'viewer'; // FE-Spiegel; Server verlangt steward+
+
+  if (!data) return null;
+  const kpi: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 110 };
+  const kpiLabel: React.CSSProperties = { fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase' };
+  const kpiValue: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 700 };
+
+  return (
+    <Panel title={t.notifications.digestTitle}>
+      <p style={hint}>{t.notifications.digestHint}</p>
+      <div style={{ display: 'flex', gap: 'var(--s5)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={kpi}>
+          <span style={kpiLabel}>{t.notifications.digestKpiIncidents}</span>
+          <span style={{ ...kpiValue, color: data.incidents_new > 0 ? 'var(--status-warn)' : 'var(--fg)' }}>{data.incidents_new}</span>
+        </div>
+        <div style={kpi}>
+          <span style={kpiLabel}>{t.notifications.digestKpiOpen}</span>
+          <span style={kpiValue}>{data.incidents_open}</span>
+        </div>
+        <div style={kpi}>
+          <span style={kpiLabel}>{t.notifications.digestKpiRuns}</span>
+          <span style={{ ...kpiValue, color: data.runs_failed > 0 ? 'var(--status-fail)' : 'var(--fg)' }}>
+            {data.runs_failed}/{data.runs}
+          </span>
+        </div>
+        <div style={kpi}>
+          <span style={kpiLabel}>{t.notifications.digestKpiQuarantine}</span>
+          <span style={kpiValue}>{data.quarantine_open}</span>
+        </div>
+        <div style={kpi}>
+          <span style={kpiLabel}>{t.notifications.digestKpiDrift}</span>
+          <span style={kpiValue}>{data.drift_objects}</span>
+        </div>
+        <div style={{ flex: 1 }} />
+        {canSend && (
+          <Button
+            variant="primary"
+            disabled={send.isPending || data.subscribed_channels === 0}
+            onClick={() => send.mutate()}
+          >
+            {send.isPending ? t.notifications.digestSending : t.notifications.digestSendNow}
+          </Button>
+        )}
+      </div>
+      <p style={{ ...empty, marginTop: 'var(--s3)' }}>
+        {t.notifications.digestPeriod.replace('{h}', String(data.period_hours))}
+        {' · '}
+        {t.notifications.digestSubscribed.replace('{n}', String(data.subscribed_channels))}
+        {' · '}
+        {t.notifications.digestLastSent}: {data.last_sent_at ? new Date(data.last_sent_at).toLocaleString() : t.notifications.digestNeverSent}
+        {' · '}
+        {data.enabled
+          ? t.notifications.digestScheduleOn.replace('{h}', String(data.interval_hours))
+          : t.notifications.digestScheduleOff}
+      </p>
+    </Panel>
+  );
+}
+
 // --- Mute windows ---
 function MutesSection({ mutes, canEdit }: { mutes: NotificationMute[]; canEdit: boolean }) {
   const create = useCreateMute();
@@ -274,6 +347,7 @@ export default function Notifications() {
         <>
           {!canEdit && <ReadOnlyBanner hint={t.notifications.readOnlyHint} />}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+            <DigestSection />
             <ChannelsSection channels={data.channels} canEdit={canEdit} />
             <RulesSection rules={data.rules} channels={data.channels} canEdit={canEdit} />
             <MutesSection mutes={data.mutes} canEdit={canEdit} />

@@ -12,8 +12,10 @@ const Products          = lazy(() => import('./pages/Products'));
 const ProductDetail     = lazy(() => import('./pages/ProductDetail'));
 const ContractWorkbench = lazy(() => import('./pages/ContractWorkbench'));
 const Lineage           = lazy(() => import('./pages/LineagePage'));
+const SchemaDrift       = lazy(() => import('./pages/SchemaDrift'));
 const Incidents         = lazy(() => import('./pages/Incidents'));
 const Quarantine        = lazy(() => import('./pages/Quarantine'));
+const Healing           = lazy(() => import('./pages/Healing'));
 const Enforcement       = lazy(() => import('./pages/Enforcement'));
 const Proposals         = lazy(() => import('./pages/Proposals'));
 const RunDetail         = lazy(() => import('./pages/RunDetail'));
@@ -52,9 +54,11 @@ export default function App() {
               <Route path="/lineage"     element={<Lineage />} />
               {/* Route alias (WS4): /coverage rendert dieselbe Lineage-Ansicht */}
               <Route path="/coverage"    element={<Lineage />} />
+              <Route path="/schema-drift" element={<SchemaDrift />} />
               <Route path="/schedules"   element={<Schedules />} />
               <Route path="/incidents"   element={<Incidents />} />
               <Route path="/quarantine"  element={<Quarantine />} />
+              <Route path="/healing"     element={<Healing />} />
               <Route path="/enforcement" element={<Enforcement />} />
               <Route path="/proposals"   element={<Proposals />} />
               <Route path="/runs/compare" element={<RunCompare />} />

@@ -99,7 +99,9 @@ describe('navForRole', () => {
       '/objects',
       '/products',
       '/lineage',
+      '/schema-drift',
       '/incidents',
+      // Healing/Schedules/Enforcement sind steward+ — für Viewer nicht in der Leiste.
       '/quarantine',
       '/proposals',
       '/library',
