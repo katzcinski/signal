@@ -15,6 +15,7 @@ Status in `OPEN_TASKS.md` bzw. der Banner im Dokumentkopf.
 | Dokument | Inhalt |
 |---|---|
 | [`Tooldokumentation.md`](Tooldokumentation.md) | **Vollständige Referenz des implementierten Stands** — Architektur, Datenmodell, API, ENV, CLI, Frontend, Gates, Deployment |
+| [`Benutzerhandbuch.md`](Benutzerhandbuch.md) | **Anwenderdokumentation** — Screens, Zustände, Arbeitsabläufe nach Rolle (derzeit: Gliederung) |
 | [`OPEN_TASKS.md`](OPEN_TASKS.md) | Konsolidierter Backlog über alle Bereiche; ersetzt die Backlog-Listen der Einzeldokumente |
 | [`Betriebsmodi_Lite_und_Full.md`](Betriebsmodi_Lite_und_Full.md) | Lite vs. Full — Prozess, Personas, Tooling |
 | [`Checks_Statuses_Flows.md`](Checks_Statuses_Flows.md) | Wie Signal über Objekte urteilt: Checks, Status-Achsen, Flows |
