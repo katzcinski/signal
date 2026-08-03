@@ -68,7 +68,19 @@ purgt erst beim nächsten Lauf)?
 
 ## 4 — Healing-Erweiterung (separat freizugeben)
 
-Das Healing-Konzept (`Konzept_Quarantaene_Healing.md`) fügt hinzu:
+> **Stand 2026-08-03:** Healing ist inzwischen **teilweise implementiert** —
+> maßgeblich ist [`Konzept_Manuelles_Healing.md`](Konzept_Manuelles_Healing.md)
+> (das frühere `Konzept_Quarantaene_Healing.md` ist darin aufgegangen).
+> Gebaut wurde die **konservative Teilmenge**: Korrektur einzelner Zellen über
+> ein Formular — das Cockpit zeigt **keine** Zeileninhalte, es gibt also
+> vorerst **kein** Anzeige-Grid und **kein** SQL-Healing. Für den Review
+> relevant: der im Konzept geforderte **eigene Kill-Switch** und die
+> **Spalten-Allowlist im Contract** sind **noch nicht umgesetzt**
+> (`OPEN_TASKS.md` R5) — heute entscheidet allein die Rolle (`steward+`
+> korrigiert, Vier-Augen bei Contract-Kinds). Das gehört auf die
+> Auflagen-Checkliste (§5).
+
+Das ursprüngliche Healing-Konzept sah zusätzlich vor:
 **Anzeigen** (Grid, spalten-maskiert nach Allowlist) und **Ändern**
 (zellgenau bzw. gescopetes SQL) geparkter Zeilen durch Stewards.
 
@@ -96,10 +108,16 @@ freigeben — Healing erst nach Slice-⑤-Betriebserfahrung.
 - [ ] AV-Vertrag/TOMs: Custody-Zone als Verarbeitungstätigkeit aufnehmen
 - [ ] Healing: jetzt mitentscheiden oder auf Folge-Termin nach ⑤-Erfahrung
 - [ ] Audit-Retention für Healing-Änderungen (falls freigegeben)
+- [ ] **Neu (2026-08):** eigener Healing-Kill-Switch + Spalten-Allowlist im
+      Contract als Auflage setzen? (heute nicht implementiert — R5)
+- [ ] **Neu (2026-08):** H3-Patch-Overlay mitentscheiden — dauerhafte
+      Korrektur über `V_DQ_HEALED_<OBJ>`, Aufbewahrung/Verfall der Patches
 
 ## 6 — Referenzen
 
 `Konzept_Datasphere_Integration_Gating_Quarantaene.md` §5.2/§9 ·
-`Konzept_Quarantaene_Healing.md` §7 · `ADR-0002` + Amendment ·
+`Konzept_Manuelles_Healing.md` §5/§7 (maßgeblich) ·
+`Konzept_Quarantaene_Healing.md` §7 (historisch) ·
+`Datenfluesse_Quelle_vs_Signal.md` · `ADR-0002` + Amendment ·
 Spike-Kit: `docs/spikes/Spike_Kit_Enforcement_Aktivierung.md` ·
 Interaktiv: `docs/interactive/enforcement-logik-landkarte.html`

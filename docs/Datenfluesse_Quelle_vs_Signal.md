@@ -255,7 +255,7 @@ Zeitstempel, Akteure.
 
 - [`O10_Datenschutz_Review_Custody_Zone.md`](O10_Datenschutz_Review_Custody_Zone.md) — Custody-Zone, TTL, Betroffenenrechte, Auflagen-Checkliste
 - [`Konzept_Datasphere_Integration_Gating_Quarantaene.md`](Konzept_Datasphere_Integration_Gating_Quarantaene.md) — Slices ③–⑦, Split-Varianten
-- [`Konzept_Quarantaene_Healing.md`](Konzept_Quarantaene_Healing.md) — Healing-Proposal 2026-07 (Grid/SQL-Editor, Opt-in-Leiter)
-- [`Konzept_Manuelles_Healing.md`](Konzept_Manuelles_Healing.md) — Optionen H1–H5, Umsetzungsstand H1/H3
+- [`Konzept_Manuelles_Healing.md`](Konzept_Manuelles_Healing.md) — **maßgebliche Healing-Referenz**: Optionen H1–H5, Umsetzungsstand, Abweichungen, Mechanik-Bauplan
+- [`Konzept_Quarantaene_Healing.md`](Konzept_Quarantaene_Healing.md) — Proposal 2026-07, **historisch** (darin aufgegangen)
 - [`ADR-0002_Datasphere-DB-Zugriff.md`](ADR-0002_Datasphere-DB-Zugriff.md) — DB-Identität + Schreib-Amendment
 - Interaktiv: [`interactive/enforcement-logik-landkarte.html`](interactive/enforcement-logik-landkarte.html) · [`interactive/enforcement-gating-quarantaene.html`](interactive/enforcement-gating-quarantaene.html)

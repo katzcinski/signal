@@ -54,7 +54,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **O**  | Lineage UX Phase 3 | ◻ Offen | M/L | `Spec_Lineage_UX_Redesign.md` |
 | **P**  | Data-Product/BDC Phase 2 + Verifikationspunkte | ◻ Offen | M/L | `ADR-0003`, `ADR-0004`, `PLAN_ADR-0003-0004_Implementation.md` |
 | **Q**  | Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) | ◻ Offen | L | Abschnitt Q |
-| **R**  | Healing-Restoptionen H2/H4/H5 (zu evaluieren) | ◻ Offen | M/L | `Konzept_Manuelles_Healing.md` |
+| **R**  | Healing: Restoptionen H2/H4/H5 + Opt-in-Lücken (R5/R6) | ◻ Offen | H/M/L | `Konzept_Manuelles_Healing.md` |
 
 > **Bereits geschlossen, obwohl ein Quelldoc es noch offen führt:** Interne
 > DQ-Checks-Library im Builder (`handover-iteration-1-internal-checks.md`) ist
@@ -531,11 +531,37 @@ Optionen sind bewusst **noch nicht gebaut** und vor einer Umsetzung zu bewerten:
   False-Positive-Quote je Garantie als Kalibrier-Feedback (ergänzt V1
   Backtesting). Billigster der drei, aber ohne reale Incident-Volumina
   wenig aussagekräftig — deshalb bewusst nachgelagert.
-- **R4 · Offene Entscheidungen aus dem Konzept §6.** ◻ — Cockpit-Zeilen-Editor
-  hinter dem G8-Gate vs. DB-only-Korrektur (aktuell DB-only + Cockpit-Anzeige);
-  Kollisionsregel Patch × neue Quell-Lieferung (Patch gewinnt vs. Lieferung
-  gewinnt + Re-Open); Patch-TTL-/Review-Pflicht; Live-Verifikation von
-  `P_DQ_CORRECT_ROW` und Re-Check am echten Tenant (mit O5/O6 bündeln).
+- **R4 · Offene Entscheidungen (Konzept §8 e/f/j).** ◻ — Cockpit-Zeilen-Grid
+  hinter dem G8-Gate vs. heutige formularbasierte Korrektur; **Kollisionsregel
+  Patch × neue Quell-Lieferung** (Patch gewinnt vs. Lieferung gewinnt +
+  Re-Open) und Patch-TTL-/Review-Pflicht — beides **vor produktivem
+  H3-Einsatz** zu klären; Live-Verifikation von `P_DQ_CORRECT_ROW`, Re-Check
+  und Healed-View am echten Tenant (mit O5/O6 bündeln).
+
+> **Aus der Konzept-Konsolidierung 2026-08-03 (§5):** Die Umsetzung ist die
+> *konservative Teilmenge* des Proposals von 2026-07. Zwei Punkte sind echte
+> Lücken, kein bewusster Verzicht — sie stehen als R5/R6 hier, nicht im
+> Fließtext eines Konzepts.
+
+- **R5 · Opt-in-Leiter für Healing nachziehen.** `[H]` ◻ — **vor produktivem
+  Einsatz.** Heute entscheidet allein die Rolle, ob und was korrigiert werden
+  darf. Es fehlen: ① eigener Kill-Switch `QUARANTINE_HEALING_ENABLED`
+  (Default aus, Muster wie `ENFORCEMENT_MATERIALIZE_ENABLED`) — Healing
+  schreibt Nutzdaten und verdient einen eigenen Betriebsschalter neben der
+  Materialisierung; ② Contract-Policy `quarantine.healing` mit
+  **Spalten-Allowlist** (validator-geprüft, S2-Identifier) statt „jede
+  Nicht-Systemspalte korrigierbar"; ③ Vier-Augen als konfigurierbare Policy
+  (heute fest an für Contract-Kinds, fest aus für `internal_gate`).
+  *Bauplan:* `Konzept_Manuelles_Healing.md` §6.1/§6.2. *Governance:* steht auf
+  der O10-Auflagen-Checkliste.
+- **R6 · Per-Zeile-Mechanik + SQL-Healing.** `[M]` ◻ — nach Betriebserfahrung
+  mit der schlanken Fassung: Per-Zeile-Zustände (`clean`/`discarded`) statt des
+  episodenweiten Re-Check-Zählers — erst damit ist „nur die guten Zeilen
+  zurück" möglich; Verwerfen mit Pflicht-Grund; Restore-Aktion (heute existiert
+  die Schattenspalte `_DQ_ORIGINAL`, aber keine Rückstell-Aktion);
+  optimistisches Locking je Zeile (heute Last-Writer-Wins bei parallelen
+  Stewards); SQL-Healing für Massenkorrekturen nach dem Guard-Entwurf
+  (`Konzept_Manuelles_Healing.md` §6.3).
 
 ---
 
