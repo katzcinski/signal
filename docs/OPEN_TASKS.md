@@ -55,6 +55,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **P**  | Data-Product/BDC Phase 2 + Verifikationspunkte | ◻ Offen | M/L | `ADR-0003`, `ADR-0004`, `PLAN_ADR-0003-0004_Implementation.md` |
 | **Q**  | Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) | ◻ Offen | L | Abschnitt Q |
 | **R**  | Healing: Restoptionen H2/H4/H5 + Opt-in-Lücken (R5/R6) | ◻ Offen | H/M/L | `Konzept_Manuelles_Healing.md` |
+| **S**  | Shift-Left S/4HANA (CDS-Datenprodukte + Contracts) | ◻ Offen | M | `Konzept_ShiftLeft_S4HANA_CDS_DataProducts.md` |
 
 > **Bereits geschlossen, obwohl ein Quelldoc es noch offen führt:** Interne
 > DQ-Checks-Library im Builder (`handover-iteration-1-internal-checks.md`) ist
@@ -565,6 +566,44 @@ Optionen sind bewusst **noch nicht gebaut** und vor einer Umsetzung zu bewerten:
 
 ---
 
+## S — Shift-Left S/4HANA (CDS-Datenprodukte + Contracts) ◻ [M]
+
+**Quelle:** [`Konzept_ShiftLeft_S4HANA_CDS_DataProducts.md`](Konzept_ShiftLeft_S4HANA_CDS_DataProducts.md).
+Zieht Deklaration und Drift-Erkennung von Datasphere/BDC eine Schicht nach links
+zum S/4-Team; Enforcement bleibt an der SQL-Naht (ADR-0003). Engine, Compiler und
+Executor bleiben unangetastet. S0+S1 sind der Kern (≈ 5–7 PT).
+
+- **S0 · Deklaration (`source:`-Block).** `[M]` ◻ — `source:` im Contract-Schema
+  + Validator + Tests (G1: `additionalProperties: false` auch im Block),
+  `output_ports[].source_ref` im Product-Manifest, S/4-Team als Owner-Hülle.
+  Kein Engine-Eingriff; Enforcement läuft unverändert am Landing-Objekt (E1).
+- **S1 · Metadaten-Kaltstart + Drift gegen die Quelle.** `[M]` ◻ — Migration
+  `020_source_origin` (`origin`/`source_ref` auf `dq_schema_snapshots`/
+  `dq_schema_drift`), CSN-/Metadaten-Snapshot-Import, neue Drift-Kategorien
+  `extraction_disabled` / `release_contract_downgraded` / `delta_capability_lost`.
+  Nutzt `contract/schema_drift.py` unverändert (quellenagnostisch).
+- **S2 · S/4-Katalog-Anbindung.** `[M]` ◻ 🔒 — `services/api/s4_catalog.py`
+  (ORD-Descriptor bevorzugt, OData über released CDS-Views als Alternative),
+  Scheduler-Job, S/4-Objekte mit Spalten ins Inventar. Blockiert durch **VS5**.
+- **S3 · Zuordnung CDS-Entität ↔ Landing automatisieren.** `[M]` ◻ —
+  Replication-Flow-Metadaten extrahieren (`OBJECT_TYPES` in `extraction.py`);
+  schließt zugleich die Typ-Filter-Lücke aus ADR-0003 §12.5. Gate: **VS6**.
+- **S4 · Rollen-Scoping (Rolle × Owner-Hülle).** `[H]` ◻ — Voraussetzung für
+  echten Multi-Team-Betrieb über Systemgrenzen; heute sind Rollen global
+  (`auth/provider.py`). Gate: **VS7**. Berührt Auth — separat bewerten.
+- **S5 · Optional: CI-Hook in der ABAP-Pipeline.** `[L]` 🔒 — Metadaten-Diff als
+  CLI-Schritt für abapGit/gCTS. Setzt Git-geführte ABAP-Entwicklung voraus (**VS4**).
+- **SX · Optional: direktes Enforcement auf der S/4-DB.** `[L]` 🔒 —
+  `platform: s4-hana`-Environment. Nur on-prem/PCE; blockiert durch **VS2**
+  (SQL-Name von CDS View Entities) und **VS3** (Support-/Compliance-Stellung).
+  Empfehlung des Konzepts: **nicht in v1**.
+- **S6 · Verifikationspunkte VS1–VS9.** `[M]` 🧪 — Wissens-/Spec-Verifikation
+  (Tooling-Stand, Metadaten-Lesepfad, Replication-Flow-Metadaten, Rollen-Scope,
+  Frische-Semantik über die Extraktionsstrecke). Wie in ADR-0003: der teuerste
+  Posten ist Wissen, nicht Code.
+
+---
+
 ## Querschnitt-Abhängigkeiten (worauf zuerst)
 
 ```
@@ -575,6 +614,7 @@ M1-M6 (Workflow-Audit) ───► Branch-/CI-Wahrheit vor weiterer Produktpoli
 J1 (skip/downgrade) ── Entscheidung vor Freshness-Gating (E2/J)
 F ④–⑦ (Zeilen-Quarantäne/Reconciler) ═ C5 ──► braucht Live-Tenant-Spikes (O5/O6)
 P5 (BDC/HDLF) ────────────► H / Product-Discovery / technische Load-Lag-Achse
+S0/S1 (Shift-Left S/4) ───► unabhängig lauffähig; S2 🔒 VS5, S3 ═ P5-Typfilter, S4 🔒 VS7 (Auth-Scope)
 ```
 
 **Empfohlene Reihenfolge nach Hebel/Aufwand:** M1/M2/M3/M6

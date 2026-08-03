@@ -46,6 +46,7 @@ umnummeriert (Hinweis jeweils im Dokumentkopf).
 | [`Konzept_Datasphere_Integration_Gating_Quarantaene.md`](Konzept_Datasphere_Integration_Gating_Quarantaene.md) | Gating & Quarantäne in Datasphere-Pipelines (Open-SQL-Materialisierung) | in Umsetzung: ①–③ implementiert, ④–⑦ offen |
 | [`Konzept_Observability_Intelligence_v1.md`](Konzept_Observability_Intelligence_v1.md) | Baselines, Segmente, RCA, Clustering (Tier 1) | **umgesetzt** (Migrationen 010–015) |
 | [`Konzept_ShiftLeft_DataDiff_v1.md`](Konzept_ShiftLeft_DataDiff_v1.md) | Schema-Drift der Quelle + Data-Diff (Tier 2) | **umgesetzt** inkl. Screen `/schema-drift` (A2, 2026-08) |
+| [`Konzept_ShiftLeft_S4HANA_CDS_DataProducts.md`](Konzept_ShiftLeft_S4HANA_CDS_DataProducts.md) | Shift-Left nach S/4HANA: CDS-Views als contract-governte Datenprodukte (Deklaration/Drift/Enforcement, Abgrenzung zum SAP-Tooling) | Konzept (`OPEN_TASKS` S) |
 | [`Konzept_Runs_Freshness.md`](Konzept_Runs_Freshness.md) | Run-/Load-Info als Freshness-Achse | teilweise; Entscheidungen offen (`OPEN_TASKS` J) |
 | [`Konzept_Manuelles_Healing.md`](Konzept_Manuelles_Healing.md) | **Maßgebliche Healing-Referenz** — Optionen H1–H5, Umsetzungsstand, Abweichungen vom Proposal 2026-07, Mechanik-Bauplan (Opt-in-Leiter, Allowlist, SQL-Guard) | **H1+H3 umgesetzt** (Workbench `/healing`); Rest = `OPEN_TASKS` R |
 | [`Konzept_Managed_Service_Provisioning.md`](Konzept_Managed_Service_Provisioning.md) | Managed Service: Provisionierung, Tenant-Isolation | Konzept (`OPEN_TASKS` D) |
