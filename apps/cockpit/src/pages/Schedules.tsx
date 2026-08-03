@@ -39,7 +39,7 @@ function ModeBadge({ mode }: { mode: Schedule['mode'] }) {
       border: internal ? '1px solid transparent' : `1px solid color-mix(in srgb, var(--obs) 55%, var(--line))`,
     }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: c }} />
-      {internal ? t.schedules.modeInternal : t.schedules.modeExternal}
+      {internal ? t.schedules.modeInternal : mode === 'on_load' ? t.schedules.modeOnLoad : t.schedules.modeExternal}
     </span>
   );
 }

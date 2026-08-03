@@ -96,6 +96,26 @@ class DatasphereClient:
         _raise_for_status(resp, f"GET {path}")
         return resp.json()
 
+    def _post(self, path: str, payload: dict | None = None) -> Any:
+        url = f"{self._base}{path}"
+        with httpx.Client(timeout=self._timeout) as client:
+            resp = client.post(url, json=payload, headers=self._token_header())
+        _raise_for_status(resp, f"POST {path}")
+        try:
+            return resp.json()
+        except ValueError:
+            return {}
+
+    # ------------------------------------------------------------------
+    # Outbound actions (Slice ⑦) — Handeln auf dem Tenant, kein Daten-Schreiben.
+    # Aufrufer (services.api.enforcement.trigger_remediation) erzwingt den
+    # Opt-in DATASPHERE_ALLOW_TRIGGER und auditiert jede Auslösung.
+    # ------------------------------------------------------------------
+
+    def trigger_task_chain(self, space_id: str, chain: str) -> Any:
+        """Task Chain über die öffentliche API starten (Review §4.3 R4)."""
+        return self._post(f"/api/v1/datasphere/tasks/chains/{space_id}/run/{chain}")
+
     # ------------------------------------------------------------------
     # Data load queries
     # ------------------------------------------------------------------

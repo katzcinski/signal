@@ -63,6 +63,11 @@ export function canActOnQuarantine(role: Role): boolean {
   return role !== 'viewer';
 }
 
+/** Enforcement-Apply/Probe = DDL im Tenant-Schema → owner+ (routers/enforcement.py). */
+export function canApplyEnforcement(role: Role): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
 /** UX-N2: notification config is platform-wide → platform-owner (admin) only. */
 export function canManageNotifications(role: Role): boolean {
   return role === 'admin';

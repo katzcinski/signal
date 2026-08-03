@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/ui';
 // symbols (⬡ ⊞ ⟁ …) that rendered inconsistently and carried no label. Each is
 // a 16px stroke icon; semantics come from the adjacent aria-label/title, so the
 // collapsed rail stays navigable for keyboard and screen-reader users.
-type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'quarantine' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin' | 'environments';
+type IconKey = 'my' | 'cockpit' | 'objects' | 'products' | 'contracts' | 'lineage' | 'incidents' | 'quarantine' | 'enforcement' | 'proposals' | 'governance' | 'compliance' | 'library' | 'notifications' | 'settings' | 'schedules' | 'inventoryAdmin' | 'environments';
 
 function Icon({ name }: { name: IconKey }) {
   const common = {
@@ -25,6 +25,7 @@ function Icon({ name }: { name: IconKey }) {
     case 'schedules':  return <svg {...common}><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 1.6" /></svg>;
     case 'incidents':  return <svg {...common}><path d="M5 21V4l13 .5L14 8l4 3.5L5 12" /></svg>;
     case 'quarantine': return <svg {...common}><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 9h16M4 15h16M9 4v16M15 4v16" /></svg>;
+    case 'enforcement': return <svg {...common}><path d="M6 3v18M6 4h11l-3 3.5L17 11H6" /></svg>;
     case 'proposals':  return <svg {...common}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" /></svg>;
     case 'governance': return <svg {...common}><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6Z" /></svg>;
     case 'compliance': return <svg {...common}><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6Z" /><path d="M9 12l2 2 4-4" /></svg>;
@@ -74,12 +75,16 @@ const SETTINGS: NavItem = { to: '/settings', label: t.nav.settings, icon: 'setti
 // nav entry is hidden from viewers as an FE mirror (a hint, not a gate). It sits
 // right after Incidents in the operational cluster of the rail.
 const SCHEDULES: NavItem = { to: '/schedules', label: t.nav.schedules, icon: 'schedules' };
+// Enforcement-Panel (Plan/Probe/Apply) ist server-gegated (Plan steward+,
+// Apply owner+); der Nav-Eintrag folgt demselben FE-Spiegel wie Schedules.
+const ENFORCEMENT: NavItem = { to: '/enforcement', label: t.nav.enforcement, icon: 'enforcement' };
 
 function withSchedules(items: NavItem[], role: Role): NavItem[] {
   if (role === 'viewer') return items;
   const i = items.findIndex(n => n.to === '/incidents');
-  if (i < 0) return [...items, SCHEDULES];
-  return [...items.slice(0, i + 1), SCHEDULES, ...items.slice(i + 1)];
+  const extra = [SCHEDULES, ENFORCEMENT];
+  if (i < 0) return [...items, ...extra];
+  return [...items.slice(0, i + 1), ...extra, ...items.slice(i + 1)];
 }
 
 // UX-N3 / UX-F1: nav order follows the role. Stewards/owners lead with "My work"

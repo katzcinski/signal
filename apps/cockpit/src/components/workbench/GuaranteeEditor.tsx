@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Combobox } from '@/components/ui/Combobox';
 import { t } from '@/i18n/de';
 import {
-  GuaranteeCard, SeveritySelect, ColumnsPicker, RemoveRowButton, AddRowButton,
+  GuaranteeCard, SeveritySelect, EnforcementSelect, ColumnsPicker, RemoveRowButton, AddRowButton,
   fieldLabel, selectStyle, monoStyle, maxAgeToHours, hoursToMaxAge,
 } from './shared';
 import type {
@@ -54,7 +54,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
         accent={FAMILY_ACCENT.schema}
         enabled={!!g.schema}
         onToggle={on => on ? set({ schema: { columns: [], mode: 'closed', severity: 'fail' } }) : unset('schema')}
-        headerExtra={g.schema && header('schema', <SeveritySelect value={g.schema.severity} onChange={s => set({ schema: { ...g.schema!, severity: s } })} />)}
+        headerExtra={g.schema && header('schema', <><SeveritySelect value={g.schema.severity} onChange={s => set({ schema: { ...g.schema!, severity: s } })} /><EnforcementSelect value={g.schema.enforcement} onChange={m => set({ schema: { ...g.schema!, enforcement: m } })} /></>)}
       >
         {g.schema && (
           <>
@@ -122,6 +122,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
                 </label>
                 <div style={{ marginTop: 14 }}>
                   <SeveritySelect value={key.severity} onChange={s => set({ keys: g.keys!.map((k, j) => j === i ? { ...k, severity: s } : k) })} />
+                  <EnforcementSelect value={key.enforcement} onChange={m => set({ keys: g.keys!.map((k, j) => j === i ? { ...k, enforcement: m } : k) })} />
                 </div>
                 <div style={{ marginTop: 14 }}>
                   <RemoveRowButton onClick={() => {
@@ -179,6 +180,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
                   />
                 </div>
                 <SeveritySelect value={ref.severity} onChange={s => set({ referential: g.referential!.map((r, j) => j === i ? { ...r, severity: s } : r) })} />
+                <EnforcementSelect value={ref.enforcement} onChange={m => set({ referential: g.referential!.map((r, j) => j === i ? { ...r, enforcement: m } : r) })} />
                 <RemoveRowButton onClick={() => {
                   const next = g.referential!.filter((_, j) => j !== i);
                   next.length ? set({ referential: next }) : unset('referential');
@@ -196,7 +198,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
         accent={FAMILY_ACCENT.freshness}
         enabled={!!g.freshness}
         onToggle={on => on ? set({ freshness: { column: '', max_age: 'PT24H', severity: 'warn' } }) : unset('freshness')}
-        headerExtra={g.freshness && header('freshness', <SeveritySelect value={g.freshness.severity} onChange={s => set({ freshness: { ...g.freshness!, severity: s } })} />)}
+        headerExtra={g.freshness && header('freshness', <><SeveritySelect value={g.freshness.severity} onChange={s => set({ freshness: { ...g.freshness!, severity: s } })} /><EnforcementSelect value={g.freshness.enforcement} onChange={m => set({ freshness: { ...g.freshness!, enforcement: m } })} /></>)}
       >
         {g.freshness && (
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--s3)', flexWrap: 'wrap' }}>
@@ -231,7 +233,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
         accent={FAMILY_ACCENT.volume}
         enabled={!!g.volume}
         onToggle={on => on ? set({ volume: { min_rows: 1, severity: 'warn' } }) : unset('volume')}
-        headerExtra={g.volume && header('volume', <SeveritySelect value={g.volume.severity} onChange={s => set({ volume: { ...g.volume!, severity: s } })} />)}
+        headerExtra={g.volume && header('volume', <><SeveritySelect value={g.volume.severity} onChange={s => set({ volume: { ...g.volume!, severity: s } })} /><EnforcementSelect value={g.volume.enforcement} onChange={m => set({ volume: { ...g.volume!, enforcement: m } })} /></>)}
       >
         {g.volume && (
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap' }}>
@@ -312,6 +314,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
                   />
                 </label>
                 <SeveritySelect value={row.severity} onChange={s => set({ completeness: g.completeness!.map((r, j) => j === i ? { ...r, severity: s } : r) })} />
+                <EnforcementSelect value={row.enforcement} onChange={m => set({ completeness: g.completeness!.map((r, j) => j === i ? { ...r, enforcement: m } : r) })} />
                 <RemoveRowButton onClick={() => {
                   const next = g.completeness!.filter((_, j) => j !== i);
                   next.length ? set({ completeness: next }) : unset('completeness');
@@ -345,6 +348,9 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
                 </div>
                 <div style={{ marginTop: 14 }}>
                   <SeveritySelect value={row.severity} onChange={s => set({ not_null: g.not_null!.map((r, j) => j === i ? { ...r, severity: s } : r) })} />
+                </div>
+                <div style={{ marginTop: 14 }}>
+                  <EnforcementSelect value={row.enforcement} onChange={m => set({ not_null: g.not_null!.map((r, j) => j === i ? { ...r, enforcement: m } : r) })} />
                 </div>
                 <div style={{ marginTop: 14 }}>
                   <RemoveRowButton onClick={() => {

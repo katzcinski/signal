@@ -12,3 +12,4 @@ from .ddl import (  # noqa: F401
     remote_migration_statements,
     verdict_upsert_statements,
 )
+from . import bridge, split  # noqa: F401

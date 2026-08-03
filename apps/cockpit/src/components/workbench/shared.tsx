@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { t } from '@/i18n/de';
 import type {
   ArtifactKind, Contract, ContractPutBody, ContractOut,
-  CheckDef as LibraryCheck, CheckTemplateParam, Severity, InventoryDataset,
+  CheckDef as LibraryCheck, CheckTemplateParam, Severity, InventoryDataset, EnforcementMode,
 } from '@/types';
 
 // ─── Shared style tokens ─────────────────────────────────────────────────────
@@ -128,6 +128,28 @@ export function FrameTag({ internal }: { internal: boolean }) {
         {internal ? t.workbench.frameInternal : t.workbench.frameContract}
       </span>
     </Tooltip>
+  );
+}
+
+// Durchsetzungsmodus je Garantie (gate|quarantine|monitor); leer = Contract-
+// Default (enforcement_default, sonst monitor). FE spiegelt, Server erzwingt.
+export function EnforcementSelect({ value, onChange }: {
+  value: EnforcementMode | undefined;
+  onChange: (m: EnforcementMode | undefined) => void;
+}) {
+  return (
+    <select
+      value={value ?? ''}
+      onChange={e => onChange((e.target.value || undefined) as EnforcementMode | undefined)}
+      aria-label={t.workbench.fields.enforcement}
+      title={t.workbench.fields.enforcementHint}
+      style={selectStyle}
+    >
+      <option value="">{t.workbench.fields.enforcementDefault}</option>
+      <option value="monitor">{t.quarantine.enforcementLabel.monitor}</option>
+      <option value="quarantine">{t.quarantine.enforcementLabel.quarantine}</option>
+      <option value="gate">{t.quarantine.enforcementLabel.gate}</option>
+    </select>
   );
 }
 

@@ -120,6 +120,17 @@ export default function RunDetail() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg-2)' }}>{run.run_id}</span>
           <StatusPill status={run.overall_status} />
+          {run.gate_verdict && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 10px',
+              borderRadius: 'var(--r-full)', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 650,
+              border: '1px solid',
+              borderColor: run.gate_verdict === 'block' ? 'var(--status-fail)' : run.gate_verdict === 'quarantine' ? 'var(--status-warn)' : 'var(--status-ok)',
+              color: run.gate_verdict === 'block' ? 'var(--status-fail)' : run.gate_verdict === 'quarantine' ? 'var(--status-warn)' : 'var(--status-ok)',
+            }} title={t.quarantine.verdictLabel[run.gate_verdict] ?? run.gate_verdict}>
+              {t.quarantine.verdictLabel[run.gate_verdict] ?? run.gate_verdict}
+            </span>
+          )}
           <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.runDetail.dataset}: {run.dataset}</span>
           <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{t.runDetail.triggeredBy}: {run.triggered_by}</span>
           {durationMs !== null && <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>{durationMs}ms</span>}

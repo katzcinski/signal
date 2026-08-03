@@ -10,9 +10,12 @@ class ScheduleUpsertIn(BaseModel):
 
     mode=internal → Signal's poller runs the object every ``interval_seconds``.
     mode=external → an outside orchestrator (Task Chain / cron → CLI) drives it;
+    mode=on_load → AP-5: der Poller startet einen Lauf, sobald die Datasphere-
+    Run-Historie einen NEUEN erfolgreichen Load für das Objekt zeigt (Dedupe
+    über die zuletzt gesehene externe Run-ID);
     Signal records runs but never fires the poller for it.
     """
-    mode: Literal["internal", "external"] = "internal"
+    mode: Literal["internal", "external", "on_load"] = "internal"
     interval_seconds: int = Field(default=0, ge=0, le=31 * 24 * 3600)
     environment: str = Field(default="", max_length=64)
     execution_mode: Literal["auto", "batch", "isolated"] = "auto"

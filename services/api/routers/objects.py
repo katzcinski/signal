@@ -602,6 +602,7 @@ def start_object_run(
 
             # Enforcement-Achse: Quarantäne-Verdict → Episode (B2, objektgranular).
             # Nie run-kritisch — die Episode ist Meldung, nicht Voraussetzung.
+            episode_id = None
             try:
                 if summary.gate_verdict == "quarantine":
                     failed_q = [
@@ -610,7 +611,7 @@ def start_object_run(
                         and r.severity in ("fail", "critical")
                         and r.enforcement == "quarantine"
                     ]
-                    store.open_quarantine(
+                    episode_id = store.open_quarantine(
                         product=object_id,
                         run_id=run_id,
                         failed_checks=failed_q,
@@ -620,14 +621,38 @@ def start_object_run(
             except Exception:
                 pass
 
-            # Slice ③: Verdict in die HANA-Konsum-Oberfläche (DQ_GATE_STATUS)
-            # publizieren — nur bei aktivierter Materialisierung (Kill-Switch),
-            # über dieselbe Connection/Identität (ADR-0002-Amendment).
+            # Slices ③–⑤: Verdict publizieren, CLEAN-Tabelle refreshen,
+            # Episoden-Snapshot + Spiegel, TTL-Housekeeping — alles hinter dem
+            # Materialisierungs-Kill-Switch, über dieselbe Connection/Identität
+            # (ADR-0002-Amendment). Nie run-kritisch: Result-Store bleibt primär.
+            quarantine_policy = (active_contract or {}).get("quarantine") or {}
             try:
-                from ..enforcement import publish_verdict
-                publish_verdict(conn=conn, summary=summary, settings=settings)
+                from ..enforcement import post_run
+                post_run(conn, summary, settings, store, episode_id=episode_id,
+                         policy=quarantine_policy)
             except Exception:
-                pass  # Publikation ist Projektion — Result-Store bleibt primär
+                pass
+
+            # Auto-Release (Policy je Contract, Default aus): nach N grünen
+            # Läufen offene Episoden automatisch freigeben — Store-seitig auch
+            # ohne Materialisierung wirksam, Spiegel läuft mit, wenn möglich.
+            try:
+                if summary.gate_verdict == "proceed":
+                    from ..enforcement import auto_release
+                    auto_release(settings, store, object_id=object_id,
+                                 policy=quarantine_policy, conn=conn)
+            except Exception:
+                pass
+
+            # Slice ⑦: Outbound-Trigger der Remediation-Chain (eigener Opt-in,
+            # unabhängig von der Materialisierung — es fließt kein SQL, nur ein
+            # auditiertes Chain-Run über die öffentliche Task-Chain-API).
+            try:
+                if summary.gate_verdict == "quarantine":
+                    from ..enforcement import trigger_remediation
+                    trigger_remediation(settings, store, object_id=object_id, run_id=run_id)
+            except Exception:
+                pass
 
             # Entropy-Data-Publish: das verifizierte Grün an den Marktplatz melden
             # (opt-in, fail-open, außerhalb dq_core). Dry-Run, solange der
