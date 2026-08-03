@@ -274,6 +274,7 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | POST | `/api/objects/{id}/profile` | Profil-Lauf: Spaltenstatistik, PK-Kandidaten, optionale Sample Rows `[PII-GATE]` |
 | GET | `/api/metrics/health` · `/api/datasphere/*` · `/api/data-loads` | Betriebs-/Lastmetadaten |
 | GET | `/api/notifications/...` · POST/PATCH/DELETE `channels|rules|mutes` | Notification-Routing (Regeln optional kind-gefiltert via `match_kind`) |
+| GET/POST | `/api/notifications/digest/preview` · `/send` | Qualitäts-Digest (V4): Kennzahlen-Rollup der Periode · manueller Versand an abonnierte Kanäle (`digest_enabled`, `steward+`); Automatik über den Scheduler-Tick (claim-basiert, Migration 018) |
 | GET | `/api/badge/{product}` | einbettbares Status-Badge |
 
 ### Data Products, Quarantäne, Enforcement, Operations, Schedules
@@ -333,6 +334,8 @@ Settings über `pydantic-settings` (`services/api/settings.py`). Auszug:
 | `CORS_ORIGINS` | localhost:5173/3000 | erlaubte Frontends |
 | `WEBHOOK_URL` / `WEBHOOK_ALLOWLIST` | — | Breach-Webhook (SSRF-Allowlist) |
 | `NOTIFICATIONS_FILE` | `notifications.yml` | YAML-Fallback für Kanäle/Regeln (DB schlägt YAML) |
+| `DIGEST_ENABLED` | `false` | Qualitäts-Digest-Automatik (V4) — opt-in; Versand nur an Kanäle mit `digest_enabled` |
+| `DIGEST_INTERVAL_HOURS` | `24` | Digest-Periode (1–168 h); Slot-Claim verhindert Doppel-Versand bei mehreren Workern |
 | `DATASPHERE_*` / `DATASPHERE_USE_CLI` | — / `false` | Datasphere-API/CLI-Zugang (Lastmetadaten) |
 | `DATASPHERE_MONITORING_SPACE` | `""` | Hub-Space für „Für Monitoring vormerken"; leer = Feature aus. Signal schreibt **nicht** in Datasphere — das Provisioning übernimmt ein externes Skript. |
 | `MONITORING_SERVICE_TOKEN` | `""` | Token für den Skript-Callback (`PUT /api/monitoring/shares/{id}/status`) |

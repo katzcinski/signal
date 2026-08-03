@@ -618,8 +618,29 @@ export interface NotificationChannel {
   type: ChannelType | string;
   url: string;
   enabled: boolean;
+  digest_enabled: boolean;
   created_at: string;
   created_by: string;
+}
+
+// ---- Qualitäts-Digest (GET /api/notifications/digest/preview) — V4 ----
+export interface DigestPreview {
+  period_hours: number;
+  generated_at: string;
+  incidents_new: number;
+  incidents_new_by_severity: Record<string, number>;
+  incidents_open: number;
+  top_incidents: { id: number; product: string; severity: string; title: string }[];
+  runs: number;
+  runs_failed: number;
+  gate_verdicts: Record<string, number>;
+  quarantine_open: number;
+  drift_objects: number;
+  drift_breaking_objects: number;
+  enabled: boolean;
+  interval_hours: number;
+  subscribed_channels: number;
+  last_sent_at: string | null;
 }
 
 export interface NotificationRule {

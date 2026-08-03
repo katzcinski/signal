@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     # still validated against webhook_allowlist (no SSRF bypass via routing).
     notifications_file: str = Field(default="notifications.yml")
     incident_cluster_window_minutes: int = Field(default=15, ge=1, le=1440)
+    # Qualitäts-Digest (V4): periodischer Rollup an abonnierte Kanäle
+    # (digest_enabled, Opt-in). Versand über den Scheduler-Tick, Claim-basiert.
+    digest_enabled: bool = Field(default=False)
+    digest_interval_hours: int = Field(default=24, ge=1, le=168)
 
     # Datasphere connector config file (runtime alternative to env vars, git-ignored)
     connector_file: str = Field(default="datasphere.yml")

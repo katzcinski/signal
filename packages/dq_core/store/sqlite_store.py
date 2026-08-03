@@ -4,7 +4,7 @@ import json
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 from pathlib import Path
 from typing import Any, Generator
@@ -1005,6 +1005,55 @@ class ResultStore:
             row.update({k: r[k] for k in r.keys() if k != "object_name"})
         return sorted(merged.values(), key=lambda r: r["object_name"])
 
+    # ------------------------------------------------------------------
+    # Meta-KV + Digest-Claim (Migration 018)
+    # ------------------------------------------------------------------
+
+    def get_meta(self, key: str) -> str | None:
+        with self._conn() as conn:
+            row = conn.execute("SELECT value FROM dq_meta WHERE key=?", (key,)).fetchone()
+        return row["value"] if row else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                "INSERT INTO dq_meta(key, value) VALUES (?,?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, value),
+            )
+
+    def claim_digest_slot(self, now_iso: str, interval_hours: int) -> bool:
+        """Atomarer Claim für den periodischen Digest-Versand.
+
+        Wie ``claim_due_schedules``: der optimistische Guard auf dem zuletzt
+        gesehenen Wert stellt sicher, dass bei mehreren Workern genau einer den
+        fälligen Slot gewinnt. ``True`` = dieser Prozess sendet."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT value FROM dq_meta WHERE key='digest_last_sent'"
+            ).fetchone()
+            if row is None:
+                try:
+                    conn.execute(
+                        "INSERT INTO dq_meta(key, value) VALUES ('digest_last_sent', ?)",
+                        (now_iso,),
+                    )
+                    return True
+                except sqlite3.IntegrityError:
+                    return False  # anderer Worker war schneller
+            last = row["value"]
+            try:
+                due_at = datetime.fromisoformat(last) + timedelta(hours=int(interval_hours))
+                if datetime.fromisoformat(now_iso) < due_at:
+                    return False
+            except ValueError:
+                pass  # kaputter Anker → Claim versuchen, Guard entscheidet
+            cur = conn.execute(
+                "UPDATE dq_meta SET value=? WHERE key='digest_last_sent' AND value=?",
+                (now_iso, last),
+            )
+            return cur.rowcount == 1
+
     def list_incidents(
         self,
         status: str | None = None,
@@ -1683,6 +1732,7 @@ class ResultStore:
     def _channel_row(r: Any) -> dict[str, Any]:
         d = dict(r)
         d["enabled"] = bool(d.get("enabled", 1))
+        d["digest_enabled"] = bool(d.get("digest_enabled", 0))
         return d
 
     def create_notification_channel(
@@ -1704,6 +1754,7 @@ class ResultStore:
     def update_notification_channel(
         self, channel_id: int, *, name: str | None = None, type: str | None = None,
         url: str | None = None, enabled: bool | None = None,
+        digest_enabled: bool | None = None,
     ) -> dict[str, Any] | None:
         sets, params = [], []
         for col, val in (("name", name), ("type", type), ("url", url)):
@@ -1713,6 +1764,9 @@ class ResultStore:
         if enabled is not None:
             sets.append("enabled=?")
             params.append(int(enabled))
+        if digest_enabled is not None:
+            sets.append("digest_enabled=?")
+            params.append(int(digest_enabled))
         if not sets:
             return self.get_notification_channel(channel_id)
         params.append(channel_id)
