@@ -996,6 +996,26 @@ export const t = {
       key_changed: 'Schlüssel geändert',
     } as Record<string, string>,
   },
+  // Garantie-Backtesting (V1) — Entwurf gegen die Messwert-Historie simulieren.
+  backtest: {
+    title: 'Backtest — hätte es gefeuert?',
+    subtitle: 'Simuliert die Garantien des Entwurfs gegen die gespeicherte Messwert-Historie — ohne Lauf gegen HANA.',
+    run: 'Backtest berechnen',
+    running: 'Berechne…',
+    summary: '{fired} von {total} Checks hätten gefeuert · {breaches} Verstöße in {days} Tagen',
+    summaryClean: 'Kein Check hätte in {days} Tagen gefeuert.',
+    noHistory: 'Keine Messwert-Historie zu diesem Entwurf — erst nach einigen Läufen aussagekräftig.',
+    colCheck: 'Check',
+    colExpect: 'Erwartung',
+    colPoints: 'Punkte',
+    colRate: 'Quote',
+    colLastBreach: 'Letzter Verstoß',
+    windowShort: '{days} d',
+    badge: 'hätte {n}× in {days} d gefeuert',
+    badgeClean: 'hätte in {days} d nicht gefeuert',
+    badgeNoData: 'Backtest: keine Historie',
+    error: 'Backtest fehlgeschlagen — Entwurf prüfen.',
+  },
   // Schema-Evolution-Screen (A2/UX-N9) — Spaltenänderungen je Objekt über Zeit.
   schemaDrift: {
     title: 'Schema-Drift',

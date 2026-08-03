@@ -1143,6 +1143,46 @@ export interface SchemaEvolutionOut {
   latest_columns: { name?: string; type?: string; key?: unknown; nullable?: unknown }[];
 }
 
+// ---- Garantie-Backtesting (POST /api/contracts/{p}/backtest) — V1 ----
+export interface BacktestWindow {
+  days: number;
+  points: number;
+  breaches: number;
+}
+
+export interface BacktestBreach {
+  run_id: string;
+  at: string;
+  value: string | null;
+  breach: boolean;
+}
+
+export interface BacktestCheck {
+  check_name: string;
+  expect: string;
+  type: string;
+  severity: string;
+  points: number;
+  evaluated: number;
+  skipped: number;
+  breaches: number;
+  breach_rate: number;
+  first_breach_at: string | null;
+  last_breach_at: string | null;
+  sample: BacktestBreach[];
+  windows: BacktestWindow[];
+}
+
+export interface BacktestOut {
+  product: string;
+  dataset: string;
+  window_days: number[];
+  checks: BacktestCheck[];
+  checks_total: number;
+  checks_with_history: number;
+  summary_windows: { days: number; breaches: number; checks_firing: number }[];
+}
+
 // ---- Data-Diff über Profil-Snapshots (POST /api/objects/{id}/diff) — Konzept §B ----
 export interface MetricDelta {
   base: number | null;

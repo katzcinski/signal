@@ -29,6 +29,11 @@ vi.mock('@/store/role', () => ({
   canAcceptProposal: () => true,
 }));
 
+// BacktestBadge (V1) zieht sonst echtes react-query ohne Provider.
+vi.mock('@/api/contracts', () => ({
+  useExpectationBacktest: () => ({ data: undefined, isError: false }),
+}));
+
 import Proposals from '@/pages/Proposals';
 
 function LocationEcho() {

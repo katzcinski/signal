@@ -242,6 +242,7 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | POST | `/api/contracts/{product}/promote` | `internal_gate` → `consumer_contract`-Draft (Copy-Semantik) `[AUTHZ]` |
 | POST | `/api/contracts/{product}/diff` · GET `/diff/active` · `/version-diff` | Breaking-Report (liefert `kind`, `ceremony_required`, `blocking`) |
 | GET | `/api/contracts/{product}/drift` | Shift-Left-Report: weicht die **Quelle** vom Schema-Versprechen ab (read-only; Persistenz + kind-aware Incident laufen beim Extrakt) |
+| POST | `/api/contracts/{product}/backtest` | Garantie-Backtesting (V1): Entwurf (`contract`) oder Einzel-Expectations (`checks`) gegen die persistierte Messwert-Historie simulieren — „hätte N× in 30/90 d gefeuert", rein lesend |
 | POST | `/api/contracts/{product}/approve` | Full-Modus: Draft → active (G3 nur `*_contract` + 1 Commit) `[AUTHZ]` |
 | POST | `/api/contracts/{product}/certify` | **Lite-Modus: save → active → compile in einem Schritt** `[AUTHZ]` |
 | POST | `/api/contracts/{product}/compile?dry_run=` | Garantien → Checks (persistiert nur `active`) |
