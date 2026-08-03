@@ -203,22 +203,29 @@ export function ColumnsPicker({ value, onChange, options }: {
 
 // Garantie-„Kanalzug": Kopf mit Toggle + Familie, optionaler Kopf-Slot
 // (Severity, beobachtete Realität) und aufklappbarer Parameter-Bereich.
-export function GuaranteeCard({ familyKey, enabled, onToggle, headerExtra, accent, children }: {
+// `badge` markiert Änderungen gegen die aktive Version, `footer` trägt Deltas und
+// Miner-Vorschläge, `offHint` erklärt am ausgeschalteten Kanalzug, was das
+// Einschalten zusichern würde.
+export function GuaranteeCard({ familyKey, enabled, onToggle, headerExtra, accent, badge, offHint, footer, children }: {
   familyKey: string;
   enabled: boolean;
   onToggle: (on: boolean) => void;
   headerExtra?: ReactNode;
   accent?: string;
+  badge?: ReactNode;
+  offHint?: ReactNode;
+  footer?: ReactNode;
   children?: ReactNode;
 }) {
+  const body = enabled && (children || footer);
   return (
     <div style={{
-      ...cardStyle, padding: 0, overflow: 'hidden',
+      ...cardStyle, padding: 0, overflow: 'hidden', opacity: enabled ? 1 : 0.7,
       borderLeft: enabled && accent ? `3px solid ${accent}` : cardStyle.border as string,
     }}>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-        borderBottom: enabled && children ? '1px solid var(--line)' : 'none',
+        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', flexWrap: 'wrap',
+        borderBottom: body ? '1px solid var(--line)' : 'none',
       }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
           <input
@@ -230,11 +237,31 @@ export function GuaranteeCard({ familyKey, enabled, onToggle, headerExtra, accen
           {t.workbench.families[familyKey] ?? familyKey}
         </label>
         <span style={{ ...monoStyle, fontSize: 10, color: 'var(--fg-3)' }}>guarantees.{familyKey}</span>
+        {enabled && badge}
         <div style={{ flex: 1 }} />
-        {enabled && headerExtra}
+        {enabled ? headerExtra : offHint}
       </div>
-      {enabled && children && <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>}
+      {body && (
+        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {children}
+          {footer}
+        </div>
+      )}
     </div>
+  );
+}
+
+// Änderungs-Badge am Kanalzug („verschärft · breaking" / „geändert").
+export function ChangeBadge({ label, breaking }: { label: string; breaking: boolean }) {
+  const tone = breaking ? 'var(--status-warn)' : 'var(--cont)';
+  return (
+    <span style={{
+      fontSize: 9.5, fontWeight: 650, padding: '1px 7px', borderRadius: 'var(--r-full)',
+      whiteSpace: 'nowrap', color: tone, border: `1px solid ${tone}`,
+      background: `color-mix(in srgb, ${tone} 12%, transparent)`,
+    }}>
+      {label}
+    </span>
   );
 }
 

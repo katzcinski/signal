@@ -336,6 +336,10 @@ export const t = {
     frameContractHint: 'Boundary-Contract: versionierte Zusage mit Approval, Breaking-Schutz und Compliance-Wirkung.',
     emptyInternal: 'Keine internen DQ-Checks',
     emptyContract: 'Keine Contracts',
+    // Gruppenköpfe der Liste (Design-Proposal: „Consumer · 3" / „Provider · 2").
+    groupInternal: 'Interne Gates',
+    groupConsumer: 'Consumer',
+    groupProvider: 'Provider',
     promote: 'Als Contract festschreiben',
     promoting: 'Wird festgeschrieben…',
     promoteHint: 'Erzeugt einen versionierten Boundary-Contract aus diesem internen Gate.',
@@ -386,7 +390,10 @@ export const t = {
       factActiveVersion: 'Aktive Version',
       factDraftVersion: 'Entwurf',
       factCompliance: 'Compliance',
+      factChecks: 'Bibliotheks-Checks',
       draftPending: 'Entwurf offen',
+      versionActive: 'Aktiv',
+      versionDraft: 'Entwurf',
     },
     sections: {
       definition: 'Definition',
@@ -409,6 +416,10 @@ export const t = {
     },
     sheet: {
       title: 'Vertragsblatt',
+      odcsExport: 'ODCS-Export ↗',
+      odcsExportHint: 'ODCS-3.1-Dokument (Bitol) dieses Contracts herunterladen.',
+      odcsExporting: 'Exportiert…',
+      odcsExportFailed: 'ODCS-Export fehlgeschlagen.',
       majorRequired: 'Major erforderlich',
       pathTitle: 'Freigabepfad',
       stepSaved: 'Entwurf gespeichert',
@@ -419,8 +430,13 @@ export const t = {
       stepCompiledHint: 'Checks gegen die Quelle generiert und getestet.',
       stepBreaking: 'Breaking-Diff bestätigen',
       stepBreakingHint: 'Verschärfte Garantie erfordert Major-Bump (G3).',
+      stepBreakingClean: 'Keine verschärfte Garantie gegen die aktive Version.',
       stepActivate: 'Aktivieren',
       activateLocked: 'Wird freigeschaltet, sobald der Freigabepfad frei ist.',
+      confirmMajor: 'Major-Bump auf',
+      confirmMajorPending: 'Wird gesetzt…',
+      confirmMajorHint: 'Setzt die Entwurfsversion und speichert den Entwurf; Konsumenten werden bei der Aktivierung benachrichtigt.',
+      majorBumped: 'Entwurfsversion gesetzt — Entwurf gespeichert.',
     },
     observed: {
       last: 'Zuletzt',
@@ -429,6 +445,7 @@ export const t = {
     },
     miner: {
       title: 'Miner-Vorschläge',
+      inlineTitle: 'Miner-Vorschlag aus der Baseline:',
       confidence: 'Konfidenz',
       apply: 'Übernehmen',
       applied: 'In den Entwurf übernommen — prüfen und speichern.',
@@ -464,6 +481,22 @@ export const t = {
       completeness: 'Vollständigkeit',
       not_null: 'Not-Null',
     } as Record<string, string>,
+    // Hinweis am ausgeschalteten Kanalzug: was das Einschalten zusichern würde.
+    familyOffHints: {
+      schema: 'Nicht Teil dieses Contracts — einschalten, um den Spaltenbestand zuzusichern.',
+      keys: 'Nicht Teil dieses Contracts — einschalten, um Schlüssel-Eindeutigkeit zuzusichern.',
+      referential: 'Nicht Teil dieses Contracts — einschalten, um Fremdschlüssel-Bezüge zuzusichern.',
+      freshness: 'Nicht Teil dieses Contracts — einschalten, um ein Maximalalter zuzusichern.',
+      volume: 'Nicht Teil dieses Contracts — einschalten, um eine Mindestmenge zuzusichern.',
+      completeness: 'Nicht Teil dieses Contracts — einschalten, um Füllgrade zuzusichern.',
+      not_null: 'Nicht Teil dieses Contracts — einschalten, um Pflichtspalten zuzusichern.',
+    } as Record<string, string>,
+    // Änderungen am Kanalzug gegen die aktive Version (Server-Diff, G3).
+    change: {
+      changed: 'geändert',
+      breaking: 'verschärft · breaking',
+      triggersG3: 'verschärft — löst G3 aus',
+    },
     checks: {
       title: 'Bibliotheks-Checks',
       subtitle: 'Engineering-Checks aus der Bibliothek (Wertebereiche, Regex, erlaubte Werte …) — nur interne Gates.',

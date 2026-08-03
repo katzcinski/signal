@@ -9,13 +9,17 @@ import {
 } from './shared';
 import type { ContractOut, InventoryDataset } from '@/types';
 
+// Rahmenwechsel als Segmented Control (Design-Proposal): ein Schalter mit zwei
+// Stellungen, klar unterscheidbar von der Tab-Navigation im Editor.
 function SectionTabs({ section, onChange }: { section: Section; onChange: (s: Section) => void }) {
   const tab = (key: Section, label: string) => (
     <button
+      aria-pressed={section === key}
       onClick={() => onChange(key)}
       style={{
-        flex: 1, padding: 'var(--s2) var(--s2)', fontSize: 12, cursor: 'pointer', background: 'none',
-        border: 'none', borderBottom: section === key ? '2px solid var(--cont)' : '2px solid transparent',
+        flex: 1, padding: '4px 0', fontSize: 11.5, cursor: 'pointer', borderRadius: 'var(--r)',
+        background: section === key ? 'var(--bg-1)' : 'transparent',
+        border: `1px solid ${section === key ? 'var(--line-2)' : 'transparent'}`,
         color: section === key ? 'var(--fg)' : 'var(--fg-3)', fontWeight: section === key ? 600 : 400,
       }}
     >
@@ -23,9 +27,28 @@ function SectionTabs({ section, onChange }: { section: Section; onChange: (s: Se
     </button>
   );
   return (
-    <div style={{ display: 'flex', borderBottom: '1px solid var(--line)' }}>
-      {tab('internal', t.workbench.tabInternal)}
-      {tab('contract', t.workbench.tabContract)}
+    <div style={{ padding: 10, borderBottom: '1px solid var(--line)' }}>
+      <div style={{
+        display: 'flex', gap: 2, padding: 2, background: 'var(--bg-2)',
+        border: '1px solid var(--line)', borderRadius: 'var(--r-md)',
+      }}>
+        {tab('internal', t.workbench.tabInternal)}
+        {tab('contract', t.workbench.tabContract)}
+      </div>
+    </div>
+  );
+}
+
+// Gruppenkopf „Consumer · 3" (nur im Contract-Rahmen sinnvoll gruppierbar).
+function GroupHeader({ label, count }: { label: string; count: number }) {
+  return (
+    <div style={{
+      ...monoStyle, display: 'flex', gap: 'var(--s2)', padding: '10px 14px 4px', fontSize: 10,
+      color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em',
+    }}>
+      <span>{label}</span>
+      <span aria-hidden>·</span>
+      <span>{count}</span>
     </div>
   );
 }
@@ -58,10 +81,53 @@ export function ContractList({ contracts, inventory, selected, onSelect, section
       })
     : [];
 
+  // Gruppierung nach Rolle: im Contract-Rahmen Consumer/Provider getrennt, im
+  // internen Rahmen eine Gruppe. Leere Gruppen fallen weg.
+  const groups: { key: string; label: string; items: ContractOut[] }[] = (section === 'contract'
+    ? [
+        { key: 'consumer', label: t.workbench.groupConsumer, items: filtered.filter(c => c.kind === 'consumer_contract') },
+        { key: 'provider', label: t.workbench.groupProvider, items: filtered.filter(c => c.kind === 'provider_contract') },
+      ]
+    : [{ key: 'internal', label: t.workbench.groupInternal, items: filtered }]
+  ).filter(g => g.items.length > 0);
+
+  const item = (c: ContractOut) => (
+    <button
+      key={c.product}
+      onClick={() => onSelect(c.product)}
+      aria-current={selected === c.product ? 'true' : undefined}
+      style={{
+        display: 'block', width: '100%', textAlign: 'left',
+        padding: '10px 14px', cursor: 'pointer',
+        background: selected === c.product ? 'var(--bg-2)' : 'transparent',
+        border: 'none', borderBottom: '1px solid var(--line)', color: 'var(--fg)',
+        boxShadow: selected === c.product ? 'inset 2px 0 0 var(--cont)' : undefined,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
+        <StatusDot status={complianceStatus(c)} size={7} />
+        <span style={{ ...monoStyle, color: 'var(--fg)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.product}</span>
+        <span style={{
+          fontSize: 10, padding: '1px 6px', borderRadius: 3,
+          background: 'var(--bg-3)', border: '1px solid var(--line-2)', color: 'var(--fg-2)',
+        }}>
+          {t.lifecycle[c.lifecycle] ?? c.lifecycle}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginTop: 4, paddingLeft: 15 }}>
+        <span style={{ ...monoStyle, fontSize: 10, color: 'var(--fg-3)' }}>v{String(c.version).replace(/^v/i, '')}</span>
+        <span style={{ fontSize: 10, color: 'var(--fg-3)' }}>{c.owned_by}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--fg-3)' }}>
+          {t.compliance[c.compliance ?? 'unknown'] ?? t.compliance.unknown}
+        </span>
+      </div>
+    </button>
+  );
+
   return (
     <div style={{ width: 280, borderRight: '1px solid var(--line)', overflowY: 'auto', flexShrink: 0 }}>
       <SectionTabs section={section} onChange={onSectionChange} />
-      <div style={{ padding: 10, borderBottom: '1px solid var(--line)' }}>
+      <div style={{ padding: '0 10px 10px', borderBottom: '1px solid var(--line)' }}>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -79,35 +145,11 @@ export function ContractList({ contracts, inventory, selected, onSelect, section
           {section === 'internal' ? t.workbench.emptyInternal : t.workbench.emptyContract}
         </div>
       )}
-      {filtered.map(c => (
-        <button
-          key={c.product}
-          onClick={() => onSelect(c.product)}
-          style={{
-            display: 'block', width: '100%', textAlign: 'left',
-            padding: '10px 14px', cursor: 'pointer',
-            background: selected === c.product ? 'var(--bg-2)' : 'transparent',
-            border: 'none', borderBottom: '1px solid var(--line)', color: 'var(--fg)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-            <span style={{ ...monoStyle, color: 'var(--fg)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.product}</span>
-            <span style={{
-              fontSize: 10, padding: '1px 6px', borderRadius: 3,
-              background: 'var(--bg-3)', border: '1px solid var(--line-2)', color: 'var(--fg-2)',
-            }}>
-              {t.lifecycle[c.lifecycle] ?? c.lifecycle}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginTop: 4 }}>
-            <span style={{ ...monoStyle, fontSize: 10, color: 'var(--fg-3)' }}>v{String(c.version).replace(/^v/i, '')}</span>
-            <span style={{ fontSize: 10, color: 'var(--fg-3)' }}>{c.owned_by}</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)', marginLeft: 'auto', fontSize: 10, color: 'var(--fg-3)' }}>
-              <StatusDot status={complianceStatus(c)} size={6} />
-              {t.compliance[c.compliance ?? 'unknown'] ?? t.compliance.unknown}
-            </span>
-          </div>
-        </button>
+      {groups.map(g => (
+        <div key={g.key}>
+          <GroupHeader label={g.label} count={g.items.length} />
+          {g.items.map(item)}
+        </div>
       ))}
 
       {/* Neu aus Inventar */}

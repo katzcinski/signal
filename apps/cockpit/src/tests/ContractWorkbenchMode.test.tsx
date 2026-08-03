@@ -47,6 +47,7 @@ vi.mock('@/api/contracts', () => ({
   useDryRunChecks: mutation,
   useRevertChecks: mutation,
   useExportBdc: mutation,
+  useExportOdcs: mutation,
   usePromoteContract: () => mutation('promote'),
   useSeedContract: mutation,
   useDiffContract: () => ({
@@ -202,6 +203,63 @@ describe('ContractWorkbench primary action derivation', () => {
 
     expect(release).toBeDisabled();
     expect(screen.getAllByRole('tooltip').some(el => el.textContent === t.workbench.breakingBlocked)).toBe(true);
+  });
+
+  it('offers the G3 major bump in the release path when the breaking gate blocks', () => {
+    currentContract = contract({
+      kind: 'consumer_contract',
+      owned_by: 'platform',
+      lifecycle: 'draft',
+      certified: true,
+      version: '1.1.0',
+    });
+    currentDiff = {
+      ceremony_required: true,
+      active_version: '1.1.0',
+      blocking: true,
+      breaking: true,
+      entries: [{ kind: 'constraint_tightened', path: 'guarantees.volume.min_rows', old: 90000, new: 120000, breaking: true }],
+    };
+
+    renderWorkbench();
+    // Ohne diese Aktion wäre der gesperrte G3-Zustand ein Dead-End — die
+    // Entwurfsversion ist sonst nirgends editierbar.
+    fireEvent.click(screen.getByRole('button', { name: `${t.workbench.sheet.confirmMajor} v2.0.0` }));
+
+    expect(mutations.put).toHaveBeenCalledWith(
+      expect.objectContaining({ product: 'P_MODE', version: '2.0.0' }),
+      expect.anything(),
+    );
+  });
+
+  it('marks the affected guarantee strip as breaking-changed with its delta', () => {
+    currentContract = contract({
+      kind: 'consumer_contract',
+      owned_by: 'platform',
+      lifecycle: 'draft',
+      certified: true,
+      version: '2.0.0',
+      guarantees: { volume: { min_rows: 120000, severity: 'warn' } },
+    });
+    currentDiff = {
+      ceremony_required: true,
+      active_version: '1.1.0',
+      blocking: false,
+      breaking: true,
+      entries: [{ kind: 'constraint_tightened', path: 'guarantees.volume.min_rows', old: 90000, new: 120000, breaking: true }],
+    };
+
+    renderWorkbench();
+
+    expect(screen.getByText(t.workbench.change.breaking)).toBeInTheDocument();
+    expect(screen.getByText(t.workbench.change.triggersG3)).toBeInTheDocument();
+    expect(screen.getByText('guarantees.volume.min_rows')).toBeInTheDocument();
+  });
+
+  it('explains at a switched-off guarantee what enabling it would promise', () => {
+    renderWorkbench();
+
+    expect(screen.getByText(t.workbench.familyOffHints.freshness)).toBeInTheDocument();
   });
 
   it('uses deprecation as the primary action for active governance contracts', () => {

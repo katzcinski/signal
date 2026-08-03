@@ -6,9 +6,11 @@ import { toast } from 'sonner';
 import {
   useContracts, useContract, usePutContract, useApproveContract, useDeprecateContract,
   useDiffContract, useInventory, useCertifyContract, usePromoteContract, useObservedReality,
+  useExportOdcs,
 } from '@/api/contracts';
 import { LifecycleStepper } from '@/components/LifecycleStepper';
 import { SchemaDriftBanner } from '@/components/SchemaDriftBanner';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner';
 import { OwnershipTag } from '@/components/ui/OwnershipTag';
@@ -19,9 +21,9 @@ import { t } from '@/i18n/de';
 import { useRoleStore, canWriteContract } from '@/store/role';
 import {
   cardStyle, monoStyle, datasetName, sectionOfKind, toPutBody, majorOf, extractValidationErrors,
-  FrameTag, type Section,
+  FrameTag, ChangeBadge, type Section,
 } from '@/components/workbench/shared';
-import { GuaranteeEditor } from '@/components/workbench/GuaranteeEditor';
+import { GuaranteeEditor, type FamilySlots } from '@/components/workbench/GuaranteeEditor';
 import { CheckBuilder } from '@/components/workbench/CheckBuilder';
 import { CompilePanel } from '@/components/workbench/CompilePanel';
 import { BreakingDiffPanel } from '@/components/workbench/BreakingDiffPanel';
@@ -30,10 +32,20 @@ import { ContractList } from '@/components/workbench/ContractList';
 import { WorkbenchHero, type HeroChip, type HeroFact } from '@/components/workbench/WorkbenchHero';
 import { Vertragsblatt, type PathStep } from '@/components/workbench/Vertragsblatt';
 import { ObservedSlot } from '@/components/workbench/ObservedSlot';
-import { MinerSuggestions } from '@/components/workbench/MinerSuggestions';
+import { MinerSuggestions, MinerHint, useMinerHints } from '@/components/workbench/MinerSuggestions';
 import type { ArtifactKind, ContractPutBody, DiffEntry, ObservedGuarantee } from '@/types';
 
 const cleanVersion = (v: string | undefined): string => `v${String(v ?? '').replace(/^v/i, '')}`;
+
+// Nächste Major-Version für das G3-Gate: 2.3.0 → 3.0.0.
+const nextMajor = (version: string | undefined): string => `${majorOf(version) + 1}.0.0`;
+
+// Garantie-Familie aus einem Diff-Pfad (`guarantees.volume.min_rows` → volume).
+const familyOfPath = (path: string): string | null =>
+  /^guarantees\.([a-z_]+)/.exec(path)?.[1] ?? null;
+
+const asText = (v: unknown): string =>
+  v === undefined || v === null ? '∅' : typeof v === 'string' ? v : JSON.stringify(v);
 
 // Zweistufige Navigation (§4): Gruppen + Untertabs, beide URL-getrieben.
 type NavTab = 'definition' | 'checkDiff' | 'operations';
@@ -55,6 +67,7 @@ function EditorPane({ product, onPromote, promotePending }: {
   const diff = useDiffContract(product);
   const inventory = useInventory();
   const observed = useObservedReality(product);
+  const exportOdcs = useExportOdcs(product);
   const role = useRoleStore(s => s.role);
 
   // Beobachtete Realität je Garantie-Familie (letzter Messwert, Sparkline, PASS/FAIL).
@@ -82,6 +95,9 @@ function EditorPane({ product, onPromote, promotePending }: {
   const draftKind = draft?.kind ?? contract?.kind ?? 'internal_gate';
   const savedJson = useMemo(() => contract ? JSON.stringify(toPutBody(contract)) : '', [contract]);
   const dirty = draftJson !== '' && draftJson !== savedJson;
+
+  // Miner-Vorschläge: familienbezogene inline im Kanalzug, der Rest im Sammelblock.
+  const minerHints = useMinerHints(product, draft?.guarantees ?? {});
 
   // BreakingDiffPanel: re-diff on every draft change, debounced.
   const diffMutate = diff.mutate;
@@ -151,13 +167,17 @@ function EditorPane({ product, onPromote, promotePending }: {
     ...(certify.isError ? extractValidationErrors(certify.error) : []),
   ];
 
-  const yamlPreview = (() => {
+  const toYaml = (json: string): string => {
     try {
-      return dump(JSON.parse(draftJson), { lineWidth: 100, noRefs: true });
+      return json ? dump(JSON.parse(json), { lineWidth: 100, noRefs: true }) : '';
     } catch {
       return '';
     }
-  })();
+  };
+  const yamlPreview = toYaml(draftJson);
+  // Diff-Baseline der Vorschau: die gespeicherte Fassung (nicht die aktive
+  // Version — dafür ist der Server-Diff unter „Prüfung & Diff" zuständig).
+  const yamlBase = dirty ? toYaml(savedJson) : '';
 
   const draftBody = () => JSON.parse(draftJson) as ContractPutBody;
 
@@ -166,6 +186,56 @@ function EditorPane({ product, onPromote, promotePending }: {
     setConfirmAction(null);
     if (action === 'release') approve.mutate();
     if (action === 'deprecate') deprecate.mutate();
+  };
+
+  // ─── Kanalzug-Slots: Änderung, Delta, Off-Hinweis, Miner ─────────────────
+  // Die Deltas kommen aus dem Server-Diff (autoritativ für „breaking"), damit der
+  // Editor keine eigene Breaking-Heuristik führt.
+  const entriesByFamily = entries.reduce<Record<string, DiffEntry[]>>((acc, e) => {
+    const family = familyOfPath(e.path);
+    if (family) (acc[family] ??= []).push(e);
+    return acc;
+  }, {});
+
+  const familySlots = (family: string): FamilySlots => {
+    const familyEntries = entriesByFamily[family] ?? [];
+    const familyBreaking = familyEntries.some(e => e.breaking === true || /breaking|tightened|escalated/i.test(e.kind));
+    const proposal = minerHints.byFamily[family];
+    return {
+      badge: familyEntries.length > 0 ? (
+        <ChangeBadge
+          label={familyBreaking ? t.workbench.change.breaking : t.workbench.change.changed}
+          breaking={familyBreaking}
+        />
+      ) : undefined,
+      offHint: (
+        <span style={{ fontSize: 11, color: 'var(--fg-3)', maxWidth: 460, textAlign: 'right' }}>
+          {t.workbench.familyOffHints[family]}
+        </span>
+      ),
+      footer: (familyEntries.length > 0 || proposal) ? (
+        <>
+          {familyEntries.map((e, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', flexWrap: 'wrap', fontSize: 10.5, color: 'var(--fg-3)' }}>
+              <span style={{ ...monoStyle, fontSize: 10.5 }}>{e.path}</span>
+              <span style={{ ...monoStyle, fontSize: 10.5, textDecoration: 'line-through' }}>{asText(e.old)}</span>
+              <span aria-hidden>→</span>
+              <span style={{ ...monoStyle, fontSize: 10.5, color: 'var(--fg-2)' }}>{asText(e.new)}</span>
+              {(e.breaking === true || /breaking|tightened|escalated/i.test(e.kind)) && (
+                <span style={{ color: 'var(--status-warn)', fontWeight: 650 }}>{t.workbench.change.triggersG3}</span>
+              )}
+            </div>
+          ))}
+          {proposal && (
+            <MinerHint
+              proposal={proposal}
+              guarantees={draft.guarantees ?? {}}
+              onApply={g => setDraft({ ...draft, guarantees: g })}
+            />
+          )}
+        </>
+      ) : undefined,
+    };
   };
 
   const versionLabel = cleanVersion(draft.version);
@@ -224,9 +294,32 @@ function EditorPane({ product, onPromote, promotePending }: {
   const enabledGuarantees = Object.entries(draft.guarantees ?? {}).filter(([, v]) => !!v).length;
   const facts: HeroFact[] = [
     { label: t.workbench.hero.factGuarantees, value: enabledGuarantees },
-    { label: t.workbench.hero.factActiveVersion, value: activeVersion ? cleanVersion(String(activeVersion)) : '—' },
-    { label: t.workbench.hero.factDraftVersion, value: versionLabel },
+    ...((draft.checks?.length ?? 0) > 0
+      ? [{ label: t.workbench.hero.factChecks, value: draft.checks!.length }]
+      : []),
+    ...(contract?.compliance
+      ? [{ label: t.workbench.hero.factCompliance, value: t.compliance[contract.compliance] ?? contract.compliance }]
+      : []),
   ];
+
+  // Versionsstreifen: aktive Fassung → Entwurf, direkt im Fakten-Band des Hero.
+  const versionChip = (label: string, value: string, warn = false) => (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 'var(--s2)',
+      border: `1px solid ${warn ? 'color-mix(in srgb, var(--status-warn) 45%, var(--line))' : 'var(--line)'}`,
+      borderRadius: 'var(--r-md)', padding: '4px 9px', background: 'var(--bg-2)',
+    }}>
+      <span style={{ ...monoStyle, fontSize: 9.5, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
+      <span style={{ ...monoStyle, fontSize: 12, color: 'var(--fg)' }}>{value}</span>
+    </span>
+  );
+  const versionJump = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', flexWrap: 'wrap' }}>
+      {versionChip(t.workbench.hero.versionActive, activeVersion ? cleanVersion(String(activeVersion)) : '—')}
+      <span aria-hidden style={{ color: 'var(--fg-3)' }}>→</span>
+      {versionChip(t.workbench.hero.versionDraft, versionLabel, lifecycle === 'draft' || dirty)}
+    </div>
+  );
 
   const promoteMenu = isInternal && lifecycle !== 'deprecated' ? (
     <details style={{ position: 'relative' }}>
@@ -271,6 +364,16 @@ function EditorPane({ product, onPromote, promotePending }: {
   );
 
   // ─── Vertragsblatt: Freigabepfad ───────────────────────────────────────────
+  // G3-Gate mit Aktion: Der Major-Bump ist der einzige Weg aus dem gesperrten
+  // Zustand — er setzt die Entwurfsversion und speichert den Entwurf, damit der
+  // Server beim Freigeben dieselbe Version sieht (gate_g3 liest das Artefakt).
+  const bumpTarget = nextMajor(String(activeVersion ?? draft.version));
+  const confirmMajor = () => {
+    const bumped = { ...draftBody(), version: bumpTarget };
+    setDraft(bumped);
+    put.mutate(bumped, { onSuccess: () => toast.success(t.workbench.sheet.majorBumped) });
+  };
+
   const steps: PathStep[] = [
     {
       key: 'saved', label: t.workbench.sheet.stepSaved,
@@ -288,8 +391,22 @@ function EditorPane({ product, onPromote, promotePending }: {
     },
     ...(ceremonyRequired ? [{
       key: 'breaking', badge: 'G3', label: t.workbench.sheet.stepBreaking,
-      hint: t.workbench.sheet.stepBreakingHint,
+      hint: hasBreaking ? t.workbench.sheet.stepBreakingHint : t.workbench.sheet.stepBreakingClean,
       status: (breakingBlocked ? 'blocked' : hasBreaking ? 'current' : 'done') as PathStep['status'],
+      action: breakingBlocked ? (
+        <Tooltip content={canWrite ? t.workbench.sheet.confirmMajorHint : writeTitle} focusable={!canWrite}>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!canWrite || put.isPending}
+            pending={put.isPending}
+            pendingLabel={t.workbench.sheet.confirmMajorPending}
+            onClick={confirmMajor}
+          >
+            {t.workbench.sheet.confirmMajor} v{bumpTarget}
+          </Button>
+        </Tooltip>
+      ) : undefined,
     }] : []),
     {
       key: 'activate', label: t.workbench.sheet.stepActivate,
@@ -325,6 +442,8 @@ function EditorPane({ product, onPromote, promotePending }: {
         value={subTab}
         onChange={setDefTab}
         showBuilder={isInternal}
+        guaranteeCount={enabledGuarantees}
+        checkCount={draft.checks?.length ?? 0}
       />
       {subTab === 'builder' && isInternal ? (
         <CheckBuilder
@@ -343,7 +462,7 @@ function EditorPane({ product, onPromote, promotePending }: {
       ) : (
         <>
           <MinerSuggestions
-            product={product}
+            proposals={minerHints.rest}
             guarantees={draft.guarantees ?? {}}
             onApply={g => setDraft({ ...draft, guarantees: g })}
           />
@@ -354,6 +473,7 @@ function EditorPane({ product, onPromote, promotePending }: {
             datasetOptions={datasetOptions}
             columnsOfDataset={columnsOfDataset}
             observed={family => <ObservedSlot observed={observedByFamily[family]} />}
+            slots={familySlots}
           />
         </>
       )}
@@ -412,7 +532,7 @@ function EditorPane({ product, onPromote, promotePending }: {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 'var(--s5)', gap: 14, overflowY: 'auto', minWidth: 0 }}>
       {!canWrite && <ReadOnlyBanner hint={t.role.noWriteContract} />}
 
-      <WorkbenchHero title={product} chips={chips} meta={meta} facts={facts} unsaved={dirty} actions={heroActions} />
+      <WorkbenchHero title={product} chips={chips} meta={meta} facts={facts} unsaved={dirty} actions={heroActions} versionJump={versionJump} />
       {statusLine}
 
       {/* Attention-Band: Breaking-Change-Hinweis (G3). */}
@@ -442,16 +562,20 @@ function EditorPane({ product, onPromote, promotePending }: {
         </div>
       )}
 
-      {/* Zweistufige Navigation */}
-      <div style={{ display: 'flex', gap: 'var(--s1)', borderBottom: '1px solid var(--line)' }}>
+      {/* Zweistufige Navigation — Gruppen als Pills, Untertabs unterstrichen,
+          damit die beiden Ebenen visuell nicht dieselbe Form tragen. */}
+      <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap' }}>
         {NAV_TABS.map(key => (
           <button
             key={key}
+            aria-current={tab === key ? 'page' : undefined}
             onClick={() => setNavTab(key)}
             style={{
-              padding: 'var(--s2) var(--s4)', fontSize: 13, cursor: 'pointer', background: 'none', border: 'none',
-              borderBottom: tab === key ? '2px solid var(--cont)' : '2px solid transparent',
-              color: tab === key ? 'var(--fg)' : 'var(--fg-3)', fontWeight: tab === key ? 600 : 400,
+              padding: 'var(--s2) var(--s4)', fontSize: 13, cursor: 'pointer',
+              borderRadius: 'var(--r-md)',
+              border: `1px solid ${tab === key ? 'var(--cont)' : 'var(--line)'}`,
+              background: tab === key ? 'color-mix(in srgb, var(--cont) 12%, var(--bg-1))' : 'var(--bg-1)',
+              color: tab === key ? 'var(--fg)' : 'var(--fg-3)', fontWeight: tab === key ? 700 : 500,
             }}
           >
             {t.workbench.sections[key]}
@@ -470,7 +594,21 @@ function EditorPane({ product, onPromote, promotePending }: {
           versionTo={versionLabel}
           majorRequired={breakingBlocked}
           yaml={yamlPreview}
+          yamlBase={yamlBase}
           steps={steps}
+          headerExtra={!isInternal ? (
+            <Tooltip content={t.workbench.sheet.odcsExportHint}>
+              <Button
+                variant="ghost"
+                size="sm"
+                pending={exportOdcs.isPending}
+                pendingLabel={t.workbench.sheet.odcsExporting}
+                onClick={() => exportOdcs.mutate()}
+              >
+                {t.workbench.sheet.odcsExport}
+              </Button>
+            </Tooltip>
+          ) : undefined}
           footer={sheetFooter}
         />
       </div>
@@ -478,26 +616,39 @@ function EditorPane({ product, onPromote, promotePending }: {
   );
 }
 
-// Untertabs der Definition-Gruppe.
-function SubTabs({ value, onChange, showBuilder }: { value: DefTab; onChange: (v: DefTab) => void; showBuilder: boolean }) {
-  const tabs: [DefTab, string][] = [
-    ['guarantees', t.workbench.subtabs.guarantees],
-    ...(showBuilder ? [['builder', t.workbench.subtabs.builder] as [DefTab, string]] : []),
-    ['metadata', t.workbench.subtabs.metadata],
+// Untertabs der Definition-Gruppe (mit Zählern wie im Design-Proposal).
+function SubTabs({ value, onChange, showBuilder, guaranteeCount, checkCount }: {
+  value: DefTab;
+  onChange: (v: DefTab) => void;
+  showBuilder: boolean;
+  guaranteeCount: number;
+  checkCount: number;
+}) {
+  const tabs: [DefTab, string, number | undefined][] = [
+    ['guarantees', t.workbench.subtabs.guarantees, guaranteeCount],
+    ...(showBuilder ? [['builder', t.workbench.subtabs.builder, checkCount] as [DefTab, string, number]] : []),
+    ['metadata', t.workbench.subtabs.metadata, undefined],
   ];
   return (
-    <div style={{ display: 'flex', gap: 'var(--s4)', marginBottom: 4 }}>
-      {tabs.map(([key, label]) => (
+    <div style={{ display: 'flex', gap: 'var(--s4)', marginBottom: 4, borderBottom: '1px solid var(--line)' }}>
+      {tabs.map(([key, label, count]) => (
         <button
           key={key}
+          // Der Zähler bleibt aus dem Accessible Name heraus: der Tab-Name ist
+          // stabil, die Zahl ist Zusatzinformation.
+          aria-label={label}
+          aria-current={value === key ? 'page' : undefined}
           onClick={() => onChange(key)}
           style={{
-            padding: '2px 0', fontSize: 12, cursor: 'pointer', background: 'none', border: 'none',
+            padding: '4px 0', fontSize: 12, cursor: 'pointer', background: 'none', border: 'none',
             borderBottom: value === key ? '2px solid var(--cont)' : '2px solid transparent',
             color: value === key ? 'var(--fg)' : 'var(--fg-3)', fontWeight: value === key ? 600 : 400,
           }}
         >
           {label}
+          {count !== undefined && (
+            <span style={{ ...monoStyle, fontSize: 10, color: 'var(--fg-3)', marginLeft: 5 }}>{count}</span>
+          )}
         </button>
       ))}
     </div>
@@ -606,6 +757,11 @@ export default function ContractWorkbench() {
 
   return (
     <div className="page-full">
+      <Breadcrumbs items={[
+        { label: t.breadcrumb.home, to: '/' },
+        { label: t.workbench.title, ...(product ? { to: '/contracts' } : {}) },
+        ...(product ? [{ label: product }] : []),
+      ]} />
       <h1 style={{ fontSize: 'var(--fs-h2)', fontWeight: 700, margin: '0 0 var(--s4)' }}>{t.workbench.title}</h1>
       {contractsQuery.isError && <ErrorBanner onRetry={() => contractsQuery.refetch()} />}
       <div style={{

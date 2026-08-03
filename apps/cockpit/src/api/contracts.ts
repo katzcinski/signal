@@ -177,3 +177,21 @@ export const useExportBdc = (product: string) =>
   useMutation({
     mutationFn: () => api.post(`/contracts/${product}/export/bdc`).then(r => r.data),
   });
+
+// ODCS-3.1-Export (Bitol) für Boundary-Contracts — interne Gates haben keinen
+// Export. Das Ergebnis wird als Datei heruntergeladen; kein Server-Write.
+export const useExportOdcs = (product: string) =>
+  useMutation({
+    mutationFn: () => api.get(`/contracts/${product}/export/odcs`).then(r => r.data),
+    onSuccess: data => {
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${product}.odcs.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+    onError: () => toast.error(t.workbench.sheet.odcsExportFailed),
+  });
