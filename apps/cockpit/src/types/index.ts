@@ -618,8 +618,29 @@ export interface NotificationChannel {
   type: ChannelType | string;
   url: string;
   enabled: boolean;
+  digest_enabled: boolean;
   created_at: string;
   created_by: string;
+}
+
+// ---- Qualitäts-Digest (GET /api/notifications/digest/preview) — V4 ----
+export interface DigestPreview {
+  period_hours: number;
+  generated_at: string;
+  incidents_new: number;
+  incidents_new_by_severity: Record<string, number>;
+  incidents_open: number;
+  top_incidents: { id: number; product: string; severity: string; title: string }[];
+  runs: number;
+  runs_failed: number;
+  gate_verdicts: Record<string, number>;
+  quarantine_open: number;
+  drift_objects: number;
+  drift_breaking_objects: number;
+  enabled: boolean;
+  interval_hours: number;
+  subscribed_channels: number;
+  last_sent_at: string | null;
 }
 
 export interface NotificationRule {
@@ -1092,6 +1113,183 @@ export interface SchemaDriftReport {
   findings: SchemaDriftFinding[];
   summary: SchemaDriftSummary;
   history: SchemaDriftHistoryRow[];
+}
+
+// ---- Schema-Evolution-Screen (GET /api/schema-drift[…]) — A2/UX-N9 ----
+export interface SchemaDriftObjectRow {
+  object_name: string;
+  snapshots: number;
+  first_captured_at: string | null;
+  last_captured_at: string | null;
+  distinct_schemas: number;
+  findings: number;
+  breaking: number;
+  last_detected_at: string | null;
+  last_incident_id: number | null;
+  column_count: number | null;
+  product: string | null;
+  kind: string | null;
+  contract_version: string | null;
+  lifecycle: string | null;
+}
+
+export interface SchemaEvolutionSnapshot {
+  id: number;
+  captured_at: string;
+  inventory_hash: string;
+  column_count: number;
+}
+
+export interface SchemaEvolutionChange {
+  category: SchemaDriftCategory;
+  column: string;
+  before: string;
+  after: string;
+}
+
+export interface SchemaEvolutionStep {
+  from_id: number;
+  to_id: number;
+  from_at: string;
+  to_at: string;
+  changes: SchemaEvolutionChange[];
+}
+
+export interface SchemaEvolutionOut {
+  object_name: string;
+  contract: { product: string; version: string; kind: string; lifecycle: string } | null;
+  snapshots: SchemaEvolutionSnapshot[];
+  steps: SchemaEvolutionStep[];
+  drift_events: SchemaDriftHistoryRow[];
+  latest_columns: { name?: string; type?: string; key?: unknown; nullable?: unknown }[];
+}
+
+// ---- Healing-Workbench (/api/healing) — Konzept_Manuelles_Healing H1/H3 ----
+export interface HealingEpisodeRow {
+  episode_id: number;
+  object_id: string;
+  status: string;
+  row_count: number | null;
+  failed_checks: string[];
+  opened_at: string;
+  corrections: number;
+  kind: string;
+  four_eyes: boolean;
+}
+
+export interface HealingCorrection {
+  id: number;
+  object_id: string;
+  episode_id: number;
+  row_key: Record<string, string>;
+  column_name: string;
+  before_value: string | null;
+  after_value: string | null;
+  reason: string;
+  actor: string;
+  created_at: string;
+  applied: boolean;
+  apply_error: string;
+}
+
+export interface HealingPatch {
+  id: string;
+  object_id: string;
+  keys: Record<string, string>;
+  values: Record<string, string>;
+  reason: string;
+  actor: string;
+  created_at: string;
+  valid_until: string | null;
+  status: 'active' | 'revoked' | 'expired';
+  revoked_at: string | null;
+  revoked_by: string;
+  applied: boolean;
+  apply_error: string;
+}
+
+export interface HealingOverview {
+  materialization_enabled: boolean;
+  signal_schema: string;
+  episodes: HealingEpisodeRow[];
+  patches: HealingPatch[];
+  patches_total: number;
+  corrections_total: number;
+}
+
+export interface HealingEpisodeDetail {
+  episode: QuarantineEpisode;
+  object_id: string;
+  kind: string;
+  four_eyes: boolean;
+  columns: string[];
+  key_columns: string[];
+  row_capable: boolean;
+  predicates: { check: string; type: string }[];
+  skipped: { check: string; type: string; reason: string }[];
+  remaining_bad_rows: number | null;
+  release_ready: boolean;
+  corrections: HealingCorrection[];
+  correction_actors: string[];
+}
+
+export interface HealingPlan {
+  object_id: string;
+  enabled: boolean;
+  signal_schema: string;
+  h1: {
+    quarantine_table: string;
+    upgrade: string[];
+    procedure: string;
+    row_capable: boolean;
+  } | null;
+  h3: {
+    patch_table: string;
+    healed_view: string;
+    key_columns: string[];
+    patch_columns: string[];
+    ddl: string[];
+  } | null;
+}
+
+// ---- Garantie-Backtesting (POST /api/contracts/{p}/backtest) — V1 ----
+export interface BacktestWindow {
+  days: number;
+  points: number;
+  breaches: number;
+}
+
+export interface BacktestBreach {
+  run_id: string;
+  at: string;
+  value: string | null;
+  breach: boolean;
+}
+
+export interface BacktestCheck {
+  check_name: string;
+  expect: string;
+  type: string;
+  severity: string;
+  points: number;
+  evaluated: number;
+  skipped: number;
+  breaches: number;
+  breach_rate: number;
+  first_breach_at: string | null;
+  last_breach_at: string | null;
+  sample: BacktestBreach[];
+  windows: BacktestWindow[];
+}
+
+export interface BacktestOut {
+  product: string;
+  dataset: string;
+  window_days: number[];
+  checks: BacktestCheck[];
+  checks_total: number;
+  checks_with_history: number;
+  summary_windows: { days: number; breaches: number; checks_firing: number }[];
 }
 
 // ---- Data-Diff über Profil-Snapshots (POST /api/objects/{id}/diff) — Konzept §B ----

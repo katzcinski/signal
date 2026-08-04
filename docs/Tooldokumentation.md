@@ -242,6 +242,7 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | POST | `/api/contracts/{product}/promote` | `internal_gate` → `consumer_contract`-Draft (Copy-Semantik) `[AUTHZ]` |
 | POST | `/api/contracts/{product}/diff` · GET `/diff/active` · `/version-diff` | Breaking-Report (liefert `kind`, `ceremony_required`, `blocking`) |
 | GET | `/api/contracts/{product}/drift` | Shift-Left-Report: weicht die **Quelle** vom Schema-Versprechen ab (read-only; Persistenz + kind-aware Incident laufen beim Extrakt) |
+| POST | `/api/contracts/{product}/backtest` | Garantie-Backtesting (V1): Entwurf (`contract`) oder Einzel-Expectations (`checks`) gegen die persistierte Messwert-Historie simulieren — „hätte N× in 30/90 d gefeuert", rein lesend |
 | POST | `/api/contracts/{product}/approve` | Full-Modus: Draft → active (G3 nur `*_contract` + 1 Commit) `[AUTHZ]` |
 | POST | `/api/contracts/{product}/certify` | **Lite-Modus: save → active → compile in einem Schritt** `[AUTHZ]` |
 | POST | `/api/contracts/{product}/compile?dry_run=` | Garantien → Checks (persistiert nur `active`) |
@@ -273,6 +274,7 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 | POST | `/api/objects/{id}/profile` | Profil-Lauf: Spaltenstatistik, PK-Kandidaten, optionale Sample Rows `[PII-GATE]` |
 | GET | `/api/metrics/health` · `/api/datasphere/*` · `/api/data-loads` | Betriebs-/Lastmetadaten |
 | GET | `/api/notifications/...` · POST/PATCH/DELETE `channels|rules|mutes` | Notification-Routing (Regeln optional kind-gefiltert via `match_kind`) |
+| GET/POST | `/api/notifications/digest/preview` · `/send` | Qualitäts-Digest (V4): Kennzahlen-Rollup der Periode · manueller Versand an abonnierte Kanäle (`digest_enabled`, `steward+`); Automatik über den Scheduler-Tick (claim-basiert, Migration 018) |
 | GET | `/api/badge/{product}` | einbettbares Status-Badge |
 
 ### Data Products, Quarantäne, Enforcement, Operations, Schedules
@@ -281,11 +283,14 @@ FastAPI, Basis `/api`. Interaktive Docs zur Laufzeit: `/api/docs` (Swagger), `/a
 |---|---|---|
 | GET | `/api/products` · `/api/products/{product}` | Data-Product-Aggregat (ADR-0004): Komposition, Boundary, Findings-Rollup |
 | GET | `/api/quarantine` · `/{id}` | Quarantäne-Episoden (Filter Status), Detail + Event-Timeline |
-| POST | `/api/quarantine/{id}/release` · `/confirm-reprocess` · `/reconcile` | Episoden-Übergänge (`steward+`, 409 bei unzulässigem Übergang) |
+| POST | `/api/quarantine/{id}/release` · `/confirm-reprocess` · `/reconcile` | Episoden-Übergänge (`steward+`, 409 bei unzulässigem Übergang); Freigabe zusätzlich 409 bei offenen Verstößen bzw. Vier-Augen-Verletzung, sobald an der Episode geheilt wurde |
+| GET/POST | `/api/healing/overview` · `/episodes/{id}` · `/episodes/{id}/corrections` · `/recheck` | Healing H1 (`steward+`): Parkbucht-Korrektur mit Schattenspalte `_DQ_ORIGINAL`, Re-Check gegen das Bad-Prädikat |
+| GET/POST | `/api/healing/patches` · `/patches/{id}/revoke` · `/plan` | Healing H3 (`owner+` für Schreiben): Patch-Overlay `DQ_PATCH_<OBJ>` + `V_DQ_HEALED_<OBJ>`, Rücknahme mit Audit; `plan` = DDL-Vorschau |
 | GET | `/api/enforcement/plan` · POST `/apply` | Materialisierungs-Plan (DDL/DML-Vorschau) · Apply ins Signal-Schema (`owner/admin`, Operations-Audit, doppelt gegated §3.8) |
 | GET | `/api/operations/{op_id}` · `/events` | Generischer Operation-/Progress-Kanal (ADR-0007): Poll + SSE |
 | GET/PUT/DELETE | `/api/objects/{id}/schedule` · GET `/api/schedules` | Pro-Objekt-Scheduling `manual/internal/external` (ADR-0005) + Ops-Sicht (`steward+`) |
 | GET/PUT | `/api/admin/connector` · POST `/login` | Datasphere-Connector-Konfiguration + OAuth-Login `[AUTHZ admin]` |
+| GET | `/api/schema-drift` · `/{object}` | Schema-Evolution (A2/UX-N9): Rollup je Objekt (Snapshots × Drift × Contract) · Snapshot-Diffs über Zeit + Drift-Historie mit Incident-Referenz |
 
 ### Monitoring (Hub-Sharing, Hybrid)
 
@@ -331,6 +336,8 @@ Settings über `pydantic-settings` (`services/api/settings.py`). Auszug:
 | `CORS_ORIGINS` | localhost:5173/3000 | erlaubte Frontends |
 | `WEBHOOK_URL` / `WEBHOOK_ALLOWLIST` | — | Breach-Webhook (SSRF-Allowlist) |
 | `NOTIFICATIONS_FILE` | `notifications.yml` | YAML-Fallback für Kanäle/Regeln (DB schlägt YAML) |
+| `DIGEST_ENABLED` | `false` | Qualitäts-Digest-Automatik (V4) — opt-in; Versand nur an Kanäle mit `digest_enabled` |
+| `DIGEST_INTERVAL_HOURS` | `24` | Digest-Periode (1–168 h); Slot-Claim verhindert Doppel-Versand bei mehreren Workern |
 | `DATASPHERE_*` / `DATASPHERE_USE_CLI` | — / `false` | Datasphere-API/CLI-Zugang (Lastmetadaten) |
 | `DATASPHERE_MONITORING_SPACE` | `""` | Hub-Space für „Für Monitoring vormerken"; leer = Feature aus. Signal schreibt **nicht** in Datasphere — das Provisioning übernimmt ein externes Skript. |
 | `MONITORING_SERVICE_TOKEN` | `""` | Token für den Skript-Callback (`PUT /api/monitoring/shares/{id}/status`) |
@@ -382,9 +389,11 @@ Vite + React 18 + TS strict, TanStack Query v5, React Router, Tailwind (Design-T
 | `/lineage`, `/coverage` | Lineage-/Coverage-Map | Schematic-SVG-Lineage (Legacy-Cytoscape-Map als Fallback-Ansicht); Coverage-Status je Node, Dimension-Switcher (Internal\|Contract\|All), Gate = gestrichelt; `/coverage` ist Route-Alias derselben Ansicht |
 | `/incidents` | Incidents | Incident-Inbox + Timeline; `kind`-Badge & -Filter (Engineering-Signal vs. Contract-Breach) |
 | `/quarantine` | Quarantäne | Episoden-Inbox (Tabs nach Status), Drawer mit Event-Timeline, Freigabe-/Reprocess-Aktionen (§3.8) |
+| `/healing` | Healing-Workbench | Manuelle Datenkorrektur (`Konzept_Manuelles_Healing` H1/H3): Parkbucht-Korrektur je Episode mit Re-Check-Zähler, Patch-Overlay mit Gültigkeit/Rücknahme; schreibt nur im Signal-Schema, Quelle bleibt read-only |
 | `/proposals` | Proposals | Miner-Vorschläge (Inbox), kind-Badge |
 | `/runs/:id`, `/runs/compare` | Run-Detail/-Vergleich | Live-Log (SSE) + Polling; Regressions-Diff zweier Runs; `gate_verdict`-Anzeige |
 | `/schedules` | Schedules | Ops-Sicht der pro-Objekt-Zeitpläne (`manual/internal/external`, ADR-0005) |
+| `/schema-drift` | Schema-Drift | Schema-Evolution je Objekt über Zeit (A2/UX-N9): Snapshot-Diffs (Spalten hinzu/entfernt/Typ), Contract-Brüche mit Incident-Deep-Link |
 | `/compliance`, `/library`, `/notifications` | Verwaltung | ACLs/Compliance-Ampel (nur Contracts; `/governance` leitet hierher um), Check-Library-Browser, Routing (inkl. `match_kind`) |
 | `/settings`, `/environments`, `/inventory-admin` | Administration | Einstellungen (inkl. Datasphere-Connector), HANA-Verbindungen + Test (Operation/SSE), Inventar-Pflege |
 

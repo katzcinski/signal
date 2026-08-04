@@ -75,4 +75,29 @@ describe('CommandPalette', () => {
     // Viewer hat keine „Meine Arbeit"-Landeseite.
     expect(screen.queryByText(t.nav.myWork)).not.toBeInTheDocument();
   });
+
+  it('switches the theme via a system action', () => {
+    useUIStore.setState({ theme: 'signal' });
+    const onClose = renderPalette();
+
+    fireEvent.click(screen.getByText('daylight'));
+    expect(useUIStore.getState().theme).toBe('daylight');
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('offers quick filters and the digest action to a steward, not a viewer', () => {
+    renderPalette();
+    expect(screen.getByText(t.palette.quickOpenIncidents)).toBeInTheDocument();
+    expect(screen.getByText(t.palette.quickOverdueSchedules)).toBeInTheDocument();
+    expect(screen.getByText(t.palette.sendDigest)).toBeInTheDocument();
+  });
+
+  it('hides the digest and schedules actions from viewers', () => {
+    useRoleStore.setState({ role: 'viewer' });
+    renderPalette();
+
+    expect(screen.queryByText(t.palette.sendDigest)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.palette.quickOverdueSchedules)).not.toBeInTheDocument();
+    expect(screen.getByText(t.palette.quickOpenIncidents)).toBeInTheDocument();
+  });
 });

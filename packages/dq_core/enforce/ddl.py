@@ -178,6 +178,14 @@ def desired_objects(*, include_bridge: bool = False) -> list[RemoteObject]:
         name="P_DQ_ASSERT_GATE", kind="procedure", ddl=proc,
         manifest_hash=manifest_hash(proc), replaceable=True,
     ))
+    # Healing H1: SQL-seitige Korrektur-Tür (DEFINER) — Korrekturen ohne
+    # UPDATE-Grant auf DQ_Q_*, jede Ausführung landet in DQ_HEAL_LOG.
+    from .healing import correct_row_procedure_ddl
+    heal_proc = correct_row_procedure_ddl()
+    objects.append(RemoteObject(
+        name="P_DQ_CORRECT_ROW", kind="procedure", ddl=heal_proc,
+        manifest_hash=manifest_hash(heal_proc), replaceable=True,
+    ))
     if include_bridge:
         from .bridge import gate_bridge_procedure_ddl, request_run_procedure_ddl
         for name, ddl in (

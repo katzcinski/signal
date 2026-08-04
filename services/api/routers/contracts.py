@@ -14,6 +14,7 @@ from ..auth.provider import PrincipalDep, can_write_contract_data
 from ..deps import StoreDep, get_inventory
 from ..git_repo import GitPushRejected, GitRepo
 from ..schemas.contract_schemas import (
+    BacktestCheckOut, BacktestIn, BacktestOut, BacktestSummaryWindow,
     CompileOut, ContractIn, ContractOut,
     ObservedOut, ObservedGuarantee, ObservedCheck, ObservedPoint,
 )
@@ -374,6 +375,92 @@ def schema_drift_report(
         **report,
         "history": store.get_schema_drift(dataset),
     }
+
+
+@router.post("/{product}/backtest", response_model=BacktestOut)
+def backtest_contract(
+    product: str,
+    body: BacktestIn,
+    store: StoreDep = ...,
+    inventory: list[dict] = Depends(get_inventory),
+):
+    """Garantie-Backtesting (V1): Expectation-Entwürfe gegen die persistierte
+    Messwert-Historie simulieren — rein lesend, kein Lauf gegen HANA.
+
+    Zwei Eingabeformen: `contract` (kompletter Entwurf; der deterministische
+    Compiler liefert die Check-Namen — G1 gilt auch hier) **oder** `checks`
+    (explizite Paare, z. B. der `proposed_expect` eines Proposals)."""
+    from dq_core.contract.compiler import CompileError
+    from dq_core.contract.validator import validate_contract
+    from dq_core.obs.backtest import backtest_expectation
+
+    _validate_product(product)
+
+    window_days = sorted({int(d) for d in (body.window_days or []) if 0 < int(d) <= 365}) or [30, 90]
+
+    dataset = product
+    targets: list[tuple[str, str, str, str]] = []  # (name, expect, type, severity)
+    if body.contract:
+        data = dict(body.contract)
+        errors = validate_contract(data)  # [CONTRACT-SQL-FREE] G1 auch für Entwürfe
+        if errors:
+            raise HTTPException(
+                status_code=422,
+                detail={"message": "Contract validation failed (Gate G1)", "errors": errors},
+            )
+        try:
+            _yaml, _conflicts, _hash, config = _compile_contract_data(product, data, inventory)
+        except CompileError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+        dataset = config.dataset or (data.get("dataset") or product)
+        targets = [(c.name, c.expect, c.type, c.severity) for c in config.checks]
+    elif body.checks:
+        targets = [(c.check_name, c.expect, "", "") for c in body.checks]
+    else:
+        raise HTTPException(status_code=422, detail="Provide either 'contract' or 'checks'.")
+
+    results: list[BacktestCheckOut] = []
+    with_history = 0
+    for name, expect, ctype, severity in targets:
+        history = store.get_check_history(dataset, name, limit=500)
+        history.reverse()  # Store liefert DESC; Backtest erwartet chronologisch
+        try:
+            report = backtest_expectation(history, expect, window_days=tuple(window_days))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid expectation for {name!r}: {exc}",
+            )
+        if report["points"]:
+            with_history += 1
+        results.append(BacktestCheckOut(
+            check_name=name, expect=expect, type=ctype, severity=severity,
+            **{k: report[k] for k in (
+                "points", "evaluated", "skipped", "breaches", "breach_rate",
+                "first_breach_at", "last_breach_at", "sample", "windows",
+            )},
+        ))
+
+    summary = [
+        BacktestSummaryWindow(
+            days=days,
+            breaches=sum(w.breaches for r in results for w in r.windows if w.days == days),
+            checks_firing=sum(
+                1 for r in results if any(w.days == days and w.breaches for w in r.windows)
+            ),
+        )
+        for days in window_days
+    ]
+
+    return BacktestOut(
+        product=product,
+        dataset=dataset,
+        window_days=window_days,
+        checks=results,
+        checks_total=len(results),
+        checks_with_history=with_history,
+        summary_windows=summary,
+    )
 
 
 @router.get("/{product}/diff/active")

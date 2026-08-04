@@ -157,6 +157,51 @@ def detect_schema_drift(
     return findings
 
 
+def diff_snapshots(
+    before_columns: list[dict[str, Any]],
+    after_columns: list[dict[str, Any]],
+) -> list[DriftFinding]:
+    """Diff zweier materialisierter Quellschemata (Snapshot → Snapshot).
+
+    Grundlage des Schema-Evolution-Screens (A2/UX-N9): welche Spalten kamen
+    zwischen zwei Extrakten hinzu, fielen weg oder wechselten Typ/Key. Im
+    Gegensatz zu `detect_schema_drift` gibt es hier **keine** Contract-Referenz —
+    `breaking` bleibt daher immer ``False``; die Contract-Bewertung liefert die
+    parallel persistierte Drift-Historie (`dq_schema_drift`).
+    """
+    before = _index_source(before_columns)
+    after = _index_source(after_columns)
+    findings: list[DriftFinding] = []
+
+    for col in sorted(before.keys()):
+        if col not in after:
+            findings.append(DriftFinding(COLUMN_REMOVED, col, before=col, after=""))
+
+    for col in sorted(after.keys()):
+        if col not in before:
+            findings.append(DriftFinding(COLUMN_ADDED, col, before="", after=col))
+
+    for col in sorted(before.keys() & after.keys()):
+        b, a = before[col], after[col]
+        if b["type"] and a["type"] and b["type"] != a["type"]:
+            findings.append(DriftFinding(TYPE_CHANGED, col, before=b["type"], after=a["type"]))
+        if not b["nullable"] and a["nullable"]:
+            findings.append(
+                DriftFinding(NULLABLE_RELAXED, col, before="NOT NULL", after="NULLABLE")
+            )
+        if b["key"] != a["key"]:
+            findings.append(
+                DriftFinding(
+                    KEY_CHANGED, col,
+                    before="key" if b["key"] else "non-key",
+                    after="key" if a["key"] else "non-key",
+                )
+            )
+
+    findings.sort(key=lambda f: (f.category, f.column))
+    return findings
+
+
 def summarize_drift(findings: list[DriftFinding]) -> dict[str, Any]:
     """Report-Kopf: Zähler + breaking-Flag für die API/UI."""
     breaking = [f for f in findings if f.breaking]

@@ -1,7 +1,27 @@
 # Konzept — Quarantäne-Healing: Stewards heilen geparkte Zeilen in Signal
 
+> ## ⚠ Historisch — abgelöst am 2026-08-03
+>
+> Dieses Proposal ist in
+> [`Konzept_Manuelles_Healing.md`](Konzept_Manuelles_Healing.md) **aufgegangen**
+> und wird nicht mehr nachgepflegt. Maßgeblich ist dort:
+> §3 (Optionsraum H1–H5) · §4 (Umsetzungsstand) · **§5 (Abweichungen dieser
+> Vorlage von der Umsetzung — samt offener Lücken)** · §6 (Mechanik als Bauplan:
+> Opt-in-Leiter, Spalten-Allowlist, SQL-Guard).
+>
+> **Umgesetzt wurde die konservative Teilmenge** dieses Proposals: Korrektur je
+> Zeile über ein Formular (kein Zeilen-Grid), episodenweiter Re-Check statt
+> Per-Zeile-`clean`, `DQ_HEAL_LOG` statt `DQ_Q_AUDIT`, kein SQL-Healing.
+> **Nicht** umgesetzt und weiterhin offen: eigener Kill-Switch
+> `QUARANTINE_HEALING_ENABLED`, Contract-Policy mit Spalten-Allowlist,
+> Per-Zeile-Zustände, optimistisches Locking → `OPEN_TASKS.md` **R5/R6**.
+>
+> Der Text unten bleibt als **Bauplan und Begründungsquelle** erhalten — die
+> Guard-Regeln, die Allowlist-Matrix und das UI-Konzept sind die Vorlage für den
+> Ausbau.
+
 **Adressat:** Plattform-Team, Governance, Fachbereich · **Stand:** 2026-07-11
-**Status:** Proposal (noch nicht implementiert) · **Branch:** `claude/signals-datasphere-integration-n8726p`
+**Status:** historisch — abgelöst durch `Konzept_Manuelles_Healing.md`
 **Zweck:** Festlegen, wie ein Steward quarantänisierte Zeilen **in Signal
 selbst korrigiert** — per manueller Zellen-Bearbeitung im Grid oder per
 SQL-Statement — bevor sie über die Release-View zurückfließen. Beides ist ein

@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { api } from './client';
 import { t } from '@/i18n/de';
 import type {
-  ContractOut, ContractPutBody, ContractVersionDiff, DiffReport,
+  BacktestOut, ContractOut, ContractPutBody, ContractVersionDiff, DiffReport,
   InventoryResponse, ObservedReality, SchemaDriftReport, SlaResponse,
 } from '@/types';
 
@@ -99,6 +99,25 @@ export const useSchemaDrift = (product: string, enabled = true) =>
     queryKey: ['contracts', product, 'drift'],
     queryFn: () => api.get(`/contracts/${product}/drift`).then(r => r.data),
     enabled: !!product && enabled,
+    retry: false,
+  });
+
+// V1 Backtesting: Entwurf gegen die persistierte Messwert-Historie simulieren.
+export const useBacktestContract = (product: string) =>
+  useMutation({
+    mutationFn: (contract: ContractPutBody) =>
+      api.post(`/contracts/${product}/backtest`, { contract }).then(r => r.data as BacktestOut),
+  });
+
+// Einzel-Expectation (Proposal-Badge): „hätte N× in 90 d gefeuert".
+export const useExpectationBacktest = (product: string, checkName: string, expect: string, enabled = true) =>
+  useQuery<BacktestOut>({
+    queryKey: ['backtest', product, checkName, expect],
+    queryFn: () => api.post(`/contracts/${product}/backtest`, {
+      checks: [{ check_name: checkName, expect }],
+    }).then(r => r.data),
+    enabled: enabled && !!product && !!checkName && !!expect,
+    staleTime: 5 * 60_000,
     retry: false,
   });
 

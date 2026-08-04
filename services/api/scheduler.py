@@ -224,6 +224,16 @@ def _on_load_tick() -> int:
     return launched
 
 
+def _digest_tick() -> bool:
+    """Qualitäts-Digest (V4): sendet den periodischen Rollup, wenn aktiviert
+    und der Multi-Worker-Claim gewonnen wird (``claim_digest_slot``)."""
+    from .deps import get_store
+    from .digest import digest_tick
+    from .settings import get_settings
+
+    return digest_tick(get_store(), get_settings())
+
+
 def _loop(tick_seconds: int) -> None:
     logger.info("scheduler poller started (tick=%ss)", tick_seconds)
     # Wait first so app startup is not blocked and tests can drive _launch_due
@@ -237,6 +247,10 @@ def _loop(tick_seconds: int) -> None:
             _on_load_tick()
         except Exception:
             logger.exception("on_load tick failed")
+        try:
+            _digest_tick()
+        except Exception:
+            logger.exception("digest tick failed")
         try:
             _bridge_tick()
         except Exception:

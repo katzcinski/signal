@@ -96,3 +96,64 @@ class ObservedOut(BaseModel):
     product: str
     dataset: str
     guarantees: list[ObservedGuarantee] = []
+
+
+# ── Garantie-Backtesting (V1): „Wie oft hätte das historisch gefeuert?" ────────
+# Simulation eines Expectation-Entwurfs gegen die persistierte Messwert-Historie
+# (rein lesend, `dq_core.obs.backtest`). Zwei Eingabeformen: kompletter
+# Contract-Entwurf (Workbench — der Compiler liefert die Check-Namen) oder
+# explizite (check_name, expect)-Paare (Proposal-Badge).
+class BacktestCheckIn(BaseModel):
+    check_name: str
+    expect: str
+
+
+class BacktestIn(BaseModel):
+    contract: Optional[dict] = None
+    checks: Optional[list[BacktestCheckIn]] = None
+    window_days: list[int] = [30, 90]
+
+
+class BacktestWindowOut(BaseModel):
+    days: int
+    points: int
+    breaches: int
+
+
+class BacktestBreachOut(BaseModel):
+    run_id: str = ""
+    at: str = ""
+    value: Optional[str] = None
+    breach: bool = True
+
+
+class BacktestCheckOut(BaseModel):
+    check_name: str
+    expect: str
+    type: str = ""
+    severity: str = ""
+    points: int = 0
+    evaluated: int = 0
+    skipped: int = 0
+    breaches: int = 0
+    breach_rate: float = 0.0
+    first_breach_at: Optional[str] = None
+    last_breach_at: Optional[str] = None
+    sample: list[BacktestBreachOut] = []
+    windows: list[BacktestWindowOut] = []
+
+
+class BacktestSummaryWindow(BaseModel):
+    days: int
+    breaches: int
+    checks_firing: int
+
+
+class BacktestOut(BaseModel):
+    product: str
+    dataset: str
+    window_days: list[int]
+    checks: list[BacktestCheckOut]
+    checks_total: int
+    checks_with_history: int
+    summary_windows: list[BacktestSummaryWindow]

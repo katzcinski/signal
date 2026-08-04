@@ -63,6 +63,7 @@ class ChannelPatch(BaseModel):
     type: str | None = None
     url: str | None = Field(default=None, max_length=2000)
     enabled: bool | None = None
+    digest_enabled: bool | None = None
 
 
 @router.post("/channels", status_code=status.HTTP_201_CREATED)
@@ -84,6 +85,7 @@ def patch_channel(channel_id: int, body: ChannelPatch, principal: Principal = re
         _validate_url(body.url)
     updated = store.update_notification_channel(
         channel_id, name=body.name, type=body.type, url=body.url, enabled=body.enabled,
+        digest_enabled=body.digest_enabled,
     )
     if not updated:
         raise HTTPException(404, detail=f"Channel {channel_id} not found")
@@ -173,3 +175,52 @@ def create_mute(body: MuteIn, principal: Principal = require_admin, store: Store
 def delete_mute(mute_id: int, principal: Principal = require_admin, store: StoreDep = ...):
     if not store.delete_notification_mute(mute_id):
         raise HTTPException(404, detail=f"Mute {mute_id} not found")
+
+
+# --------------------------------------------------------------------------- #
+# Qualitäts-Digest (V4) — Vorschau + manueller Versand
+# --------------------------------------------------------------------------- #
+require_steward = require_roles("steward", "owner", "admin")
+
+
+@router.get("/digest/preview")
+def digest_preview(
+    principal: PrincipalDep,
+    hours: int | None = None,
+    store: StoreDep = ...,
+):
+    """Digest-Kennzahlen der Periode (nur Aggregate, G8-frei) + Versandstatus."""
+    from ..digest import build_digest, digest_targets
+    from ..settings import get_settings
+
+    settings = get_settings()
+    period = hours or settings.digest_interval_hours
+    if not 1 <= period <= 168:
+        raise HTTPException(422, detail="hours must be within 1..168")
+    return {
+        **build_digest(store, hours=period),
+        "enabled": settings.digest_enabled,
+        "interval_hours": settings.digest_interval_hours,
+        "subscribed_channels": len(digest_targets(store)),
+        "last_sent_at": store.get_meta("digest_last_sent"),
+    }
+
+
+@router.post("/digest/send")
+def digest_send(
+    principal: Principal = require_steward,
+    store: StoreDep = ...,
+):
+    """Manueller Versand an alle abonnierten Kanäle (Opt-in via digest_enabled)."""
+    from ..digest import send_digest
+    from ..settings import get_settings
+
+    settings = get_settings()
+    result = send_digest(store, settings, hours=settings.digest_interval_hours)
+    if result["targets"] == 0:
+        raise HTTPException(
+            status_code=409,
+            detail="No channel has digest_enabled — subscribe a channel first.",
+        )
+    store.set_meta("digest_last_sent", datetime.now(timezone.utc).isoformat())
+    return {"sent": True, "targets": result["targets"], "digest": result["digest"]}
