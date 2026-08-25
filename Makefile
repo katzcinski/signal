@@ -1,4 +1,4 @@
-.PHONY: dev-backend dev-frontend test seed install lint
+.PHONY: dev-backend dev-frontend test seed install lint hana-smoke
 
 install:
 	pip install fastapi pydantic pydantic-settings uvicorn pyyaml httpx pytest pytest-cov respx jsonschema "python-jose[cryptography]" gitpython hdbcli
@@ -22,6 +22,12 @@ dev-frontend:
 
 test:
 	python -m pytest tests/ -v --tb=short
+
+# O6/C4 — HanaStore-Smoke gegen einen ECHTEN Tenant. Env-gegated: läuft nur mit
+# HANA_SMOKE=1 und einer konfigurierten RESULTS_ENVIRONMENT; sonst geskippt.
+# Legt Tabellen im Open-SQL-Schema an und prüft den Round-Trip der Kern-Tranche.
+hana-smoke:
+	HANA_SMOKE=1 python -m pytest tests/integration/test_hana_smoke.py -v --tb=short
 
 seed:
 	python scripts/seed.py

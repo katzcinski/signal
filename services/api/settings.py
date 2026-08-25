@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     # Store
     store_backend: Literal["sqlite", "hana"] = Field(default="sqlite")
     sqlite_db: str = Field(default="signal.db")
+    # [SCHEMA-MAP] Ergebnis-Heimat bei STORE_BACKEND=hana (O6): Name der
+    # Environment (host/port/user/secret/schema) aus ENVIRONMENTS_FILE, in deren
+    # Open-SQL-Schema der Result-Store seine Tabellen anlegt. Leer → Startfehler
+    # (kein stilles SQLite-Fallback, L-8).
+    results_environment: str = Field(default="")
 
     # Git / Contracts
     git_remote: str = Field(default="")

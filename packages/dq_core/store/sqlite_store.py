@@ -11,6 +11,8 @@ from typing import Any, Generator
 
 from ..engine.models import CheckResult, RunSummary
 from ..library.check_library import check_ids_where
+from .dialect import SQLITE
+from .migration_runner import run_migrations
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,7 @@ class ResultStore:
         diagnostics_ttl_days: int = 0,
     ) -> None:
         self.db_path = str(db_path)
+        self._dialect = SQLITE
         # [PII-GATE] Default off. Only persist diagnostic_rows when explicitly enabled (S1/G8).
         self._allow_diagnostics = allow_diagnostics
         self._diagnostics_columns = set(diagnostics_columns) if diagnostics_columns else None
@@ -67,7 +70,7 @@ class ResultStore:
     # ------------------------------------------------------------------
 
     def _init_db(self) -> None:
-        migrations_dir = Path(__file__).parent / "migrations"
+        # Gemeinsamer, dialekt-bewusster Runner (SQLite-Dialekt = Identität).
         with self._conn() as conn:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS schema_migrations "
@@ -77,37 +80,19 @@ class ResultStore:
                 row[0]
                 for row in conn.execute("SELECT version FROM schema_migrations").fetchall()
             }
-            for path in sorted(migrations_dir.glob("*.sql")):
-                version = path.stem
-                if version not in applied:
-                    self._run_migration(conn, path.read_text(encoding="utf-8"))
-                    conn.execute(
-                        "INSERT INTO schema_migrations(version, applied_at) VALUES (?, ?)",
-                        (version, datetime.now(timezone.utc).isoformat()),
-                    )
 
-    @staticmethod
-    def _run_migration(conn: sqlite3.Connection, sql: str) -> None:
-        """Run a migration statement-by-statement, skipping ADD COLUMN
-        statements that fail because the column already exists.
+            def _record(version: str) -> None:
+                conn.execute(
+                    "INSERT INTO schema_migrations(version, applied_at) VALUES (?, ?)",
+                    (version, datetime.now(timezone.utc).isoformat()),
+                )
 
-        Comment-only lines are stripped *before* splitting on ';' — a semicolon
-        inside a comment would otherwise cut a statement in half and produce a
-        syntax error far from its cause.
-        """
-        body = "\n".join(
-            ln for ln in sql.splitlines() if not ln.strip().startswith("--")
-        )
-        for stmt in body.split(";"):
-            executable = stmt.strip()
-            if not executable:
-                continue
-            try:
-                conn.execute(executable)
-            except sqlite3.OperationalError as e:
-                if "duplicate column" in str(e).lower():
-                    continue
-                raise
+            run_migrations(
+                execute=lambda stmt: conn.execute(stmt),
+                already_applied=applied,
+                record=_record,
+                dialect=self._dialect,
+            )
 
     # ------------------------------------------------------------------
     # Write
