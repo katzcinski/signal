@@ -48,7 +48,7 @@ def store():
     s.close()
 
 
-def _summary(run_id, dataset):
+def _summary(run_id, dataset, state="finished"):
     from dq_core.engine.models import CheckResult, RunSummary
     return RunSummary(
         run_id=run_id, dataset=dataset, schema="SMOKE",
@@ -57,7 +57,7 @@ def _summary(run_id, dataset):
         total=1, passed=1, failed=0, warnings=0,
         results=[CheckResult(name="row_count", sql="SELECT 1", expect="> 0",
                              severity="warn", passed=True, actual_value="7")],
-        run_state="finished",
+        run_state=state,
     )
 
 
@@ -77,3 +77,15 @@ def test_compliance_transition(store):
     store.set_compliance(prod, "1.0.0", "breached", "r2")
     events = store.get_compliance_events(prod)
     assert events and events[0]["to_state"] == "breached"
+
+
+def test_doublerun_guard_generated_column(store):
+    """[HANA-VERIFY] Der F2-Guard läuft auf HANA über eine generierte Guard-Spalte
+    + Unique-Constraint (Übersetzung des SQLite-Partial-Index). Genau hier zeigt
+    sich, ob generierte Spalte und Mehrfach-NULL-Unique wie erwartet greifen."""
+    ds = f"SMOKE_{uuid.uuid4().hex[:8]}"
+    r1 = f"r_{uuid.uuid4().hex[:8]}"
+    assert store.try_begin_run(_summary(r1, ds, state="running")) is True
+    assert store.try_begin_run(_summary(f"r_{uuid.uuid4().hex[:8]}", ds, state="running")) is False
+    store.set_run_state(r1, "finished", datetime.now(timezone.utc).isoformat())
+    assert store.try_begin_run(_summary(f"r_{uuid.uuid4().hex[:8]}", ds, state="running")) is True

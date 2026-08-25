@@ -204,11 +204,17 @@ Test-Endpoint), WS F5 (`FileSecretResolver` + `PUT …/secret`) und WS D
 - **C4-Gerüst** — Smoke-Harness `tests/integration/test_hana_smoke.py` +
   `make hana-smoke` (env-gated `HANA_SMOKE=1`, sonst geskippt).
 
+**Geliefert — Slice 2 (Doppellauf-/Duplikat-Schutz):**
+- **`try_begin_run`** und **`begin_operation`** implementiert; Unique-Verletzung
+  wird dialekt-erkannt (`Dialect.is_unique_violation`). Der SQLite-**Partial-
+  Unique-Index** `idx_dq_runs_one_running` (`… WHERE run_state='running'`) wird in
+  `HanaDialect.translate_ddl` in eine **generierte Guard-Spalte + Unique-
+  Constraint** übersetzt (HANA kennt keine gefilterten Indizes). Round-Trip gegen
+  das DBAPI-Double getestet; der Guard steht zusätzlich in der Smoke-Harness
+  (`[HANA-VERIFY]`). Pending-Fläche jetzt 67 Methoden.
+
 **Offen (nächste Tranchen):**
-- **C-T2 — Exception-/Index-abhängige Methoden:** `try_begin_run`
-  (partieller Unique-Index `idx_dq_runs_one_running` → HANA-Filtered-Index +
-  `is_unique_violation`), `begin_operation` (PK-Konflikt-Erkennung).
-- **C-T3+ — Rest der Fläche** (~69): Incidents, Schedules, Quarantäne,
+- **C-T3+ — Rest der Fläche** (~67): Incidents, Schedules, Quarantäne,
   Notifications, Healing, Profiling, Schema-Drift **sowie die datums-
   arithmetischen Reports** (`get_metric_series`/`get_health_trend`/
   `get_status_heatmap` — `date('now', ?)`/`datetime('now', ?)` brauchen HANA-

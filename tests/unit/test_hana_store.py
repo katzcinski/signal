@@ -160,6 +160,21 @@ def test_progress_append_and_read(hana):
     assert [r["line"] for r in rows] == ["line-2"]
 
 
+def test_try_begin_run_doublerun_guard(hana):
+    # F2: höchstens ein laufender Run je Dataset (partieller Unique-Guard).
+    assert hana.try_begin_run(_summary("r1", state="running")) is True
+    assert hana.try_begin_run(_summary("r2", state="running")) is False       # gleiches Dataset läuft
+    assert hana.try_begin_run(_summary("r3", dataset="DS_Y", state="running")) is True  # anderes Dataset frei
+    hana.set_run_state("r1", "finished", datetime.now(timezone.utc).isoformat())
+    assert hana.try_begin_run(_summary("r4", state="running")) is True         # nach Abschluss wieder frei
+
+
+def test_begin_operation_rejects_duplicate(hana):
+    assert hana.begin_operation("op1", "run") is True
+    assert hana.begin_operation("op1", "run") is False   # doppelter op_id (PK) → abgelehnt
+    assert hana.begin_operation("op2", "run") is True
+
+
 def test_operation_update_and_meta(hana):
     # finish_operation (Update-Pfad) — begin_operation kommt in Tranche 2.
     with hana._conn() as c:
@@ -195,11 +210,14 @@ def test_tranche_is_really_implemented_not_stubbed():
         "set_compliance", "get_compliance", "get_compliance_events",
         "get_diagnostics", "append_progress", "get_progress",
         "finish_operation", "get_operation", "get_meta", "set_meta",
+        # Tranche 2:
+        "try_begin_run", "begin_operation",
     }
     assert implemented.isdisjoint(set(PENDING_HANA_METHODS))
 
 
 def test_pending_methods_raise_clear_notimplemented():
     store = HanaStore(connection=None)
+    # open_incident ist weiterhin in Tranche 3+ ausstehend.
     with pytest.raises(NotImplementedError, match=r"Tranche 2\+"):
-        store.begin_operation("op", "run")
+        store.open_incident("DS_X", "row_count", "fail")

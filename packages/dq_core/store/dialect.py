@@ -48,6 +48,10 @@ class Dialect(Protocol):
         """True, wenn `exc` ein idempotenter „existiert bereits"-Fehler ist (Migration)."""
         ...
 
+    def is_unique_violation(self, exc: Exception) -> bool:
+        """True, wenn `exc` eine Unique-/PK-Verletzung ist (Doppellauf-Schutz F2)."""
+        ...
+
 
 def _placeholders(n: int) -> str:
     return ",".join(["?"] * n)
@@ -76,6 +80,10 @@ class SqliteDialect:
         msg = str(exc).lower()
         return "already exists" in msg or "duplicate column" in msg
 
+    def is_unique_violation(self, exc: Exception) -> bool:
+        # sqlite3.IntegrityError → „UNIQUE constraint failed: …".
+        return "unique" in str(exc).lower() or "integrityerror" in type(exc).__name__.lower()
+
 
 class HanaDialect:
     """SAP HANA (Open-SQL, `hdbcli`).
@@ -98,8 +106,21 @@ class HanaDialect:
 
     _DEFAULT_NVARCHAR = 5000
 
+    # Partieller Unique-Index (SQLite: `... WHERE <cond>`) — HANA kennt keine
+    # gefilterten Indizes. Äquivalent: eine generierte Guard-Spalte, die den
+    # Schlüssel nur trägt, wenn die Bedingung gilt (sonst NULL), plus ein
+    # Unique-Constraint darüber. HANA erlaubt (Standard-SQL) mehrere NULLs im
+    # Unique → „höchstens ein Treffer je Schlüssel, solange die Bedingung gilt".
+    _PARTIAL_UNIQUE = re.compile(
+        r"CREATE\s+UNIQUE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?(?P<name>\w+)\s+"
+        r"ON\s+(?P<table>\w+)\s*\(\s*(?P<cols>[^)]+?)\s*\)\s+WHERE\s+(?P<cond>[^;]+)",
+        flags=re.IGNORECASE,
+    )
+
     def translate_ddl(self, sql: str) -> str:
         out = sql
+        # Partielle Unique-Indizes ZUERST (bevor IF-NOT-EXISTS gestrippt wird). `[HANA-VERIFY]`
+        out = self._PARTIAL_UNIQUE.sub(self._render_partial_unique, out)
         # `CREATE TABLE/INDEX IF NOT EXISTS` → HANA kennt das nicht; der
         # Migrations-Runner überspringt bereits angewandte Versionen und toleriert
         # „existiert bereits" idempotent (is_already_exists_error).
@@ -123,6 +144,21 @@ class HanaDialect:
         # Doppelte Leerzeichen aus dem IF-NOT-EXISTS-Strip glätten.
         out = re.sub(r"[ \t]{2,}", " ", out)
         return out
+
+    @staticmethod
+    def _render_partial_unique(match: re.Match[str]) -> str:
+        name = match.group("name")
+        table = match.group("table")
+        cols = match.group("cols").strip()
+        cond = match.group("cond").strip()
+        guard = f"{name}_g"
+        # Generierte Guard-Spalte + Unique-Constraint. `[HANA-VERIFY]` — Syntax
+        # der generierten Spalte und Mehrfach-NULL-Unique gegen echten Tenant prüfen.
+        return (
+            f"ALTER TABLE {table} ADD ({guard} NVARCHAR(5000) "
+            f"GENERATED ALWAYS AS (CASE WHEN {cond} THEN {cols} ELSE NULL END));\n"
+            f"ALTER TABLE {table} ADD CONSTRAINT {name} UNIQUE ({guard})"
+        )
 
     def _map_text_types(self, sql: str) -> str:
         def repl(match: re.Match[str]) -> str:
@@ -162,6 +198,11 @@ class HanaDialect:
             or "cannot use duplicate" in msg
             or "existing" in msg and "name" in msg
         )
+
+    def is_unique_violation(self, exc: Exception) -> bool:
+        # HANA: „unique constraint violated" (SQL-Fehlercode 301).
+        msg = str(exc).lower()
+        return "unique constraint" in msg or "unique" in msg and "violat" in msg or " 301" in msg
 
 
 SQLITE = SqliteDialect()
