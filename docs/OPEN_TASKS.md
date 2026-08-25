@@ -39,7 +39,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **A1** | Teilbarer Quality-Report / Data-Docs-Snapshot (UX-N6) | ◻ Offen | M | Abschnitt A |
 | **A2** | Schema-Drift-/Change-Screen (UX-N9) | ✅ Done | M | Abschnitt A |
 | **B**  | Spaltenebene-Lineage + Impact (UX-N7 / O3) | ✅ Done | H | `PLAN_UX-N7_Column_Lineage.md` |
-| **C**  | `HanaResultStore` (O6) + HANA-Migrationen + Smoke | ◻ Offen | H | `Implementation_HANA_Connection_Progress.md` WS E/F |
+| **C**  | `HanaResultStore` (O6) + HANA-Migrationen + Smoke | ◑ Teilweise (Slice 1 ✅) | H | `Implementation_HANA_Connection_Progress.md` WS E/F |
 | **D**  | Managed Service (Instanz-pro-Tenant) | ◻ Offen | H | `PLAN_Managed_Service_v1.md` |
 | **E**  | Observability-Mehrwert (z-Score, Freshness, Impact) | ◑ Teilweise (E1/E3 ✅, E2 offen) | M | `PLAN_Observability_Mehrwert_v1.md` |
 | **F**  | Durchsetzungs-Achse `gate \| quarantine \| monitor` | ◑ Teilweise (Slices ①–③ ✅) | M | `Konzept_Datasphere_Integration_Gating_Quarantaene.md` |
@@ -173,7 +173,7 @@ und OL3.
 
 ---
 
-## C — `HanaResultStore` + Full-Deployment (O6) ◻ [H]
+## C — `HanaResultStore` + Full-Deployment (O6) ◑ [H]
 
 **Quelle:** [`Implementation_HANA_Connection_Progress.md`](Implementation_HANA_Connection_Progress.md)
 WS D–G; `HANDOVER.md` O6; `REVIEW_Tool_v2_Status.md` (Real-HANA-Pfad).
@@ -182,23 +182,41 @@ WS D–G; `HANDOVER.md` O6; `REVIEW_Tool_v2_Status.md` (Real-HANA-Pfad).
 (Operation-/Progress-Kanal, Migration 008), WS C1–C4 (Run/Dry-Run/Profile async +
 Test-Endpoint), WS F5 (`FileSecretResolver` + `PUT …/secret`) und WS D
 (`OperationProgress`-Komponente, `useOperationStream`, Test-/Secret-UI als
-`pages/Environments.tsx`) sind **geliefert**. Offen bleibt der HANA-Store selbst:
+`pages/Environments.tsx`) sind **geliefert**.
 
-- **C1 · WS E1 — HANA-Dialekt-Migrationen** `store/migrations/hana/NNN_*.sql`.
-  SQLite-Spezifika übersetzen (`AUTOINCREMENT`→Identity/Sequence, `TEXT`→
-  `NVARCHAR`, partieller Unique-Index → HANA-Filtered-Index); `CREATE TABLE`
-  qualifiziert aufs Open-SQL-Schema (`[SCHEMA-MAP]`, kein Literal).
-- **C2 · WS E2 — `HanaStore`** `store/hana_store.py` ist noch **Stub** (17×
-  `NotImplementedError`). Alle Protokoll-Methoden via `hdbcli` implementieren;
-  reale Store-Fläche ist auf ~48 Methoden gewachsen (Incidents, Schedules,
-  Notifications, SLA, Object-Status-Rollups), nicht nur die 17 des veralteten
-  `ResultStoreProtocol`. **Deckungsgleich** zu `SqliteStore` (Managed-Entscheid).
-- **C3 · WS E3 — `deps.get_store()`** baut bei `STORE_BACKEND=hana` den
-  `HanaStore` statt zu werfen; `RESULTS_ENVIRONMENT` in `settings.py` ergänzen.
-- **C4 · WS F1–F4 — Verifikation & Härtung:** Smoke-Harness
-  (`tests/integration/test_hana_smoke.py` + `make hana-smoke`, env-gated
-  `HANA_SMOKE=1`); DB-User-Härtung dokumentieren (`Tooldokumentation.md` §9/§10);
-  `scripts/generate_environments.py` + `DatasphereClient.list_db_users()`.
+**Geliefert — Slice 1 (Architektur: gemeinsamer Kern + Dialekt-Adapter):**
+- **Dialekt-Schicht** `store/dialect.py` (`SqliteDialect`/`HanaDialect`): DDL-
+  Übersetzung (Identity-PK, `TEXT`→NVARCHAR/NCLOB, `IF NOT EXISTS`), Upsert-
+  Rendering (`INSERT OR REPLACE` vs. `UPSERT … WITH PRIMARY KEY`), Idempotenz-
+  Fehlererkennung. Beide Backends teilen den **qmark**-Paramstyle.
+- **Gemeinsamer Migrations-Runner** `store/migration_runner.py` über **eine**
+  Migrations-Quelle, zur Laufzeit dialekt-übersetzt — **kein** zweites,
+  driftendes HANA-`.sql`-Set (löst C1 durch Übersetzung statt Duplikation).
+  `SqliteStore` nutzt ihn jetzt ebenfalls (verhaltensgleich, Suite grün).
+- **`HanaStore`** `store/hana_store.py`: dialekt-sichere **Kern-Tranche**
+  implementiert (Runs, Ergebnisse, Compliance+Events, Progress, Operations-
+  Update, Diagnostics, Meta — 18 Methoden), Round-Trip-getestet gegen ein
+  DBAPI-Double (`tests/unit/test_hana_store.py`). Restliche ~69 Methoden sind
+  **getrackte** `NotImplementedError`-Stubs (aus der SqliteStore-Oberfläche
+  injiziert → volle Paritätsfläche, selbst-dokumentierend).
+- **C3 · `deps.get_store()`** baut bei `STORE_BACKEND=hana` den `HanaStore`
+  aus `RESULTS_ENVIRONMENT` (neu in `settings.py`), fail-closed — statt zu werfen.
+- **C4-Gerüst** — Smoke-Harness `tests/integration/test_hana_smoke.py` +
+  `make hana-smoke` (env-gated `HANA_SMOKE=1`, sonst geskippt).
+
+**Offen (nächste Tranchen):**
+- **C-T2 — Exception-/Index-abhängige Methoden:** `try_begin_run`
+  (partieller Unique-Index `idx_dq_runs_one_running` → HANA-Filtered-Index +
+  `is_unique_violation`), `begin_operation` (PK-Konflikt-Erkennung).
+- **C-T3+ — Rest der Fläche** (~69): Incidents, Schedules, Quarantäne,
+  Notifications, Healing, Profiling, Schema-Drift **sowie die datums-
+  arithmetischen Reports** (`get_metric_series`/`get_health_trend`/
+  `get_status_heatmap` — `date('now', ?)`/`datetime('now', ?)` brauchen HANA-
+  Datumsarithmetik im Dialekt).
+- **C4-Rest · WS F1–F4 — echte Verifikation & Härtung:** `[HANA-VERIFY]`
+  gegen einen realen Tenant (Ausführung ist lokal nicht möglich, nur
+  `MockConnection`); DB-User-Härtung dokumentieren (`Tooldokumentation.md`
+  §9/§10); `scripts/generate_environments.py` + `DatasphereClient.list_db_users()`.
 - **C5 · WS G — Quarantäne/Reject-Store** (optional, nach E): zeilen-genaue
   Verstöße per `INSERT … SELECT` direkt in HANA (PK + Allowlist), Rohzeile berührt
   den App-Prozess nie (E6 strikt). Default-off je Garantie. **= F Slices ④–⑤**

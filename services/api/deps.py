@@ -15,28 +15,68 @@ if str(_root) not in sys.path:
 from dq_core.store.sqlite_store import ResultStore
 from .settings import get_settings
 
-_store_instance: ResultStore | None = None
+_store_instance: Any | None = None
 
 
-def get_store() -> ResultStore:
+def _build_hana_store(settings) -> Any:
+    """[SCHEMA-MAP] Baut den HanaStore aus der `results_environment` (O6).
+
+    Fail-closed (L-8): fehlt die Environment-Konfiguration, gibt es einen harten
+    Startfehler statt eines stillen SQLite-Fallbacks.
+    """
+    from dq_core.store.hana_store import HanaStore
+    from dq_core.connect.db_connection import get_connection
+
+    env_name = settings.results_environment
+    if not env_name:
+        raise RuntimeError(
+            "STORE_BACKEND=hana erfordert RESULTS_ENVIRONMENT (Name einer "
+            "Environment in ENVIRONMENTS_FILE). Nicht gesetzt."
+        )
+    env_cfg = get_environment(env_name)
+    if env_cfg is None:
+        raise RuntimeError(
+            f"RESULTS_ENVIRONMENT={env_name!r} ist in ENVIRONMENTS_FILE nicht konfiguriert."
+        )
+    schema = env_cfg.get("schema") or settings.datasphere_signal_schema
+    if not schema:
+        raise RuntimeError(
+            "HanaStore benötigt ein Open-SQL-Schema (env.schema oder "
+            "DATASPHERE_SIGNAL_SCHEMA) — kein Schema-Literal im Code (G2)."
+        )
+    conn = get_connection(
+        host=env_cfg.get("host", ""),
+        port=int(env_cfg.get("port", 443)),
+        user=env_cfg.get("user", ""),
+        password=env_cfg.get("password", ""),
+        schema=schema,
+    )
+    store = HanaStore(
+        conn,
+        schema=schema,
+        allow_diagnostics=settings.allow_local_diagnostics,
+        diagnostics_columns=None,
+    )
+    store.ensure_schema()
+    return store
+
+
+def get_store() -> Any:
     global _store_instance
     if _store_instance is None:
         settings = get_settings()
         if settings.store_backend == "hana":
-            # Kein stilles SQLite-Fallback (L-8): HANA-Store ist noch ein Stub.
-            raise RuntimeError(
-                "STORE_BACKEND=hana ist konfiguriert, aber HanaStore ist noch "
-                "nicht implementiert (O6). Setze STORE_BACKEND=sqlite."
+            _store_instance = _build_hana_store(settings)
+        else:
+            _store_instance = ResultStore(
+                settings.sqlite_db,
+                allow_diagnostics=settings.allow_local_diagnostics,
+                diagnostics_ttl_days=settings.diagnostics_ttl_days,
             )
-        _store_instance = ResultStore(
-            settings.sqlite_db,
-            allow_diagnostics=settings.allow_local_diagnostics,
-            diagnostics_ttl_days=settings.diagnostics_ttl_days,
-        )
     return _store_instance
 
 
-StoreDep = Annotated[ResultStore, Depends(get_store)]
+StoreDep = Annotated[Any, Depends(get_store)]
 
 
 def get_inventory() -> list[dict[str, Any]]:
