@@ -406,6 +406,59 @@ class HanaStore:
                 (key, value),
             )
 
+    # ------------------------------------------------------------------
+    # Tranche 2: Doppellauf-/Duplikat-Schutz (Unique-Verletzung dialekt-erkannt)
+    # ------------------------------------------------------------------
+
+    def try_begin_run(self, summary: RunSummary) -> bool:
+        """F2: Run-Registrierung mit Store-seitigem Doppellauf-Schutz.
+
+        Bewusst **plain INSERT** (kein Upsert): der Doppellauf-Guard je Dataset
+        (auf HANA: generierte Guard-Spalte + Unique-Constraint, Übersetzung des
+        SQLite-Partial-Index in `HanaDialect.translate_ddl`) muss feuern statt
+        still zu ersetzen. Returns False, wenn bereits ein Run für das Dataset läuft.
+        """
+        try:
+            with self._conn() as conn:
+                conn.execute(
+                    """INSERT INTO dq_runs
+                       (run_id, dataset, schema_name, started_at, finished_at,
+                        overall_status, total_checks, passed_checks, failed_checks,
+                        warning_checks, triggered_by, contract_version, contract_hash,
+                        actor, run_state, gate_verdict)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        summary.run_id, summary.dataset, summary.schema,
+                        summary.started_at, summary.finished_at,
+                        summary.overall_status, summary.total, summary.passed,
+                        summary.failed, summary.warnings, summary.triggered_by,
+                        summary.contract_version, summary.contract_hash,
+                        summary.actor, summary.run_state, summary.gate_verdict,
+                    ),
+                )
+            return True
+        except Exception as exc:  # noqa: BLE001 — Dialekt entscheidet Unique-Verletzung
+            if self._dialect.is_unique_violation(exc):
+                return False
+            raise
+
+    def begin_operation(self, op_id: str, kind: str, created_by: str = "") -> bool:
+        """Registriert eine Hintergrund-Operation einmalig; doppelte op_ids
+        (PK-Konflikt) werden abgelehnt."""
+        try:
+            with self._conn() as conn:
+                conn.execute(
+                    """INSERT INTO dq_operations
+                       (op_id, kind, state, created_by, started_at)
+                       VALUES (?,?,?,?,?)""",
+                    (op_id, kind, "running", created_by, datetime.now(timezone.utc).isoformat()),
+                )
+            return True
+        except Exception as exc:  # noqa: BLE001 — Dialekt entscheidet Unique-Verletzung
+            if self._dialect.is_unique_violation(exc):
+                return False
+            raise
+
 
 # ----------------------------------------------------------------------
 # Paritäts-Sicherung: jede public-Methode des SqliteStore, die HanaStore

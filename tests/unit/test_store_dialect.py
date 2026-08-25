@@ -43,6 +43,25 @@ def test_already_exists_error_tolerance():
     assert not SQLITE.is_already_exists_error(Exception("syntax error near ,"))
 
 
+def test_hana_partial_unique_index_becomes_generated_guard():
+    # SQLite-Partial-Index → HANA generierte Guard-Spalte + Unique-Constraint.
+    out = HANA.translate_ddl(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_dq_runs_one_running\n"
+        "  ON dq_runs(dataset) WHERE run_state = 'running';"
+    )
+    assert "GENERATED ALWAYS AS" in out
+    assert "CASE WHEN run_state = 'running' THEN dataset ELSE NULL END" in out
+    assert "ADD CONSTRAINT idx_dq_runs_one_running UNIQUE" in out
+    assert "CREATE UNIQUE INDEX" not in out  # kein gefilterter Index mehr
+
+
+def test_unique_violation_detection():
+    assert SQLITE.is_unique_violation(Exception("UNIQUE constraint failed: dq_runs.dataset"))
+    assert HANA.is_unique_violation(Exception("unique constraint violated: idx (301)"))
+    assert not SQLITE.is_unique_violation(Exception("no such table: dq_runs"))
+    assert not HANA.is_unique_violation(Exception("invalid column name"))
+
+
 def test_qmark_paramstyle_shared():
     # Beide Dialekte nutzen qmark (?) — der Grund, warum der Kern geteilt werden kann.
     assert "?" in SQLITE.upsert("t", ["a"], ["a"])
