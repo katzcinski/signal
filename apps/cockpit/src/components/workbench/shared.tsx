@@ -7,6 +7,7 @@ import type { AxiosError } from 'axios';
 import { Combobox } from '@/components/ui/Combobox';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { Button } from '@/components/ui/Button';
+import { Switch } from '@/components/ui/Switch';
 import { t } from '@/i18n/de';
 import type {
   ArtifactKind, Contract, ContractPutBody, ContractOut,
@@ -227,15 +228,16 @@ export function GuaranteeCard({ familyKey, enabled, onToggle, headerExtra, accen
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', flexWrap: 'wrap',
         borderBottom: body ? '1px solid var(--line)' : 'none',
       }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
-          <input
-            type="checkbox"
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', fontSize: 13, fontWeight: 600 }}>
+          <Switch
             checked={enabled}
-            onChange={e => onToggle(e.target.checked)}
+            onChange={onToggle}
             aria-label={`${t.workbench.families[familyKey]} ${t.workbench.enabled}`}
           />
-          {t.workbench.families[familyKey] ?? familyKey}
-        </label>
+          <span onClick={() => onToggle(!enabled)} style={{ cursor: 'pointer' }}>
+            {t.workbench.families[familyKey] ?? familyKey}
+          </span>
+        </span>
         <span style={{ ...monoStyle, fontSize: 10, color: 'var(--fg-3)' }}>guarantees.{familyKey}</span>
         {enabled && badge}
         <div style={{ flex: 1 }} />

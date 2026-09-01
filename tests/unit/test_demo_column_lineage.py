@@ -1,9 +1,9 @@
-"""WS-A regression: der ausgelieferte Demo-Snapshot trägt echte Spalten-Lineage.
+"""WS-A-Regression: der ausgelieferte Demo-Snapshot trägt echte Spalten-Lineage.
 
 Sichert ab, dass ``data/inventory.json`` CSN-``csnProjection`` enthält, sodass
 ``build_column_lineage`` echte ``computed``-Kanten (inkl. Expression) und die
-2-Hop-Impact-Kette in der BUS-Schicht erzeugt — nicht mehr die alten
-``direct``/leer-Platzhalter (O3). Erzeugt von ``scripts/seed_column_lineage.py``.
+mehrstufige Impact-Kette über die Layer erzeugt — nicht ``direct``/leer-
+Platzhalter (O3). Erzeugt von ``scripts/build_demo_snapshot.py``.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ def _objects() -> list[dict]:
 
 def test_demo_inventory_carries_csn_projection() -> None:
     enriched = [o for o in _objects() if o.get("csnProjection", {}).get("projectionLineage")]
-    assert enriched, "kein Objekt mit csnProjection.projectionLineage — Seed-Skript laufen lassen"
+    assert enriched, "kein Objekt mit csnProjection.projectionLineage — Snapshot-Skript laufen lassen"
 
 
 def test_demo_yields_computed_edges_with_expression() -> None:
@@ -33,24 +33,24 @@ def test_demo_yields_computed_edges_with_expression() -> None:
     assert all(e.expression for e in computed), "computed-Kante ohne Expression"
 
 
-def test_demo_bus_two_hop_impact_chain() -> None:
-    """BUS_05.BUS_COL_03 → BUS_01.BUS_COL_03 → BUS_02.BUS_COL_03 (transitiv)."""
+def test_demo_region_code_impact_chain() -> None:
+    """ic_customer_v.REGION_CODE → bc_customer_dim_v → bc_sales_order_item_fact_v."""
     idx = build_column_indexes(build_column_lineage(_objects()))
 
-    bus01 = idx["DEMO_BUS_01"]["BUS_COL_03"]
-    up = {(u["object"], u["column"]) for u in bus01["upstream"]}
-    down = {(d["object"], d["column"]) for d in bus01["downstream"]}
-    assert ("DEMO_BUS_05", "BUS_COL_03") in up
-    assert ("DEMO_BUS_02", "BUS_COL_03") in down
+    dim = idx["bc_customer_dim_v"]["REGION_CODE"]
+    up = {(u["object"], u["column"]) for u in dim["upstream"]}
+    down = {(d["object"], d["column"]) for d in dim["downstream"]}
+    assert ("ic_customer_v", "REGION_CODE") in up
+    assert ("bc_sales_order_item_fact_v", "REGION_CODE") in down
 
 
 def test_demo_arithmetic_emits_edge_per_source_column() -> None:
-    """``b3.BUS_COL_02 + b4.BUS_COL_03`` → je eine Kante pro Quellspalte."""
+    """``a.REVENUE_EUR - b.BUDGET_AMOUNT`` → je eine Kante pro Quellspalte."""
     result = build_column_lineage(_objects())
     sources = {
         (e.source_object, e.source_column)
         for e in result.edges
-        if e.target_object == "DEMO_BUS_01" and e.target_column == "BUS_COL_04"
+        if e.target_object == "bc_budget_actual_fact_v" and e.target_column == "VARIANCE_AMOUNT"
     }
-    assert ("DEMO_BUS_03", "BUS_COL_02") in sources
-    assert ("DEMO_BUS_04", "BUS_COL_03") in sources
+    assert ("bc_revenue_monthly_fact_v", "REVENUE_EUR") in sources
+    assert ("ic_budget_plan_v", "BUDGET_AMOUNT") in sources

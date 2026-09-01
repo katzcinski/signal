@@ -1,0 +1,78 @@
+# contract_hash: 938e58e1f455969d
+# library_version: 6
+# compiler_hash: 4d899ae99ff4f720
+dataset: bc_material_dim_v
+schema: '{schema}'
+contract_version: 1.1.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'bc_material_dim_v' UNION ALL SELECT COLUMN_NAME
+    FROM "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'bc_material_dim_v')
+    catalog_columns
+  expect: '>= 4'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: provider_contract
+  enforcement: monitor
+- name: key_MATERIAL_ID_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "MATERIAL_ID") FROM "{schema}"."bc_material_dim_v"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate
+  kind: provider_contract
+  enforcement: monitor
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_material_dim_v"
+  expect: '>= 1200'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: provider_contract
+  enforcement: monitor
+- name: completeness_MATERIAL_GROUP
+  sql: SELECT ROUND(100.0 * COUNT(CASE WHEN "MATERIAL_GROUP" IS NULL THEN 1 END) /
+    NULLIF(COUNT(*), 0), 2) FROM "{schema}"."bc_material_dim_v"
+  expect: <= 1.0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: completeness_pct
+  unit: '%'
+  kind: provider_contract
+  enforcement: monitor
+- name: MATERIAL_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_material_dim_v" WHERE "MATERIAL_ID" IS
+    NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: monitor
+- name: MATERIAL_TYPE_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_material_dim_v" WHERE "MATERIAL_TYPE" IS
+    NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: monitor
+- name: allowed_values_BASE_UNIT
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_material_dim_v" WHERE "BASE_UNIT" NOT IN
+    ('ST', 'KG', 'L', 'M')
+  expect: = 0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: allowed_values
+  kind: internal_gate
+  enforcement: monitor

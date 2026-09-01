@@ -86,7 +86,9 @@ class GitRepo:
     def read_contract(self, product: str) -> Optional[str]:
         path = self._path(product)
         if path.exists():
-            return path.read_text()
+            # Contracts sind immer UTF-8 (deutsche Beschreibungen, Umlaute) —
+            # nie die Plattform-Codepage, sonst liest Windows cp1252.
+            return path.read_text(encoding="utf-8")
         return None
 
     def write_contract(
@@ -100,7 +102,11 @@ class GitRepo:
         """Serialisierter Write + Commit (+ Push, wenn Remote). Returns commit hash."""
         with self._process_lock():
             path = self._path(product)
-            path.write_text(content)
+            # [ENCODING] Explizit UTF-8: ohne encoding schreibt Windows in der
+            # Plattform-Codepage (cp1252). Ein Contract mit Umlaut in der
+            # Beschreibung wäre danach für die eigene API unlesbar, weil alle
+            # Leser mit encoding="utf-8" öffnen.
+            path.write_text(content, encoding="utf-8")
             content_hash = hashlib.sha256(content.encode()).hexdigest()[:12]
 
             try:

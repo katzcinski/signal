@@ -1,0 +1,8 @@
+product: delivery_performance
+owners:
+- team-logistics
+output_ports:
+- dataset: bc_delivery_performance_fact_v
+inbound:
+- product: customer_master
+  version: 1.3.0

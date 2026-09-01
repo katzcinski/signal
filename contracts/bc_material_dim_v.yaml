@@ -1,0 +1,58 @@
+product: bc_material_dim_v
+kind: provider_contract
+dataset: bc_material_dim_v
+owned_by: product
+owners:
+- team-mdm
+version: 1.1.0
+lifecycle: active
+description: Zugesagte Garantien der Materialdimension; Schema absichtlich offen für
+  neue Attribute.
+guarantees:
+  schema:
+    columns:
+    - MATERIAL_ID
+    - MATERIAL_TYPE
+    - MATERIAL_GROUP
+    - BASE_UNIT
+    mode: open
+    severity: warn
+    types:
+      MATERIAL_ID:
+        type: string
+        key: true
+        nullable: false
+      MATERIAL_TYPE:
+        type: string
+      MATERIAL_GROUP:
+        type: string
+      BASE_UNIT:
+        type: string
+  keys:
+  - columns:
+    - MATERIAL_ID
+    unique: true
+    severity: critical
+  volume:
+    min_rows: 1200
+    severity: warn
+  completeness:
+  - column: MATERIAL_GROUP
+    min_pct: 99.0
+    severity: warn
+  not_null:
+  - columns:
+    - MATERIAL_ID
+    - MATERIAL_TYPE
+    severity: fail
+checks:
+- id: allowed_values
+  params:
+    <SPALTE>: BASE_UNIT
+    <WERTE>:
+    - ST
+    - KG
+    - L
+    - M
+  expect: = 0
+  severity: warn

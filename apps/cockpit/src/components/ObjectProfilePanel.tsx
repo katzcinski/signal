@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useEnvironments, useObjectProfile } from '@/api/objects';
+import { useEnvironments, useObjectProfile, useLatestObjectProfile } from '@/api/objects';
 import { useOperationStream } from '@/api/operations';
 import { useRoleStore, canProfileObject } from '@/store/role';
 import { Button } from '@/components/ui/Button';
@@ -246,6 +246,7 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
   const role = useRoleStore(s => s.role);
   const allowed = canProfileObject(role);
   const profile = useObjectProfile(objectId);
+  const latest = useLatestObjectProfile(objectId);
   const { data: envData, isLoading: envLoading } = useEnvironments();
   const environments = useMemo(() => envData?.environments ?? [], [envData]);
   const [environment, setEnvironment] = useState('');
@@ -271,7 +272,10 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
 
   const error = profile.isError ? profileErrorMessage(profile.error) : '';
   const running = profile.isPending || operation?.state === 'running';
-  const profileResult = operation?.state === 'finished' ? operation.result : null;
+  const liveResult = operation?.state === 'finished' ? operation.result : null;
+  // Fällt auf das zuletzt gespeicherte Aggregat-Profil zurück (read-only, kein Live-Lauf).
+  const profileResult = liveResult ?? latest.data?.stats ?? null;
+  const showingSnapshot = !liveResult && !!latest.data?.stats;
   const operationError = operation?.state === 'error' ? operation.error : '';
   const canRun = allowed && !!environment && !running;
 
@@ -352,6 +356,21 @@ export function ObjectProfilePanel({ objectId, onClose }: Props) {
 
         {profileResult && (
           <div>
+            {showingSnapshot && latest.data && (
+              <div style={{
+                color: 'var(--fg-3)', fontSize: 12, marginBottom: 12,
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <span style={{
+                  fontSize: 10, color: 'var(--fg-2)', textTransform: 'uppercase', letterSpacing: '0.06em',
+                  border: '1px solid var(--line)', borderRadius: 'var(--r)', padding: '1px 6px',
+                }}>
+                  Snapshot
+                </span>
+                Last stored profile from {new Date(latest.data.captured_at).toLocaleString()}
+                {latest.data.environment ? ` · env: ${latest.data.environment}` : ''}. Run a live profile to refresh.
+              </div>
+            )}
             <ProfileSummary profile={profileResult} />
             <CandidateSection title="Single-column key candidates" candidates={profileResult.pk_candidates.ranked_single ?? []} />
             <CandidateSection title="Composite key candidates" candidates={profileResult.pk_candidates.ranked_composite ?? []} />

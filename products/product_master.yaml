@@ -1,0 +1,6 @@
+product: product_master
+owners:
+- team-mdm
+output_ports:
+- dataset: bc_material_dim_v
+inbound: []

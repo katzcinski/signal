@@ -1,0 +1,65 @@
+product: ic_exchange_rate_v
+kind: internal_gate
+dataset: ic_exchange_rate_v
+owned_by: platform
+owners:
+- team-finance
+version: 1.0.0
+lifecycle: active
+description: 'Gate auf den Umrechnungskursen: Eindeutigkeit je Kurstyp/Währungspaar/Datum.'
+guarantees:
+  schema:
+    columns:
+    - RATE_TYPE
+    - FROM_CURRENCY
+    - TO_CURRENCY
+    - VALID_FROM
+    - EXCHANGE_RATE
+    mode: closed
+    severity: critical
+    types:
+      RATE_TYPE:
+        type: string
+        key: true
+        nullable: false
+      FROM_CURRENCY:
+        type: string
+        key: true
+        nullable: false
+      TO_CURRENCY:
+        type: string
+        key: true
+        nullable: false
+      VALID_FROM:
+        type: date
+        key: true
+        nullable: false
+      EXCHANGE_RATE:
+        type: decimal
+  keys:
+  - columns:
+    - RATE_TYPE
+    - FROM_CURRENCY
+    - TO_CURRENCY
+    - VALID_FROM
+    unique: true
+    severity: critical
+  volume:
+    min_rows: 2400
+    severity: warn
+  not_null:
+  - columns:
+    - RATE_TYPE
+    - FROM_CURRENCY
+    - TO_CURRENCY
+    - VALID_FROM
+    - EXCHANGE_RATE
+    severity: critical
+checks:
+- id: value_range
+  params:
+    <SPALTE>: EXCHANGE_RATE
+    <MIN>: '0'
+    <MAX>: '1000'
+  expect: = 0
+  severity: fail

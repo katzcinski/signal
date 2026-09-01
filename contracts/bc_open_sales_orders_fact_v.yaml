@@ -1,0 +1,95 @@
+product: bc_open_sales_orders_fact_v
+kind: consumer_contract
+dataset: bc_open_sales_orders_fact_v
+owned_by: product
+owners:
+- team-sales
+version: 1.2.0
+lifecycle: active
+description: Vom Vertriebsdashboard konsumierte Garantien auf den offenen Aufträgen.
+observability:
+  freshness:
+    baseline: seasonal
+    season:
+    - dow
+    sensitivity: low
+quality_proposals:
+- check_name: freshness_CHANGED_AT
+  proposed_expect: < 36000
+  rationale: Wochenendladungen laufen regelmäßig später als der ursprüngliche Entwurfswert.
+  accepted_by: Mia Steward
+guarantees:
+  schema:
+    columns:
+    - SALES_ORDER_ID
+    - ORDER_ITEM_ID
+    - CUSTOMER_ID
+    - REGION_CODE
+    - ORDER_DATE
+    - CHANGED_AT
+    - ORDER_STATUS
+    - OPEN_QUANTITY
+    - OPEN_AMOUNT
+    - CURRENCY
+    mode: closed
+    severity: critical
+    types:
+      SALES_ORDER_ID:
+        type: string
+        key: true
+        nullable: false
+      ORDER_ITEM_ID:
+        type: string
+        key: true
+        nullable: false
+      CUSTOMER_ID:
+        type: string
+      REGION_CODE:
+        type: string
+      ORDER_DATE:
+        type: date
+      CHANGED_AT:
+        type: timestamp
+      ORDER_STATUS:
+        type: string
+      OPEN_QUANTITY:
+        type: decimal
+      OPEN_AMOUNT:
+        type: decimal
+      CURRENCY:
+        type: string
+  keys:
+  - columns:
+    - SALES_ORDER_ID
+    - ORDER_ITEM_ID
+    unique: true
+    severity: critical
+  freshness:
+    column: CHANGED_AT
+    max_age: PT10H
+    severity: warn
+  volume:
+    min_rows: 18000
+    severity: warn
+    baseline: rolling
+    bounds: auto
+  completeness:
+  - column: REGION_CODE
+    min_pct: 98.0
+    severity: warn
+  not_null:
+  - columns:
+    - SALES_ORDER_ID
+    - ORDER_ITEM_ID
+    - ORDER_STATUS
+    severity: fail
+checks:
+- id: allowed_values
+  params:
+    <SPALTE>: ORDER_STATUS
+    <WERTE>:
+    - A
+    - B
+    - C
+  expect: = 0
+  severity: warn

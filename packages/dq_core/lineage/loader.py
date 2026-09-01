@@ -14,6 +14,22 @@ def load_lineage(path: str | Path) -> dict[str, Any]:
     }
 
 
+def _is_out_of_scope(node: dict) -> bool:
+    """Knoten, die kein Contract tragen KÖNNEN — nicht "Contract fehlt".
+
+    Der Extract stellt Quellen ausserhalb des Tenants als eigene Knoten in den
+    Graphen (``build_lineage_graph`` → ``type/layer = external``, Kante mit
+    ``sourceScope = external_system``). Für die gehört ○ (out-of-scope), nicht
+    ▲ (Lücke) — sonst liest die Coverage-Map jede Quellsystem-Tabelle als
+    Governance-Rückstand. ``objectType`` bleibt für ältere Snapshots geprüft.
+    """
+    if node.get("objectType") in ("external_raw", "unknown"):
+        return True
+    if node.get("sourceScope") == "external_system":
+        return True
+    return "external" in (str(node.get("type") or ""), str(node.get("layer") or ""))
+
+
 def get_coverage(
     nodes: list[dict],
     object_statuses: list[dict],
@@ -51,7 +67,7 @@ def get_coverage(
         elif has_boundary_contract:
             node_kind = kinds.get(node_id, "consumer_contract")
 
-        if node.get("objectType") in ("external_raw", "unknown") or not node_id:
+        if _is_out_of_scope(node) or not node_id:
             flag = "○"
         elif not has_any_contract:
             flag = "▲"

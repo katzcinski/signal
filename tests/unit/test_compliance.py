@@ -36,3 +36,24 @@ def test_failed_warn_only_still_compliant():
 def test_accepts_dict_rows():
     rows = [{"severity": "fail", "passed": 0}]  # store persists passed as int
     assert compute_compliance(rows) == BREACHED
+
+
+def test_gating_states_do_not_breach_g6():
+    """[G6] Ein übersprungener Check hat kein Urteil — er darf nichts brechen.
+
+    Frische-Gating erzeugt für teure Checks ``skipped_stale`` mit
+    ``passed=False``; ohne State-Filter würde eine verspätete Lieferung den
+    Contract als verletzt melden, obwohl nie gemessen wurde.
+    """
+    skipped = CheckResult(
+        name="key_unique", sql="", expect="= 0", severity="critical",
+        passed=False, state="skipped_stale",
+    )
+    assert compute_compliance([_r("fresh", "warn", False), skipped]) == COMPLIANT
+    # Ohne jedes urteilsfähige Ergebnis bleibt der Zustand unbekannt.
+    assert compute_compliance([skipped]) == UNKNOWN
+    # Store-Zeilen (dicts) verhalten sich identisch.
+    assert compute_compliance([
+        {"severity": "critical", "passed": 0, "state": "downgraded"},
+        {"severity": "fail", "passed": 1, "state": "executed"},
+    ]) == COMPLIANT

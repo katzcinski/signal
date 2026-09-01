@@ -1,0 +1,123 @@
+product: bc_sales_order_item_fact_v
+kind: provider_contract
+dataset: bc_sales_order_item_fact_v
+owned_by: product
+owners:
+- team-sales
+version: 2.1.0
+lifecycle: active
+description: Zugesagte Garantien des Auftrags-Facts für alle nachgelagerten Produkte.
+enforcement_default: gate
+quarantine:
+  style: both
+observability:
+  volume:
+    baseline: seasonal
+    season:
+    - dow
+    sensitivity: medium
+  freshness:
+    baseline: rolling
+    sensitivity: medium
+guarantees:
+  schema:
+    columns:
+    - SALES_ORDER_ID
+    - ORDER_ITEM_ID
+    - ORDER_DATE
+    - CHANGED_AT
+    - CUSTOMER_ID
+    - MATERIAL_ID
+    - SALES_ORG
+    - REGION_CODE
+    - CUSTOMER_GROUP
+    - MATERIAL_GROUP
+    - ORDER_QUANTITY
+    - NET_AMOUNT
+    - CURRENCY
+    mode: closed
+    severity: critical
+    types:
+      SALES_ORDER_ID:
+        type: string
+        key: true
+        nullable: false
+      ORDER_ITEM_ID:
+        type: string
+        key: true
+        nullable: false
+      ORDER_DATE:
+        type: date
+      CHANGED_AT:
+        type: timestamp
+      CUSTOMER_ID:
+        type: string
+      MATERIAL_ID:
+        type: string
+      SALES_ORG:
+        type: string
+      REGION_CODE:
+        type: string
+      CUSTOMER_GROUP:
+        type: string
+      MATERIAL_GROUP:
+        type: string
+      ORDER_QUANTITY:
+        type: decimal
+      NET_AMOUNT:
+        type: decimal
+      CURRENCY:
+        type: string
+  keys:
+  - columns:
+    - SALES_ORDER_ID
+    - ORDER_ITEM_ID
+    unique: true
+    severity: critical
+  freshness:
+    column: CHANGED_AT
+    max_age: PT12H
+    severity: warn
+  volume:
+    min_rows: 120000
+    severity: warn
+    baseline: rolling
+    bounds: auto
+  completeness:
+  - column: REGION_CODE
+    min_pct: 98.0
+    severity: warn
+    segment_by: SALES_ORG
+    max_segments: 12
+  - column: MATERIAL_GROUP
+    min_pct: 97.0
+    severity: warn
+  not_null:
+  - columns:
+    - SALES_ORDER_ID
+    - ORDER_ITEM_ID
+    - CUSTOMER_ID
+    - MATERIAL_ID
+    severity: critical
+  - columns:
+    - NET_AMOUNT
+    - CURRENCY
+    severity: fail
+checks:
+- id: value_range
+  params:
+    <SPALTE>: NET_AMOUNT
+    <MIN>: '0'
+    <MAX>: '5000000'
+  expect: = 0
+  severity: fail
+- id: allowed_values
+  params:
+    <SPALTE>: CURRENCY
+    <WERTE>:
+    - EUR
+    - USD
+    - CHF
+    - GBP
+  expect: = 0
+  severity: fail

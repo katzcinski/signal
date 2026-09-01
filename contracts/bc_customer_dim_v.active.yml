@@ -1,0 +1,67 @@
+product: bc_customer_dim_v
+kind: provider_contract
+dataset: bc_customer_dim_v
+owned_by: product
+owners:
+- team-mdm
+version: 1.3.0
+lifecycle: active
+description: Zugesagte Garantien der Kundendimension für alle konsumierenden Produkte.
+enforcement_default: gate
+quarantine:
+  style: continuous
+guarantees:
+  schema:
+    columns:
+    - CUSTOMER_ID
+    - CUSTOMER_NAME
+    - COUNTRY_CODE
+    - REGION_CODE
+    - CITY
+    - CUSTOMER_GROUP
+    mode: closed
+    severity: critical
+    types:
+      CUSTOMER_ID:
+        type: string
+        key: true
+        nullable: false
+      CUSTOMER_NAME:
+        type: string
+      COUNTRY_CODE:
+        type: string
+      REGION_CODE:
+        type: string
+      CITY:
+        type: string
+      CUSTOMER_GROUP:
+        type: string
+  keys:
+  - columns:
+    - CUSTOMER_ID
+    unique: true
+    severity: critical
+  volume:
+    min_rows: 8000
+    severity: warn
+    baseline: rolling
+    bounds: auto
+  completeness:
+  - column: REGION_CODE
+    min_pct: 98.0
+    severity: fail
+  - column: CUSTOMER_GROUP
+    min_pct: 98.0
+    severity: warn
+  not_null:
+  - columns:
+    - CUSTOMER_ID
+    - CUSTOMER_NAME
+    severity: critical
+checks:
+- id: pattern_match
+  params:
+    <SPALTE>: COUNTRY_CODE
+    <REGEX>: ^[A-Z]{2}$
+  expect: = 0
+  severity: fail

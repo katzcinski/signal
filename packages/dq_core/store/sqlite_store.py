@@ -2082,12 +2082,19 @@ class ResultStore:
         return self.get_run(runs[0]["run_id"])
 
     def get_object_status(self) -> list[dict[str, Any]]:
-        """Rollup: per object/dataset the worst active status across all families."""
+        """Rollup: per object/dataset the worst active status across all families.
+
+        [G6] State-aware like ``get_object_family_status`` and the engine's
+        ``_overall_status``: gating states (``skipped_stale``,
+        ``skipped_dependency``, ``downgraded``) are visible but status-neutral —
+        a check that never ran must not turn the object red.
+        """
         with self._conn() as conn:
             rows = conn.execute(
                 """SELECT
                      r.dataset,
-                     MAX(CASE WHEN cr.severity='critical' AND cr.passed=0 THEN 4
+                     MAX(CASE WHEN cr.state NOT IN ('executed','error')       THEN 0
+                              WHEN cr.severity='critical' AND cr.passed=0 THEN 4
                               WHEN cr.severity='fail'     AND cr.passed=0 THEN 3
                               WHEN cr.severity='warn'     AND cr.passed=0 THEN 2
                               WHEN cr.error_message IS NOT NULL        THEN 1

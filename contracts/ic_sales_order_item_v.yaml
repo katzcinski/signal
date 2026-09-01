@@ -1,0 +1,103 @@
+product: ic_sales_order_item_v
+kind: internal_gate
+dataset: ic_sales_order_item_v
+owned_by: platform
+owners:
+- team-sales
+version: 1.1.0
+lifecycle: active
+description: 'Gate auf der harmonisierten Auftragsposition: Schlüssel, Referenz auf
+  den Kunden, Aktualität.'
+enforcement_default: quarantine
+quarantine:
+  style: episodic
+guarantees:
+  schema:
+    columns:
+    - SALES_ORDER_ID
+    - ORDER_ITEM_ID
+    - MATERIAL_ID
+    - ORDER_QUANTITY
+    - UNIT_OF_MEASURE
+    - NET_AMOUNT
+    - CURRENCY
+    - PLANT_ID
+    - CUSTOMER_ID
+    - SALES_ORG
+    - ORDER_DATE
+    - CHANGED_AT
+    mode: closed
+    severity: critical
+    types:
+      SALES_ORDER_ID:
+        type: string
+        key: true
+        nullable: false
+      ORDER_ITEM_ID:
+        type: string
+        key: true
+        nullable: false
+      MATERIAL_ID:
+        type: string
+      ORDER_QUANTITY:
+        type: decimal
+      UNIT_OF_MEASURE:
+        type: string
+      NET_AMOUNT:
+        type: decimal
+      CURRENCY:
+        type: string
+      PLANT_ID:
+        type: string
+      CUSTOMER_ID:
+        type: string
+      SALES_ORG:
+        type: string
+      ORDER_DATE:
+        type: date
+      CHANGED_AT:
+        type: timestamp
+  keys:
+  - columns:
+    - SALES_ORDER_ID
+    - ORDER_ITEM_ID
+    unique: true
+    severity: critical
+  referential:
+  - fk:
+    - CUSTOMER_ID
+    parent: ic_customer_v
+    parent_key:
+    - CUSTOMER_ID
+    severity: fail
+  freshness:
+    column: CHANGED_AT
+    max_age: PT8H
+    severity: fail
+  volume:
+    min_rows: 120000
+    severity: warn
+    baseline: rolling
+    bounds: auto
+  completeness:
+  - column: MATERIAL_ID
+    min_pct: 99.5
+    severity: warn
+  not_null:
+  - columns:
+    - SALES_ORDER_ID
+    - ORDER_ITEM_ID
+    - CUSTOMER_ID
+    severity: critical
+  - columns:
+    - NET_AMOUNT
+    - CURRENCY
+    severity: fail
+checks:
+- id: value_range
+  params:
+    <SPALTE>: NET_AMOUNT
+    <MIN>: '0'
+    <MAX>: '5000000'
+  expect: = 0
+  severity: fail

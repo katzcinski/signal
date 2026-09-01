@@ -1,0 +1,70 @@
+product: r_s4h_kna1_rt
+kind: internal_gate
+dataset: r_s4h_kna1_rt
+owned_by: platform
+owners:
+- team-platform
+version: 1.0.0
+lifecycle: active
+description: 'Technisches Gate auf dem Kundenstamm-Replikat: Schlüssel, Name, Land.'
+guarantees:
+  schema:
+    columns:
+    - KUNNR
+    - NAME1
+    - LAND1
+    - REGIO
+    - ORT01
+    - PSTLZ
+    - KTOKD
+    - ERDAT
+    mode: closed
+    severity: critical
+    types:
+      KUNNR:
+        type: string
+        key: true
+        nullable: false
+      NAME1:
+        type: string
+      LAND1:
+        type: string
+      REGIO:
+        type: string
+      ORT01:
+        type: string
+      PSTLZ:
+        type: string
+      KTOKD:
+        type: string
+      ERDAT:
+        type: date
+  keys:
+  - columns:
+    - KUNNR
+    unique: true
+    severity: critical
+  volume:
+    min_rows: 8000
+    severity: warn
+    baseline: rolling
+    bounds: auto
+  completeness:
+  - column: REGIO
+    min_pct: 95.0
+    severity: warn
+  not_null:
+  - columns:
+    - KUNNR
+    - NAME1
+    severity: critical
+  - columns:
+    - LAND1
+    severity: fail
+checks:
+- id: pattern_match
+  params:
+    <SPALTE>: LAND1
+    <REGEX>: ^[A-Z]{2}$
+  expect: = 0
+  severity: warn

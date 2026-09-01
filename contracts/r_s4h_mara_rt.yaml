@@ -1,0 +1,26 @@
+product: r_s4h_mara_rt
+dataset: r_s4h_mara_rt
+owned_by: platform
+kind: internal_gate
+owners: []
+version: 0.1.0
+lifecycle: draft
+guarantees:
+  schema:
+    columns:
+    - MATNR
+    - MTART
+    - MATKL
+    - MEINS
+    - BRGEW
+    - ERSDA
+    mode: closed
+  keys:
+  - columns:
+    - MATNR
+    unique: true
+    severity: critical
+  volume:
+    baseline: rolling
+    bounds: auto
+    severity: warn

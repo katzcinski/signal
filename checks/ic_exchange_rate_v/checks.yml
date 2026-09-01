@@ -1,0 +1,97 @@
+# contract_hash: a8a1e7e0e5dc81ea
+# library_version: 6
+# compiler_hash: 6db40e845c4a839f
+dataset: ic_exchange_rate_v
+schema: '{schema}'
+contract_version: 1.0.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'ic_exchange_rate_v' UNION ALL SELECT COLUMN_NAME
+    FROM "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'ic_exchange_rate_v')
+    catalog_columns
+  expect: = 5
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: internal_gate
+  enforcement: monitor
+- name: key_RATE_TYPE_FROM_CURRENCY_TO_CURRENCY_VALID_FROM_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "RATE_TYPE" || '|' || "FROM_CURRENCY" || '|'
+    || "TO_CURRENCY" || '|' || "VALID_FROM") FROM "{schema}"."ic_exchange_rate_v"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate_composite
+  kind: internal_gate
+  enforcement: monitor
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_exchange_rate_v"
+  expect: '>= 2400'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: internal_gate
+  enforcement: monitor
+- name: RATE_TYPE_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_exchange_rate_v" WHERE "RATE_TYPE" IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: FROM_CURRENCY_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_exchange_rate_v" WHERE "FROM_CURRENCY"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: TO_CURRENCY_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_exchange_rate_v" WHERE "TO_CURRENCY" IS
+    NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: VALID_FROM_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_exchange_rate_v" WHERE "VALID_FROM" IS
+    NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: EXCHANGE_RATE_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_exchange_rate_v" WHERE "EXCHANGE_RATE"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: value_range_EXCHANGE_RATE
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_exchange_rate_v" WHERE "EXCHANGE_RATE"
+    < 0 OR "EXCHANGE_RATE" > 1000
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: value_range
+  kind: internal_gate
+  enforcement: monitor

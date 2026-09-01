@@ -1,0 +1,153 @@
+# contract_hash: 960378df68a7c958
+# library_version: 6
+# compiler_hash: 6f89b6a5f182e8f7
+dataset: bc_sales_order_item_fact_v
+schema: '{schema}'
+contract_version: 2.1.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'bc_sales_order_item_fact_v' UNION ALL SELECT COLUMN_NAME
+    FROM "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'bc_sales_order_item_fact_v')
+    catalog_columns
+  expect: = 13
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: provider_contract
+  enforcement: gate
+- name: key_SALES_ORDER_ID_ORDER_ITEM_ID_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "SALES_ORDER_ID" || '|' || "ORDER_ITEM_ID")
+    FROM "{schema}"."bc_sales_order_item_fact_v"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate_composite
+  kind: provider_contract
+  enforcement: gate
+- name: freshness_CHANGED_AT
+  sql: SELECT SECONDS_BETWEEN(MAX("CHANGED_AT"), CURRENT_TIMESTAMP) FROM "{schema}"."bc_sales_order_item_fact_v"
+  expect: < 43200
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: freshness
+  unit: s
+  kind: provider_contract
+  enforcement: gate
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_sales_order_item_fact_v"
+  expect: '>= 120000'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: provider_contract
+  enforcement: gate
+- name: completeness_REGION_CODE_by_SALES_ORG
+  sql: SELECT COUNT(*) FROM (SELECT "SALES_ORG" AS segment_value, ROUND(100.0 * COUNT(CASE
+    WHEN "REGION_CODE" IS NULL THEN 1 END) / NULLIF(COUNT(*), 0), 2) AS actual_value
+    FROM "{schema}"."bc_sales_order_item_fact_v" GROUP BY "SALES_ORG" HAVING ROUND(100.0
+    * COUNT(CASE WHEN "REGION_CODE" IS NULL THEN 1 END) / NULLIF(COUNT(*), 0), 2)
+    > 2.0) violating_segments
+  expect: = 0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: completeness_pct_segment
+  unit: segments
+  kind: provider_contract
+  enforcement: gate
+- name: completeness_MATERIAL_GROUP
+  sql: SELECT ROUND(100.0 * COUNT(CASE WHEN "MATERIAL_GROUP" IS NULL THEN 1 END) /
+    NULLIF(COUNT(*), 0), 2) FROM "{schema}"."bc_sales_order_item_fact_v"
+  expect: <= 3.0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: completeness_pct
+  unit: '%'
+  kind: provider_contract
+  enforcement: gate
+- name: SALES_ORDER_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_sales_order_item_fact_v" WHERE "SALES_ORDER_ID"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: ORDER_ITEM_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_sales_order_item_fact_v" WHERE "ORDER_ITEM_ID"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: CUSTOMER_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_sales_order_item_fact_v" WHERE "CUSTOMER_ID"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: MATERIAL_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_sales_order_item_fact_v" WHERE "MATERIAL_ID"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: NET_AMOUNT_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_sales_order_item_fact_v" WHERE "NET_AMOUNT"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: CURRENCY_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_sales_order_item_fact_v" WHERE "CURRENCY"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: value_range_NET_AMOUNT
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_sales_order_item_fact_v" WHERE "NET_AMOUNT"
+    < 0 OR "NET_AMOUNT" > 5000000
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: value_range
+  kind: internal_gate
+  enforcement: gate
+- name: allowed_values_CURRENCY
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_sales_order_item_fact_v" WHERE "CURRENCY"
+    NOT IN ('EUR', 'USD', 'CHF', 'GBP')
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: allowed_values
+  kind: internal_gate
+  enforcement: gate

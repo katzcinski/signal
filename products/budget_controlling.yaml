@@ -1,0 +1,8 @@
+product: budget_controlling
+owners:
+- team-controlling
+output_ports:
+- dataset: bc_budget_actual_fact_v
+inbound:
+- product: revenue_reporting
+  version: 1.4.0

@@ -1,0 +1,68 @@
+product: bc_delivery_performance_fact_v
+kind: internal_gate
+dataset: bc_delivery_performance_fact_v
+owned_by: product
+owners:
+- team-logistics
+version: 0.2.0
+lifecycle: draft
+description: 'Entwurf: Gate auf der Liefertreue. Noch kein Boundary-Contract, daher
+  offener Output-Port.'
+guarantees:
+  schema:
+    columns:
+    - DELIVERY_ID
+    - DELIVERY_DATE
+    - ACTUAL_GI_DATE
+    - CUSTOMER_ID
+    - REGION_CODE
+    - SHIPPING_POINT
+    - DELAY_DAYS
+    - CHANGED_AT
+    mode: closed
+    severity: critical
+    types:
+      DELIVERY_ID:
+        type: string
+        key: true
+        nullable: false
+      DELIVERY_DATE:
+        type: date
+      ACTUAL_GI_DATE:
+        type: date
+      CUSTOMER_ID:
+        type: string
+      REGION_CODE:
+        type: string
+      SHIPPING_POINT:
+        type: string
+      DELAY_DAYS:
+        type: decimal
+      CHANGED_AT:
+        type: timestamp
+  keys:
+  - columns:
+    - DELIVERY_ID
+    unique: true
+    severity: critical
+  freshness:
+    column: CHANGED_AT
+    max_age: PT12H
+    severity: warn
+  volume:
+    min_rows: 30000
+    severity: warn
+  not_null:
+  - columns:
+    - DELIVERY_ID
+    - DELIVERY_DATE
+    - CUSTOMER_ID
+    severity: fail
+checks:
+- id: value_range
+  params:
+    <SPALTE>: DELAY_DAYS
+    <MIN>: '-30'
+    <MAX>: '90'
+  expect: = 0
+  severity: warn

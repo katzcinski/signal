@@ -234,6 +234,29 @@ def profile_object(
     return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={"op_id": op_id})
 
 
+@router.get("/{object_id}/profile/latest")
+def latest_profile(object_id: str, store: StoreDep = ...):
+    """Zuletzt gespeichertes Aggregat-Profil eines Objekts (read-only).
+
+    Liest ausschließlich einen gespeicherten Profil-Snapshot (kein HANA, keine
+    Rohzeilen — G8). Erlaubt dem Panel, das letzte Profil direkt anzuzeigen,
+    ohne einen neuen Lauf gegen eine Live-Umgebung zu erzwingen. Liefert
+    ``null``, wenn noch kein Snapshot existiert.
+    """
+    snaps = store.list_profile_snapshots(object_id, limit=1)
+    if not snaps:
+        return None
+    snap = store.get_profile_snapshot(int(snaps[0]["id"]))
+    if not snap:
+        return None
+    return {
+        "snapshot_id": snap["id"],
+        "captured_at": snap["captured_at"],
+        "environment": snap["environment"],
+        "stats": snap["stats"],
+    }
+
+
 @router.post("/{object_id}/diff")
 def diff_object(
     object_id: str,

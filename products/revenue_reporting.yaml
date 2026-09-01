@@ -1,0 +1,8 @@
+product: revenue_reporting
+owners:
+- team-finance
+output_ports:
+- dataset: bc_revenue_monthly_fact_v
+inbound:
+- product: sales_orders
+  version: 2.1.0

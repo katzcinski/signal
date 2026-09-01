@@ -26,6 +26,7 @@ vi.mock('@/api/objects', () => ({
     isError: apiMock.state.isError,
     error: apiMock.state.error,
   }),
+  useLatestObjectProfile: () => ({ data: null }),
 }));
 
 vi.mock('@/api/operations', () => ({

@@ -1,0 +1,55 @@
+product: ic_delivery_v
+kind: internal_gate
+dataset: ic_delivery_v
+owned_by: platform
+owners:
+- team-logistics
+version: 0.1.0
+lifecycle: draft
+description: 'Entwurf: Gate auf der harmonisierten Lieferung, noch nicht freigegeben.'
+guarantees:
+  schema:
+    columns:
+    - DELIVERY_ID
+    - DELIVERY_DATE
+    - ACTUAL_GI_DATE
+    - CUSTOMER_ID
+    - SHIPPING_POINT
+    - DELIVERY_TYPE
+    - CHANGED_AT
+    mode: closed
+    severity: critical
+    types:
+      DELIVERY_ID:
+        type: string
+        key: true
+        nullable: false
+      DELIVERY_DATE:
+        type: date
+      ACTUAL_GI_DATE:
+        type: date
+      CUSTOMER_ID:
+        type: string
+      SHIPPING_POINT:
+        type: string
+      DELIVERY_TYPE:
+        type: string
+      CHANGED_AT:
+        type: timestamp
+  keys:
+  - columns:
+    - DELIVERY_ID
+    unique: true
+    severity: critical
+  freshness:
+    column: CHANGED_AT
+    max_age: PT12H
+    severity: warn
+  volume:
+    min_rows: 30000
+    severity: warn
+  not_null:
+  - columns:
+    - DELIVERY_ID
+    - DELIVERY_DATE
+    severity: fail

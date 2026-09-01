@@ -5,6 +5,7 @@ import type {
   OperationStart,
   ObjectTimeseries,
   ObjectDiffResult,
+  ObjectProfileResult,
 } from '@/types';
 
 export interface ObjectDiffBody {
@@ -97,6 +98,22 @@ export const useObjectProfile = (id: string) =>
   useMutation<OperationStart, Error, ObjectProfileRequest>({
     mutationFn: (body: ObjectProfileRequest) =>
       api.post(`/objects/${id}/profile`, body).then(r => r.data),
+  });
+
+export interface LatestObjectProfile {
+  snapshot_id: number;
+  captured_at: string;
+  environment: string;
+  stats: ObjectProfileResult;
+}
+
+// Read-only: zuletzt gespeichertes Aggregat-Profil (kein Live-Lauf nötig, G8-safe).
+export const useLatestObjectProfile = (id: string) =>
+  useQuery<LatestObjectProfile | null>({
+    queryKey: ['objects', id, 'profile', 'latest'],
+    queryFn: () => api.get(`/objects/${id}/profile/latest`).then(r => r.data ?? null),
+    enabled: !!id,
+    staleTime: 60_000,
   });
 
 // Analyzer chain: refresh inventory/lineage (onboarding step 1).

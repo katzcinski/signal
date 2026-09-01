@@ -2,707 +2,2524 @@
   "meta": {
     "schemaVersion": 6,
     "sanitized": true,
-    "source": "sanitized-demo-sample",
-    "generatedBy": "codex"
+    "source": "demo-landscape",
+    "generatedBy": "scripts/build_demo_snapshot.py"
   },
   "nodes": [
     {
-      "id": "DEMO_SRC_01",
-      "label": "DEMO_SRC_01",
-      "businessName": "Demo Source Object 01",
-      "type": "local-tables",
-      "status": "Deployed",
-      "space": "S_SP1",
-      "system": "DEMO",
-      "layer": "Source",
-      "layerCode": "S",
+      "id": "S4:KNA1",
+      "businessName": "KNA1",
+      "technicalName": "KNA1",
+      "type": "external",
+      "status": "External",
+      "layer": "external",
+      "layerCode": "ext",
       "role": "source",
       "confidence": 0.9,
+      "columns": [],
+      "columnCount": 0,
+      "system": "S4",
+      "externalKey": "KNA1",
+      "label": "S4:KNA1",
       "family": "observability",
-      "columns": [
-        "SRC_COL_01",
-        "SRC_COL_02",
-        "SRC_COL_03",
-        "SRC_COL_04",
-        "SRC_COL_05",
-        "SRC_COL_06",
-        "SRC_COL_07",
-        "SRC_COL_08",
-        "SRC_COL_09",
-        "SRC_COL_10",
-        "SRC_COL_11",
-        "SRC_COL_12"
-      ],
-      "columnCount": 12
+      "space": "",
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_SRC_02",
-      "label": "DEMO_SRC_02",
-      "businessName": "Demo Source Object 02",
-      "type": "views",
-      "status": "Deployed",
-      "space": "S_SP1",
-      "system": "DEMO",
-      "layer": "Source",
-      "layerCode": "S",
+      "id": "S4:LIKP",
+      "businessName": "LIKP",
+      "technicalName": "LIKP",
+      "type": "external",
+      "status": "External",
+      "layer": "external",
+      "layerCode": "ext",
       "role": "source",
       "confidence": 0.9,
+      "columns": [],
+      "columnCount": 0,
+      "system": "S4",
+      "externalKey": "LIKP",
+      "label": "S4:LIKP",
       "family": "observability",
-      "columns": [
-        "SRC_COL_01",
-        "SRC_COL_02",
-        "SRC_COL_03",
-        "SRC_COL_04",
-        "SRC_COL_05",
-        "SRC_COL_06"
-      ],
-      "columnCount": 6
+      "space": "",
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_SRC_03",
-      "label": "DEMO_SRC_03",
-      "businessName": "Demo Source Object 03",
-      "type": "views",
-      "status": "Deployed",
-      "space": "S_SP1",
-      "system": "DEMO",
-      "layer": "Source",
-      "layerCode": "S",
+      "id": "S4:MARA",
+      "businessName": "MARA",
+      "technicalName": "MARA",
+      "type": "external",
+      "status": "External",
+      "layer": "external",
+      "layerCode": "ext",
       "role": "source",
       "confidence": 0.9,
+      "columns": [],
+      "columnCount": 0,
+      "system": "S4",
+      "externalKey": "MARA",
+      "label": "S4:MARA",
       "family": "observability",
-      "columns": [
-        "SRC_COL_01",
-        "SRC_COL_02",
-        "SRC_COL_03",
-        "SRC_COL_04",
-        "SRC_COL_05",
-        "SRC_COL_06"
-      ],
-      "columnCount": 6
+      "space": "",
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_SRC_04",
-      "label": "DEMO_SRC_04",
-      "businessName": "Demo Source Object 04",
-      "type": "local-tables",
-      "status": "Deployed",
-      "space": "S_SP1",
-      "system": "DEMO",
-      "layer": "Source",
-      "layerCode": "S",
+      "id": "S4:TCURR",
+      "businessName": "TCURR",
+      "technicalName": "TCURR",
+      "type": "external",
+      "status": "External",
+      "layer": "external",
+      "layerCode": "ext",
       "role": "source",
       "confidence": 0.9,
+      "columns": [],
+      "columnCount": 0,
+      "system": "S4",
+      "externalKey": "TCURR",
+      "label": "S4:TCURR",
       "family": "observability",
-      "columns": [
-        "SRC_COL_01",
-        "SRC_COL_02",
-        "SRC_COL_03",
-        "SRC_COL_04",
-        "SRC_COL_05",
-        "SRC_COL_06",
-        "SRC_COL_07"
-      ],
-      "columnCount": 7
+      "space": "",
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_SRC_05",
-      "label": "DEMO_SRC_05",
-      "businessName": "Demo Source Object 05",
-      "type": "views",
-      "status": "Deployed",
-      "space": "S_SP1",
-      "system": "DEMO",
-      "layer": "Source",
-      "layerCode": "S",
+      "id": "S4:VBAK",
+      "businessName": "VBAK",
+      "technicalName": "VBAK",
+      "type": "external",
+      "status": "External",
+      "layer": "external",
+      "layerCode": "ext",
       "role": "source",
       "confidence": 0.9,
+      "columns": [],
+      "columnCount": 0,
+      "system": "S4",
+      "externalKey": "VBAK",
+      "label": "S4:VBAK",
       "family": "observability",
-      "columns": [
-        "SRC_COL_01",
-        "SRC_COL_02",
-        "SRC_COL_03",
-        "SRC_COL_04",
-        "SRC_COL_05",
-        "SRC_COL_06",
-        "SRC_COL_07"
-      ],
-      "columnCount": 7
+      "space": "",
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_SRC_06",
-      "label": "DEMO_SRC_06",
-      "businessName": "Demo Source Object 06",
-      "type": "local-tables",
-      "status": "Deployed",
-      "space": "S_SP1",
-      "system": "DEMO",
-      "layer": "Source",
-      "layerCode": "S",
+      "id": "S4:VBAP",
+      "businessName": "VBAP",
+      "technicalName": "VBAP",
+      "type": "external",
+      "status": "External",
+      "layer": "external",
+      "layerCode": "ext",
       "role": "source",
       "confidence": 0.9,
+      "columns": [],
+      "columnCount": 0,
+      "system": "S4",
+      "externalKey": "VBAP",
+      "label": "S4:VBAP",
       "family": "observability",
-      "columns": [
-        "SRC_COL_01",
-        "SRC_COL_02",
-        "SRC_COL_03",
-        "SRC_COL_04",
-        "SRC_COL_05"
-      ],
-      "columnCount": 5
+      "space": "",
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_HARM_01",
-      "label": "DEMO_HARM_01",
-      "businessName": "Demo Harmonization Object 01",
+      "id": "bc_budget_actual_fact_v",
+      "businessName": "Budget vs. Ist (Fact)",
       "type": "views",
       "status": "Deployed",
-      "space": "H",
-      "system": "DEMO",
-      "layer": "Harmonization",
-      "layerCode": "H",
-      "role": "transformation",
-      "confidence": 0.9,
-      "family": "quality",
+      "space": "FINANCE",
+      "system": "DSP",
+      "layer": "business_core",
+      "layerCode": "bc",
+      "role": "fact",
+      "confidence": 1.0,
       "columns": [
-        "HARM_COL_01",
-        "HARM_COL_02",
-        "HARM_COL_03",
-        "HARM_COL_04"
+        "FISCAL_YEAR",
+        "FISCAL_PERIOD",
+        "SALES_ORG",
+        "PRODUCT_GROUP",
+        "ACTUAL_AMOUNT",
+        "BUDGET_AMOUNT",
+        "VARIANCE_AMOUNT",
+        "CURRENCY",
+        "CHANGED_AT"
       ],
-      "columnCount": 4
-    },
-    {
-      "id": "DEMO_HARM_02",
-      "label": "DEMO_HARM_02",
-      "businessName": "Demo Harmonization Object 02",
-      "type": "views",
-      "status": "Deployed",
-      "space": "H",
-      "system": "DEMO",
-      "layer": "Harmonization",
-      "layerCode": "H",
-      "role": "transformation",
-      "confidence": 0.9,
-      "family": "quality",
-      "columns": [
-        "HARM_COL_01",
-        "HARM_COL_02",
-        "HARM_COL_03",
-        "HARM_COL_04",
-        "HARM_COL_05",
-        "HARM_COL_06"
-      ],
-      "columnCount": 6
-    },
-    {
-      "id": "DEMO_HARM_03",
-      "label": "DEMO_HARM_03",
-      "businessName": "Demo Harmonization Object 03",
-      "type": "views",
-      "status": "Deployed",
-      "space": "H",
-      "system": "DEMO",
-      "layer": "Harmonization",
-      "layerCode": "H",
-      "role": "transformation",
-      "confidence": 0.9,
-      "family": "quality",
-      "columns": [
-        "HARM_COL_01",
-        "HARM_COL_02",
-        "HARM_COL_03",
-        "HARM_COL_04"
-      ],
-      "columnCount": 4
-    },
-    {
-      "id": "DEMO_HARM_04",
-      "label": "DEMO_HARM_04",
-      "businessName": "Demo Harmonization Object 04",
-      "type": "views",
-      "status": "Deployed",
-      "space": "H",
-      "system": "DEMO",
-      "layer": "Harmonization",
-      "layerCode": "H",
-      "role": "transformation",
-      "confidence": 0.9,
-      "family": "quality",
-      "columns": [
-        "HARM_COL_01",
-        "HARM_COL_02",
-        "HARM_COL_03"
-      ],
-      "columnCount": 3
-    },
-    {
-      "id": "DEMO_HARM_05",
-      "label": "DEMO_HARM_05",
-      "businessName": "Demo Harmonization Object 05",
-      "type": "views",
-      "status": "Deployed",
-      "space": "H",
-      "system": "DEMO",
-      "layer": "Harmonization",
-      "layerCode": "H",
-      "role": "transformation",
-      "confidence": 0.9,
-      "family": "quality",
-      "columns": [
-        "HARM_COL_01",
-        "HARM_COL_02",
-        "HARM_COL_03",
-        "HARM_COL_04",
-        "HARM_COL_05"
-      ],
-      "columnCount": 5
-    },
-    {
-      "id": "DEMO_HARM_06",
-      "label": "DEMO_HARM_06",
-      "businessName": "Demo Harmonization Object 06",
-      "type": "views",
-      "status": "Deployed",
-      "space": "H",
-      "system": "DEMO",
-      "layer": "Harmonization",
-      "layerCode": "H",
-      "role": "transformation",
-      "confidence": 0.9,
-      "family": "quality",
-      "columns": [
-        "HARM_COL_01",
-        "HARM_COL_02",
-        "HARM_COL_03",
-        "HARM_COL_04",
-        "HARM_COL_05",
-        "HARM_COL_06",
-        "HARM_COL_07",
-        "HARM_COL_08"
-      ],
-      "columnCount": 8
-    },
-    {
-      "id": "DEMO_BUS_01",
-      "label": "DEMO_BUS_01",
-      "businessName": "Demo Business Object 01",
-      "type": "views",
-      "status": "Deployed",
-      "space": "B",
-      "system": "DEMO",
-      "layer": "Business",
-      "layerCode": "B",
-      "role": "consumption",
-      "confidence": 0.9,
+      "columnCount": 9,
+      "label": "bc_budget_actual_fact_v",
       "family": "contract",
-      "columns": [
-        "BUS_COL_01",
-        "BUS_COL_02",
-        "BUS_COL_03",
-        "BUS_COL_04",
-        "BUS_COL_05",
-        "BUS_COL_06",
-        "BUS_COL_07",
-        "BUS_COL_08",
-        "BUS_COL_09",
-        "BUS_COL_10",
-        "BUS_COL_11",
-        "BUS_COL_12"
-      ],
-      "columnCount": 12
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_BUS_02",
-      "label": "DEMO_BUS_02",
-      "businessName": "Demo Business Object 02",
+      "id": "bc_customer_dim_v",
+      "businessName": "Kundendimension",
       "type": "views",
       "status": "Deployed",
-      "space": "B",
-      "system": "DEMO",
-      "layer": "Business",
-      "layerCode": "B",
-      "role": "consumption",
-      "confidence": 0.9,
-      "family": "contract",
+      "space": "SALES",
+      "system": "DSP",
+      "layer": "business_core",
+      "layerCode": "bc",
+      "role": "dimension",
+      "confidence": 1.0,
       "columns": [
-        "BUS_COL_01",
-        "BUS_COL_02",
-        "BUS_COL_03",
-        "BUS_COL_04",
-        "BUS_COL_05",
-        "BUS_COL_06",
-        "BUS_COL_07",
-        "BUS_COL_08",
-        "BUS_COL_09",
-        "BUS_COL_10",
-        "BUS_COL_11"
+        "CUSTOMER_ID",
+        "CUSTOMER_NAME",
+        "COUNTRY_CODE",
+        "REGION_CODE",
+        "CITY",
+        "CUSTOMER_GROUP"
       ],
-      "columnCount": 11
+      "columnCount": 6,
+      "label": "bc_customer_dim_v",
+      "family": "contract",
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_BUS_03",
-      "label": "DEMO_BUS_03",
-      "businessName": "Demo Business Object 03",
+      "id": "bc_customer_txt",
+      "businessName": "Kundentexte",
+      "type": "views",
+      "status": "Deployed",
+      "space": "SALES",
+      "system": "DSP",
+      "layer": "business_core",
+      "layerCode": "bc",
+      "role": "text",
+      "confidence": 1.0,
+      "columns": [
+        "CUSTOMER_ID",
+        "CUSTOMER_NAME",
+        "CUSTOMER_SEARCH_NAME"
+      ],
+      "columnCount": 3,
+      "label": "bc_customer_txt",
+      "family": "contract",
+      "lifecycle": "active"
+    },
+    {
+      "id": "bc_delivery_performance_fact_v",
+      "businessName": "Liefertreue (Fact)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "SALES",
+      "system": "DSP",
+      "layer": "business_core",
+      "layerCode": "bc",
+      "role": "fact",
+      "confidence": 1.0,
+      "columns": [
+        "DELIVERY_ID",
+        "DELIVERY_DATE",
+        "ACTUAL_GI_DATE",
+        "CUSTOMER_ID",
+        "REGION_CODE",
+        "SHIPPING_POINT",
+        "DELAY_DAYS",
+        "CHANGED_AT"
+      ],
+      "columnCount": 8,
+      "label": "bc_delivery_performance_fact_v",
+      "family": "contract",
+      "lifecycle": "draft"
+    },
+    {
+      "id": "bc_material_dim_v",
+      "businessName": "Materialdimension",
+      "type": "views",
+      "status": "Deployed",
+      "space": "SALES",
+      "system": "DSP",
+      "layer": "business_core",
+      "layerCode": "bc",
+      "role": "dimension",
+      "confidence": 1.0,
+      "columns": [
+        "MATERIAL_ID",
+        "MATERIAL_TYPE",
+        "MATERIAL_GROUP",
+        "BASE_UNIT"
+      ],
+      "columnCount": 4,
+      "label": "bc_material_dim_v",
+      "family": "contract",
+      "lifecycle": "active"
+    },
+    {
+      "id": "bc_open_sales_orders_fact_v",
+      "businessName": "Offene Aufträge (Fact)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "SALES",
+      "system": "DSP",
+      "layer": "business_core",
+      "layerCode": "bc",
+      "role": "fact",
+      "confidence": 1.0,
+      "columns": [
+        "SALES_ORDER_ID",
+        "ORDER_ITEM_ID",
+        "CUSTOMER_ID",
+        "REGION_CODE",
+        "ORDER_DATE",
+        "CHANGED_AT",
+        "ORDER_STATUS",
+        "OPEN_QUANTITY",
+        "OPEN_AMOUNT",
+        "CURRENCY"
+      ],
+      "columnCount": 10,
+      "label": "bc_open_sales_orders_fact_v",
+      "family": "contract",
+      "lifecycle": "active"
+    },
+    {
+      "id": "bc_revenue_monthly_fact_v",
+      "businessName": "Monatsumsatz (Fact)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "FINANCE",
+      "system": "DSP",
+      "layer": "business_core",
+      "layerCode": "bc",
+      "role": "fact",
+      "confidence": 1.0,
+      "columns": [
+        "FISCAL_YEAR_MONTH",
+        "SALES_ORG",
+        "REGION_CODE",
+        "PRODUCT_GROUP",
+        "GROSS_REVENUE",
+        "REVENUE_EUR",
+        "ORDER_COUNT",
+        "CURRENCY",
+        "CHANGED_AT"
+      ],
+      "columnCount": 9,
+      "label": "bc_revenue_monthly_fact_v",
+      "family": "contract",
+      "lifecycle": "active"
+    },
+    {
+      "id": "bc_sales_order_item_fact_v",
+      "businessName": "Auftragspositionen (Fact)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "SALES",
+      "system": "DSP",
+      "layer": "business_core",
+      "layerCode": "bc",
+      "role": "fact",
+      "confidence": 1.0,
+      "columns": [
+        "SALES_ORDER_ID",
+        "ORDER_ITEM_ID",
+        "ORDER_DATE",
+        "CHANGED_AT",
+        "CUSTOMER_ID",
+        "MATERIAL_ID",
+        "SALES_ORG",
+        "REGION_CODE",
+        "CUSTOMER_GROUP",
+        "MATERIAL_GROUP",
+        "ORDER_QUANTITY",
+        "NET_AMOUNT",
+        "CURRENCY"
+      ],
+      "columnCount": 13,
+      "label": "bc_sales_order_item_fact_v",
+      "family": "contract",
+      "lifecycle": "active"
+    },
+    {
+      "id": "bc_sales_region_hier_v",
+      "businessName": "Vertriebsregionshierarchie",
+      "type": "views",
+      "status": "Deployed",
+      "space": "SALES",
+      "system": "DSP",
+      "layer": "business_core",
+      "layerCode": "bc",
+      "role": "hierarchy",
+      "confidence": 1.0,
+      "columns": [
+        "REGION_CODE",
+        "PARENT_REGION_CODE",
+        "COUNTRY_CODE",
+        "REGION_NAME"
+      ],
+      "columnCount": 4,
+      "label": "bc_sales_region_hier_v",
+      "family": "contract",
+      "lifecycle": "active"
+    },
+    {
+      "id": "ic_budget_plan_v",
+      "businessName": "Budgetplanung (harmonisiert)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "CORE",
+      "system": "DSP",
+      "layer": "integrated_core",
+      "layerCode": "ic",
+      "role": "other",
+      "confidence": 0.8,
+      "columns": [
+        "FISCAL_YEAR",
+        "FISCAL_PERIOD",
+        "SALES_ORG",
+        "PRODUCT_GROUP",
+        "BUDGET_AMOUNT",
+        "CURRENCY",
+        "UPLOADED_AT"
+      ],
+      "columnCount": 7,
+      "label": "ic_budget_plan_v",
+      "family": "quality",
+      "lifecycle": "active"
+    },
+    {
+      "id": "ic_customer_v",
+      "businessName": "Kunde (harmonisiert)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "CORE",
+      "system": "DSP",
+      "layer": "integrated_core",
+      "layerCode": "ic",
+      "role": "other",
+      "confidence": 0.8,
+      "columns": [
+        "CUSTOMER_ID",
+        "CUSTOMER_NAME",
+        "COUNTRY_CODE",
+        "REGION_CODE",
+        "CITY",
+        "POSTAL_CODE",
+        "CUSTOMER_GROUP",
+        "CREATED_AT"
+      ],
+      "columnCount": 8,
+      "label": "ic_customer_v",
+      "family": "quality",
+      "lifecycle": "active"
+    },
+    {
+      "id": "ic_delivery_v",
+      "businessName": "Lieferung (harmonisiert)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "CORE",
+      "system": "DSP",
+      "layer": "integrated_core",
+      "layerCode": "ic",
+      "role": "other",
+      "confidence": 0.8,
+      "columns": [
+        "DELIVERY_ID",
+        "DELIVERY_DATE",
+        "ACTUAL_GI_DATE",
+        "CUSTOMER_ID",
+        "SHIPPING_POINT",
+        "DELIVERY_TYPE",
+        "CHANGED_AT"
+      ],
+      "columnCount": 7,
+      "label": "ic_delivery_v",
+      "family": "quality",
+      "lifecycle": "draft"
+    },
+    {
+      "id": "ic_exchange_rate_v",
+      "businessName": "Umrechnungskurs (harmonisiert)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "CORE",
+      "system": "DSP",
+      "layer": "integrated_core",
+      "layerCode": "ic",
+      "role": "other",
+      "confidence": 0.8,
+      "columns": [
+        "RATE_TYPE",
+        "FROM_CURRENCY",
+        "TO_CURRENCY",
+        "VALID_FROM",
+        "EXCHANGE_RATE"
+      ],
+      "columnCount": 5,
+      "label": "ic_exchange_rate_v",
+      "family": "quality",
+      "lifecycle": "active"
+    },
+    {
+      "id": "ic_material_v",
+      "businessName": "Material (harmonisiert)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "CORE",
+      "system": "DSP",
+      "layer": "integrated_core",
+      "layerCode": "ic",
+      "role": "other",
+      "confidence": 0.8,
+      "columns": [
+        "MATERIAL_ID",
+        "MATERIAL_TYPE",
+        "MATERIAL_GROUP",
+        "BASE_UNIT",
+        "GROSS_WEIGHT",
+        "CREATED_AT"
+      ],
+      "columnCount": 6,
+      "label": "ic_material_v",
+      "family": "quality",
+      "lifecycle": "active"
+    },
+    {
+      "id": "ic_sales_order_header_v",
+      "businessName": "Auftragskopf (harmonisiert)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "CORE",
+      "system": "DSP",
+      "layer": "integrated_core",
+      "layerCode": "ic",
+      "role": "other",
+      "confidence": 0.8,
+      "columns": [
+        "SALES_ORDER_ID",
+        "ORDER_DATE",
+        "CHANGED_AT",
+        "CUSTOMER_ID",
+        "SALES_ORG",
+        "ORDER_TYPE",
+        "ORDER_NET_AMOUNT",
+        "CURRENCY",
+        "ORDER_STATUS"
+      ],
+      "columnCount": 9,
+      "label": "ic_sales_order_header_v",
+      "family": "quality",
+      "lifecycle": "active"
+    },
+    {
+      "id": "ic_sales_order_item_v",
+      "businessName": "Auftragsposition (harmonisiert)",
+      "type": "views",
+      "status": "Deployed",
+      "space": "CORE",
+      "system": "DSP",
+      "layer": "integrated_core",
+      "layerCode": "ic",
+      "role": "other",
+      "confidence": 0.8,
+      "columns": [
+        "SALES_ORDER_ID",
+        "ORDER_ITEM_ID",
+        "MATERIAL_ID",
+        "ORDER_QUANTITY",
+        "UNIT_OF_MEASURE",
+        "NET_AMOUNT",
+        "CURRENCY",
+        "PLANT_ID",
+        "CUSTOMER_ID",
+        "SALES_ORG",
+        "ORDER_DATE",
+        "CHANGED_AT"
+      ],
+      "columnCount": 12,
+      "label": "ic_sales_order_item_v",
+      "family": "quality",
+      "lifecycle": "active"
+    },
+    {
+      "id": "r_fil_budget_plan_lt",
+      "businessName": "Budgetplanung (Flatfile-Upload)",
       "type": "local-tables",
       "status": "Deployed",
-      "space": "B",
-      "system": "DEMO",
-      "layer": "Business",
-      "layerCode": "B",
-      "role": "consumption",
-      "confidence": 0.9,
-      "family": "contract",
+      "space": "INBOUND",
+      "system": "DSP",
+      "layer": "raw",
+      "layerCode": "r",
+      "role": "table",
+      "confidence": 1.0,
       "columns": [
-        "BUS_COL_01",
-        "BUS_COL_02",
-        "BUS_COL_03"
+        "FISCAL_YEAR",
+        "FISCAL_PERIOD",
+        "SALES_ORG",
+        "PRODUCT_GROUP",
+        "BUDGET_AMOUNT",
+        "CURRENCY",
+        "UPLOADED_AT"
       ],
-      "columnCount": 3
+      "columnCount": 7,
+      "label": "r_fil_budget_plan_lt",
+      "family": "observability",
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_BUS_04",
-      "label": "DEMO_BUS_04",
-      "businessName": "Demo Business Object 04",
-      "type": "local-tables",
+      "id": "r_s4h_kna1_rt",
+      "businessName": "Kundenstamm (KNA1)",
+      "type": "remote-tables",
       "status": "Deployed",
-      "space": "B",
-      "system": "DEMO",
-      "layer": "Business",
-      "layerCode": "B",
-      "role": "consumption",
+      "space": "INBOUND",
+      "system": "DSP",
+      "layer": "raw",
+      "layerCode": "r",
+      "role": "table",
       "confidence": 0.9,
-      "family": "contract",
       "columns": [
-        "BUS_COL_01",
-        "BUS_COL_02",
-        "BUS_COL_03"
+        "KUNNR",
+        "NAME1",
+        "LAND1",
+        "REGIO",
+        "ORT01",
+        "PSTLZ",
+        "KTOKD",
+        "ERDAT"
       ],
-      "columnCount": 3
+      "columnCount": 8,
+      "label": "r_s4h_kna1_rt",
+      "family": "observability",
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_BUS_05",
-      "label": "DEMO_BUS_05",
-      "businessName": "Demo Business Object 05",
-      "type": "local-tables",
+      "id": "r_s4h_likp_rt",
+      "businessName": "Lieferkopf (LIKP)",
+      "type": "remote-tables",
       "status": "Deployed",
-      "space": "B",
-      "system": "DEMO",
-      "layer": "Business",
-      "layerCode": "B",
-      "role": "consumption",
+      "space": "INBOUND",
+      "system": "DSP",
+      "layer": "raw",
+      "layerCode": "r",
+      "role": "table",
       "confidence": 0.9,
-      "family": "contract",
       "columns": [
-        "BUS_COL_01",
-        "BUS_COL_02",
-        "BUS_COL_03"
+        "VBELN",
+        "ERDAT",
+        "WADAT_IST",
+        "KUNNR",
+        "VSTEL",
+        "LFART",
+        "AEDAT"
       ],
-      "columnCount": 3
+      "columnCount": 7,
+      "label": "r_s4h_likp_rt",
+      "family": "observability",
+      "lifecycle": "active"
     },
     {
-      "id": "DEMO_BUS_06",
-      "label": "DEMO_BUS_06",
-      "businessName": "Demo Business Object 06",
-      "type": "views",
+      "id": "r_s4h_mara_rt",
+      "businessName": "Materialstamm (MARA)",
+      "type": "remote-tables",
       "status": "Deployed",
-      "space": "B",
-      "system": "DEMO",
-      "layer": "Business",
-      "layerCode": "B",
-      "role": "consumption",
+      "space": "INBOUND",
+      "system": "DSP",
+      "layer": "raw",
+      "layerCode": "r",
+      "role": "table",
       "confidence": 0.9,
-      "family": "contract",
       "columns": [
-        "BUS_COL_01",
-        "BUS_COL_02",
-        "BUS_COL_03",
-        "BUS_COL_04",
-        "BUS_COL_05",
-        "BUS_COL_06",
-        "BUS_COL_07",
-        "BUS_COL_08",
-        "BUS_COL_09",
-        "BUS_COL_10",
-        "BUS_COL_11",
-        "BUS_COL_12"
+        "MATNR",
+        "MTART",
+        "MATKL",
+        "MEINS",
+        "BRGEW",
+        "ERSDA"
       ],
-      "columnCount": 12
+      "columnCount": 6,
+      "label": "r_s4h_mara_rt",
+      "family": "observability",
+      "lifecycle": "active"
+    },
+    {
+      "id": "r_s4h_tcurr_rt",
+      "businessName": "Umrechnungskurse (TCURR)",
+      "type": "remote-tables",
+      "status": "Deployed",
+      "space": "INBOUND",
+      "system": "DSP",
+      "layer": "raw",
+      "layerCode": "r",
+      "role": "table",
+      "confidence": 0.9,
+      "columns": [
+        "KURST",
+        "FCURR",
+        "TCURR",
+        "GDATU",
+        "UKURS"
+      ],
+      "columnCount": 5,
+      "label": "r_s4h_tcurr_rt",
+      "family": "observability",
+      "lifecycle": "active"
+    },
+    {
+      "id": "r_s4h_vbak_rt",
+      "businessName": "Auftragskopf (VBAK)",
+      "type": "remote-tables",
+      "status": "Deployed",
+      "space": "INBOUND",
+      "system": "DSP",
+      "layer": "raw",
+      "layerCode": "r",
+      "role": "table",
+      "confidence": 0.9,
+      "columns": [
+        "VBELN",
+        "ERDAT",
+        "AEDAT",
+        "KUNNR",
+        "VKORG",
+        "AUART",
+        "NETWR",
+        "WAERK",
+        "GBSTK"
+      ],
+      "columnCount": 9,
+      "label": "r_s4h_vbak_rt",
+      "family": "observability",
+      "lifecycle": "active"
+    },
+    {
+      "id": "r_s4h_vbap_rt",
+      "businessName": "Auftragsposition (VBAP)",
+      "type": "remote-tables",
+      "status": "Deployed",
+      "space": "INBOUND",
+      "system": "DSP",
+      "layer": "raw",
+      "layerCode": "r",
+      "role": "table",
+      "confidence": 0.9,
+      "columns": [
+        "VBELN",
+        "POSNR",
+        "MATNR",
+        "KWMENG",
+        "MEINS",
+        "NETWR",
+        "WAERK",
+        "WERKS",
+        "AEDAT"
+      ],
+      "columnCount": 9,
+      "label": "r_s4h_vbap_rt",
+      "family": "observability",
+      "lifecycle": "active"
+    },
+    {
+      "id": "s_open_orders_am",
+      "businessName": "Offene Aufträge",
+      "type": "analytic-models",
+      "status": "Deployed",
+      "space": "SALES",
+      "system": "DSP",
+      "layer": "serving",
+      "layerCode": "s",
+      "role": "analytic_model",
+      "confidence": 1.0,
+      "columns": [
+        "ORDER_DATE",
+        "REGION_CODE",
+        "CUSTOMER_NAME",
+        "ORDER_STATUS",
+        "OPEN_AMOUNT",
+        "OPEN_QUANTITY"
+      ],
+      "columnCount": 6,
+      "label": "s_open_orders_am",
+      "family": "contract",
+      "lifecycle": "active"
+    },
+    {
+      "id": "s_revenue_vs_budget_am",
+      "businessName": "Umsatz vs. Budget",
+      "type": "analytic-models",
+      "status": "Deployed",
+      "space": "FINANCE",
+      "system": "DSP",
+      "layer": "serving",
+      "layerCode": "s",
+      "role": "analytic_model",
+      "confidence": 1.0,
+      "columns": [
+        "FISCAL_YEAR",
+        "FISCAL_PERIOD",
+        "SALES_ORG",
+        "PRODUCT_GROUP",
+        "ACTUAL_AMOUNT",
+        "BUDGET_AMOUNT",
+        "VARIANCE_AMOUNT"
+      ],
+      "columnCount": 7,
+      "label": "s_revenue_vs_budget_am",
+      "family": "contract",
+      "lifecycle": "active"
+    },
+    {
+      "id": "s_sales_performance_am",
+      "businessName": "Vertriebsperformance",
+      "type": "analytic-models",
+      "status": "Deployed",
+      "space": "SALES",
+      "system": "DSP",
+      "layer": "serving",
+      "layerCode": "s",
+      "role": "analytic_model",
+      "confidence": 1.0,
+      "columns": [
+        "ORDER_DATE",
+        "REGION_CODE",
+        "CUSTOMER_NAME",
+        "MATERIAL_GROUP",
+        "NET_AMOUNT",
+        "ORDER_QUANTITY"
+      ],
+      "columnCount": 6,
+      "label": "s_sales_performance_am",
+      "family": "contract",
+      "lifecycle": "active"
     }
   ],
   "edges": [
     {
-      "id": "DEMO_EDGE_001",
-      "source": "DEMO_SRC_01",
-      "target": "DEMO_SRC_02",
+      "id": "edge:S4:KNA1->r_s4h_kna1_rt",
+      "source": "S4:KNA1",
+      "target": "r_s4h_kna1_rt",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "replication",
+      "sourceInSpace": false,
+      "sourceScope": "external_system",
+      "confidence": 0.9,
+      "sourceSystem": "S4",
+      "externalKey": "KNA1"
     },
     {
-      "id": "DEMO_EDGE_002",
-      "source": "DEMO_SRC_01",
-      "target": "DEMO_SRC_02",
+      "id": "edge:S4:LIKP->r_s4h_likp_rt",
+      "source": "S4:LIKP",
+      "target": "r_s4h_likp_rt",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "replication",
+      "sourceInSpace": false,
+      "sourceScope": "external_system",
+      "confidence": 0.9,
+      "sourceSystem": "S4",
+      "externalKey": "LIKP"
     },
     {
-      "id": "DEMO_EDGE_003",
-      "source": "DEMO_SRC_01",
-      "target": "DEMO_SRC_03",
+      "id": "edge:S4:MARA->r_s4h_mara_rt",
+      "source": "S4:MARA",
+      "target": "r_s4h_mara_rt",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "replication",
+      "sourceInSpace": false,
+      "sourceScope": "external_system",
+      "confidence": 0.9,
+      "sourceSystem": "S4",
+      "externalKey": "MARA"
     },
     {
-      "id": "DEMO_EDGE_004",
-      "source": "DEMO_SRC_04",
-      "target": "DEMO_SRC_05",
+      "id": "edge:S4:TCURR->r_s4h_tcurr_rt",
+      "source": "S4:TCURR",
+      "target": "r_s4h_tcurr_rt",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "replication",
+      "sourceInSpace": false,
+      "sourceScope": "external_system",
+      "confidence": 0.9,
+      "sourceSystem": "S4",
+      "externalKey": "TCURR"
     },
     {
-      "id": "DEMO_EDGE_005",
-      "source": "DEMO_HARM_01",
-      "target": "DEMO_HARM_02",
+      "id": "edge:S4:VBAK->r_s4h_vbak_rt",
+      "source": "S4:VBAK",
+      "target": "r_s4h_vbak_rt",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "replication",
+      "sourceInSpace": false,
+      "sourceScope": "external_system",
+      "confidence": 0.9,
+      "sourceSystem": "S4",
+      "externalKey": "VBAK"
     },
     {
-      "id": "DEMO_EDGE_006",
-      "source": "DEMO_HARM_01",
-      "target": "DEMO_HARM_03",
+      "id": "edge:S4:VBAP->r_s4h_vbap_rt",
+      "source": "S4:VBAP",
+      "target": "r_s4h_vbap_rt",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "replication",
+      "sourceInSpace": false,
+      "sourceScope": "external_system",
+      "confidence": 0.9,
+      "sourceSystem": "S4",
+      "externalKey": "VBAP"
     },
     {
-      "id": "DEMO_EDGE_007",
-      "source": "DEMO_HARM_01",
-      "target": "DEMO_HARM_04",
+      "id": "edge:bc_budget_actual_fact_v->s_revenue_vs_budget_am",
+      "source": "bc_budget_actual_fact_v",
+      "target": "s_revenue_vs_budget_am",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
     },
     {
-      "id": "DEMO_EDGE_008",
-      "source": "DEMO_HARM_01",
-      "target": "DEMO_HARM_05",
+      "id": "edge:bc_customer_dim_v->bc_delivery_performance_fact_v",
+      "source": "bc_customer_dim_v",
+      "target": "bc_delivery_performance_fact_v",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "join",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
     },
     {
-      "id": "DEMO_EDGE_009",
-      "source": "DEMO_HARM_01",
-      "target": "DEMO_HARM_06",
+      "id": "edge:bc_customer_dim_v->bc_sales_order_item_fact_v",
+      "source": "bc_customer_dim_v",
+      "target": "bc_sales_order_item_fact_v",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "join",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
     },
     {
-      "id": "DEMO_EDGE_010",
-      "source": "DEMO_BUS_01",
-      "target": "DEMO_BUS_02",
+      "id": "edge:bc_customer_dim_v->s_open_orders_am",
+      "source": "bc_customer_dim_v",
+      "target": "s_open_orders_am",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "join",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
     },
     {
-      "id": "DEMO_EDGE_011",
-      "source": "DEMO_BUS_03",
-      "target": "DEMO_BUS_01",
+      "id": "edge:bc_customer_dim_v->s_sales_performance_am",
+      "source": "bc_customer_dim_v",
+      "target": "s_sales_performance_am",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "join",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
     },
     {
-      "id": "DEMO_EDGE_012",
-      "source": "DEMO_BUS_04",
-      "target": "DEMO_BUS_01",
+      "id": "edge:bc_material_dim_v->bc_sales_order_item_fact_v",
+      "source": "bc_material_dim_v",
+      "target": "bc_sales_order_item_fact_v",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "join",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
     },
     {
-      "id": "DEMO_EDGE_013",
-      "source": "DEMO_BUS_05",
-      "target": "DEMO_BUS_01",
+      "id": "edge:bc_material_dim_v->s_sales_performance_am",
+      "source": "bc_material_dim_v",
+      "target": "s_sales_performance_am",
       "type": "lineage",
-      "edgeType": "lineage"
+      "edgeType": "lineage",
+      "connectionType": "join",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:bc_open_sales_orders_fact_v->s_open_orders_am",
+      "source": "bc_open_sales_orders_fact_v",
+      "target": "s_open_orders_am",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:bc_revenue_monthly_fact_v->bc_budget_actual_fact_v",
+      "source": "bc_revenue_monthly_fact_v",
+      "target": "bc_budget_actual_fact_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:bc_sales_order_item_fact_v->bc_open_sales_orders_fact_v",
+      "source": "bc_sales_order_item_fact_v",
+      "target": "bc_open_sales_orders_fact_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:bc_sales_order_item_fact_v->bc_revenue_monthly_fact_v",
+      "source": "bc_sales_order_item_fact_v",
+      "target": "bc_revenue_monthly_fact_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:bc_sales_order_item_fact_v->s_sales_performance_am",
+      "source": "bc_sales_order_item_fact_v",
+      "target": "s_sales_performance_am",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:ic_budget_plan_v->bc_budget_actual_fact_v",
+      "source": "ic_budget_plan_v",
+      "target": "bc_budget_actual_fact_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "join",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:ic_customer_v->bc_customer_dim_v",
+      "source": "ic_customer_v",
+      "target": "bc_customer_dim_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:ic_customer_v->bc_customer_txt",
+      "source": "ic_customer_v",
+      "target": "bc_customer_txt",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:ic_customer_v->bc_sales_region_hier_v",
+      "source": "ic_customer_v",
+      "target": "bc_sales_region_hier_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:ic_delivery_v->bc_delivery_performance_fact_v",
+      "source": "ic_delivery_v",
+      "target": "bc_delivery_performance_fact_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:ic_exchange_rate_v->bc_revenue_monthly_fact_v",
+      "source": "ic_exchange_rate_v",
+      "target": "bc_revenue_monthly_fact_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "join",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:ic_material_v->bc_material_dim_v",
+      "source": "ic_material_v",
+      "target": "bc_material_dim_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:ic_sales_order_header_v->bc_open_sales_orders_fact_v",
+      "source": "ic_sales_order_header_v",
+      "target": "bc_open_sales_orders_fact_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "join",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:ic_sales_order_item_v->bc_sales_order_item_fact_v",
+      "source": "ic_sales_order_item_v",
+      "target": "bc_sales_order_item_fact_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:r_fil_budget_plan_lt->ic_budget_plan_v",
+      "source": "r_fil_budget_plan_lt",
+      "target": "ic_budget_plan_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:r_s4h_kna1_rt->ic_customer_v",
+      "source": "r_s4h_kna1_rt",
+      "target": "ic_customer_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:r_s4h_likp_rt->ic_delivery_v",
+      "source": "r_s4h_likp_rt",
+      "target": "ic_delivery_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:r_s4h_mara_rt->ic_material_v",
+      "source": "r_s4h_mara_rt",
+      "target": "ic_material_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:r_s4h_tcurr_rt->ic_exchange_rate_v",
+      "source": "r_s4h_tcurr_rt",
+      "target": "ic_exchange_rate_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:r_s4h_vbak_rt->ic_sales_order_header_v",
+      "source": "r_s4h_vbak_rt",
+      "target": "ic_sales_order_header_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:r_s4h_vbak_rt->ic_sales_order_item_v",
+      "source": "r_s4h_vbak_rt",
+      "target": "ic_sales_order_item_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "join",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
+    },
+    {
+      "id": "edge:r_s4h_vbap_rt->ic_sales_order_item_v",
+      "source": "r_s4h_vbap_rt",
+      "target": "ic_sales_order_item_v",
+      "type": "lineage",
+      "edgeType": "lineage",
+      "connectionType": "select",
+      "sourceInSpace": true,
+      "sourceScope": "local",
+      "confidence": 1.0
     }
   ],
   "columnEdges": [
     {
-      "source": "DEMO_SRC_01",
-      "sourceColumn": "SRC_COL_01",
-      "target": "DEMO_SRC_02",
-      "targetColumn": "SRC_COL_01",
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "VBELN",
+      "target": "ic_sales_order_header_v",
+      "targetColumn": "SALES_ORDER_ID",
       "edgeType": "direct",
       "expression": ""
     },
     {
-      "source": "DEMO_SRC_01",
-      "sourceColumn": "SRC_COL_02",
-      "target": "DEMO_SRC_02",
-      "targetColumn": "SRC_COL_02",
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "ERDAT",
+      "target": "ic_sales_order_header_v",
+      "targetColumn": "ORDER_DATE",
       "edgeType": "direct",
       "expression": ""
     },
     {
-      "source": "DEMO_SRC_01",
-      "sourceColumn": "SRC_COL_03",
-      "target": "DEMO_SRC_02",
-      "targetColumn": "SRC_COL_03",
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "AEDAT",
+      "target": "ic_sales_order_header_v",
+      "targetColumn": "CHANGED_AT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "KUNNR",
+      "target": "ic_sales_order_header_v",
+      "targetColumn": "CUSTOMER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "VKORG",
+      "target": "ic_sales_order_header_v",
+      "targetColumn": "SALES_ORG",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "AUART",
+      "target": "ic_sales_order_header_v",
+      "targetColumn": "ORDER_TYPE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "NETWR",
+      "target": "ic_sales_order_header_v",
+      "targetColumn": "ORDER_NET_AMOUNT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "WAERK",
+      "target": "ic_sales_order_header_v",
+      "targetColumn": "CURRENCY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "GBSTK",
+      "target": "ic_sales_order_header_v",
+      "targetColumn": "ORDER_STATUS",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbap_rt",
+      "sourceColumn": "VBELN",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "SALES_ORDER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbap_rt",
+      "sourceColumn": "POSNR",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "ORDER_ITEM_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbap_rt",
+      "sourceColumn": "MATNR",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "MATERIAL_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbap_rt",
+      "sourceColumn": "KWMENG",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "ORDER_QUANTITY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbap_rt",
+      "sourceColumn": "MEINS",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "UNIT_OF_MEASURE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbap_rt",
+      "sourceColumn": "NETWR",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "NET_AMOUNT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbap_rt",
+      "sourceColumn": "WAERK",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "CURRENCY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbap_rt",
+      "sourceColumn": "WERKS",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "PLANT_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "KUNNR",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "CUSTOMER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "VKORG",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "SALES_ORG",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbak_rt",
+      "sourceColumn": "ERDAT",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "ORDER_DATE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_vbap_rt",
+      "sourceColumn": "AEDAT",
+      "target": "ic_sales_order_item_v",
+      "targetColumn": "CHANGED_AT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_kna1_rt",
+      "sourceColumn": "KUNNR",
+      "target": "ic_customer_v",
+      "targetColumn": "CUSTOMER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_kna1_rt",
+      "sourceColumn": "NAME1",
+      "target": "ic_customer_v",
+      "targetColumn": "CUSTOMER_NAME",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_kna1_rt",
+      "sourceColumn": "LAND1",
+      "target": "ic_customer_v",
+      "targetColumn": "COUNTRY_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_kna1_rt",
+      "sourceColumn": "REGIO",
+      "target": "ic_customer_v",
+      "targetColumn": "REGION_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_kna1_rt",
+      "sourceColumn": "ORT01",
+      "target": "ic_customer_v",
+      "targetColumn": "CITY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_kna1_rt",
+      "sourceColumn": "PSTLZ",
+      "target": "ic_customer_v",
+      "targetColumn": "POSTAL_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_kna1_rt",
+      "sourceColumn": "KTOKD",
+      "target": "ic_customer_v",
+      "targetColumn": "CUSTOMER_GROUP",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_kna1_rt",
+      "sourceColumn": "ERDAT",
+      "target": "ic_customer_v",
+      "targetColumn": "CREATED_AT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_mara_rt",
+      "sourceColumn": "MATNR",
+      "target": "ic_material_v",
+      "targetColumn": "MATERIAL_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_mara_rt",
+      "sourceColumn": "MTART",
+      "target": "ic_material_v",
+      "targetColumn": "MATERIAL_TYPE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_mara_rt",
+      "sourceColumn": "MATKL",
+      "target": "ic_material_v",
+      "targetColumn": "MATERIAL_GROUP",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_mara_rt",
+      "sourceColumn": "MEINS",
+      "target": "ic_material_v",
+      "targetColumn": "BASE_UNIT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_mara_rt",
+      "sourceColumn": "BRGEW",
+      "target": "ic_material_v",
+      "targetColumn": "GROSS_WEIGHT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_mara_rt",
+      "sourceColumn": "ERSDA",
+      "target": "ic_material_v",
+      "targetColumn": "CREATED_AT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_tcurr_rt",
+      "sourceColumn": "KURST",
+      "target": "ic_exchange_rate_v",
+      "targetColumn": "RATE_TYPE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_tcurr_rt",
+      "sourceColumn": "FCURR",
+      "target": "ic_exchange_rate_v",
+      "targetColumn": "FROM_CURRENCY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_tcurr_rt",
+      "sourceColumn": "TCURR",
+      "target": "ic_exchange_rate_v",
+      "targetColumn": "TO_CURRENCY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_tcurr_rt",
+      "sourceColumn": "GDATU",
+      "target": "ic_exchange_rate_v",
+      "targetColumn": "VALID_FROM",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_tcurr_rt",
+      "sourceColumn": "UKURS",
+      "target": "ic_exchange_rate_v",
+      "targetColumn": "EXCHANGE_RATE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_likp_rt",
+      "sourceColumn": "VBELN",
+      "target": "ic_delivery_v",
+      "targetColumn": "DELIVERY_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_likp_rt",
+      "sourceColumn": "ERDAT",
+      "target": "ic_delivery_v",
+      "targetColumn": "DELIVERY_DATE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_likp_rt",
+      "sourceColumn": "WADAT_IST",
+      "target": "ic_delivery_v",
+      "targetColumn": "ACTUAL_GI_DATE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_likp_rt",
+      "sourceColumn": "KUNNR",
+      "target": "ic_delivery_v",
+      "targetColumn": "CUSTOMER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_likp_rt",
+      "sourceColumn": "VSTEL",
+      "target": "ic_delivery_v",
+      "targetColumn": "SHIPPING_POINT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_likp_rt",
+      "sourceColumn": "LFART",
+      "target": "ic_delivery_v",
+      "targetColumn": "DELIVERY_TYPE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_s4h_likp_rt",
+      "sourceColumn": "AEDAT",
+      "target": "ic_delivery_v",
+      "targetColumn": "CHANGED_AT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_fil_budget_plan_lt",
+      "sourceColumn": "FISCAL_YEAR",
+      "target": "ic_budget_plan_v",
+      "targetColumn": "FISCAL_YEAR",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_fil_budget_plan_lt",
+      "sourceColumn": "FISCAL_PERIOD",
+      "target": "ic_budget_plan_v",
+      "targetColumn": "FISCAL_PERIOD",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_fil_budget_plan_lt",
+      "sourceColumn": "SALES_ORG",
+      "target": "ic_budget_plan_v",
+      "targetColumn": "SALES_ORG",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_fil_budget_plan_lt",
+      "sourceColumn": "PRODUCT_GROUP",
+      "target": "ic_budget_plan_v",
+      "targetColumn": "PRODUCT_GROUP",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_fil_budget_plan_lt",
+      "sourceColumn": "BUDGET_AMOUNT",
+      "target": "ic_budget_plan_v",
+      "targetColumn": "BUDGET_AMOUNT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_fil_budget_plan_lt",
+      "sourceColumn": "CURRENCY",
+      "target": "ic_budget_plan_v",
+      "targetColumn": "CURRENCY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "r_fil_budget_plan_lt",
+      "sourceColumn": "UPLOADED_AT",
+      "target": "ic_budget_plan_v",
+      "targetColumn": "UPLOADED_AT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_customer_v",
+      "sourceColumn": "CUSTOMER_ID",
+      "target": "bc_customer_dim_v",
+      "targetColumn": "CUSTOMER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_customer_v",
+      "sourceColumn": "CUSTOMER_NAME",
+      "target": "bc_customer_dim_v",
+      "targetColumn": "CUSTOMER_NAME",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_customer_v",
+      "sourceColumn": "COUNTRY_CODE",
+      "target": "bc_customer_dim_v",
+      "targetColumn": "COUNTRY_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_customer_v",
+      "sourceColumn": "REGION_CODE",
+      "target": "bc_customer_dim_v",
+      "targetColumn": "REGION_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_customer_v",
+      "sourceColumn": "CITY",
+      "target": "bc_customer_dim_v",
+      "targetColumn": "CITY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_customer_v",
+      "sourceColumn": "CUSTOMER_GROUP",
+      "target": "bc_customer_dim_v",
+      "targetColumn": "CUSTOMER_GROUP",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_customer_v",
+      "sourceColumn": "CUSTOMER_ID",
+      "target": "bc_customer_txt",
+      "targetColumn": "CUSTOMER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_customer_v",
+      "sourceColumn": "CUSTOMER_NAME",
+      "target": "bc_customer_txt",
+      "targetColumn": "CUSTOMER_NAME",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_customer_v",
+      "sourceColumn": "CUSTOMER_NAME",
+      "target": "bc_customer_txt",
+      "targetColumn": "CUSTOMER_SEARCH_NAME",
       "edgeType": "computed",
-      "expression": "UPPER(\"s\".\"SRC_COL_03\")"
+      "expression": "UPPER(\"c\".\"CUSTOMER_NAME\")"
     },
     {
-      "source": "DEMO_SRC_01",
-      "sourceColumn": "SRC_COL_04",
-      "target": "DEMO_SRC_02",
-      "targetColumn": "SRC_COL_04",
+      "source": "ic_customer_v",
+      "sourceColumn": "REGION_CODE",
+      "target": "bc_sales_region_hier_v",
+      "targetColumn": "REGION_CODE",
       "edgeType": "direct",
       "expression": ""
     },
     {
-      "source": "DEMO_SRC_01",
-      "sourceColumn": "SRC_COL_01",
-      "target": "DEMO_SRC_03",
-      "targetColumn": "SRC_COL_01",
+      "source": "ic_customer_v",
+      "sourceColumn": "COUNTRY_CODE",
+      "target": "bc_sales_region_hier_v",
+      "targetColumn": "PARENT_REGION_CODE",
       "edgeType": "direct",
       "expression": ""
     },
     {
-      "source": "DEMO_SRC_01",
-      "sourceColumn": "SRC_COL_02",
-      "target": "DEMO_SRC_03",
-      "targetColumn": "SRC_COL_02",
+      "source": "ic_customer_v",
+      "sourceColumn": "COUNTRY_CODE",
+      "target": "bc_sales_region_hier_v",
+      "targetColumn": "COUNTRY_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_customer_v",
+      "sourceColumn": "COUNTRY_CODE",
+      "target": "bc_sales_region_hier_v",
+      "targetColumn": "REGION_NAME",
       "edgeType": "computed",
-      "expression": "TRIM(\"s\".\"SRC_COL_02\")"
+      "expression": "CONCAT(\"c\".\"COUNTRY_CODE\", \"c\".\"REGION_CODE\")"
     },
     {
-      "source": "DEMO_SRC_01",
-      "sourceColumn": "SRC_COL_05",
-      "target": "DEMO_SRC_03",
-      "targetColumn": "SRC_COL_03",
-      "edgeType": "direct",
-      "expression": ""
-    },
-    {
-      "source": "DEMO_HARM_01",
-      "sourceColumn": "HARM_COL_01",
-      "target": "DEMO_HARM_02",
-      "targetColumn": "HARM_COL_01",
-      "edgeType": "direct",
-      "expression": ""
-    },
-    {
-      "source": "DEMO_HARM_01",
-      "sourceColumn": "HARM_COL_02",
-      "target": "DEMO_HARM_02",
-      "targetColumn": "HARM_COL_02",
+      "source": "ic_customer_v",
+      "sourceColumn": "REGION_CODE",
+      "target": "bc_sales_region_hier_v",
+      "targetColumn": "REGION_NAME",
       "edgeType": "computed",
-      "expression": "\"h\".\"HARM_COL_02\" * 100"
+      "expression": "CONCAT(\"c\".\"COUNTRY_CODE\", \"c\".\"REGION_CODE\")"
     },
     {
-      "source": "DEMO_HARM_01",
-      "sourceColumn": "HARM_COL_03",
-      "target": "DEMO_HARM_02",
-      "targetColumn": "HARM_COL_03",
+      "source": "ic_material_v",
+      "sourceColumn": "MATERIAL_ID",
+      "target": "bc_material_dim_v",
+      "targetColumn": "MATERIAL_ID",
       "edgeType": "direct",
       "expression": ""
     },
     {
-      "source": "DEMO_HARM_01",
-      "sourceColumn": "HARM_COL_04",
-      "target": "DEMO_HARM_02",
-      "targetColumn": "HARM_COL_04",
-      "edgeType": "computed",
-      "expression": "COALESCE(\"h\".\"HARM_COL_04\")"
-    },
-    {
-      "source": "DEMO_BUS_03",
-      "sourceColumn": "BUS_COL_01",
-      "target": "DEMO_BUS_01",
-      "targetColumn": "BUS_COL_01",
+      "source": "ic_material_v",
+      "sourceColumn": "MATERIAL_TYPE",
+      "target": "bc_material_dim_v",
+      "targetColumn": "MATERIAL_TYPE",
       "edgeType": "direct",
       "expression": ""
     },
     {
-      "source": "DEMO_BUS_04",
-      "sourceColumn": "BUS_COL_02",
-      "target": "DEMO_BUS_01",
-      "targetColumn": "BUS_COL_02",
+      "source": "ic_material_v",
+      "sourceColumn": "MATERIAL_GROUP",
+      "target": "bc_material_dim_v",
+      "targetColumn": "MATERIAL_GROUP",
       "edgeType": "direct",
       "expression": ""
     },
     {
-      "source": "DEMO_BUS_05",
-      "sourceColumn": "BUS_COL_03",
-      "target": "DEMO_BUS_01",
-      "targetColumn": "BUS_COL_03",
-      "edgeType": "computed",
-      "expression": "SUM(\"b5\".\"BUS_COL_03\")"
-    },
-    {
-      "source": "DEMO_BUS_03",
-      "sourceColumn": "BUS_COL_02",
-      "target": "DEMO_BUS_01",
-      "targetColumn": "BUS_COL_04",
-      "edgeType": "computed",
-      "expression": "\"b3\".\"BUS_COL_02\" + \"b4\".\"BUS_COL_03\""
-    },
-    {
-      "source": "DEMO_BUS_04",
-      "sourceColumn": "BUS_COL_03",
-      "target": "DEMO_BUS_01",
-      "targetColumn": "BUS_COL_04",
-      "edgeType": "computed",
-      "expression": "\"b3\".\"BUS_COL_02\" + \"b4\".\"BUS_COL_03\""
-    },
-    {
-      "source": "DEMO_BUS_01",
-      "sourceColumn": "BUS_COL_01",
-      "target": "DEMO_BUS_02",
-      "targetColumn": "BUS_COL_01",
+      "source": "ic_material_v",
+      "sourceColumn": "BASE_UNIT",
+      "target": "bc_material_dim_v",
+      "targetColumn": "BASE_UNIT",
       "edgeType": "direct",
       "expression": ""
     },
     {
-      "source": "DEMO_BUS_01",
-      "sourceColumn": "BUS_COL_03",
-      "target": "DEMO_BUS_02",
-      "targetColumn": "BUS_COL_03",
-      "edgeType": "computed",
-      "expression": "ROUND(\"b1\".\"BUS_COL_03\")"
-    },
-    {
-      "source": "DEMO_BUS_01",
-      "sourceColumn": "BUS_COL_04",
-      "target": "DEMO_BUS_02",
-      "targetColumn": "BUS_COL_04",
+      "source": "ic_sales_order_item_v",
+      "sourceColumn": "SALES_ORDER_ID",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "SALES_ORDER_ID",
       "edgeType": "direct",
       "expression": ""
+    },
+    {
+      "source": "ic_sales_order_item_v",
+      "sourceColumn": "ORDER_ITEM_ID",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "ORDER_ITEM_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_sales_order_item_v",
+      "sourceColumn": "ORDER_DATE",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "ORDER_DATE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_sales_order_item_v",
+      "sourceColumn": "CHANGED_AT",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "CHANGED_AT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_sales_order_item_v",
+      "sourceColumn": "CUSTOMER_ID",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "CUSTOMER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_sales_order_item_v",
+      "sourceColumn": "MATERIAL_ID",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "MATERIAL_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_sales_order_item_v",
+      "sourceColumn": "SALES_ORG",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "SALES_ORG",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_customer_dim_v",
+      "sourceColumn": "REGION_CODE",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "REGION_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_customer_dim_v",
+      "sourceColumn": "CUSTOMER_GROUP",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "CUSTOMER_GROUP",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_material_dim_v",
+      "sourceColumn": "MATERIAL_GROUP",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "MATERIAL_GROUP",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_sales_order_item_v",
+      "sourceColumn": "ORDER_QUANTITY",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "ORDER_QUANTITY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_sales_order_item_v",
+      "sourceColumn": "NET_AMOUNT",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "NET_AMOUNT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_sales_order_item_v",
+      "sourceColumn": "CURRENCY",
+      "target": "bc_sales_order_item_fact_v",
+      "targetColumn": "CURRENCY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "SALES_ORDER_ID",
+      "target": "bc_open_sales_orders_fact_v",
+      "targetColumn": "SALES_ORDER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "ORDER_ITEM_ID",
+      "target": "bc_open_sales_orders_fact_v",
+      "targetColumn": "ORDER_ITEM_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "CUSTOMER_ID",
+      "target": "bc_open_sales_orders_fact_v",
+      "targetColumn": "CUSTOMER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "REGION_CODE",
+      "target": "bc_open_sales_orders_fact_v",
+      "targetColumn": "REGION_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "ORDER_DATE",
+      "target": "bc_open_sales_orders_fact_v",
+      "targetColumn": "ORDER_DATE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "CHANGED_AT",
+      "target": "bc_open_sales_orders_fact_v",
+      "targetColumn": "CHANGED_AT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_sales_order_header_v",
+      "sourceColumn": "ORDER_STATUS",
+      "target": "bc_open_sales_orders_fact_v",
+      "targetColumn": "ORDER_STATUS",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "ORDER_QUANTITY",
+      "target": "bc_open_sales_orders_fact_v",
+      "targetColumn": "OPEN_QUANTITY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "NET_AMOUNT",
+      "target": "bc_open_sales_orders_fact_v",
+      "targetColumn": "OPEN_AMOUNT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "CURRENCY",
+      "target": "bc_open_sales_orders_fact_v",
+      "targetColumn": "CURRENCY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_delivery_v",
+      "sourceColumn": "DELIVERY_ID",
+      "target": "bc_delivery_performance_fact_v",
+      "targetColumn": "DELIVERY_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_delivery_v",
+      "sourceColumn": "DELIVERY_DATE",
+      "target": "bc_delivery_performance_fact_v",
+      "targetColumn": "DELIVERY_DATE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_delivery_v",
+      "sourceColumn": "ACTUAL_GI_DATE",
+      "target": "bc_delivery_performance_fact_v",
+      "targetColumn": "ACTUAL_GI_DATE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_delivery_v",
+      "sourceColumn": "CUSTOMER_ID",
+      "target": "bc_delivery_performance_fact_v",
+      "targetColumn": "CUSTOMER_ID",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_customer_dim_v",
+      "sourceColumn": "REGION_CODE",
+      "target": "bc_delivery_performance_fact_v",
+      "targetColumn": "REGION_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_delivery_v",
+      "sourceColumn": "SHIPPING_POINT",
+      "target": "bc_delivery_performance_fact_v",
+      "targetColumn": "SHIPPING_POINT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_delivery_v",
+      "sourceColumn": "ACTUAL_GI_DATE",
+      "target": "bc_delivery_performance_fact_v",
+      "targetColumn": "DELAY_DAYS",
+      "edgeType": "computed",
+      "expression": "\"d\".\"ACTUAL_GI_DATE\" - \"d\".\"DELIVERY_DATE\""
+    },
+    {
+      "source": "ic_delivery_v",
+      "sourceColumn": "DELIVERY_DATE",
+      "target": "bc_delivery_performance_fact_v",
+      "targetColumn": "DELAY_DAYS",
+      "edgeType": "computed",
+      "expression": "\"d\".\"ACTUAL_GI_DATE\" - \"d\".\"DELIVERY_DATE\""
+    },
+    {
+      "source": "ic_delivery_v",
+      "sourceColumn": "CHANGED_AT",
+      "target": "bc_delivery_performance_fact_v",
+      "targetColumn": "CHANGED_AT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "ORDER_DATE",
+      "target": "bc_revenue_monthly_fact_v",
+      "targetColumn": "FISCAL_YEAR_MONTH",
+      "edgeType": "computed",
+      "expression": "TO_VARCHAR(\"f\".\"ORDER_DATE\")"
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "SALES_ORG",
+      "target": "bc_revenue_monthly_fact_v",
+      "targetColumn": "SALES_ORG",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "REGION_CODE",
+      "target": "bc_revenue_monthly_fact_v",
+      "targetColumn": "REGION_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "MATERIAL_GROUP",
+      "target": "bc_revenue_monthly_fact_v",
+      "targetColumn": "PRODUCT_GROUP",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "NET_AMOUNT",
+      "target": "bc_revenue_monthly_fact_v",
+      "targetColumn": "GROSS_REVENUE",
+      "edgeType": "computed",
+      "expression": "SUM(\"f\".\"NET_AMOUNT\")"
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "NET_AMOUNT",
+      "target": "bc_revenue_monthly_fact_v",
+      "targetColumn": "REVENUE_EUR",
+      "edgeType": "computed",
+      "expression": "\"f\".\"NET_AMOUNT\" * \"r\".\"EXCHANGE_RATE\""
+    },
+    {
+      "source": "ic_exchange_rate_v",
+      "sourceColumn": "EXCHANGE_RATE",
+      "target": "bc_revenue_monthly_fact_v",
+      "targetColumn": "REVENUE_EUR",
+      "edgeType": "computed",
+      "expression": "\"f\".\"NET_AMOUNT\" * \"r\".\"EXCHANGE_RATE\""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "SALES_ORDER_ID",
+      "target": "bc_revenue_monthly_fact_v",
+      "targetColumn": "ORDER_COUNT",
+      "edgeType": "computed",
+      "expression": "COUNT(\"f\".\"SALES_ORDER_ID\")"
+    },
+    {
+      "source": "ic_exchange_rate_v",
+      "sourceColumn": "TO_CURRENCY",
+      "target": "bc_revenue_monthly_fact_v",
+      "targetColumn": "CURRENCY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "CHANGED_AT",
+      "target": "bc_revenue_monthly_fact_v",
+      "targetColumn": "CHANGED_AT",
+      "edgeType": "computed",
+      "expression": "MAX(\"f\".\"CHANGED_AT\")"
+    },
+    {
+      "source": "ic_budget_plan_v",
+      "sourceColumn": "FISCAL_YEAR",
+      "target": "bc_budget_actual_fact_v",
+      "targetColumn": "FISCAL_YEAR",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_budget_plan_v",
+      "sourceColumn": "FISCAL_PERIOD",
+      "target": "bc_budget_actual_fact_v",
+      "targetColumn": "FISCAL_PERIOD",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_budget_plan_v",
+      "sourceColumn": "SALES_ORG",
+      "target": "bc_budget_actual_fact_v",
+      "targetColumn": "SALES_ORG",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_budget_plan_v",
+      "sourceColumn": "PRODUCT_GROUP",
+      "target": "bc_budget_actual_fact_v",
+      "targetColumn": "PRODUCT_GROUP",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_revenue_monthly_fact_v",
+      "sourceColumn": "REVENUE_EUR",
+      "target": "bc_budget_actual_fact_v",
+      "targetColumn": "ACTUAL_AMOUNT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "ic_budget_plan_v",
+      "sourceColumn": "BUDGET_AMOUNT",
+      "target": "bc_budget_actual_fact_v",
+      "targetColumn": "BUDGET_AMOUNT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_revenue_monthly_fact_v",
+      "sourceColumn": "REVENUE_EUR",
+      "target": "bc_budget_actual_fact_v",
+      "targetColumn": "VARIANCE_AMOUNT",
+      "edgeType": "computed",
+      "expression": "\"a\".\"REVENUE_EUR\" - \"b\".\"BUDGET_AMOUNT\""
+    },
+    {
+      "source": "ic_budget_plan_v",
+      "sourceColumn": "BUDGET_AMOUNT",
+      "target": "bc_budget_actual_fact_v",
+      "targetColumn": "VARIANCE_AMOUNT",
+      "edgeType": "computed",
+      "expression": "\"a\".\"REVENUE_EUR\" - \"b\".\"BUDGET_AMOUNT\""
+    },
+    {
+      "source": "ic_budget_plan_v",
+      "sourceColumn": "CURRENCY",
+      "target": "bc_budget_actual_fact_v",
+      "targetColumn": "CURRENCY",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_revenue_monthly_fact_v",
+      "sourceColumn": "CHANGED_AT",
+      "target": "bc_budget_actual_fact_v",
+      "targetColumn": "CHANGED_AT",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "ORDER_DATE",
+      "target": "s_sales_performance_am",
+      "targetColumn": "ORDER_DATE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "REGION_CODE",
+      "target": "s_sales_performance_am",
+      "targetColumn": "REGION_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_customer_dim_v",
+      "sourceColumn": "CUSTOMER_NAME",
+      "target": "s_sales_performance_am",
+      "targetColumn": "CUSTOMER_NAME",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_material_dim_v",
+      "sourceColumn": "MATERIAL_GROUP",
+      "target": "s_sales_performance_am",
+      "targetColumn": "MATERIAL_GROUP",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "NET_AMOUNT",
+      "target": "s_sales_performance_am",
+      "targetColumn": "NET_AMOUNT",
+      "edgeType": "computed",
+      "expression": "SUM(\"f\".\"NET_AMOUNT\")"
+    },
+    {
+      "source": "bc_sales_order_item_fact_v",
+      "sourceColumn": "ORDER_QUANTITY",
+      "target": "s_sales_performance_am",
+      "targetColumn": "ORDER_QUANTITY",
+      "edgeType": "computed",
+      "expression": "SUM(\"f\".\"ORDER_QUANTITY\")"
+    },
+    {
+      "source": "bc_open_sales_orders_fact_v",
+      "sourceColumn": "ORDER_DATE",
+      "target": "s_open_orders_am",
+      "targetColumn": "ORDER_DATE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_open_sales_orders_fact_v",
+      "sourceColumn": "REGION_CODE",
+      "target": "s_open_orders_am",
+      "targetColumn": "REGION_CODE",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_customer_dim_v",
+      "sourceColumn": "CUSTOMER_NAME",
+      "target": "s_open_orders_am",
+      "targetColumn": "CUSTOMER_NAME",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_open_sales_orders_fact_v",
+      "sourceColumn": "ORDER_STATUS",
+      "target": "s_open_orders_am",
+      "targetColumn": "ORDER_STATUS",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_open_sales_orders_fact_v",
+      "sourceColumn": "OPEN_AMOUNT",
+      "target": "s_open_orders_am",
+      "targetColumn": "OPEN_AMOUNT",
+      "edgeType": "computed",
+      "expression": "SUM(\"o\".\"OPEN_AMOUNT\")"
+    },
+    {
+      "source": "bc_open_sales_orders_fact_v",
+      "sourceColumn": "OPEN_QUANTITY",
+      "target": "s_open_orders_am",
+      "targetColumn": "OPEN_QUANTITY",
+      "edgeType": "computed",
+      "expression": "SUM(\"o\".\"OPEN_QUANTITY\")"
+    },
+    {
+      "source": "bc_budget_actual_fact_v",
+      "sourceColumn": "FISCAL_YEAR",
+      "target": "s_revenue_vs_budget_am",
+      "targetColumn": "FISCAL_YEAR",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_budget_actual_fact_v",
+      "sourceColumn": "FISCAL_PERIOD",
+      "target": "s_revenue_vs_budget_am",
+      "targetColumn": "FISCAL_PERIOD",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_budget_actual_fact_v",
+      "sourceColumn": "SALES_ORG",
+      "target": "s_revenue_vs_budget_am",
+      "targetColumn": "SALES_ORG",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_budget_actual_fact_v",
+      "sourceColumn": "PRODUCT_GROUP",
+      "target": "s_revenue_vs_budget_am",
+      "targetColumn": "PRODUCT_GROUP",
+      "edgeType": "direct",
+      "expression": ""
+    },
+    {
+      "source": "bc_budget_actual_fact_v",
+      "sourceColumn": "ACTUAL_AMOUNT",
+      "target": "s_revenue_vs_budget_am",
+      "targetColumn": "ACTUAL_AMOUNT",
+      "edgeType": "computed",
+      "expression": "SUM(\"b\".\"ACTUAL_AMOUNT\")"
+    },
+    {
+      "source": "bc_budget_actual_fact_v",
+      "sourceColumn": "BUDGET_AMOUNT",
+      "target": "s_revenue_vs_budget_am",
+      "targetColumn": "BUDGET_AMOUNT",
+      "edgeType": "computed",
+      "expression": "SUM(\"b\".\"BUDGET_AMOUNT\")"
+    },
+    {
+      "source": "bc_budget_actual_fact_v",
+      "sourceColumn": "VARIANCE_AMOUNT",
+      "target": "s_revenue_vs_budget_am",
+      "targetColumn": "VARIANCE_AMOUNT",
+      "edgeType": "computed",
+      "expression": "SUM(\"b\".\"VARIANCE_AMOUNT\")"
     }
   ],
   "columnEdgeMeta": {
-    "totalEdges": 19,
+    "totalEdges": 143,
     "coverage": {
-      "mapped": 18,
-      "unmapped": 76,
-      "ratio": 0.19,
+      "mapped": 139,
+      "unmapped": 51,
+      "ratio": 0.73,
       "derived": {
-        "mapped": 18,
-        "unmapped": 66,
-        "ratio": 0.21
+        "mapped": 139,
+        "unmapped": 0,
+        "ratio": 1.0
       }
     },
     "unmappedObjects": [
-      "DEMO_BUS_03",
-      "DEMO_BUS_04",
-      "DEMO_BUS_05",
-      "DEMO_BUS_06",
-      "DEMO_HARM_01",
-      "DEMO_HARM_03",
-      "DEMO_HARM_04",
-      "DEMO_HARM_05",
-      "DEMO_HARM_06",
-      "DEMO_SRC_01",
-      "DEMO_SRC_04",
-      "DEMO_SRC_05",
-      "DEMO_SRC_06"
+      "r_fil_budget_plan_lt",
+      "r_s4h_kna1_rt",
+      "r_s4h_likp_rt",
+      "r_s4h_mara_rt",
+      "r_s4h_tcurr_rt",
+      "r_s4h_vbak_rt",
+      "r_s4h_vbap_rt"
+    ]
+  },
+  "adjacency": {
+    "S4:KNA1": [
+      "r_s4h_kna1_rt"
+    ],
+    "S4:LIKP": [
+      "r_s4h_likp_rt"
+    ],
+    "S4:MARA": [
+      "r_s4h_mara_rt"
+    ],
+    "S4:TCURR": [
+      "r_s4h_tcurr_rt"
+    ],
+    "S4:VBAK": [
+      "r_s4h_vbak_rt"
+    ],
+    "S4:VBAP": [
+      "r_s4h_vbap_rt"
+    ],
+    "bc_budget_actual_fact_v": [
+      "s_revenue_vs_budget_am"
+    ],
+    "bc_customer_dim_v": [
+      "bc_delivery_performance_fact_v",
+      "bc_sales_order_item_fact_v",
+      "s_open_orders_am",
+      "s_sales_performance_am"
+    ],
+    "bc_material_dim_v": [
+      "bc_sales_order_item_fact_v",
+      "s_sales_performance_am"
+    ],
+    "bc_open_sales_orders_fact_v": [
+      "s_open_orders_am"
+    ],
+    "bc_revenue_monthly_fact_v": [
+      "bc_budget_actual_fact_v"
+    ],
+    "bc_sales_order_item_fact_v": [
+      "bc_open_sales_orders_fact_v",
+      "bc_revenue_monthly_fact_v",
+      "s_sales_performance_am"
+    ],
+    "ic_budget_plan_v": [
+      "bc_budget_actual_fact_v"
+    ],
+    "ic_customer_v": [
+      "bc_customer_dim_v",
+      "bc_customer_txt",
+      "bc_sales_region_hier_v"
+    ],
+    "ic_delivery_v": [
+      "bc_delivery_performance_fact_v"
+    ],
+    "ic_exchange_rate_v": [
+      "bc_revenue_monthly_fact_v"
+    ],
+    "ic_material_v": [
+      "bc_material_dim_v"
+    ],
+    "ic_sales_order_header_v": [
+      "bc_open_sales_orders_fact_v"
+    ],
+    "ic_sales_order_item_v": [
+      "bc_sales_order_item_fact_v"
+    ],
+    "r_fil_budget_plan_lt": [
+      "ic_budget_plan_v"
+    ],
+    "r_s4h_kna1_rt": [
+      "ic_customer_v"
+    ],
+    "r_s4h_likp_rt": [
+      "ic_delivery_v"
+    ],
+    "r_s4h_mara_rt": [
+      "ic_material_v"
+    ],
+    "r_s4h_tcurr_rt": [
+      "ic_exchange_rate_v"
+    ],
+    "r_s4h_vbak_rt": [
+      "ic_sales_order_header_v",
+      "ic_sales_order_item_v"
+    ],
+    "r_s4h_vbap_rt": [
+      "ic_sales_order_item_v"
+    ]
+  },
+  "upstream": {
+    "bc_budget_actual_fact_v": [
+      "bc_revenue_monthly_fact_v",
+      "ic_budget_plan_v"
+    ],
+    "bc_customer_dim_v": [
+      "ic_customer_v"
+    ],
+    "bc_customer_txt": [
+      "ic_customer_v"
+    ],
+    "bc_delivery_performance_fact_v": [
+      "bc_customer_dim_v",
+      "ic_delivery_v"
+    ],
+    "bc_material_dim_v": [
+      "ic_material_v"
+    ],
+    "bc_open_sales_orders_fact_v": [
+      "bc_sales_order_item_fact_v",
+      "ic_sales_order_header_v"
+    ],
+    "bc_revenue_monthly_fact_v": [
+      "bc_sales_order_item_fact_v",
+      "ic_exchange_rate_v"
+    ],
+    "bc_sales_order_item_fact_v": [
+      "bc_customer_dim_v",
+      "bc_material_dim_v",
+      "ic_sales_order_item_v"
+    ],
+    "bc_sales_region_hier_v": [
+      "ic_customer_v"
+    ],
+    "ic_budget_plan_v": [
+      "r_fil_budget_plan_lt"
+    ],
+    "ic_customer_v": [
+      "r_s4h_kna1_rt"
+    ],
+    "ic_delivery_v": [
+      "r_s4h_likp_rt"
+    ],
+    "ic_exchange_rate_v": [
+      "r_s4h_tcurr_rt"
+    ],
+    "ic_material_v": [
+      "r_s4h_mara_rt"
+    ],
+    "ic_sales_order_header_v": [
+      "r_s4h_vbak_rt"
+    ],
+    "ic_sales_order_item_v": [
+      "r_s4h_vbak_rt",
+      "r_s4h_vbap_rt"
+    ],
+    "r_s4h_kna1_rt": [
+      "S4:KNA1"
+    ],
+    "r_s4h_likp_rt": [
+      "S4:LIKP"
+    ],
+    "r_s4h_mara_rt": [
+      "S4:MARA"
+    ],
+    "r_s4h_tcurr_rt": [
+      "S4:TCURR"
+    ],
+    "r_s4h_vbak_rt": [
+      "S4:VBAK"
+    ],
+    "r_s4h_vbap_rt": [
+      "S4:VBAP"
+    ],
+    "s_open_orders_am": [
+      "bc_customer_dim_v",
+      "bc_open_sales_orders_fact_v"
+    ],
+    "s_revenue_vs_budget_am": [
+      "bc_budget_actual_fact_v"
+    ],
+    "s_sales_performance_am": [
+      "bc_customer_dim_v",
+      "bc_material_dim_v",
+      "bc_sales_order_item_fact_v"
     ]
   }
 }
