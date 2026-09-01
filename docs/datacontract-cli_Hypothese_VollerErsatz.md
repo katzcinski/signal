@@ -25,6 +25,17 @@
 | P2 | Quality wird **im Contract-YAML** geschrieben (`quality:`-Sektion, Ebene B) statt aus Garantien kompiliert | bei Signal verboten (Gate G1) |
 | P3 | Wir akzeptieren das **datacontract.com-/ODCS-YAML-Format** als kanonische Quelle der Wahrheit statt unseres Schemas v1 | heute ist `contracts/*.yaml` (Schema v1) die Wahrheit, ODCS nur Einweg-Export |
 
+> **Nachtrag 2026-09-01 zu P1:** Die Aussage „kein ibis-HANA-Backend" gilt
+> unverändert — ibis kennt HANA weiterhin nicht. Der Weg dorthin läuft aber
+> inzwischen **an ibis vorbei**: `datacontract-cli` **PR #1332** („Feat/hana
+> engine", RFC-0045, Autor ToniLippmann, offen seit 2026-06-22, Label
+> `ODCS-3.2`) implementiert die HANA-Engine nativ über `hdbcli`. **Noch nicht
+> gemerged, in keinem Release, kein Eintrag in CHANGELOG oder Serverliste**;
+> die konkurrierenden PRs #1398/#1399 wurden geschlossen. Landet der PR, wird
+> P1 real — was Achse B (externe Ausführbarkeit) verändert, nicht die
+> Format-Entscheidung. Einordnung:
+> [`interactive/odcs-nativ-entscheidung.html`](interactive/odcs-nativ-entscheidung.html).
+
 Unter P1–P3 fällt die Existenzberechtigung dreier Kern-Bausteine — `validator.py`
 (G1-Gate), `compiler.py` (einziger SQL-Erzeuger) und `check_engine.py` (HANA-Runner)
 — weg. **Alles andere bleibt** und muss neu angedockt werden. Genau das ist der

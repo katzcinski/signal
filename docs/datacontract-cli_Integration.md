@@ -95,6 +95,17 @@ es bei euch schon existiert.
 | F6 | **`datacontract catalog`** | Statischer **HTML-Katalog** aller Contracts | Build-Artefakt / GitHub Pages | Verteilbarer Katalog „außerhalb" des Cockpits (z. B. für Konsumenten ohne Zugang) | ◻️ Cockpit deckt internen Fall ab |
 | F7 | **`datacontract test`** | Führt Quality-Checks aus — seit **v1.0.0 via ibis→`sqlglot`** (nicht mehr Soda Core; SodaCL/GX nur Export); Backends u. a. Databricks und Delta (`type: databricks` via `[databricks]`, oder Object-Store + `format: delta` via `[duckdb]`) | — für HANA bewusst **nicht** genutzt; tragfähig nur in der BDC/Databricks-Plane | ⛔ **kein HANA-Backend** (kein `type: hana`/ibis-HANA); `type: sql` bringt Roh-SQL in den Contract → G1. Signals HANA-Runner ist hier überlegen. Delta/Databricks ✅ siehe Bewertung §8 | ⛔ **nicht für HANA** · ✅ nur BDC/Delta |
 
+> **Nachtrag 2026-09-01 zu P1:** Die Aussage „kein ibis-HANA-Backend" gilt
+> unverändert — ibis kennt HANA weiterhin nicht. Der Weg dorthin läuft aber
+> inzwischen **an ibis vorbei**: `datacontract-cli` **PR #1332** („Feat/hana
+> engine", RFC-0045, Autor ToniLippmann, offen seit 2026-06-22, Label
+> `ODCS-3.2`) implementiert die HANA-Engine nativ über `hdbcli`. **Noch nicht
+> gemerged, in keinem Release, kein Eintrag in CHANGELOG oder Serverliste**;
+> die konkurrierenden PRs #1398/#1399 wurden geschlossen. Landet der PR, wird
+> P1 real — was Achse B (externe Ausführbarkeit) verändert, nicht die
+> Format-Entscheidung. Einordnung:
+> [`interactive/odcs-nativ-entscheidung.html`](interactive/odcs-nativ-entscheidung.html).
+
 **Legende fürs Bild:** ✅ = bereits aktiv · ◻️ = sinnvoller Ausbau · ⛔ = bewusst ausgeschlossen.
 
 ---

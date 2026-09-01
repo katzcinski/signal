@@ -1,7 +1,9 @@
 # OPEN TASKS — Konsolidierter Backlog (alle Bereiche) · Signal
 
-> **Stand:** 2026-08-25 (Abschnitt **T** — MVP-Modul-Gating/Stufenrollout —
-> ergänzt; Abschnitt **C** auf HanaStore Slice 1 nachgeführt; übriger Stand
+> **Stand:** 2026-09-01 (Abschnitt **U** — ODCS-Export-Lücken — aus der
+> Schema-Prüfung ergänzt; Stand 2026-08-25: Abschnitt **T** —
+> MVP-Modul-Gating/Stufenrollout — ergänzt, Abschnitt **C** auf HanaStore
+> Slice 1 nachgeführt; übriger Stand
 > 2026-07-23: E/F/N gegen den Code nachgeführt, Obs-Intelligence v1 und
 > Enforcement-Achse/Quarantäne sind seit 2026-07 in `main`) ·
 > **Zweck:** Ein einziger Einstiegspunkt über **alle**
@@ -58,6 +60,7 @@ Priorität: **[H]** hoch · **[M]** mittel · **[L]** später/optional.
 | **Q**  | Tech-Debt: `notify.py`-Dedup (Routing & Dispatch) | ◻ Offen | L | Abschnitt Q |
 | **R**  | Healing: Restoptionen H2/H4/H5 + Opt-in-Lücken (R5/R6) | ◻ Offen | H/M/L | `Konzept_Manuelles_Healing.md` |
 | **T**  | MVP-Modul-Gating + Stufenrollout (`ROLLOUT_WAVE`) | ◻ Offen | H | `Konzept_MVP_Kundenrollout.md` |
+| **U**  | ODCS-Export: Lücken gegen den Standard schließen | ◻ Offen | M | `interactive/odcs-nativ-entscheidung.html` |
 
 > Der Buchstabe **S** ist bewusst übersprungen: `S1`/`S5`/`S-14` sind im Code
 > bereits Sicherheits-Marker (PII-Gate, Bind-Policy, Fehler-Leakage) — eine
@@ -632,6 +635,46 @@ Freischalt-Wellen. Die Sicherheits-Gates (G1–G8, S5, PII) sind ausdrücklich
 > (`HanaResultStore`) bleibt der Skalierungspfad und ist keine
 > Welle-0-Vorbedingung. Welle 1 hängt am Scheduling-Entscheid (**N**), Welle 3
 > an den Live-Tenant-Spikes (**F** ④–⑦, O5/O6) und an **R5**.
+
+---
+
+## U — ODCS-Export: Lücken gegen den Standard schließen ◻ [M]
+
+**Quelle:** [`interactive/odcs-nativ-entscheidung.html`](interactive/odcs-nativ-entscheidung.html)
+(Prüfprotokoll). Am 2026-09-01 wurde `to_odcs()` gegen
+`odcs-json-schema-latest.json` (Bitol, deckt v2.2.0–v3.1.0 ab) geprüft. Drei
+Positionen, die die Doku bisher als **ODCS-Grenzen** führte, sind in Wahrheit
+**Lücken unseres Exporters** — der Standard kann sie. Sie sind damit Backlog,
+nicht Architektur.
+
+- **U1 · `quality.severity` befüllen.** `[M]` ◻ — Signals `critical|fail|warn`
+  in `quality.severity` schreiben (freier String; ODCS-Beispiele sind
+  `info`/`warning`/`error` — Mapping festlegen und dokumentieren). Optional
+  `dimension` aus der Garantie-Familie ableiten (Enum: accuracy, completeness,
+  conformity, consistency, coverage, timeliness, uniqueness). **Grenze bleibt:**
+  ODCS definiert kein Verhalten je Stufe — der Wert transportiert, die
+  Gating-Semantik nicht. Das ist im Export zu vermerken, nicht vorzutäuschen.
+- **U2 · Mehrspaltige `relationships`.** `[M]` ◻ — `odcs_export.py` exportiert
+  heute nur `len(fk) == 1`. `RelationshipBase.from`/`to` sind `oneOf` mit
+  Array-Form („Array of target properties for composite keys"); Composite-FK
+  also ohne Verlust abbildbar. Gegenstück in `odcs_import.py` mitziehen.
+- **U3 · `owners` → `team.members[]`.** `[L]` ◻ — statt `customProperties`.
+  ODCS trägt `team` (mit `members`: username, role, dateIn/dateOut) und `roles`
+  (inkl. `firstLevelApprovers`/`secondLevelApprovers`). `owned_by` bleibt
+  `customProperty`, der **Boundary-Typ `kind`** ebenfalls — dort ist die Lücke
+  echt (ODCS-`kind` ist ein Dateityp-Diskriminator, `enum: ["DataContract"]`).
+
+**Bestätigte ODCS-Grenzen** (kein Backlog, Architektur): Closed Schema auf
+Datenebene, rollierende Baselines (`library.metric` ist ein geschlossenes
+5er-Enum), Laufzeit-/Compliance-Zustand (nur `status` als Reifegrad), und
+`quality.type` mit `sql`/`custom` — Grundlage des G1-Arguments.
+
+**Abhängigkeit:** U1–U3 werden erst dann *wertvoll*, wenn ein ODCS-Dokument
+auch ausgeführt werden kann — siehe `datacontract-cli` PR #1332 (HANA-Engine,
+offen). Für den Katalog-Weg (OpenMetadata/Collibra) tragen sie schon heute.
+Zusammen mit dem Bump auf **ODCS 3.2** und einem environment-parametrisierten
+`servers:`-Block (G2-konform, kein Server im Contract) ergibt das den
+verlustärmeren Round-Trip Signal → ODCS → Signal.
 
 ---
 

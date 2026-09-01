@@ -251,13 +251,22 @@
   <div class="wrap">
     <div class="sec-label">Verlustbehaftet</div>
     <h2>Was verloren geht oder verbogen wird</h2>
+    <p style="color:var(--muted);max-width:680px;margin-bottom:22px">
+      Am 2026-09-01 gegen <code>odcs-json-schema-latest.json</code> nachgeprüft. Drei
+      Positionen waren keine Grenzen des Standards, sondern Lücken unseres Exporters —
+      unten entsprechend gekennzeichnet. Herleitung und Prüfprotokoll in
+      <a href="odcs-nativ-entscheidung.html" style="color:var(--cyan)">odcs-nativ-entscheidung.html</a>.
+    </p>
     <div class="loss-grid">
 
       <div class="loss-card">
-        <h3>Severity-Gating</h3>
+        <h3>Severity <span class="pill loss">Export-Lücke</span></h3>
         <code>critical / fail / warn</code>
-        <p>Pro Garantie definierte Schweregrade. ODCS kennt kein Severity-Gating.</p>
-        <div class="fate"><b>Schicksal:</b> fällt komplett weg — die größte semantische Lücke.</div>
+        <p>Pro Garantie definierte Schweregrade. ODCS <em>hat</em> ein Feld dafür:
+        <code>quality.severity</code> (freier String, Beispiele <code>info</code>/<code>warning</code>/<code>error</code>),
+        dazu <code>businessImpact</code> und <code>dimension</code>.</p>
+        <div class="fate"><b>Schicksal:</b> der Export füllt es nicht — behebbar. Nicht abbildbar
+        bleibt nur die <em>Gating-Semantik</em>: die Spec definiert kein Verhalten je Stufe.</div>
       </div>
 
       <div class="loss-card">
@@ -275,17 +284,25 @@
       </div>
 
       <div class="loss-card">
-        <h3>Composite FK</h3>
+        <h3>Composite FK <span class="pill loss">Export-Lücke</span></h3>
         <code>len(fk) &gt; 1</code>
-        <p>Mehrspaltige referenzielle Schlüssel.</p>
-        <div class="fate"><b>Schicksal:</b> übersprungen — der Export exportiert nur <code>len(fk)==1</code>-Relationen.</div>
+        <p>Mehrspaltige referenzielle Schlüssel. ODCS unterstützt das explizit:
+        <code>relationships.from</code>/<code>to</code> sind <code>oneOf</code> mit Array-Form
+        („Array of target properties for composite keys").</p>
+        <div class="fate"><b>Schicksal:</b> übersprungen — aber allein durch unseren Export
+        (<code>len(fk)==1</code>), nicht durch den Standard. Behebbar.</div>
       </div>
 
       <div class="loss-card">
         <h3>Ownership &amp; Boundary</h3>
         <code>owned_by · kind · owners</code>
-        <p>Eigentum, Boundary-Typ und Owner-Gruppen.</p>
-        <div class="fate"><b>Schicksal:</b> nur als <code>customProperties</code> (Escape Hatch) — keine nativen ODCS-Felder.</div>
+        <p>Eigentum, Boundary-Typ und Owner-Gruppen. Zu trennen: <code>owners</code> ist in
+        ODCS abbildbar (<code>team.members[]</code>, <code>roles[]</code> inkl.
+        <code>firstLevelApprovers</code>/<code>secondLevelApprovers</code>) — der
+        <em>Boundary-Typ</em> aus ADR-0001 nicht.</p>
+        <div class="fate"><b>Schicksal:</b> <code>owners</code> = Export-Lücke, behebbar.
+        <code>kind</code> = echte ODCS-Lücke: das dortige <code>kind</code> ist ein
+        Dateityp-Diskriminator (<code>enum: ["DataContract"]</code>).</div>
       </div>
 
       <div class="loss-card">
