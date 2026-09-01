@@ -67,6 +67,7 @@ umnummeriert (Hinweis jeweils im Dokumentkopf).
 | [`Marktanalyse_DQ_Observability_2026.md`](Marktanalyse_DQ_Observability_2026.md) | Feature-Gap-Synthese Markt 2026 (Quelle der Tier-1/2-Konzepte) |
 | [`Kundendeck_DataProducts_Lite.md`](Kundendeck_DataProducts_Lite.md) | Kundenpitch Data Products Lite |
 | [`interactive/kundenpitch-datasphere-bdc.html`](interactive/kundenpitch-datasphere-bdc.html) | **Kundenpitch Welle 0** (HTML) — was Signal im ersten Wurf leistet und warum das mit Datasphere/BDC zusammenpasst; Scope aus `Konzept_MVP_Kundenrollout.md` |
+| [`interactive/odcs-nativ-entscheidung.html`](interactive/odcs-nativ-entscheidung.html) | **ODCS im Signal-Kern** (HTML) — warum ODCS Export-Projektion bleibt und nicht kanonisches Format wird (G1, Ausdrucksmächtigkeit, G2, A1, ADR-0001), was externe Pipelines heute schon können, und der geprüfte Stand zur HANA-Engine in `datacontract-cli` |
 | [`Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md`](Vortrag_Briefing_DataProducts_DataContracts_DSP_BDC.md) | Vortrags-Briefing |
 | [`Uebergabemodelle_und_Lizenz.md`](Uebergabemodelle_und_Lizenz.md) | Übergabemodelle & Lizenz |
 | [`DataProduct_Konzept_und_Handling.md`](DataProduct_Konzept_und_Handling.md) | Datenprodukte: Konzept & Workflow (Beratungs-Sicht) |

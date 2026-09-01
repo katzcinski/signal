@@ -1,0 +1,817 @@
+<title>ODCS im Signal-Kern</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* ────────────────────────────────────────────────────────────────
+     Tokens — Cockpit-Theme "signal" (apps/cockpit/src/index.css),
+     wie in `kundenpitch-datasphere-bdc.html`. Einthemig dunkel; jede
+     Farbe explizit, damit die Seite auf jedem Host-Grund hält.
+
+     Farbsemantik dieser Seite (aus dem Theme übernommen, nicht erfunden):
+       --struct (violett) = Deklaration / Dokument / ODCS-Achse
+       --qual   (türkis)  = Laufzeit / Zustand / Signal-eigene Achse
+     Beide Achsen ziehen sich durch das ganze Dokument — an der Farbe
+     ist jederzeit ablesbar, worüber gerade geredet wird.
+     ──────────────────────────────────────────────────────────────── */
+  :root {
+    --bg-0: #0A0C0F;
+    --bg-1: #0F1318;
+    --bg-2: #161B22;
+    --bg-3: #1F262F;
+
+    --line: #232A33;
+    --line-2: #333D49;
+
+    --fg: #E9EDF2;
+    --fg-2: #98A2B0;
+    --fg-3: #79828F;
+
+    --signal: #B5E853;
+    --signal-bright: #CDF06A;
+    --signal-dim: rgba(181, 232, 83, 0.12);
+    --signal-line: rgba(181, 232, 83, 0.32);
+
+    --struct: #8B7CF6;
+    --struct-dim: rgba(139, 124, 246, 0.12);
+    --struct-line: rgba(139, 124, 246, 0.34);
+
+    --qual: #2DD4BF;
+    --qual-dim: rgba(45, 212, 191, 0.12);
+    --qual-line: rgba(45, 212, 191, 0.34);
+
+    --ok:    #3FB07A;
+    --warn:  #E0B23E;
+    --fail:  #E2783C;
+    --crit:  #E5484D;
+    --stale: #646E7C;
+
+    --font-ui: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+    --r: 3px;
+    --r-md: 4px;
+    --r-lg: 6px;
+
+    --measure: 68ch;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg-0);
+    background-image: radial-gradient(rgba(150, 180, 210, 0.035) 1px, transparent 1px);
+    background-size: 22px 22px;
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--signal-dim); color: var(--signal-bright); }
+
+  a { color: var(--signal-bright); text-decoration-color: var(--signal-line); text-underline-offset: 3px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 3px;
+    border-radius: var(--r);
+  }
+
+  .page {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 clamp(20px, 4vw, 48px) 96px;
+  }
+
+  /* ── Kopf ─────────────────────────────────────────────────────────── */
+  .masthead {
+    display: flex; align-items: center; gap: 10px;
+    padding: 26px 0 0;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0;
+    background: var(--signal);
+    box-shadow: 0 0 0 3px var(--signal-dim);
+  }
+  .wordmark {
+    font-family: var(--font-mono);
+    font-weight: 600; font-size: 13px;
+    letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--fg);
+  }
+  .masthead .spacer { flex: 1; }
+  .masthead .stamp {
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--fg-3);
+  }
+
+  .hero { padding: clamp(44px, 8vw, 88px) 0 clamp(36px, 5vw, 60px); }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--signal);
+    margin: 0 0 22px;
+  }
+  h1 {
+    font-size: clamp(32px, 5.2vw, 56px);
+    line-height: 1.07;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    margin: 0;
+    max-width: 17ch;
+    text-wrap: balance;
+  }
+  .lede {
+    max-width: var(--measure);
+    margin: 26px 0 0;
+    font-size: clamp(17px, 2vw, 19px);
+    color: var(--fg-2);
+    line-height: 1.6;
+  }
+  .lede strong { color: var(--fg); font-weight: 500; }
+
+  .verifystamp {
+    margin-top: 30px;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 8px 14px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-lg);
+    background: var(--bg-1);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: var(--fg-2);
+  }
+  .verifystamp b { color: var(--signal); font-weight: 500; }
+
+  /* ── Abschnitte ───────────────────────────────────────────────────── */
+  section { padding: clamp(40px, 6vw, 68px) 0; border-top: 1px solid var(--line); }
+  .sec-label {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--fg-3);
+    margin: 0 0 14px;
+  }
+  h2 {
+    font-size: clamp(24px, 3.2vw, 32px);
+    line-height: 1.18; letter-spacing: -0.015em; font-weight: 600;
+    margin: 0 0 20px; max-width: 24ch; text-wrap: balance;
+  }
+  h3 {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.005em;
+    margin: 0 0 8px;
+  }
+  p { max-width: var(--measure); margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+  .muted { color: var(--fg-2); }
+
+  code {
+    font-family: var(--font-mono); font-size: 0.88em;
+    background: var(--bg-2); border: 1px solid var(--line);
+    padding: 1px 5px; border-radius: var(--r);
+    color: var(--fg);
+    white-space: nowrap;
+  }
+
+  /* ── Achsen-Diagramm: Deklaration vs. Zustand ─────────────────────── */
+  .axes {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+    margin: 4px 0 28px;
+  }
+  .axis {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-top: 2px solid var(--edge, var(--line-2));
+    border-radius: var(--r-lg);
+    padding: 22px 24px;
+  }
+  .axis.decl { --edge: var(--struct); }
+  .axis.state { --edge: var(--qual); }
+  .axis .tag {
+    display: inline-block;
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: var(--r);
+    margin-bottom: 14px;
+  }
+  .axis.decl .tag { background: var(--struct-dim); color: var(--struct); }
+  .axis.state .tag { background: var(--qual-dim); color: var(--qual); }
+  .axis h3 { font-size: 19px; }
+  .axis p { font-size: 14.5px; color: var(--fg-2); max-width: none; }
+  .axis ul { margin: 12px 0 0; padding-left: 18px; color: var(--fg-2); font-size: 14.5px; }
+  .axis li { margin-bottom: 5px; }
+  .axis li::marker { color: var(--edge); }
+
+  .keyline {
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    border-left: 3px solid var(--signal);
+    border-radius: var(--r-lg);
+    padding: 20px 24px;
+    margin: 0;
+  }
+  .keyline p { font-size: 17px; max-width: none; }
+
+  /* ── Grund-Karten ─────────────────────────────────────────────────── */
+  .reasons { display: grid; gap: 14px; }
+  .reason {
+    display: grid; grid-template-columns: 116px 1fr; gap: 22px;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 22px 24px;
+  }
+  .reason .gate {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--struct);
+    padding-top: 2px;
+  }
+  .reason .gate span {
+    display: block; margin-top: 5px;
+    font-size: 10.5px; font-weight: 500; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--fg-3);
+  }
+  .reason p { font-size: 15px; color: var(--fg-2); max-width: none; }
+  .reason p strong { color: var(--fg); font-weight: 500; }
+
+  /* ── Tabellen ─────────────────────────────────────────────────────── */
+  .table-wrap {
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    overflow-x: auto;
+    background: var(--bg-1);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 560px; }
+  th, td { text-align: left; padding: 13px 18px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  thead th {
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--fg-3);
+    background: var(--bg-2);
+  }
+  td.num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: 13px; color: var(--fg-2); white-space: nowrap; }
+  td strong { font-weight: 500; }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  }
+  .pill.open   { background: rgba(224, 178, 62, 0.14); color: var(--warn); }
+  .pill.closed { background: rgba(100, 110, 124, 0.18); color: var(--stale); }
+  .pill.keep   { background: var(--qual-dim); color: var(--qual); }
+  .pill.loss   { background: var(--struct-dim); color: var(--struct); }
+  .pill.none   { background: rgba(229, 72, 77, 0.13); color: var(--crit); }
+
+  /* ── Zwei-Spalten-Vergleich ───────────────────────────────────────── */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .split > div {
+    background: var(--bg-1); border: 1px solid var(--line);
+    border-radius: var(--r-lg); padding: 22px 24px;
+  }
+  .split h3 { display: flex; align-items: center; gap: 9px; font-size: 16px; }
+  .split .marker { width: 7px; height: 7px; border-radius: 999px; flex: none; }
+  .split .changes .marker { background: var(--qual); }
+  .split .holds .marker { background: var(--struct); }
+  .split ul { margin: 12px 0 0; padding-left: 18px; color: var(--fg-2); font-size: 14.5px; }
+  .split li { margin-bottom: 7px; }
+  .split .changes li::marker { color: var(--qual); }
+  .split .holds li::marker { color: var(--struct); }
+
+  /* ── Empfehlungsschritte ──────────────────────────────────────────── */
+  .steps { display: grid; gap: 14px; counter-reset: step; }
+  .step {
+    display: grid; grid-template-columns: 34px 1fr; gap: 20px;
+    background: var(--bg-1); border: 1px solid var(--line);
+    border-left: 3px solid var(--signal);
+    border-radius: var(--r-lg); padding: 22px 24px;
+    counter-increment: step;
+  }
+  .step::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    color: var(--signal); padding-top: 2px;
+  }
+  .step p { font-size: 15px; color: var(--fg-2); max-width: none; }
+  .step p strong { color: var(--fg); font-weight: 500; }
+
+  pre {
+    margin: 14px 0 0;
+    background: var(--bg-0); border: 1px solid var(--line);
+    border-radius: var(--r-md); padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--font-mono); font-size: 13px; line-height: 1.7;
+    color: var(--fg-2);
+  }
+  pre .k { color: var(--signal); }
+  pre .c { color: var(--fg-3); }
+
+  /* ── Offene Punkte ────────────────────────────────────────────────── */
+  .caveat {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--warn);
+    border-radius: var(--r-lg);
+    padding: 20px 24px;
+  }
+  .caveat + .caveat { margin-top: 14px; }
+  .caveat h3 { font-size: 15.5px; }
+  .caveat p { font-size: 14.5px; color: var(--fg-2); max-width: none; }
+
+  /* ── Quellen ──────────────────────────────────────────────────────── */
+  .sources { display: grid; gap: 9px; padding: 0; margin: 0; list-style: none; }
+  .sources li {
+    display: grid; grid-template-columns: 128px 1fr; gap: 18px;
+    padding: 11px 0; border-bottom: 1px solid var(--line);
+    font-size: 14.5px; align-items: baseline;
+  }
+  .sources li:last-child { border-bottom: none; }
+  .sources .kind {
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3);
+  }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 30px 0 0;
+    font-family: var(--font-mono); font-size: 11.5px;
+    letter-spacing: 0.06em; color: var(--fg-3);
+    display: flex; flex-wrap: wrap; gap: 8px 22px;
+  }
+
+  @media (max-width: 800px) {
+    .axes, .split { grid-template-columns: 1fr; }
+    .reason { grid-template-columns: 1fr; gap: 10px; }
+    .sources li { grid-template-columns: 1fr; gap: 3px; }
+  }
+</style>
+
+<div class="page">
+
+  <div class="masthead">
+    <div class="dot" aria-hidden="true"></div>
+    <div class="wordmark">Signal</div>
+    <div class="spacer"></div>
+    <div class="stamp">Architektur-Entscheid · Doku</div>
+  </div>
+
+  <header class="hero">
+    <p class="eyebrow">Warum Signal ODCS exportiert statt darauf zu bauen</p>
+    <h1>ODCS im Signal-Kern</h1>
+    <p class="lede">
+      Der Open Data Contract Standard ist plattformübergreifend — das spricht auf den
+      ersten Blick dafür, Signal nativ darauf zu bauen. Diese Seite prüft das Argument
+      zu Ende: <strong>ODCS bleibt Projektion, nicht Quelle</strong> — aber aus fünf
+      Gründen, von denen „custom SQL" nur einer und nicht der wichtigste ist. Dazu der
+      geprüfte Stand zur HANA-Unterstützung in <code>datacontract-cli</code>, die das
+      Bild teilweise verschiebt.
+    </p>
+    <p class="verifystamp">
+      <span>Stand <b>2026-09-01</b></span>
+      <span>·</span>
+      <span>Upstream-Fakten gegen GitHub verifiziert</span>
+    </p>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-label">Die Trennung</p>
+    <h2>Zwei Fragen, die ständig vermischt werden</h2>
+    <p class="muted">
+      „Sollten wir ODCS nativ bauen, damit externe Pipelines die Checks fahren können?"
+      enthält zwei unabhängige Anliegen. Sie haben verschiedene Antworten, und das eine
+      löst das andere nicht. Diese beiden Achsen ziehen sich farblich durch das ganze
+      Dokument.
+    </p>
+
+    <div class="axes">
+      <div class="axis decl">
+        <span class="tag">Achse A · Format</span>
+        <h3>ODCS als kanonische Speicherform</h3>
+        <p>
+          Die Frage, in welchem Format die Wahrheit im Repository liegt: Signals
+          <code>guarantees:</code>-Schema v1 oder ein ODCS-Dokument.
+        </p>
+        <ul>
+          <li>Betrifft Validator, Compiler, Diff, Git-Wahrheit</li>
+          <li>Berührt die Gates G1, G2 und die Trennung aus ADR-0001</li>
+          <li>Antwort dieser Seite: <strong>nein</strong></li>
+        </ul>
+      </div>
+      <div class="axis state">
+        <span class="tag">Achse B · Ausführbarkeit</span>
+        <h3>Checks aus fremden Pipelines fahren</h3>
+        <p>
+          Die Frage, ob Airflow, GitLab CI oder eine Datasphere-Task-Chain die Prüfung
+          auslösen und ihr Ergebnis als Gate verwenden kann.
+        </p>
+        <ul>
+          <li>Betrifft CLI, Exit-Codes, API-Oberfläche</li>
+          <li>Ist formatunabhängig</li>
+          <li>Antwort dieser Seite: <strong>ist bereits gebaut</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="keyline">
+      <p>
+        Der entscheidende Punkt: <strong>ODCS ist ein Deklarationsformat, kein
+        Ausführungsformat.</strong> Ein ODCS-Dokument ist nicht lauffähig — es braucht
+        eine Engine. Achse A liefert Achse B deshalb nicht.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-label">Der historische Auslöser</p>
+    <h2>Signal war schon einmal ODCS-nativ — und das ist gescheitert</h2>
+    <p class="muted">
+      Die Entscheidung ist keine Vorliebe, sondern die Konsequenz aus einem
+      dokumentierten Befund. <code>REVIEW_Tool_v1_Befunde.md</code> §1 („Leitbefund:
+      Zwei inkompatible Contract-Schemata", 2026-06-10):
+    </p>
+    <p class="muted">
+      <code>compiler.py</code> war gegen ODCS v3 geschrieben (<code>servers[]</code>,
+      <code>schema:[{properties:…}]</code>, <code>slaProperties</code>), während
+      Validator, Diff, Seed, sämtliche Router und die ausgelieferten
+      <code>contracts/*.yaml</code> das <code>guarantees:</code>-Format nutzten. Die
+      empirisch verifizierten Folgen: <code>AttributeError</code> auf jeden
+      ausgelieferten Contract, HTTP 500 für Compile und Dry-Run, und ein
+      Determinismus-Test, der zwei leere Outputs miteinander verglich.
+    </p>
+    <div class="keyline">
+      <p>
+        „ODCS ist zwar die <em>richtige</em> Interop-Richtung, aber als
+        <strong>Export-Format</strong>, nicht als heimliches zweites internes Schema."
+      </p>
+      <p class="muted" style="font-size:13.5px; margin-top:10px;">
+        — REVIEW_Tool_v1_Befunde.md §1. Der Kommentarkopf in
+        <code>packages/dq_core/contract/odcs_export.py:5</code> zitiert genau diesen
+        Befund als Begründung.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-label">Achse A · Format</p>
+    <h2>Fünf Gründe gegen ODCS im Kern</h2>
+    <p class="muted">
+      Jeder Grund verteidigt eine benannte Invariante. Sie sind unabhängig voneinander —
+      keiner davon fällt, wenn ein anderer wegfiele. Das ist der Grund, warum „custom SQL"
+      allein die Entscheidung nicht trägt.
+    </p>
+
+    <div class="reasons">
+      <div class="reason">
+        <div class="gate">G1<span>SQL-frei</span></div>
+        <div>
+          <h3>Der Standard erlaubt genau das, was das Gate verbietet</h3>
+          <p>
+            ODCS kennt <code>quality</code>-Regeln mit <code>type: sql</code> /
+            <code>custom</code> bzw. <code>engine</code> + <code>implementation</code>
+            (SodaCL). Das war Befund <strong>S-3 (CRITICAL)</strong>: über den ODCS-Pfad
+            wurde <code>SELECT 1 FROM users; DROP TABLE x</code> wörtlich in einen
+            <code>CheckDef(sql=…)</code> emittiert. Wäre ODCS die kanonische Quelle,
+            müsste Signal dauerhaft einen Kernmechanismus des eigenen Formats verbieten.
+          </p>
+        </div>
+      </div>
+
+      <div class="reason">
+        <div class="gate">Ausdruck<span>Semantik</span></div>
+        <div>
+          <h3>Die halbe Garantie-Semantik hat kein ODCS-Gegenstück</h3>
+          <p>
+            Inhaltlich der schwerste Punkt. Severity-Gating, <code>schema.mode: closed</code>,
+            <code>volume.baseline: rolling</code>, mehrspaltige Fremdschlüssel,
+            <code>kind</code>/<code>owned_by</code>/<code>owners</code> — dafür gibt es
+            keine nativen Felder. <strong>Nativ hieße: aufgeben oder in
+            <code>customProperties</code> verstecken.</strong> Dann steht die Wahrheit
+            wieder in einem proprietären Nebenraum, nur in einem Standard-Umschlag. Der
+            Interop-Gewinn gegenüber dem heutigen Export wäre null.
+          </p>
+        </div>
+      </div>
+
+      <div class="reason">
+        <div class="gate">G2<span>Laufzeit-Bindung</span></div>
+        <div>
+          <h3>ODCS trägt Environment-Information, Signal-Contracts nicht</h3>
+          <p>
+            ODCS kennt <code>servers[]</code> und <code>physicalName</code>. Signal-Contracts
+            sind bewusst environment-frei; das Schema kommt zur Laufzeit über
+            <code>bind_schema(...)</code>. <code>odcs_import.py</code> ignoriert Server und
+            <code>physicalName</code> deshalb ausdrücklich. Dasselbe Muster bei Spaltentypen:
+            Signal-Spalten haben absichtlich keine — der Typ kommt aus HANA.
+          </p>
+        </div>
+      </div>
+
+      <div class="reason">
+        <div class="gate">A1<span>Deklaration ≠ Zustand</span></div>
+        <div>
+          <h3>ODCS modelliert die Vereinbarung, nicht die Laufzeitwahrheit</h3>
+          <p>
+            Keine Lauf-Resultate, keine <code>compliant</code>/<code>breached</code>-Transition,
+            keine Incident-Timeline, keine SLA-Fenster. Compliance bleibt im Export bewusst
+            draußen. Ein kanonisches ODCS wäre nur für die Deklarationshälfte des Systems
+            zuständig — die andere Hälfte (Result-Store) bräuchte ohnehin ein eigenes Modell.
+          </p>
+        </div>
+      </div>
+
+      <div class="reason">
+        <div class="gate">ADR-0001<span>Gate vs. Contract</span></div>
+        <div>
+          <h3>Der Großteil der Prüfungen ist gar kein Parteivertrag</h3>
+          <p>
+            <code>to_odcs()</code> wirft <code>ValueError</code> bei
+            <code>kind: internal_gate</code>. „Checks überall, Contracts nur an den
+            Parteigrenzen" — interne Gates in ein Vertragsformat zu zwingen wäre semantisch
+            falsch, nicht bloß unpraktisch.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-label">Achse A · Verlustrechnung</p>
+    <h2>Was der Export trägt und was nicht</h2>
+    <p class="muted">
+      Der Export ist die ehrliche Messung dessen, wie viel Signal-Semantik ODCS überhaupt
+      aufnehmen kann. Was hier als Verlust steht, wäre bei einem nativen Kern kein Verlust
+      mehr — sondern ein Konzept, das es nicht mehr gäbe.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Signal-Garantie</th>
+            <th scope="col">ODCS-Ziel</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Spalten</strong></td><td><code>schema[].properties[].name</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
+          <tr><td><strong>keys.unique</strong></td><td><code>primaryKey</code> + <code>primaryKeyPosition</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
+          <tr><td><strong>not_null</strong></td><td><code>required: true</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
+          <tr><td><strong>completeness</strong></td><td>Quality <code>nullValues</code> (percent)</td><td><span class="pill keep">verlustfrei</span></td></tr>
+          <tr><td><strong>volume.min_rows</strong></td><td>Quality <code>rowCount</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
+          <tr><td><strong>version</strong> · <strong>lifecycle</strong></td><td><code>version</code> · <code>status</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
+          <tr><td><strong>referential</strong></td><td><code>relationships[]</code></td><td><span class="pill loss">nur einspaltig</span></td></tr>
+          <tr><td><strong>freshness</strong></td><td><code>slaProperties.latency</code></td><td><span class="pill loss">nur Latenzzahl</span></td></tr>
+          <tr><td><strong>schema.mode: closed</strong></td><td><code>customProperty schemaMode</code></td><td><span class="pill loss">kein Enforcement</span></td></tr>
+          <tr><td><strong>owned_by · kind · owners</strong></td><td><code>customProperties</code></td><td><span class="pill loss">Escape Hatch</span></td></tr>
+          <tr><td><strong>Severity-Gating</strong> (critical/fail/warn)</td><td>—</td><td><span class="pill none">fällt weg</span></td></tr>
+          <tr><td><strong>volume.baseline: rolling</strong></td><td>—</td><td><span class="pill none">kein Konzept</span></td></tr>
+          <tr><td><strong>Composite FK</strong> (<code>len(fk) &gt; 1</code>)</td><td>—</td><td><span class="pill none">übersprungen</span></td></tr>
+          <tr><td><strong>Compliance / Laufzeit-Zustand</strong></td><td>—</td><td><span class="pill none">bewusst draußen (A1)</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="margin-top:14px; font-size:13.5px;">
+      Quelle: <code>docs/interactive/signal_vs_odcs.html</code> und
+      <code>packages/dq_core/contract/odcs_export.py</code>. Severity-Gating wird dort als
+      „die größte semantische Lücke" geführt — siehe dazu den Vorbehalt am Ende dieser Seite.
+    </p>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-label">Achse B · Ausführbarkeit</p>
+    <h2>Externe Pipelines brauchen einen Exit-Code, kein Format</h2>
+    <p class="muted">
+      Das eigentliche Anliegen hinter der ODCS-Frage ist meist: „Wir wollen die Prüfung aus
+      unserer Pipeline heraus fahren." Diese Naht existiert bereits — und sie ist
+      formatunabhängig.
+    </p>
+
+    <pre><span class="c"># cli/dq_check_runner.py — framework-frei (G7), kein API-Server nötig</span>
+python cli/dq_check_runner.py <span class="k">--schema</span> $SCHEMA <span class="k">--checks</span> checks.yml \
+  <span class="k">--host</span> $HANA_HOST <span class="k">--output</span> json
+
+<span class="c"># Exit-Codes (dq_check_runner.py:84) — direkt als Gate verwendbar</span>
+<span class="c">#   0 = proceed   1 = block   3 = quarantine   2 = Aufrufsfehler</span></pre>
+
+    <p class="muted" style="margin-top:20px;">
+      Dazu <code>--no-enforce</code> für Beobachtungsläufe (Exit-Code immer 0),
+      <code>--output json</code> für maschinelle Weiterverarbeitung, sowie die REST-API für
+      getriggerte Läufe. Für den Fall, dass der Kunde seine Contracts extern authort, gibt es
+      <code>POST /api/integrations/entropy/import/odcs</code> — ODCS rein, Signal erzwingt,
+      mit ehrlichem <code>dropped</code>-Report statt stillem Vortäuschen.
+    </p>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-label">Upstream · verifiziert 2026-09-01</p>
+    <h2>HANA in datacontract-cli: vorgeschlagen, nicht ausgeliefert</h2>
+    <p class="muted">
+      Ein HANA-Executor im offenen Standard-Werkzeug würde Achse B verändern — eine fremde
+      Pipeline könnte dann <code>datacontract test</code> direkt gegen Datasphere fahren.
+      Der Stand dazu, gegen GitHub geprüft:
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">PR</th>
+            <th scope="col">Titel · Autor</th>
+            <th scope="col">Datum</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="num">#1332</td>
+            <td><strong>Feat/hana engine</strong> (RFC-0045) · ToniLippmann<br>
+              <span class="muted" style="font-size:13.5px;">Label <code>ODCS-3.2</code> — „Only works with ODCS 3.2, as we are adding hana as a server type."</span></td>
+            <td class="num">22.06.2026</td>
+            <td><span class="pill open">offen</span></td>
+          </tr>
+          <tr>
+            <td class="num">#1398</td>
+            <td><strong>feat: SAP HANA server</strong> · GMorrisXBL</td>
+            <td class="num">23.07.2026</td>
+            <td><span class="pill closed">geschlossen</span></td>
+          </tr>
+          <tr>
+            <td class="num">#1399</td>
+            <td><strong>Docs/sap hana readme</strong> · GMorrisXBL</td>
+            <td class="num">23.07.2026</td>
+            <td><span class="pill closed">geschlossen</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="muted" style="margin-top:18px;">
+      <strong>CHANGELOG auf <code>main</code>: keine HANA-Erwähnung. README-Serverliste:
+      kein <code>hana</code>.</strong> Kein Release enthält es. Die Aussage
+      „datacontract-cli kann HANA" ist heute nicht tragfähig; „bekommt HANA, PR liegt vor"
+      ist es.
+    </p>
+    <p class="muted">
+      Ein Detail, das die frühere Analyse bestätigt: #1332 geht <strong>nativ über
+      <code>hdbcli</code> und umgeht den ibis/sqlglot-Pfad</strong>, weil weder ibis noch
+      sqlglot HANA kennen. Die Annahme P1 in
+      <code>datacontract-cli_Hypothese_VollerErsatz.md</code> war korrekt — die Lösung kommt
+      nicht über das ibis-Backend, sondern daran vorbei. <code>hdbcli</code> steht unter
+      SAP-Lizenz und ist bewusst nicht Teil von <code>[all]</code>; Installation über
+      <code>pip install datacontract-cli[hana]</code>.
+    </p>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-label">Konsequenz</p>
+    <h2>Was ein gemergter HANA-Executor verschiebt — und was nicht</h2>
+
+    <div class="split">
+      <div class="changes">
+        <h3><span class="marker" aria-hidden="true"></span>Es ändert Achse B</h3>
+        <ul>
+          <li>Fremde Pipelines können ODCS-Dokumente <strong>ausführen</strong>, nicht nur lesen.</li>
+          <li>Signals ODCS-Export wird vom Katalog-Artefakt zum <strong>lauffähigen</strong> Artefakt.</li>
+          <li>Das argumentiert dafür, den <strong>Export</strong> auszubauen — nicht den Kern umzubauen.</li>
+          <li>Der Marketing-Differenzierer „einzige mit HANA-Runner" fällt weg. Bewusst.</li>
+        </ul>
+      </div>
+      <div class="holds">
+        <h3><span class="marker" aria-hidden="true"></span>Es ändert Achse A nicht</h3>
+        <ul>
+          <li>Severity-Gating, <code>mode: closed</code>, <code>baseline: rolling</code>, Composite-FK: unverändert ohne ODCS-Gegenstück.</li>
+          <li>G1 gegen <code>quality: type: sql</code>: unverändert.</li>
+          <li>Deklaration/Zustand-Trennung: unverändert.</li>
+          <li>ADR-0001 <code>internal_gate</code>: unverändert.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="keyline" style="margin-top:22px;">
+      <p>
+        <code>datacontract-cli_Bewertung.md</code> §6 hat den Fall vorweggenommen: „Die
+        HANA-Engine ist heute euer <em>Marketing</em>-Differenzierer, nicht euer
+        <em>substanzieller</em>. Ihr müsstet die <strong>Erzählung</strong> anpassen, kaum
+        die <strong>Architektur</strong>."
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-label">Empfehlung</p>
+    <h2>Drei Schritte statt eines Architekturumbaus</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div>
+          <h3>Export-Ziel auf ODCS 3.2 heben</h3>
+          <p>
+            <code>odcs_export.py:25</code> steht auf
+            <code>ODCS_API_VERSION = "v3.1.0"</code>. Der <code>hana</code>-Servertyp
+            existiert erst ab 3.2 — <strong>ohne Bump ist der Export für die neue Engine
+            nicht konsumierbar.</strong>
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div>
+          <h3><code>servers:</code>-Block emittieren — parametrisiert, nicht im Contract</h3>
+          <p>
+            Der Export schreibt heute gar kein <code>servers</code> (verifiziert: kein
+            Vorkommen in der Datei). Für <code>datacontract test</code> ist der Block Pflicht.
+            <strong>Die G2-konforme Auflösung: der Server kommt beim Export aus dem
+            Environment, nicht aus dem Contract</strong> —
+            <code>to_odcs(contract, environment=…)</code>. Damit entsteht ein ausführbares
+            ODCS-Dokument pro Environment, ohne G2 anzufassen.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div>
+          <h3>Den ODCS-Import-Modus produktionsfähig machen</h3>
+          <p>
+            Für Kunden, die ODCS bereits als System of Record führen (Collibra, OpenMetadata,
+            Entropy), ist „extern authort → Signal erzwingt" der richtige Betriebsweg — und
+            der ist im Code angelegt. Laut <code>routers/integrations.py:42</code> läuft er
+            aber noch als <strong>Dry-Run</strong>: „der Payload wird gebaut, aber nicht
+            gesendet", solange der Marktplatz nicht gegenverifiziert ist (E2/E3).
+            <strong>ODCS-nativ als Deployment-Modus, nicht als Kern-Architektur.</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-label">Vorbehalte</p>
+    <h2>Was nicht verifiziert ist</h2>
+
+    <div class="caveat">
+      <h3>„ODCS kennt kein Severity-Gating"</h3>
+      <p>
+        Diese Aussage stammt aus der repo-internen Analyse, nicht aus einer Prüfung der
+        aktuellen Bitol-Spezifikation. ODCS-v3-<code>quality</code>-Objekte tragen Felder,
+        die dem nahekommen. Vor Verwendung in einem Kundengespräch gegen die Live-Spec
+        gegenchecken.
+      </p>
+    </div>
+
+    <div class="caveat">
+      <h3>Der Verlustkatalog beschreibt den Export, nicht die Standard-Obergrenze</h3>
+      <p>
+        Einiges davon ist „der Export füllt es nicht", nicht „ODCS kann es nicht" — explizit
+        bei den Spaltentypen, wo <code>logicalType</code>/<code>physicalType</code>
+        existieren, aber bewusst leer bleiben.
+      </p>
+    </div>
+
+    <div class="caveat">
+      <h3>Merge-Aussicht für PR #1332</h3>
+      <p>
+        Seit dem Force-Push am 22.06.2026 war keine weitere Aktivität einsehbar; kein
+        Approval, kein Blocker. Die beiden konkurrierenden HANA-PRs wurden geschlossen — ob
+        das für #1332 spricht (Duplikat, dieser ist der kanonische) oder ein Signal über den
+        Maintainer-Appetit ist, lässt sich von außen nicht entscheiden.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-label">Belege</p>
+    <h2>Quellen</h2>
+    <ul class="sources">
+      <li><span class="kind">Repo · Code</span><span><code>packages/dq_core/contract/odcs_export.py</code> · <code>odcs_import.py</code> · <code>cli/dq_check_runner.py</code> · <code>services/api/routers/integrations.py</code></span></li>
+      <li><span class="kind">Repo · Doku</span><span><code>REVIEW_Tool_v1_Befunde.md</code> §1 · <code>datacontract-cli_Bewertung.md</code> §6 · <code>datacontract-cli_Hypothese_VollerErsatz.md</code> · <code>interactive/signal_vs_odcs.html</code></span></li>
+      <li><span class="kind">Upstream</span><span><a href="https://github.com/datacontract/datacontract-cli/pull/1332">datacontract-cli PR #1332 — Feat/hana engine</a></span></li>
+      <li><span class="kind">Upstream</span><span><a href="https://github.com/datacontract/datacontract-cli/pulls?q=is%3Apr+hana">datacontract-cli — Pull Requests, HANA-Suche</a></span></li>
+      <li><span class="kind">Upstream</span><span><a href="https://raw.githubusercontent.com/datacontract/datacontract-cli/main/CHANGELOG.md">CHANGELOG auf main</a> · <a href="https://raw.githubusercontent.com/datacontract/datacontract-cli/main/README.md">README auf main</a></span></li>
+      <li><span class="kind">Upstream</span><span><a href="https://docs.datacontract.com/">Data Contract CLI — Dokumentation</a></span></li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>Signal · Data Quality &amp; Observability Cockpit</span>
+    <span>Architektur-Entscheid</span>
+    <span>Stand 2026-09-01</span>
+  </footer>
+
+</div>
