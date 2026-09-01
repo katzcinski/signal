@@ -269,6 +269,7 @@
   .pill.keep   { background: var(--qual-dim); color: var(--qual); }
   .pill.loss   { background: var(--struct-dim); color: var(--struct); }
   .pill.none   { background: rgba(229, 72, 77, 0.13); color: var(--crit); }
+  .pill.exp    { background: rgba(224, 178, 62, 0.14); color: var(--warn); }
 
   /* ── Zwei-Spalten-Vergleich ───────────────────────────────────────── */
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -371,12 +372,13 @@
       zu Ende: <strong>ODCS bleibt Projektion, nicht Quelle</strong> — aber aus fünf
       Gründen, von denen „custom SQL" nur einer und nicht der wichtigste ist. Dazu der
       geprüfte Stand zur HANA-Unterstützung in <code>datacontract-cli</code>, die das
-      Bild teilweise verschiebt.
+      Bild teilweise verschiebt. Alle ODCS-Grenzen sind gegen das JSON-Schema des
+      Standards geprüft — zwei ursprüngliche Annahmen hielten nicht und sind korrigiert.
     </p>
     <p class="verifystamp">
       <span>Stand <b>2026-09-01</b></span>
       <span>·</span>
-      <span>Upstream-Fakten gegen GitHub verifiziert</span>
+      <span>Upstream-Fakten und ODCS-Schema verifiziert</span>
     </p>
   </header>
 
@@ -489,15 +491,21 @@
       <div class="reason">
         <div class="gate">Ausdruck<span>Semantik</span></div>
         <div>
-          <h3>Die halbe Garantie-Semantik hat kein ODCS-Gegenstück</h3>
+          <h3>Drei Garantie-Konzepte haben kein ODCS-Gegenstück</h3>
           <p>
-            Inhaltlich der schwerste Punkt. Severity-Gating, <code>schema.mode: closed</code>,
-            <code>volume.baseline: rolling</code>, mehrspaltige Fremdschlüssel,
-            <code>kind</code>/<code>owned_by</code>/<code>owners</code> — dafür gibt es
-            keine nativen Felder. <strong>Nativ hieße: aufgeben oder in
-            <code>customProperties</code> verstecken.</strong> Dann steht die Wahrheit
-            wieder in einem proprietären Nebenraum, nur in einem Standard-Umschlag. Der
-            Interop-Gewinn gegenüber dem heutigen Export wäre null.
+            Nach Prüfung gegen das ODCS-Schema bleiben davon drei echte Lücken:
+            <code>schema.mode: closed</code> (kein Feld verbietet Extraspalten in den
+            <em>Daten</em>), <code>volume.baseline: rolling</code> (die
+            <code>library</code>-Metriken sind ein geschlossenes Enum aus fünf Werten —
+            keine Baselines, keine Anomalie-Erkennung) und der Boundary-Typ aus ADR-0001.
+            <strong>Für diese drei hieße nativ: aufgeben oder in
+            <code>customProperties</code> verstecken</strong> — und dann steht die Wahrheit
+            wieder im proprietären Nebenraum, nur im Standard-Umschlag.
+          </p>
+          <p>
+            Nicht dazu gehören Severity, Composite-Fremdschlüssel und Ownership: die kann
+            ODCS. Dass sie im Export fehlen, ist unsere Lücke, nicht die des Standards —
+            siehe Verlustrechnung.
           </p>
         </div>
       </div>
@@ -547,11 +555,13 @@
   <!-- ══════════════════════════════════════════════════════════════ -->
   <section>
     <p class="sec-label">Achse A · Verlustrechnung</p>
-    <h2>Was der Export trägt und was nicht</h2>
+    <h2>Was der Export trägt, was ODCS nicht kann, und was wir verschenken</h2>
     <p class="muted">
-      Der Export ist die ehrliche Messung dessen, wie viel Signal-Semantik ODCS überhaupt
-      aufnehmen kann. Was hier als Verlust steht, wäre bei einem nativen Kern kein Verlust
-      mehr — sondern ein Konzept, das es nicht mehr gäbe.
+      Diese Tabelle wurde am 2026-09-01 gegen
+      <code>odcs-json-schema-latest.json</code> geprüft — nicht gegen die eigene Doku.
+      Dabei fiel die entscheidende Unterscheidung auf, die vorher fehlte:
+      <strong>eine Lücke im Export ist etwas anderes als eine Grenze des Standards.</strong>
+      Das erste ist Backlog, das zweite ist Architektur.
     </p>
 
     <div class="table-wrap">
@@ -560,31 +570,78 @@
           <tr>
             <th scope="col">Signal-Garantie</th>
             <th scope="col">ODCS-Ziel</th>
-            <th scope="col">Status</th>
+            <th scope="col">Befund</th>
           </tr>
         </thead>
         <tbody>
           <tr><td><strong>Spalten</strong></td><td><code>schema[].properties[].name</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
           <tr><td><strong>keys.unique</strong></td><td><code>primaryKey</code> + <code>primaryKeyPosition</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
-          <tr><td><strong>not_null</strong></td><td><code>required: true</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
-          <tr><td><strong>completeness</strong></td><td>Quality <code>nullValues</code> (percent)</td><td><span class="pill keep">verlustfrei</span></td></tr>
-          <tr><td><strong>volume.min_rows</strong></td><td>Quality <code>rowCount</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
+          <tr><td><strong>not_null</strong></td><td><code>required</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
+          <tr><td><strong>completeness</strong></td><td><code>quality.metric: nullValues</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
+          <tr><td><strong>volume.min_rows</strong></td><td><code>quality.metric: rowCount</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
           <tr><td><strong>version</strong> · <strong>lifecycle</strong></td><td><code>version</code> · <code>status</code></td><td><span class="pill keep">verlustfrei</span></td></tr>
-          <tr><td><strong>referential</strong></td><td><code>relationships[]</code></td><td><span class="pill loss">nur einspaltig</span></td></tr>
-          <tr><td><strong>freshness</strong></td><td><code>slaProperties.latency</code></td><td><span class="pill loss">nur Latenzzahl</span></td></tr>
-          <tr><td><strong>schema.mode: closed</strong></td><td><code>customProperty schemaMode</code></td><td><span class="pill loss">kein Enforcement</span></td></tr>
-          <tr><td><strong>owned_by · kind · owners</strong></td><td><code>customProperties</code></td><td><span class="pill loss">Escape Hatch</span></td></tr>
-          <tr><td><strong>Severity-Gating</strong> (critical/fail/warn)</td><td>—</td><td><span class="pill none">fällt weg</span></td></tr>
-          <tr><td><strong>volume.baseline: rolling</strong></td><td>—</td><td><span class="pill none">kein Konzept</span></td></tr>
-          <tr><td><strong>Composite FK</strong> (<code>len(fk) &gt; 1</code>)</td><td>—</td><td><span class="pill none">übersprungen</span></td></tr>
-          <tr><td><strong>Compliance / Laufzeit-Zustand</strong></td><td>—</td><td><span class="pill none">bewusst draußen (A1)</span></td></tr>
+
+          <tr>
+            <td><strong>Severity</strong> (critical/fail/warn)</td>
+            <td><code>quality.severity</code><br><span class="muted" style="font-size:13px;">freier String, Beispiele <code>info</code>/<code>warning</code>/<code>error</code>; dazu <code>businessImpact</code> und <code>dimension</code></span></td>
+            <td><span class="pill exp">Export-Lücke</span></td>
+          </tr>
+          <tr>
+            <td><strong>Composite FK</strong> (<code>len(fk) &gt; 1</code>)</td>
+            <td><code>relationships.from</code>/<code>to</code><br><span class="muted" style="font-size:13px;">„Array of target properties for composite keys" — explizit unterstützt</span></td>
+            <td><span class="pill exp">Export-Lücke</span></td>
+          </tr>
+          <tr>
+            <td><strong>owners</strong></td>
+            <td><code>team.members[]</code> · <code>roles[]</code><br><span class="muted" style="font-size:13px;">inkl. <code>firstLevelApprovers</code>/<code>secondLevelApprovers</code></span></td>
+            <td><span class="pill exp">Export-Lücke</span></td>
+          </tr>
+          <tr>
+            <td><strong>freshness</strong></td>
+            <td><code>slaProperties</code> (<code>property</code>/<code>value</code>/<code>unit</code>/<code>element</code>)</td>
+            <td><span class="pill loss">nur Latenzwert, kein Gating</span></td>
+          </tr>
+
+          <tr>
+            <td><strong>schema.mode: closed</strong></td>
+            <td>—</td>
+            <td><span class="pill none">ODCS-Lücke</span></td>
+          </tr>
+          <tr>
+            <td><strong>volume.baseline: rolling</strong></td>
+            <td>—<br><span class="muted" style="font-size:13px;">library-Metriken sind ein 5er-Enum: <code>nullValues</code>, <code>missingValues</code>, <code>invalidValues</code>, <code>duplicateValues</code>, <code>rowCount</code></span></td>
+            <td><span class="pill none">ODCS-Lücke</span></td>
+          </tr>
+          <tr>
+            <td><strong>kind</strong> (Gate vs. Contract, ADR-0001)</td>
+            <td>—<br><span class="muted" style="font-size:13px;">ODCS hat zwar ein Feld <code>kind</code>, aber als Dateityp-Diskriminator: <code>enum: ["DataContract"]</code></span></td>
+            <td><span class="pill none">ODCS-Lücke</span></td>
+          </tr>
+          <tr>
+            <td><strong>Compliance / Laufzeitzustand</strong></td>
+            <td>—<br><span class="muted" style="font-size:13px;">Volltextsuche im Schema: <code>compliance</code>, <code>breached</code>, <code>incident</code>, <code>baseline</code> — je 0 Treffer</span></td>
+            <td><span class="pill none">ODCS-Lücke (per Design, A1)</span></td>
+          </tr>
         </tbody>
       </table>
     </div>
-    <p class="muted" style="margin-top:14px; font-size:13.5px;">
-      Quelle: <code>docs/interactive/signal_vs_odcs.html</code> und
-      <code>packages/dq_core/contract/odcs_export.py</code>. Severity-Gating wird dort als
-      „die größte semantische Lücke" geführt — siehe dazu den Vorbehalt am Ende dieser Seite.
+
+    <div class="keyline" style="margin-top:22px;">
+      <p>
+        <strong>Die drei gelben Zeilen sind keine Argumente gegen ODCS — sie sind
+        Aufgaben für unseren Exporter.</strong> Severity, Composite-Fremdschlüssel und
+        Ownership lassen sich in ODCS ausdrücken; dass sie im Export fehlen, ist unsere
+        Entscheidung gewesen, keine Grenze des Standards.
+      </p>
+    </div>
+
+    <p class="muted" style="margin-top:20px;">
+      <strong>Eine Einschränkung bleibt auch bei <code>severity</code>:</strong> das Feld ist
+      ein freier String ohne Enum, und die Spezifikation definiert kein Verhalten dazu — sie
+      sagt nirgends, was bei welcher Stufe geschehen soll. Signals
+      <code>critical|fail|warn</code> ist ein geschlossenes Enum mit Gating-Semantik. Der
+      <em>Wert</em> ließe sich also verlustfrei transportieren, das <em>Verhalten</em> nicht.
+      Ein fremdes Werkzeug liest die Stufe, handelt aber nicht zwingend danach.
     </p>
   </section>
 
@@ -756,40 +813,93 @@ python cli/dq_check_runner.py <span class="k">--schema</span> $SCHEMA <span clas
           </p>
         </div>
       </div>
+
+      <div class="step">
+        <div>
+          <h3>Die drei Export-Lücken schließen</h3>
+          <p>
+            Aus der Schema-Prüfung neu hinzugekommen: <code>quality.severity</code>,
+            mehrspaltige <code>relationships</code> und <code>team.members[]</code> sind in
+            ODCS ausdrückbar, werden vom Exporter aber nicht bedient.
+            <strong>Drei kleine, klar abgegrenzte Verbesserungen — und der Round-Trip
+            Signal → ODCS → Signal wird spürbar verlustärmer</strong>, was genau der
+            Schwachpunkt ist, wenn ein Kunde ODCS als System of Record führen will.
+          </p>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- ══════════════════════════════════════════════════════════════ -->
   <section>
-    <p class="sec-label">Vorbehalte</p>
-    <h2>Was nicht verifiziert ist</h2>
+    <p class="sec-label">Prüfprotokoll</p>
+    <h2>Was die Schema-Prüfung korrigiert hat</h2>
+    <p class="muted">
+      Die erste Fassung dieser Seite stützte sich auf die repo-interne Analyse. Am
+      2026-09-01 wurde sie gegen <code>odcs-json-schema-latest.json</code> aus dem
+      Bitol-Repository geprüft (Schema deckt <code>v2.2.0</code> bis <code>v3.1.0</code> ab).
+      <strong>Zwei Annahmen hielten der Prüfung nicht stand.</strong>
+    </p>
 
     <div class="caveat">
-      <h3>„ODCS kennt kein Severity-Gating"</h3>
+      <h3>Korrigiert · „ODCS kennt kein Severity-Gating"</h3>
       <p>
-        Diese Aussage stammt aus der repo-internen Analyse, nicht aus einer Prüfung der
-        aktuellen Bitol-Spezifikation. ODCS-v3-<code>quality</code>-Objekte tragen Felder,
-        die dem nahekommen. Vor Verwendung in einem Kundengespräch gegen die Live-Spec
-        gegenchecken.
+        Falsch. <code>DataQuality.severity</code> existiert, dazu
+        <code>businessImpact</code> und <code>dimension</code> (Enum aus sieben
+        DQ-Dimensionen). Haltbar ist nur die schwächere Aussage: das Feld ist ein freier
+        String ohne Enum, und die Spezifikation definiert <em>kein</em> Verhalten dazu.
+        Signals Gating-Semantik ist damit nicht abbildbar — der Wert selbst schon.
       </p>
     </div>
 
     <div class="caveat">
-      <h3>Der Verlustkatalog beschreibt den Export, nicht die Standard-Obergrenze</h3>
+      <h3>Korrigiert · „Composite FK: übersprungen"</h3>
       <p>
-        Einiges davon ist „der Export füllt es nicht", nicht „ODCS kann es nicht" — explizit
-        bei den Spaltentypen, wo <code>logicalType</code>/<code>physicalType</code>
-        existieren, aber bewusst leer bleiben.
+        Als ODCS-Grenze falsch. <code>RelationshipBase.from</code>/<code>to</code> sind
+        <code>oneOf</code>: Einzelreferenz <em>oder</em> „Array of target properties for
+        composite keys". Die Beschränkung auf <code>len(fk) == 1</code> liegt allein in
+        Signals Exporter.
       </p>
     </div>
 
     <div class="caveat">
-      <h3>Merge-Aussicht für PR #1332</h3>
+      <h3>Nachgeschärft · Ownership</h3>
+      <p>
+        Ein Feld <code>owner</code> gibt es nicht, aber <code>team.members[]</code> und
+        <code>roles[]</code> — letztere sogar mit <code>firstLevelApprovers</code> und
+        <code>secondLevelApprovers</code>. „Nur <code>customProperties</code>" war zu hart.
+      </p>
+    </div>
+
+    <div class="caveat">
+      <h3>Bestätigt · vier Befunde</h3>
+      <p>
+        Closed Schema auf Datenebene: kein Mechanismus. Rolling Baselines:
+        <code>library.metric</code> ist ein geschlossenes 5er-Enum, Volltextsuche nach
+        <code>baseline</code>/<code>rolling</code>/<code>anomaly</code> ergibt 0 Treffer.
+        Laufzeitzustand: <code>compliance</code>/<code>breached</code>/<code>incident</code>
+        ebenfalls 0 Treffer, nur <code>status</code> als Reifegrad. Und
+        <code>quality.type</code> führt <code>sql</code> und <code>custom</code> — das
+        G1-Argument steht unverändert.
+      </p>
+    </div>
+
+    <div class="caveat">
+      <h3>Weiterhin offen · Merge-Aussicht für PR #1332</h3>
       <p>
         Seit dem Force-Push am 22.06.2026 war keine weitere Aktivität einsehbar; kein
         Approval, kein Blocker. Die beiden konkurrierenden HANA-PRs wurden geschlossen — ob
-        das für #1332 spricht (Duplikat, dieser ist der kanonische) oder ein Signal über den
-        Maintainer-Appetit ist, lässt sich von außen nicht entscheiden.
+        das für #1332 spricht oder ein Signal über den Maintainer-Appetit ist, lässt sich
+        von außen nicht entscheiden.
+      </p>
+    </div>
+
+    <div class="keyline" style="margin-top:22px;">
+      <p>
+        <strong>Die Entscheidung bleibt, ihre Begründung verschiebt sich.</strong> Sie trägt
+        jetzt weniger auf „ODCS kann unsere Semantik nicht" und mehr auf G1, der Trennung
+        von Deklaration und Zustand sowie der Gate/Contract-Grenze aus ADR-0001. Diese vier
+        sind unabhängig geprüft und halten.
       </p>
     </div>
   </section>
