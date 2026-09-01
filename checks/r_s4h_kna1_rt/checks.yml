@@ -1,0 +1,85 @@
+# contract_hash: 67a49b509d5cdd1c
+# library_version: 6
+# compiler_hash: 86c710bc13b895fa
+dataset: r_s4h_kna1_rt
+schema: '{schema}'
+contract_version: 1.0.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'r_s4h_kna1_rt' UNION ALL SELECT COLUMN_NAME FROM
+    "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'r_s4h_kna1_rt')
+    catalog_columns
+  expect: = 8
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: internal_gate
+  enforcement: monitor
+- name: key_KUNNR_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "KUNNR") FROM "{schema}"."r_s4h_kna1_rt"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate
+  kind: internal_gate
+  enforcement: monitor
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_kna1_rt"
+  expect: '>= 8000'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: internal_gate
+  enforcement: monitor
+- name: completeness_REGIO
+  sql: SELECT ROUND(100.0 * COUNT(CASE WHEN "REGIO" IS NULL THEN 1 END) / NULLIF(COUNT(*),
+    0), 2) FROM "{schema}"."r_s4h_kna1_rt"
+  expect: <= 5.0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: completeness_pct
+  unit: '%'
+  kind: internal_gate
+  enforcement: monitor
+- name: KUNNR_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_kna1_rt" WHERE "KUNNR" IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: NAME1_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_kna1_rt" WHERE "NAME1" IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: LAND1_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_kna1_rt" WHERE "LAND1" IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: pattern_match_LAND1
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_kna1_rt" WHERE "LAND1" IS NOT NULL AND
+    NOT "LAND1" LIKE_REGEXPR '^[A-Z]{2}$'
+  expect: = 0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: pattern_match
+  kind: internal_gate
+  enforcement: monitor

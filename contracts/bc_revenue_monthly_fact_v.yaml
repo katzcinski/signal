@@ -1,0 +1,94 @@
+product: bc_revenue_monthly_fact_v
+kind: provider_contract
+dataset: bc_revenue_monthly_fact_v
+owned_by: product
+owners:
+- team-finance
+version: 1.4.0
+lifecycle: active
+description: Zugesagte Garantien des Monatsumsatzes für Controlling und Planung.
+enforcement_default: gate
+quarantine:
+  style: episodic
+observability:
+  volume:
+    baseline: seasonal
+    season:
+    - eom
+    sensitivity: high
+guarantees:
+  schema:
+    columns:
+    - FISCAL_YEAR_MONTH
+    - SALES_ORG
+    - REGION_CODE
+    - PRODUCT_GROUP
+    - GROSS_REVENUE
+    - REVENUE_EUR
+    - ORDER_COUNT
+    - CURRENCY
+    - CHANGED_AT
+    mode: closed
+    severity: critical
+    types:
+      FISCAL_YEAR_MONTH:
+        type: string
+        key: true
+        nullable: false
+      SALES_ORG:
+        type: string
+        key: true
+        nullable: false
+      REGION_CODE:
+        type: string
+        key: true
+        nullable: false
+      PRODUCT_GROUP:
+        type: string
+        key: true
+        nullable: false
+      GROSS_REVENUE:
+        type: decimal
+      REVENUE_EUR:
+        type: decimal
+      ORDER_COUNT:
+        type: integer
+      CURRENCY:
+        type: string
+      CHANGED_AT:
+        type: timestamp
+  keys:
+  - columns:
+    - FISCAL_YEAR_MONTH
+    - SALES_ORG
+    - REGION_CODE
+    - PRODUCT_GROUP
+    unique: true
+    severity: critical
+  freshness:
+    column: CHANGED_AT
+    max_age: PT24H
+    severity: warn
+  volume:
+    min_rows: 2400
+    severity: warn
+    baseline: rolling
+    bounds: auto
+  completeness:
+  - column: PRODUCT_GROUP
+    min_pct: 99.0
+    severity: fail
+  not_null:
+  - columns:
+    - FISCAL_YEAR_MONTH
+    - SALES_ORG
+    - REVENUE_EUR
+    severity: critical
+checks:
+- id: value_range
+  params:
+    <SPALTE>: REVENUE_EUR
+    <MIN>: '0'
+    <MAX>: '80000000'
+  expect: = 0
+  severity: fail

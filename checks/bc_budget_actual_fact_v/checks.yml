@@ -1,0 +1,98 @@
+# contract_hash: c00f267e236e01d9
+# library_version: 6
+# compiler_hash: 95e9d264e1e2dc72
+dataset: bc_budget_actual_fact_v
+schema: '{schema}'
+contract_version: 1.0.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'bc_budget_actual_fact_v' UNION ALL SELECT COLUMN_NAME
+    FROM "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'bc_budget_actual_fact_v')
+    catalog_columns
+  expect: = 9
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: consumer_contract
+  enforcement: monitor
+- name: key_FISCAL_YEAR_FISCAL_PERIOD_SALES_ORG_PRODUCT_GROUP_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "FISCAL_YEAR" || '|' || "FISCAL_PERIOD" ||
+    '|' || "SALES_ORG" || '|' || "PRODUCT_GROUP") FROM "{schema}"."bc_budget_actual_fact_v"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate_composite
+  kind: consumer_contract
+  enforcement: monitor
+- name: freshness_CHANGED_AT
+  sql: SELECT SECONDS_BETWEEN(MAX("CHANGED_AT"), CURRENT_TIMESTAMP) FROM "{schema}"."bc_budget_actual_fact_v"
+  expect: < 172800
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: freshness
+  unit: s
+  kind: consumer_contract
+  enforcement: monitor
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_budget_actual_fact_v"
+  expect: '>= 480'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: consumer_contract
+  enforcement: monitor
+- name: FISCAL_YEAR_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_budget_actual_fact_v" WHERE "FISCAL_YEAR"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: consumer_contract
+  enforcement: monitor
+- name: FISCAL_PERIOD_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_budget_actual_fact_v" WHERE "FISCAL_PERIOD"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: consumer_contract
+  enforcement: monitor
+- name: ACTUAL_AMOUNT_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_budget_actual_fact_v" WHERE "ACTUAL_AMOUNT"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: consumer_contract
+  enforcement: monitor
+- name: BUDGET_AMOUNT_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_budget_actual_fact_v" WHERE "BUDGET_AMOUNT"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: consumer_contract
+  enforcement: monitor
+- name: allowed_values_CURRENCY
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_budget_actual_fact_v" WHERE "CURRENCY"
+    NOT IN ('EUR')
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: allowed_values
+  kind: internal_gate
+  enforcement: monitor

@@ -1,0 +1,83 @@
+product: r_s4h_vbak_rt
+kind: internal_gate
+dataset: r_s4h_vbak_rt
+owned_by: platform
+owners:
+- team-platform
+version: 1.0.0
+lifecycle: active
+description: 'Technisches Gate auf dem Auftragskopf-Replikat: Schlüssel, Pflichtfelder,
+  Aktualität.'
+guarantees:
+  schema:
+    columns:
+    - VBELN
+    - ERDAT
+    - AEDAT
+    - KUNNR
+    - VKORG
+    - AUART
+    - NETWR
+    - WAERK
+    - GBSTK
+    mode: closed
+    severity: critical
+    types:
+      VBELN:
+        type: string
+        key: true
+        nullable: false
+      ERDAT:
+        type: date
+      AEDAT:
+        type: timestamp
+      KUNNR:
+        type: string
+      VKORG:
+        type: string
+      AUART:
+        type: string
+      NETWR:
+        type: decimal
+      WAERK:
+        type: string
+      GBSTK:
+        type: string
+  keys:
+  - columns:
+    - VBELN
+    unique: true
+    severity: critical
+  freshness:
+    column: AEDAT
+    max_age: PT6H
+    severity: fail
+  volume:
+    min_rows: 40000
+    severity: warn
+    baseline: rolling
+    bounds: auto
+  not_null:
+  - columns:
+    - VBELN
+    - KUNNR
+    - ERDAT
+    severity: critical
+checks:
+- id: allowed_values
+  params:
+    <SPALTE>: WAERK
+    <WERTE>:
+    - EUR
+    - USD
+    - CHF
+    - GBP
+  expect: = 0
+  severity: fail
+- id: string_length
+  params:
+    <SPALTE>: VBELN
+    <MIN>: '10'
+    <MAX>: '10'
+  expect: = 0
+  severity: warn

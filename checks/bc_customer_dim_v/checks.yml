@@ -1,0 +1,89 @@
+# contract_hash: 7aca79d9030fb44a
+# library_version: 6
+# compiler_hash: dcc20bf20a209282
+dataset: bc_customer_dim_v
+schema: '{schema}'
+contract_version: 1.3.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'bc_customer_dim_v' UNION ALL SELECT COLUMN_NAME
+    FROM "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'bc_customer_dim_v')
+    catalog_columns
+  expect: = 6
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: provider_contract
+  enforcement: gate
+- name: key_CUSTOMER_ID_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "CUSTOMER_ID") FROM "{schema}"."bc_customer_dim_v"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate
+  kind: provider_contract
+  enforcement: gate
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_customer_dim_v"
+  expect: '>= 8000'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: provider_contract
+  enforcement: gate
+- name: completeness_REGION_CODE
+  sql: SELECT ROUND(100.0 * COUNT(CASE WHEN "REGION_CODE" IS NULL THEN 1 END) / NULLIF(COUNT(*),
+    0), 2) FROM "{schema}"."bc_customer_dim_v"
+  expect: <= 2.0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: completeness_pct
+  unit: '%'
+  kind: provider_contract
+  enforcement: gate
+- name: completeness_CUSTOMER_GROUP
+  sql: SELECT ROUND(100.0 * COUNT(CASE WHEN "CUSTOMER_GROUP" IS NULL THEN 1 END) /
+    NULLIF(COUNT(*), 0), 2) FROM "{schema}"."bc_customer_dim_v"
+  expect: <= 2.0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: completeness_pct
+  unit: '%'
+  kind: provider_contract
+  enforcement: gate
+- name: CUSTOMER_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_customer_dim_v" WHERE "CUSTOMER_ID" IS
+    NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: CUSTOMER_NAME_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_customer_dim_v" WHERE "CUSTOMER_NAME" IS
+    NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: pattern_match_COUNTRY_CODE
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_customer_dim_v" WHERE "COUNTRY_CODE" IS
+    NOT NULL AND NOT "COUNTRY_CODE" LIKE_REGEXPR '^[A-Z]{2}$'
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: pattern_match
+  kind: internal_gate
+  enforcement: gate

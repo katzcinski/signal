@@ -1,0 +1,94 @@
+# contract_hash: b2a5655c6b14125a
+# library_version: 6
+# compiler_hash: 586eb2d5e941d69a
+dataset: r_s4h_vbak_rt
+schema: '{schema}'
+contract_version: 1.0.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'r_s4h_vbak_rt' UNION ALL SELECT COLUMN_NAME FROM
+    "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'r_s4h_vbak_rt')
+    catalog_columns
+  expect: = 9
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: internal_gate
+  enforcement: monitor
+- name: key_VBELN_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "VBELN") FROM "{schema}"."r_s4h_vbak_rt"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate
+  kind: internal_gate
+  enforcement: monitor
+- name: freshness_AEDAT
+  sql: SELECT SECONDS_BETWEEN(MAX("AEDAT"), CURRENT_TIMESTAMP) FROM "{schema}"."r_s4h_vbak_rt"
+  expect: < 21600
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: freshness
+  unit: s
+  kind: internal_gate
+  enforcement: monitor
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbak_rt"
+  expect: '>= 40000'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: internal_gate
+  enforcement: monitor
+- name: VBELN_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbak_rt" WHERE "VBELN" IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: KUNNR_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbak_rt" WHERE "KUNNR" IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: ERDAT_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbak_rt" WHERE "ERDAT" IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: allowed_values_WAERK
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbak_rt" WHERE "WAERK" NOT IN ('EUR',
+    'USD', 'CHF', 'GBP')
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: allowed_values
+  kind: internal_gate
+  enforcement: monitor
+- name: string_length_VBELN
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbak_rt" WHERE "VBELN" IS NOT NULL AND
+    LENGTH("VBELN") NOT BETWEEN 10 AND 10
+  expect: = 0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: string_length
+  kind: internal_gate
+  enforcement: monitor

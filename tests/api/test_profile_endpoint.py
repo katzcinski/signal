@@ -172,3 +172,32 @@ def test_profile_unknown_object_404(api_client, monkeypatch):
         headers={"X-DQ-Role": "steward"},
     )
     assert resp.status_code == 404
+
+
+def test_latest_profile_returns_stored_snapshot(api_client, monkeypatch):
+    # Profiling persists an aggregate snapshot; the read-only GET returns it
+    # without any live connection.
+    _patch_live_hana(monkeypatch)
+    post = api_client.post(
+        "/api/objects/DS_SALES_ORDERS/profile",
+        json={"environment": "prod", "include_composite": True},
+        headers={"X-DQ-Role": "steward"},
+    )
+    assert post.status_code == 202, post.text
+    _wait_for_profile(api_client, post.json()["op_id"])
+
+    resp = api_client.get("/api/objects/DS_SALES_ORDERS/profile/latest")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body is not None
+    assert body["snapshot_id"]
+    assert body["stats"]["row_count"] == 100
+    # G8: aggregate-only — no raw sample rows in the stored snapshot.
+    assert "sample_rows" not in body["stats"]
+
+
+def test_latest_profile_absent_returns_null(api_client):
+    # Object without a stored snapshot → 200 with null body (no live run forced).
+    resp = api_client.get("/api/objects/DS_NEVER_PROFILED/profile/latest")
+    assert resp.status_code == 200, resp.text
+    assert resp.json() is None

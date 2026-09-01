@@ -19,6 +19,11 @@ const FAMILY_ACCENT: Record<string, string> = {
   completeness: 'var(--qual)', not_null: 'var(--qual)',
 };
 
+// Zusatz-Slots je Kanalzug: Änderungs-Badge, Hinweis am ausgeschalteten Zug und
+// Fuß (Deltas gegen die aktive Version, Miner-Vorschlag) — vom EditorPane
+// befüllt, damit der Editor selbst frei von Diff-/Proposal-Logik bleibt.
+export interface FamilySlots { badge?: ReactNode; offHint?: ReactNode; footer?: ReactNode }
+
 interface GuaranteeEditorProps {
   guarantees: ContractGuarantees;
   onChange: (g: ContractGuarantees) => void;
@@ -28,10 +33,12 @@ interface GuaranteeEditorProps {
   // Beobachtete Realität je Familie (letzter Messwert, Sparkline, PASS/FAIL) —
   // von der Workbench eingespeist, sobald der observed-Endpoint geladen ist.
   observed?: (familyKey: string) => ReactNode;
+  slots?: (familyKey: string) => FamilySlots;
 }
 
-export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, columnsOfDataset, observed }: GuaranteeEditorProps) {
+export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOptions, columnsOfDataset, observed, slots }: GuaranteeEditorProps) {
   const g = guarantees;
+  const slot = (familyKey: string): FamilySlots => slots?.(familyKey) ?? {};
   const set = (patch: Partial<ContractGuarantees>) => onChange({ ...g, ...patch });
   const unset = (key: keyof ContractGuarantees) => {
     const next = { ...g };
@@ -51,6 +58,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
       {/* schema */}
       <GuaranteeCard
         familyKey="schema"
+        {...slot('schema')}
         accent={FAMILY_ACCENT.schema}
         enabled={!!g.schema}
         onToggle={on => on ? set({ schema: { columns: [], mode: 'closed', severity: 'fail' } }) : unset('schema')}
@@ -85,6 +93,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
       {/* keys */}
       <GuaranteeCard
         familyKey="keys"
+        {...slot('keys')}
         accent={FAMILY_ACCENT.keys}
         enabled={!!g.keys}
         onToggle={on => on ? set({ keys: [{ columns: [], unique: true, severity: 'critical' }] }) : unset('keys')}
@@ -140,6 +149,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
       {/* referential */}
       <GuaranteeCard
         familyKey="referential"
+        {...slot('referential')}
         accent={FAMILY_ACCENT.referential}
         enabled={!!g.referential}
         onToggle={on => on ? set({ referential: [{ fk: [], parent: '', parent_key: [], severity: 'fail' }] }) : unset('referential')}
@@ -195,6 +205,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
       {/* freshness */}
       <GuaranteeCard
         familyKey="freshness"
+        {...slot('freshness')}
         accent={FAMILY_ACCENT.freshness}
         enabled={!!g.freshness}
         onToggle={on => on ? set({ freshness: { column: '', max_age: 'PT24H', severity: 'warn' } }) : unset('freshness')}
@@ -230,6 +241,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
       {/* volume */}
       <GuaranteeCard
         familyKey="volume"
+        {...slot('volume')}
         accent={FAMILY_ACCENT.volume}
         enabled={!!g.volume}
         onToggle={on => on ? set({ volume: { min_rows: 1, severity: 'warn' } }) : unset('volume')}
@@ -283,6 +295,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
       {/* completeness */}
       <GuaranteeCard
         familyKey="completeness"
+        {...slot('completeness')}
         accent={FAMILY_ACCENT.completeness}
         enabled={!!g.completeness}
         onToggle={on => on ? set({ completeness: [{ column: '', min_pct: 95, severity: 'warn' }] }) : unset('completeness')}
@@ -329,6 +342,7 @@ export function GuaranteeEditor({ guarantees, onChange, columnOptions, datasetOp
       {/* not_null */}
       <GuaranteeCard
         familyKey="not_null"
+        {...slot('not_null')}
         accent={FAMILY_ACCENT.not_null}
         enabled={!!g.not_null}
         onToggle={on => on ? set({ not_null: [{ columns: [], severity: 'fail' }] }) : unset('not_null')}

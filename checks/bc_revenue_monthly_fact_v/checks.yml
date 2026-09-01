@@ -1,0 +1,99 @@
+# contract_hash: c68b3dd1788db1bd
+# library_version: 6
+# compiler_hash: 02d281ef366f00a8
+dataset: bc_revenue_monthly_fact_v
+schema: '{schema}'
+contract_version: 1.4.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'bc_revenue_monthly_fact_v' UNION ALL SELECT COLUMN_NAME
+    FROM "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'bc_revenue_monthly_fact_v')
+    catalog_columns
+  expect: = 9
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: provider_contract
+  enforcement: gate
+- name: key_FISCAL_YEAR_MONTH_SALES_ORG_REGION_CODE_PRODUCT_GROUP_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "FISCAL_YEAR_MONTH" || '|' || "SALES_ORG"
+    || '|' || "REGION_CODE" || '|' || "PRODUCT_GROUP") FROM "{schema}"."bc_revenue_monthly_fact_v"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate_composite
+  kind: provider_contract
+  enforcement: gate
+- name: freshness_CHANGED_AT
+  sql: SELECT SECONDS_BETWEEN(MAX("CHANGED_AT"), CURRENT_TIMESTAMP) FROM "{schema}"."bc_revenue_monthly_fact_v"
+  expect: < 86400
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: freshness
+  unit: s
+  kind: provider_contract
+  enforcement: gate
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_revenue_monthly_fact_v"
+  expect: '>= 2400'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: provider_contract
+  enforcement: gate
+- name: completeness_PRODUCT_GROUP
+  sql: SELECT ROUND(100.0 * COUNT(CASE WHEN "PRODUCT_GROUP" IS NULL THEN 1 END) /
+    NULLIF(COUNT(*), 0), 2) FROM "{schema}"."bc_revenue_monthly_fact_v"
+  expect: <= 1.0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: completeness_pct
+  unit: '%'
+  kind: provider_contract
+  enforcement: gate
+- name: FISCAL_YEAR_MONTH_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_revenue_monthly_fact_v" WHERE "FISCAL_YEAR_MONTH"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: SALES_ORG_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_revenue_monthly_fact_v" WHERE "SALES_ORG"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: REVENUE_EUR_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_revenue_monthly_fact_v" WHERE "REVENUE_EUR"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: provider_contract
+  enforcement: gate
+- name: value_range_REVENUE_EUR
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_revenue_monthly_fact_v" WHERE "REVENUE_EUR"
+    < 0 OR "REVENUE_EUR" > 80000000
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: value_range
+  kind: internal_gate
+  enforcement: gate

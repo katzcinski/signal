@@ -6,7 +6,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "cwd": "apps/cockpit",
-      "autoPort": false,
+      "autoPort": true,
       "port": 5173
     },
     {

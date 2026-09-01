@@ -1,0 +1,118 @@
+# contract_hash: c99ae35bace5e965
+# library_version: 6
+# compiler_hash: b7bf46e97059acd4
+dataset: r_fil_budget_plan_lt
+schema: '{schema}'
+contract_version: 1.0.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'r_fil_budget_plan_lt' UNION ALL SELECT COLUMN_NAME
+    FROM "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'r_fil_budget_plan_lt')
+    catalog_columns
+  expect: = 7
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: internal_gate
+  enforcement: monitor
+- name: key_FISCAL_YEAR_FISCAL_PERIOD_SALES_ORG_PRODUCT_GROUP_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "FISCAL_YEAR" || '|' || "FISCAL_PERIOD" ||
+    '|' || "SALES_ORG" || '|' || "PRODUCT_GROUP") FROM "{schema}"."r_fil_budget_plan_lt"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate_composite
+  kind: internal_gate
+  enforcement: monitor
+- name: freshness_UPLOADED_AT
+  sql: SELECT SECONDS_BETWEEN(MAX("UPLOADED_AT"), CURRENT_TIMESTAMP) FROM "{schema}"."r_fil_budget_plan_lt"
+  expect: < 3024000
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: freshness
+  unit: s
+  kind: internal_gate
+  enforcement: monitor
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."r_fil_budget_plan_lt"
+  expect: '>= 480'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: internal_gate
+  enforcement: monitor
+- name: FISCAL_YEAR_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_fil_budget_plan_lt" WHERE "FISCAL_YEAR"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: FISCAL_PERIOD_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_fil_budget_plan_lt" WHERE "FISCAL_PERIOD"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: SALES_ORG_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_fil_budget_plan_lt" WHERE "SALES_ORG" IS
+    NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: PRODUCT_GROUP_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_fil_budget_plan_lt" WHERE "PRODUCT_GROUP"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: BUDGET_AMOUNT_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_fil_budget_plan_lt" WHERE "BUDGET_AMOUNT"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: allowed_values_CURRENCY
+  sql: SELECT COUNT(*) FROM "{schema}"."r_fil_budget_plan_lt" WHERE "CURRENCY" NOT
+    IN ('EUR')
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: allowed_values
+  kind: internal_gate
+  enforcement: monitor
+- name: value_range_BUDGET_AMOUNT
+  sql: SELECT COUNT(*) FROM "{schema}"."r_fil_budget_plan_lt" WHERE "BUDGET_AMOUNT"
+    < 0 OR "BUDGET_AMOUNT" > 50000000
+  expect: = 0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: value_range
+  kind: internal_gate
+  enforcement: monitor

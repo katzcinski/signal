@@ -1,0 +1,6 @@
+product: customer_master
+owners:
+- team-mdm
+output_ports:
+- dataset: bc_customer_dim_v
+inbound: []

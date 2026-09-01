@@ -1,0 +1,82 @@
+product: r_fil_budget_plan_lt
+kind: internal_gate
+dataset: r_fil_budget_plan_lt
+owned_by: product
+owners:
+- team-controlling
+version: 1.0.0
+lifecycle: active
+description: 'Gate auf dem Budget-Flatfile: Vollständigkeit des Uploads je Periode.'
+guarantees:
+  schema:
+    columns:
+    - FISCAL_YEAR
+    - FISCAL_PERIOD
+    - SALES_ORG
+    - PRODUCT_GROUP
+    - BUDGET_AMOUNT
+    - CURRENCY
+    - UPLOADED_AT
+    mode: closed
+    severity: critical
+    types:
+      FISCAL_YEAR:
+        type: string
+        key: true
+        nullable: false
+      FISCAL_PERIOD:
+        type: string
+        key: true
+        nullable: false
+      SALES_ORG:
+        type: string
+        key: true
+        nullable: false
+      PRODUCT_GROUP:
+        type: string
+        key: true
+        nullable: false
+      BUDGET_AMOUNT:
+        type: decimal
+      CURRENCY:
+        type: string
+      UPLOADED_AT:
+        type: timestamp
+  keys:
+  - columns:
+    - FISCAL_YEAR
+    - FISCAL_PERIOD
+    - SALES_ORG
+    - PRODUCT_GROUP
+    unique: true
+    severity: critical
+  freshness:
+    column: UPLOADED_AT
+    max_age: P35D
+    severity: warn
+  volume:
+    min_rows: 480
+    severity: warn
+  not_null:
+  - columns:
+    - FISCAL_YEAR
+    - FISCAL_PERIOD
+    - SALES_ORG
+    - PRODUCT_GROUP
+    - BUDGET_AMOUNT
+    severity: fail
+checks:
+- id: allowed_values
+  params:
+    <SPALTE>: CURRENCY
+    <WERTE>:
+    - EUR
+  expect: = 0
+  severity: fail
+- id: value_range
+  params:
+    <SPALTE>: BUDGET_AMOUNT
+    <MIN>: '0'
+    <MAX>: '50000000'
+  expect: = 0
+  severity: warn

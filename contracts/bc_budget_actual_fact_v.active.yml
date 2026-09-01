@@ -1,0 +1,82 @@
+product: bc_budget_actual_fact_v
+kind: consumer_contract
+dataset: bc_budget_actual_fact_v
+owned_by: product
+owners:
+- team-controlling
+version: 1.0.0
+lifecycle: active
+description: Vom Controlling-Dashboard konsumierte Garantien auf Budget/Ist.
+guarantees:
+  schema:
+    columns:
+    - FISCAL_YEAR
+    - FISCAL_PERIOD
+    - SALES_ORG
+    - PRODUCT_GROUP
+    - ACTUAL_AMOUNT
+    - BUDGET_AMOUNT
+    - VARIANCE_AMOUNT
+    - CURRENCY
+    - CHANGED_AT
+    mode: closed
+    severity: critical
+    types:
+      FISCAL_YEAR:
+        type: string
+        key: true
+        nullable: false
+      FISCAL_PERIOD:
+        type: string
+        key: true
+        nullable: false
+      SALES_ORG:
+        type: string
+        key: true
+        nullable: false
+      PRODUCT_GROUP:
+        type: string
+        key: true
+        nullable: false
+      ACTUAL_AMOUNT:
+        type: decimal
+      BUDGET_AMOUNT:
+        type: decimal
+      VARIANCE_AMOUNT:
+        type: decimal
+      CURRENCY:
+        type: string
+      CHANGED_AT:
+        type: timestamp
+  keys:
+  - columns:
+    - FISCAL_YEAR
+    - FISCAL_PERIOD
+    - SALES_ORG
+    - PRODUCT_GROUP
+    unique: true
+    severity: critical
+  freshness:
+    column: CHANGED_AT
+    max_age: P2D
+    severity: warn
+  volume:
+    min_rows: 480
+    severity: warn
+    baseline: rolling
+    bounds: auto
+  not_null:
+  - columns:
+    - FISCAL_YEAR
+    - FISCAL_PERIOD
+    - ACTUAL_AMOUNT
+    - BUDGET_AMOUNT
+    severity: fail
+checks:
+- id: allowed_values
+  params:
+    <SPALTE>: CURRENCY
+    <WERTE>:
+    - EUR
+  expect: = 0
+  severity: fail

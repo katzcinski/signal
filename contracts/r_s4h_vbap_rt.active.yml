@@ -1,0 +1,76 @@
+product: r_s4h_vbap_rt
+kind: internal_gate
+dataset: r_s4h_vbap_rt
+owned_by: platform
+owners:
+- team-platform
+version: 1.0.0
+lifecycle: active
+description: 'Technisches Gate auf dem Positions-Replikat: zusammengesetzter Schlüssel
+  und Mengenplausibilität.'
+guarantees:
+  schema:
+    columns:
+    - VBELN
+    - POSNR
+    - MATNR
+    - KWMENG
+    - MEINS
+    - NETWR
+    - WAERK
+    - WERKS
+    - AEDAT
+    mode: closed
+    severity: critical
+    types:
+      VBELN:
+        type: string
+        key: true
+        nullable: false
+      POSNR:
+        type: string
+        key: true
+        nullable: false
+      MATNR:
+        type: string
+      KWMENG:
+        type: decimal
+      MEINS:
+        type: string
+      NETWR:
+        type: decimal
+      WAERK:
+        type: string
+      WERKS:
+        type: string
+      AEDAT:
+        type: timestamp
+  keys:
+  - columns:
+    - VBELN
+    - POSNR
+    unique: true
+    severity: critical
+  freshness:
+    column: AEDAT
+    max_age: PT6H
+    severity: fail
+  volume:
+    min_rows: 120000
+    severity: warn
+    baseline: rolling
+    bounds: auto
+  not_null:
+  - columns:
+    - VBELN
+    - POSNR
+    - MATNR
+    severity: critical
+checks:
+- id: value_range
+  params:
+    <SPALTE>: KWMENG
+    <MIN>: '0'
+    <MAX>: '1000000'
+  expect: = 0
+  severity: fail

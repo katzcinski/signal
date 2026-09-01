@@ -1,0 +1,99 @@
+# contract_hash: 5699430d841a8b0f
+# library_version: 6
+# compiler_hash: 2c722c87cdc3bc44
+dataset: bc_open_sales_orders_fact_v
+schema: '{schema}'
+contract_version: 1.2.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'bc_open_sales_orders_fact_v' UNION ALL SELECT COLUMN_NAME
+    FROM "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'bc_open_sales_orders_fact_v')
+    catalog_columns
+  expect: = 10
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: consumer_contract
+  enforcement: monitor
+- name: key_SALES_ORDER_ID_ORDER_ITEM_ID_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "SALES_ORDER_ID" || '|' || "ORDER_ITEM_ID")
+    FROM "{schema}"."bc_open_sales_orders_fact_v"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate_composite
+  kind: consumer_contract
+  enforcement: monitor
+- name: freshness_CHANGED_AT
+  sql: SELECT SECONDS_BETWEEN(MAX("CHANGED_AT"), CURRENT_TIMESTAMP) FROM "{schema}"."bc_open_sales_orders_fact_v"
+  expect: < 36000
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: freshness
+  unit: s
+  kind: consumer_contract
+  enforcement: monitor
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_open_sales_orders_fact_v"
+  expect: '>= 18000'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: consumer_contract
+  enforcement: monitor
+- name: completeness_REGION_CODE
+  sql: SELECT ROUND(100.0 * COUNT(CASE WHEN "REGION_CODE" IS NULL THEN 1 END) / NULLIF(COUNT(*),
+    0), 2) FROM "{schema}"."bc_open_sales_orders_fact_v"
+  expect: <= 2.0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: completeness_pct
+  unit: '%'
+  kind: consumer_contract
+  enforcement: monitor
+- name: SALES_ORDER_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_open_sales_orders_fact_v" WHERE "SALES_ORDER_ID"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: consumer_contract
+  enforcement: monitor
+- name: ORDER_ITEM_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_open_sales_orders_fact_v" WHERE "ORDER_ITEM_ID"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: consumer_contract
+  enforcement: monitor
+- name: ORDER_STATUS_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_open_sales_orders_fact_v" WHERE "ORDER_STATUS"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: consumer_contract
+  enforcement: monitor
+- name: allowed_values_ORDER_STATUS
+  sql: SELECT COUNT(*) FROM "{schema}"."bc_open_sales_orders_fact_v" WHERE "ORDER_STATUS"
+    NOT IN ('A', 'B', 'C')
+  expect: = 0
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: allowed_values
+  kind: internal_gate
+  enforcement: monitor

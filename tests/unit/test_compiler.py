@@ -17,20 +17,23 @@ from dq_core.contract.compiler import (
 from dq_core.engine.check_engine import dataset_config_to_yaml
 
 
+SHIPPED_PRODUCT = "bc_sales_order_item_fact_v"
+
+
 def _shipped_contract() -> dict:
-    path = Path(__file__).parents[2] / "contracts" / "DS_SALES_ORDERS.yaml"
+    path = Path(__file__).parents[2] / "contracts" / f"{SHIPPED_PRODUCT}.yaml"
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
 def test_compiles_shipped_contract_to_checks():
     """§0-Regression: der Repo-Contract muss kompilieren — und zwar nicht leer."""
     config = compile_contract(_shipped_contract())
-    assert config.dataset == "DS_SALES_ORDERS"
-    assert len(config.checks) >= 6  # schema + key + 4×not_null + volume + freshness
+    assert config.dataset == SHIPPED_PRODUCT
+    assert len(config.checks) >= 6  # schema + key + not_null + volume + freshness + …
     names = {c.name for c in config.checks}
-    assert "key_ORDER_ID_unique" in names
+    assert "key_SALES_ORDER_ID_ORDER_ITEM_ID_unique" in names
     assert "volume_min_rows" in names
-    assert "freshness_ORDER_DATE" in names
+    assert "freshness_CHANGED_AT" in names
 
 
 def test_schema_placeholder_preserved_g2():

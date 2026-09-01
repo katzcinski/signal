@@ -45,7 +45,9 @@ cli/                   # dq_check_runner.py — run the engine without the API (
 contracts/             # Contract YAMLs — Git is the source of truth
 products/              # Data-product manifests (<name>.yaml — identity, owner, ports)
 data/                  # inventory.json / lineage.json (extract snapshots)
-scripts/               # seed.py, export_openapi.py
+scripts/               # demo_landscape.py (Demo-Landschaft = single source of truth),
+                       #   build_demo_snapshot.py (→ data/, contracts/, checks/, products/),
+                       #   seed.py (→ Result-Store), export_openapi.py
 docs/                  # concepts, plans, ADRs, reviews, operating modes, tool reference
 tests/                 # pytest: tests/unit (engine) + tests/api (FastAPI)
 ```
@@ -122,7 +124,9 @@ invariants — respect them when editing nearby.
 make install          # backend deps (pip) + frontend deps (npm)
 make dev-backend      # FastAPI on 127.0.0.1:8000 (docs at /api/docs)
 make dev-frontend     # Vite on localhost:5173
-SQLITE_DB=signal.db make seed   # seed demo data into the result store
+SQLITE_DB=signal.db make seed   # complete demo workspace: rewrites data/, contracts/,
+                                #   checks/, products/ AND seeds the result store.
+                                #   `python scripts/seed.py --db-only` keeps the files.
 
 # Tests (full suites)
 make test             # python -m pytest tests/ -v --tb=short

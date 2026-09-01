@@ -1,12 +1,23 @@
-// „Vertragsblatt": sticky rechte Spalte mit Versionssprung, YAML-Vorschau und
-// Freigabepfad (Speichern → G1 → Kompilieren/Dry-Run → G3 → Aktivieren) als
-// Leiterbahn mit Pins. Rein präsentational; Status + Aktionen kommen vom EditorPane.
-import type { ReactNode } from 'react';
+// „Vertragsblatt": sticky rechte Spalte mit Versionssprung, YAML-Vorschau (als
+// Diff gegen die gespeicherte Fassung) und Freigabepfad (Speichern → G1 →
+// Kompilieren/Dry-Run → G3 → Aktivieren) als Leiterbahn mit Pins. Rein
+// präsentational; Status + Aktionen kommen vom EditorPane.
+import type { CSSProperties, ReactNode } from 'react';
 import { t } from '@/i18n/de';
 import { monoStyle } from './shared';
+import { diffYamlLines } from './yamlDiff';
 
 export type PathStatus = 'done' | 'current' | 'pending' | 'blocked';
-export interface PathStep { key: string; label: string; hint?: ReactNode; status: PathStatus; badge?: string }
+export interface PathStep {
+  key: string;
+  label: string;
+  hint?: ReactNode;
+  status: PathStatus;
+  badge?: string;
+  // Aktion direkt am Pin (z. B. G3: Major-Bump bestätigen) — das Gate ist ein
+  // First-Class-UI-Moment, keine vergrabene Fehlermeldung.
+  action?: ReactNode;
+}
 
 const PIN: Record<PathStatus, { color: string; glyph: string }> = {
   done: { color: 'var(--status-ok)', glyph: '✓' },
@@ -15,14 +26,33 @@ const PIN: Record<PathStatus, { color: string; glyph: string }> = {
   pending: { color: 'var(--line-2)', glyph: '○' },
 };
 
-export function Vertragsblatt({ versionFrom, versionTo, majorRequired, yaml, steps, footer }: {
+const LINE_TONE: Record<string, CSSProperties> = {
+  ctx: {},
+  add: {
+    background: 'color-mix(in srgb, var(--status-ok) 14%, transparent)',
+    color: 'var(--status-ok)',
+  },
+  del: {
+    background: 'color-mix(in srgb, var(--status-fail) 14%, transparent)',
+    color: 'var(--status-fail)',
+    textDecoration: 'line-through',
+  },
+};
+
+const SIGN: Record<string, string> = { ctx: ' ', add: '+', del: '-' };
+
+export function Vertragsblatt({ versionFrom, versionTo, majorRequired, yaml, yamlBase, steps, headerExtra, footer }: {
   versionFrom: string;
   versionTo: string;
   majorRequired: boolean;
   yaml: string;
+  // Gespeicherte Fassung als Diff-Baseline; fehlt sie, ist alles Kontext.
+  yamlBase?: string;
   steps: PathStep[];
+  headerExtra?: ReactNode;
   footer?: ReactNode;
 }) {
+  const lines = diffYamlLines(yamlBase ?? '', yaml);
   return (
     <aside
       aria-label={t.workbench.sheet.title}
@@ -32,8 +62,12 @@ export function Vertragsblatt({ versionFrom, versionTo, majorRequired, yaml, ste
         display: 'flex', flexDirection: 'column', gap: 'var(--s4)', padding: 'var(--s4)', minWidth: 0,
       }}
     >
-      <div style={{ fontSize: 'var(--fs-eyebrow)', color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-        {t.workbench.sheet.title}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
+        <span style={{ fontSize: 'var(--fs-eyebrow)', color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {t.workbench.sheet.title}
+        </span>
+        <div style={{ flex: 1 }} />
+        {headerExtra}
       </div>
 
       {/* Versionssprung */}
@@ -52,13 +86,19 @@ export function Vertragsblatt({ versionFrom, versionTo, majorRequired, yaml, ste
         )}
       </div>
 
-      {/* YAML-Vorschau */}
+      {/* YAML-Vorschau als Diff gegen die gespeicherte Fassung */}
       <pre style={{
         ...monoStyle, fontSize: 11, color: 'var(--fg-2)', background: 'var(--bg-2)',
-        border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: 'var(--s3)',
-        margin: 0, overflow: 'auto', maxHeight: 260, whiteSpace: 'pre',
+        border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: 'var(--s2) 0',
+        margin: 0, overflow: 'auto', maxHeight: 260,
       }}>
-        {yaml || '—'}
+        {lines.length === 0 ? (
+          <div style={{ padding: '0 var(--s3)' }}>—</div>
+        ) : lines.map((l, i) => (
+          <div key={i} style={{ ...LINE_TONE[l.kind], padding: '0 var(--s3)', whiteSpace: 'pre' }}>
+            {SIGN[l.kind]}{l.text}
+          </div>
+        ))}
       </pre>
 
       {/* Freigabepfad */}
@@ -92,6 +132,7 @@ export function Vertragsblatt({ versionFrom, versionTo, majorRequired, yaml, ste
                     )}
                   </div>
                   {s.hint && <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 2, lineHeight: 'var(--lh-meta)' }}>{s.hint}</div>}
+                  {s.action && <div style={{ marginTop: 'var(--s2)' }}>{s.action}</div>}
                 </div>
               </li>
             );

@@ -105,3 +105,39 @@ def test_compliance_round_trip(tmp_path):
     c = store.get_compliance("product_a")
     assert c is not None
     assert c["compliance"] == "compliant"
+
+
+def test_object_status_ignores_gating_states_g6(tmp_path):
+    """[G6] Ein übersprungener Check färbt das Objekt nicht rot.
+
+    Frische-Gating erzeugt für teure Checks ``skipped_stale`` mit
+    ``passed=False``. Der Objekt-Rollup muss das — wie ``_overall_status`` und
+    ``get_object_family_status`` — als statusneutral behandeln, sonst zeigt das
+    Grid "critical", während der Lauf selbst "warn" meldet.
+    """
+    store = ResultStore(tmp_path / "gating.db")
+    store.save_run(RunSummary(
+        run_id="r1",
+        dataset="ds_gated",
+        schema="S",
+        started_at="2026-08-01T06:00:00+00:00",
+        finished_at="2026-08-01T06:01:00+00:00",
+        overall_status="warn",
+        total=2, passed=0, failed=0, warnings=1,
+        results=[
+            CheckResult(
+                name="freshness_CHANGED_AT", sql="-- fresh", expect="< 100",
+                severity="warn", passed=False, actual_value="500",
+                state="executed", type="freshness",
+            ),
+            CheckResult(
+                name="key_ID_unique", sql="-- dup", expect="= 0",
+                severity="critical", passed=False, actual_value=None,
+                state="skipped_stale", type="duplicate",
+            ),
+        ],
+        run_state="finished",
+    ))
+
+    status = {row["dataset"]: row for row in store.get_object_status()}
+    assert status["ds_gated"]["status"] == "warn"

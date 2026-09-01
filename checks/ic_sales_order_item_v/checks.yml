@@ -1,0 +1,129 @@
+# contract_hash: 1a90103e25c296f6
+# library_version: 6
+# compiler_hash: d39ec09cca5659a7
+dataset: ic_sales_order_item_v
+schema: '{schema}'
+contract_version: 1.1.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'ic_sales_order_item_v' UNION ALL SELECT COLUMN_NAME
+    FROM "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'ic_sales_order_item_v')
+    catalog_columns
+  expect: = 12
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: internal_gate
+  enforcement: quarantine
+- name: key_SALES_ORDER_ID_ORDER_ITEM_ID_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "SALES_ORDER_ID" || '|' || "ORDER_ITEM_ID")
+    FROM "{schema}"."ic_sales_order_item_v"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate_composite
+  kind: internal_gate
+  enforcement: quarantine
+- name: ref_CUSTOMER_ID_ic_customer_v
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_sales_order_item_v" f LEFT JOIN "{schema}"."ic_customer_v"
+    d ON f."CUSTOMER_ID" = d."CUSTOMER_ID" WHERE d."CUSTOMER_ID" IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: reference_integrity
+  kind: internal_gate
+  enforcement: quarantine
+- name: freshness_CHANGED_AT
+  sql: SELECT SECONDS_BETWEEN(MAX("CHANGED_AT"), CURRENT_TIMESTAMP) FROM "{schema}"."ic_sales_order_item_v"
+  expect: < 28800
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: freshness
+  unit: s
+  kind: internal_gate
+  enforcement: quarantine
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_sales_order_item_v"
+  expect: '>= 120000'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: internal_gate
+  enforcement: quarantine
+- name: completeness_MATERIAL_ID
+  sql: SELECT ROUND(100.0 * COUNT(CASE WHEN "MATERIAL_ID" IS NULL THEN 1 END) / NULLIF(COUNT(*),
+    0), 2) FROM "{schema}"."ic_sales_order_item_v"
+  expect: <= 0.5
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: completeness_pct
+  unit: '%'
+  kind: internal_gate
+  enforcement: quarantine
+- name: SALES_ORDER_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_sales_order_item_v" WHERE "SALES_ORDER_ID"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: quarantine
+- name: ORDER_ITEM_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_sales_order_item_v" WHERE "ORDER_ITEM_ID"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: quarantine
+- name: CUSTOMER_ID_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_sales_order_item_v" WHERE "CUSTOMER_ID"
+    IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: quarantine
+- name: NET_AMOUNT_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_sales_order_item_v" WHERE "NET_AMOUNT"
+    IS NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: quarantine
+- name: CURRENCY_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_sales_order_item_v" WHERE "CURRENCY" IS
+    NULL
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: quarantine
+- name: value_range_NET_AMOUNT
+  sql: SELECT COUNT(*) FROM "{schema}"."ic_sales_order_item_v" WHERE "NET_AMOUNT"
+    < 0 OR "NET_AMOUNT" > 5000000
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: value_range
+  kind: internal_gate
+  enforcement: quarantine

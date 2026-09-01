@@ -20,13 +20,16 @@ function Chip({ label, tone, subtle }: HeroChip) {
   );
 }
 
-export function WorkbenchHero({ title, chips, meta, facts, unsaved, actions }: {
+export function WorkbenchHero({ title, chips, meta, facts, unsaved, actions, versionJump }: {
   title: string;
   chips: HeroChip[];
   meta: string[];
   facts: HeroFact[];
   unsaved: boolean;
   actions: ReactNode;
+  // Versionsstreifen (aktiv → Entwurf) links im Fakten-Band; die Fakten rücken
+  // dann nach rechts (Design-Proposal „verstrip").
+  versionJump?: ReactNode;
 }) {
   return (
     <div className="object-detail-hero" style={{
@@ -61,17 +64,20 @@ export function WorkbenchHero({ title, chips, meta, facts, unsaved, actions }: {
         </div>
       </div>
 
-      {facts.length > 0 && (
+      {(facts.length > 0 || versionJump) && (
         <div style={{
-          display: 'flex', gap: 'var(--s5)', flexWrap: 'wrap', marginTop: 'var(--s4)',
+          display: 'flex', alignItems: 'center', gap: 'var(--s5)', flexWrap: 'wrap', marginTop: 'var(--s4)',
           paddingTop: 'var(--s4)', borderTop: '1px solid var(--line)',
         }}>
-          {facts.map((f, i) => (
-            <div key={i} style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 'var(--fs-eyebrow)', color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{f.label}</div>
-              <div style={{ fontSize: 14, fontWeight: 650, color: f.tone ?? 'var(--fg)' }}>{f.value}</div>
-            </div>
-          ))}
+          {versionJump}
+          <div style={{ display: 'flex', gap: 'var(--s5)', flexWrap: 'wrap', marginLeft: versionJump ? 'auto' : undefined }}>
+            {facts.map((f, i) => (
+              <div key={i} style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 'var(--fs-eyebrow)', color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{f.label}</div>
+                <div style={{ fontSize: 14, fontWeight: 650, color: f.tone ?? 'var(--fg)' }}>{f.value}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

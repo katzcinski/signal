@@ -1,0 +1,84 @@
+# contract_hash: b1b4461d260d27da
+# library_version: 6
+# compiler_hash: e279ffef838ecad9
+dataset: r_s4h_vbap_rt
+schema: '{schema}'
+contract_version: 1.0.0
+checks:
+- name: schema_columns
+  sql: SELECT COUNT(*) FROM (SELECT COLUMN_NAME FROM "SYS"."TABLE_COLUMNS" WHERE SCHEMA_NAME
+    = '{schema}' AND TABLE_NAME = 'r_s4h_vbap_rt' UNION ALL SELECT COLUMN_NAME FROM
+    "SYS"."VIEW_COLUMNS" WHERE SCHEMA_NAME = '{schema}' AND VIEW_NAME = 'r_s4h_vbap_rt')
+    catalog_columns
+  expect: = 9
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: schema
+  kind: internal_gate
+  enforcement: monitor
+- name: key_VBELN_POSNR_unique
+  sql: SELECT COUNT(*) - COUNT(DISTINCT "VBELN" || '|' || "POSNR") FROM "{schema}"."r_s4h_vbap_rt"
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: duplicate_composite
+  kind: internal_gate
+  enforcement: monitor
+- name: freshness_AEDAT
+  sql: SELECT SECONDS_BETWEEN(MAX("AEDAT"), CURRENT_TIMESTAMP) FROM "{schema}"."r_s4h_vbap_rt"
+  expect: < 21600
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: freshness
+  unit: s
+  kind: internal_gate
+  enforcement: monitor
+- name: volume_min_rows
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbap_rt"
+  expect: '>= 120000'
+  severity: warn
+  timeout_s: 60
+  enabled: true
+  type: row_count
+  kind: internal_gate
+  enforcement: monitor
+- name: VBELN_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbap_rt" WHERE "VBELN" IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: POSNR_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbap_rt" WHERE "POSNR" IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: MATNR_not_null
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbap_rt" WHERE "MATNR" IS NULL
+  expect: = 0
+  severity: critical
+  timeout_s: 60
+  enabled: true
+  type: missing
+  kind: internal_gate
+  enforcement: monitor
+- name: value_range_KWMENG
+  sql: SELECT COUNT(*) FROM "{schema}"."r_s4h_vbap_rt" WHERE "KWMENG" < 0 OR "KWMENG"
+    > 1000000
+  expect: = 0
+  severity: fail
+  timeout_s: 60
+  enabled: true
+  type: value_range
+  kind: internal_gate
+  enforcement: monitor
