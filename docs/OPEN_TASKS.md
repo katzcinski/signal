@@ -647,13 +647,34 @@ Positionen, die die Doku bisher als **ODCS-Grenzen** führte, sind in Wahrheit
 **Lücken unseres Exporters** — der Standard kann sie. Sie sind damit Backlog,
 nicht Architektur.
 
-- **U1 · `quality.severity` befüllen.** `[M]` ◻ — Signals `critical|fail|warn`
-  in `quality.severity` schreiben (freier String; ODCS-Beispiele sind
-  `info`/`warning`/`error` — Mapping festlegen und dokumentieren). Optional
-  `dimension` aus der Garantie-Familie ableiten (Enum: accuracy, completeness,
-  conformity, consistency, coverage, timeliness, uniqueness). **Grenze bleibt:**
-  ODCS definiert kein Verhalten je Stufe — der Wert transportiert, die
-  Gating-Semantik nicht. Das ist im Export zu vermerken, nicht vorzutäuschen.
+- **U1 · `quality.severity` befüllen.** `[M]` ◻ — **Mapping entschieden
+  (2026-09-01):**
+
+  | Signal | ODCS `quality.severity` |
+  |---|---|
+  | `critical` | `error` |
+  | `fail` | `error` |
+  | `warn` | `warning` |
+
+  Bewusst nicht surjektiv: `critical` und `fail` fallen auf `error` zusammen.
+  Der Grund ist Lesbarkeit für Fremdwerkzeuge — ein eigener String `critical`
+  wäre zwar spec-konform (das Feld ist ein freier String ohne Enum), aber kein
+  fremder Konsument wüsste ihn einzuordnen. `info` bleibt ungenutzt, weil
+  Signal keine Stufe unterhalb von `warn` kennt.
+
+  **Damit der Round-Trip trotzdem verlustfrei bleibt:** die exakte
+  Signal-Stufe zusätzlich in `quality.customProperties` mitgeben (z. B.
+  `signalSeverity: critical`) — `DataQuality` trägt `customProperties`. Der
+  Export ist dann für Fremdwerkzeuge korrekt und für `from_odcs()` exakt;
+  der Import liest `customProperties` bevorzugt und fällt nur sonst auf die
+  Grobstufe zurück. **Ohne diesen Zusatz ist der Round-Trip lossy** —
+  `critical` käme als `fail` zurück.
+
+  Optional `dimension` aus der Garantie-Familie ableiten (Enum: accuracy,
+  completeness, conformity, consistency, coverage, timeliness, uniqueness).
+  **Grenze bleibt:** ODCS definiert kein Verhalten je Stufe — der Wert
+  transportiert, die Gating-Semantik nicht. Das ist im Export zu vermerken,
+  nicht vorzutäuschen.
 - **U2 · Mehrspaltige `relationships`.** `[M]` ◻ — `odcs_export.py` exportiert
   heute nur `len(fk) == 1`. `RelationshipBase.from`/`to` sind `oneOf` mit
   Array-Form („Array of target properties for composite keys"); Composite-FK
